@@ -46,6 +46,10 @@ export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
 
+// フライトポジション
+export type { FlyPosition } from "./fly/types.js";
+export { FLY_POSITION, FLY_POSITION_SIZE, FlyPositionCodec, FlyTable, cloneFlyPositions, findFlyPosition, flyPositionCodec } from "./fly/FlyTable.js";
+
 // 接続
 export * from "./connection/layout.js";
 export type { ConnectionHeader, MapConnection } from "./connection/types.js";
@@ -78,6 +82,7 @@ export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
 export { TextCodec } from "./name/TextCodec.js";
 export { CharmapTable, type CharmapEntry } from "./name/CharmapTable.js";
 export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
+export { ITEM_ENTRY_SIZE, ITEM_NAME_BYTES, ItemNameTable } from "./name/ItemNameTable.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 export { SPECIES_COUNT, SPECIES_NAME_BYTES, SpeciesNameTable } from "./name/SpeciesNameTable.js";
 
@@ -165,6 +170,7 @@ export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./comman
 export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
 export { SetItemBallCommand, itemBallLabel, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
+export { FLY_FIELD_NAMES, SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
 export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
 export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";
 export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/header/SetRawHeaderCommand.js";

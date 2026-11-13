@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { openDialogs } from "../ui/Dialog";
 import type { App } from "./App";
+import { handleEventUi } from "./automationEvent";
 import { click, findField, getField, setField } from "./AutomationUi";
 import { TAB_ORDER, type TabId } from "./EditorState";
 import { timings } from "./timings";
@@ -175,8 +176,11 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
       await settle();
       return { status: state.status };
     }
-    default:
+    default: {
+      const ui = await handleEventUi(app, req);
+      if (ui) return ui.value;
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
+    }
   }
 }
 

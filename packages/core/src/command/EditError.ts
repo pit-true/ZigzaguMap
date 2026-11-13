@@ -57,6 +57,8 @@ export const EditErrorCode = {
   WildAreaMissing: "wildAreaMissing",
   /** 落とし物の人の番号が範囲外、または人ではない。引数: personIndex, count。 */
   ItemBallPersonOutOfRange: "itemBallPersonOutOfRange",
+  /** フライトポジションの番号が範囲外。引数: index, count。 */
+  FlyIndexOutOfRange: "flyIndexOutOfRange",
   /** 生のバイト列の長さ・書き方が違う。引数: field, expected（バイト数）。 */
   InvalidRawBytes: "invalidRawBytes",
   /** ブロック番号が範囲外。引数: index, count。 */

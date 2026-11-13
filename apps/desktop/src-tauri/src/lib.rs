@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod pick;
 mod project_fs;
+mod script_editor;
 mod system;
 mod tool_windows;
 
@@ -144,6 +145,8 @@ pub fn run() {
             tool_windows::close_tool_window,
             pick::cursor_color,
             pick::window_pixel,
+            automation::automation_capture,
+            script_editor::launch_script_editor,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");
