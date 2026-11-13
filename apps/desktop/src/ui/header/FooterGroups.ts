@@ -11,7 +11,8 @@ import {
 import { ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { autoId, button, edit, group, label, memo, place } from "../form/controls";
-import { offsetText, readInt, tryInt } from "../form/inputErrors";
+import { offsetText } from "../form/inputErrors";
+import { checkOnInput } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
 import { tilesetNumber } from "./LayoutGroups";
 import { locationText, readOnlyEdit } from "./ProHeaderGroups";
@@ -105,15 +106,13 @@ export class FooterGroups {
       }
       this.dirty();
     });
+    // AdvanceMap と同じく入力のたびに読み、フッターの 16 進へ連動する（読めなければエラー）。
     const field = (input: HTMLInputElement, write: (n: number) => void): void => {
-      input.addEventListener("input", () => {
-        const n = tryInt(input.value);
-        if (n === null) return;
+      checkOnInput(input, "int", (n) => {
         write(n);
         this.showFields(true);
         this.dirty();
       });
-      input.addEventListener("change", () => void readInt(input.value));
     };
     field(this.width, (n) => setU32(this.bytes, MAP_FOOTER.width, n));
     field(this.height, (n) => setU32(this.bytes, MAP_FOOTER.height, n));

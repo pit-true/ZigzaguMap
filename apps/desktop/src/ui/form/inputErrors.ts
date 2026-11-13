@@ -1,4 +1,4 @@
-import { EditError, EditErrorCode, parseHexInput, parseIntInput } from "@zigzagumap/core";
+import { EditError, EditErrorCode } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
 
@@ -42,35 +42,6 @@ export async function showEditError(e: unknown): Promise<void> {
     await messageBox(m.title, m.text, m.title === ja.information ? "info" : "error");
   } else {
     await messageBox(ja.errorTitle, e instanceof Error ? e.message : String(e), "error");
-  }
-}
-
-/** 10 進欄（`$`・`0x` の 16 進も可）を読む。読めなければエラーを出して null。 */
-export function readInt(text: string): number | null {
-  try {
-    return parseIntInput(text);
-  } catch (e) {
-    void showEditError(e);
-    return null;
-  }
-}
-
-/** 16 進欄（`$` を付けて読む。空欄は 0）を読む。読めなければエラーを出して null。 */
-export function readHex(text: string): number | null {
-  try {
-    return parseHexInput(text.replace(/^\$/, ""));
-  } catch (e) {
-    void showEditError(e);
-    return null;
-  }
-}
-
-/** 黙って読む（入力中の連動用）。読めなければ null。 */
-export function tryInt(text: string): number | null {
-  try {
-    return parseIntInput(text);
-  } catch {
-    return null;
   }
 }
 

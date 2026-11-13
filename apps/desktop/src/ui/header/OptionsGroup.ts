@@ -3,7 +3,7 @@ import { FR_MUSIC } from "../../app/data/frMusic";
 import { hex, ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { combo, edit, group, label, selectIndex } from "../form/controls";
-import { readHex } from "../form/inputErrors";
+import { checkOnInput, tryInteger } from "../form/integerInput";
 import { choices16, type HeaderContext } from "./HeaderContext";
 
 /** 選ぶとすぐ反映するコンボ（項目名とコンボ）。 */
@@ -56,9 +56,10 @@ export class OptionsGroup {
       const entry = FR_MUSIC[this.music.selectedIndex - 1];
       if (entry) this.set({ music: entry[0] });
     });
-    this.musicNo.addEventListener("input", () => this.showMusicCombo());
+    // AdvanceMap と同じく入力のたびに 16 進として読み、コンボを合わせる（読めなければエラー）。反映は欄の確定時。
+    checkOnInput(this.musicNo, "hex", () => this.showMusicCombo());
     this.musicNo.addEventListener("change", () => {
-      const value = readHex(this.musicNo.value);
+      const value = tryInteger(this.musicNo.value, "hex");
       if (value !== null) this.set({ music: value & 0xffff });
     });
     for (const [field, select] of this.combos) {

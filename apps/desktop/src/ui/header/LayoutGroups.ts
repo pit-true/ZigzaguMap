@@ -2,7 +2,8 @@ import { EditError, EditErrorCode, ResizeMapCommand, SetTilesetsCommand } from "
 import { ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { button, edit, group, label } from "../form/controls";
-import { readInt, showEditError } from "../form/inputErrors";
+import { showEditError } from "../form/inputErrors";
+import { readInteger } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
 
 /** タイルセットの番号（AdvanceMap のタイルセット番号。表に無いポインタなら空）。 */
@@ -45,9 +46,9 @@ export class TilesetGroup {
   private apply(): void {
     const c = this.ctx;
     if (!c) return;
-    const a = readInt(this.first.value);
+    const a = readInteger(this.first.value, "int");
     if (a === null) return;
-    const b = readInt(this.second.value);
+    const b = readInteger(this.second.value, "int");
     if (b === null) return;
     const table = c.session.project.tilesetTable;
     const primary = table.pointerOf(a);
@@ -95,9 +96,9 @@ export class SizeGroup {
     const c = this.ctx;
     if (!c) return;
     if (this.width.value.trim() === "" || this.height.value.trim() === "") return this.render(c);
-    const w = readInt(this.width.value);
+    const w = readInteger(this.width.value, "int");
     if (w === null) return;
-    const h = readInt(this.height.value);
+    const h = readInteger(this.height.value, "int");
     if (h === null) return;
     if (w === 0 || h === 0) return this.render(c);
     if (w === c.doc.width && h === c.doc.height) return;

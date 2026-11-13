@@ -117,7 +117,14 @@ AdvanceMap で ROM へすぐ書き込む「保存」ボタン類（名前の変�
 
 ### 入力エラー
 
-数値欄に整数として読めない文字を入れると、AdvanceMap と同じ「'abc' is not a valid integer value.」（16 進欄は `'$zzzz' is …`）を出します。AdvanceMap は 1 文字入れるたびに確かめますが、ZigzaguMap は欄を確定したとき（Enter・フォーカスを外したとき・ボタンを押したとき）に確かめます。ほかのエラーの文言は AdvanceMap に合わせています（タイルセット番号が表に無い: 「AdvanceMapError(1): Try to read at pos 0! …」、大きすぎるマップ: 「The max map height at a map width of 200 is: 33」、フッターの 16 進が不正: 「マップフッターのポインタが無効です...」）。
+数値欄に整数として読めない文字を入れると、AdvanceMap と同じ「'abc' is not a valid integer value.」（`$` を付けて読む 16 進欄は `'$zzzz' is …`）を出し、値は変えません。確かめるタイミングは AdvanceMap の欄ごとの動作に合わせ、どのタブも共通の部品（`ui/form/integerInput.ts`）で決めています。
+
+| タイミング | 欄 |
+|---|---|
+| 1 文字入れるたび | イベントタブの全欄、音楽No.、マップスクリプトのオフセット・フラグ・フラグの値・フラグのオフセット、高度な表示の横幅・高さ・タイルセット番号、出現確率と最小・最大 Lv、コネクションの調整・バンク・マップ・不明 |
+| ボタンを押したとき | 使用するタイルセット、マップの大きさ（通常表示） |
+
+オフセットの欄（`$16F884` のように `$` が文字に入っている欄）は、AdvanceMap と同じく文字のまま読みます（`zz` なら `'zz' is …`）。10 進の欄の空欄は何もしません。ほかのエラーの文言は AdvanceMap に合わせています（タイルセット番号が表に無い: 「AdvanceMapError(1): Try to read at pos 0! …」、大きすぎるマップ: 「The max map height at a map width of 200 is: 33」、フッターの 16 進が不正: 「マップフッターのポインタが無効です...」）。
 
 ### AdvanceMap と違うところ（場所の設定・コネクション・出現ポケモン）
 
