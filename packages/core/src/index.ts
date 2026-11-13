@@ -129,6 +129,8 @@ export {
 } from "./tileset/blockFormat.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
 export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
+export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
+export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
