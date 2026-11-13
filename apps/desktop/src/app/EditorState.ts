@@ -1,55 +1,119 @@
-import {
-  CommandBus,
-  GridStore,
-  MapLoader,
-  MapRenderer,
-  Rom,
-  requireSupportedGame,
-  type GameInfo,
-  type LoadedMap,
-  type MapId,
-  type RgbaImage,
-} from "@zigzagumap/core";
+import type { MapId } from "@zigzagumap/core";
+import type { MapImage } from "../ui/map/MapImage";
+import type { OpenMap, ProjectSession } from "./ProjectSession";
+import type { Settings } from "./Settings";
 
-/** 開いている ROM と編集中の状態。画面の操作は `bus` を通す。 */
+/** タブ。 */
+export type TabId = "map" | "movement" | "event" | "wild" | "header";
+
+/** タブの並び。 */
+export const TAB_ORDER: readonly TabId[] = ["map", "movement", "event", "wild", "header"];
+
+/** 選択中のブロック（1×1 か、複数ブロックのスタンプ）。`blocks` は左上から横へ並べた番号。 */
+export interface BlockSelection {
+  readonly width: number;
+  readonly height: number;
+  readonly blocks: readonly number[];
+}
+
+/** ステータスバーの 2 欄。 */
+export interface StatusText {
+  readonly left: string;
+  readonly right: string;
+  readonly error: boolean;
+}
+
+/**
+ * 状態の変化の種類。
+ * - session: ROM・プロジェクトを開いた／閉じた
+ * - map: 表示するマップが変わった
+ * - cells: 表示中のマップの配置・ボーダーが変わった（操作・アンドゥ）
+ * - tab / selection / movement / view: タブ、選択中のブロック、選択中の移動許可、表示設定
+ * - dirty: 未出力の印が変わった
+ * - status: ステータスバー
+ * - recent: 最近開いたもの
+ */
+export type StateTopic = "session" | "map" | "cells" | "tab" | "selection" | "movement" | "view" | "dirty" | "status" | "recent";
+
+type Listener = () => void;
+
+/**
+ * 画面全体の状態。画面の部品はここから読んで描き、変化は `on` で受け取る。
+ * 状態を変えるのは App とアクション（操作コマンドは ProjectSession.bus を通す）。
+ */
 export class EditorState {
-  readonly game: GameInfo;
-  readonly loader: MapLoader;
-  readonly grids: GridStore;
-  readonly bus: CommandBus;
-  private current: { map: LoadedMap; renderer: MapRenderer } | null = null;
+  session: ProjectSession | null = null;
+  map: OpenMap | null = null;
+  /** 表示中のマップのブロック画像（各タブで共有する）。 */
+  mapImage: MapImage | null = null;
+  tab: TabId = "map";
+  selection: BlockSelection = { width: 1, height: 1, blocks: [0] };
+  movement = 0;
+  status: StatusText;
+  /** 1 つ前に開いていたマップ（以前開いたマップを開く用）。 */
+  previousMap: MapId | null = null;
+  /** 未出力のマップ（"バンク.マップ"）。 */
+  dirty = new Set<string>();
+  private readonly listeners = new Map<StateTopic, Set<Listener>>();
 
-  constructor(bytes: Uint8Array) {
-    const rom = new Rom(bytes);
-    const game = requireSupportedGame(rom);
-    this.game = game;
-    this.loader = new MapLoader(rom, game.offsets);
-    this.grids = new GridStore(this.loader);
-    this.bus = new CommandBus(this.grids);
+  constructor(
+    readonly settings: Settings,
+    initialStatus: string,
+  ) {
+    this.status = { left: initialStatus, right: "", error: false };
   }
 
-  /** マップの総数。 */
-  get mapCount(): number {
-    let count = 0;
-    for (let bank = 0; bank < this.loader.bankTable.bankCount; bank++) count += this.loader.bankTable.mapCount(bank);
-    return count;
+  /** 変化を購読する。戻り値で解除。 */
+  on(topic: StateTopic, listener: Listener): () => void {
+    let set = this.listeners.get(topic);
+    if (!set) this.listeners.set(topic, (set = new Set()));
+    set.add(listener);
+    return () => set.delete(listener);
   }
 
-  /** 表示中のマップ。 */
-  get currentMap(): LoadedMap | null {
-    return this.current?.map ?? null;
+  /** 変化を知らせる。 */
+  emit(topic: StateTopic): void {
+    for (const l of this.listeners.get(topic) ?? []) l();
   }
 
-  /** マップを選ぶ。 */
-  select(id: MapId): LoadedMap {
-    const map = this.loader.load(id);
-    this.current = { map, renderer: new MapRenderer(map) };
-    return map;
+  /** ステータスバーの左欄（と、指定があれば右欄）を変える。 */
+  setStatus(left: string, right?: string, error = false): void {
+    this.status = { left, right: right ?? this.status.right, error };
+    this.emit("status");
   }
 
-  /** 表示中のマップを、編集中の配置で描く。 */
-  render(): RgbaImage | null {
-    if (!this.current) return null;
-    return this.current.renderer.render(this.grids.grid(this.current.map.id).cells);
+  /** ステータスバーの右欄だけを変える。 */
+  setStatusRight(right: string): void {
+    this.status = { ...this.status, right };
+    this.emit("status");
+  }
+
+  /** 選択中のブロックを変える。 */
+  select(selection: BlockSelection): void {
+    this.selection = selection;
+    this.emit("selection");
+  }
+
+  /** 選択中のブロックを 1 つにする。 */
+  selectBlock(block: number): void {
+    this.select({ width: 1, height: 1, blocks: [block] });
+  }
+
+  /** 選択中の移動許可を変える。 */
+  selectMovement(value: number): void {
+    this.movement = value;
+    this.emit("movement");
+  }
+
+  /** タブを切り替える。 */
+  setTab(tab: TabId): void {
+    if (this.tab === tab) return;
+    this.tab = tab;
+    this.emit("tab");
+  }
+
+  /** そのマップが未出力か。 */
+  isDirty(id: MapId): boolean {
+    return this.dirty.has(`${id.bank}.${id.map}`);
   }
 }
