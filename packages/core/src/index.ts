@@ -60,6 +60,11 @@ export type { WildArea, WildEncounters, WildHeader, WildInfo, WildSlot } from ".
 export { WildHeaderCodec, WildInfoCodec, WildSlotCodec, wildHeaderCodec, wildInfoCodec, wildSlotCodec } from "./wild/WildCodec.js";
 export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
 
+// マップ名
+export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
+export { TextCodec } from "./name/TextCodec.js";
+export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
