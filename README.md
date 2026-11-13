@@ -1,6 +1,12 @@
 # ZigzaguMap
 
-CFRU-JP 用のマップエディタです。AdvanceMap 風の操作で、ファイアレッド日本語版（BPRJ）のマップを編集し、`maps\` の JSON として書き出します。ベースROMには書き込みません。仕様は [docs/SPEC.md](docs/SPEC.md) を参照してください。
+CFRU-JP 用のマップエディタです。AdvanceMap 1.92 日本語版と同じ画面と操作で、ファイアレッド日本語版（BPRJ）のマップを編集し、`maps\` の JSON として書き出します。ベース ROM には書き込みません。
+
+- 対象: 素の BPRJ と、CFRU 方式へ移った BPRJ（NeoDark のベース ROM）。開くのは「ベース ROM」と「CFRU-JP のフォルダ」で、ベース ROM は読むだけです。素の ROM だけでも閲覧と編集ができ、出力のときに出力先のフォルダを選びます。
+- Windows 用です（WebView2 が要ります）。インストールは不要で、exe 1 つで動きます。
+- 仕様はこの README にまとめています。長い節は `docs/` に分けました: [自動操作の入口](docs/automation.md)、[比較テスト](docs/compare-test.md)。
+
+目次: [使い方](#使い方) / [画面の構成](#画面の構成) / [ショートカット](#ショートカット) / [設定](#設定) / [AdvanceMap と違う点](#advancemap-と違う点) / [ワールドマップエディタ](#ワールドマップエディタ) / [出力の仕様](#出力の仕様) / [性能](#性能) / [構成](#構成) / [開発](#開発)
 
 ## 使い方
 
@@ -61,12 +67,7 @@ Ctrl＋右ドラッグ（Ctrl＋右クリック）でスタンプを選ぶと、
 - マップの外にイベントがあると、ステータスバーの右欄に「ノート:イベントがマップの外に配置されています」を出します。
 - 設定 > オブジェクトの表示（ツールバーの主人公のボタン）をオンにすると、AdvanceMap と同じく人を ROM の OW 画像（下向きの 1 コマ目）で描き、人以外の箱は描きません。
 
-AdvanceMap と違う点:
-
-- 「マップの移動」で、行き先のマップの、ワープ No. のワープを選びます（AdvanceMap は番号 0 を選ぶ）。
-- 未出力の変更があっても、「マップの移動」の前に確認しません（ZigzaguMap はマップごとの変更を持ったまま切り替えるため）。
-- アイテム ID の名前は ROM の文字コード表で読みます（AdvanceMap では一部が文字化けする）。
-- ポインタが 0 のイベントにスクリプトのオフセットを入れたときは、上位 1 バイトを 08 にします。
+AdvanceMap と違う点は「[AdvanceMap と違う点](#advancemap-と違う点)」にまとめています。
 
 ### 「保存」ボタンの読み替え
 
@@ -128,14 +129,6 @@ AdvanceMap で ROM へすぐ書き込む「保存」ボタン類（マップ名�
 
 オフセットの欄（`$16F884` のように `$` が文字に入っている欄）は、AdvanceMap と同じく文字のまま読みます（`zz` なら `'zz' is …`）。10 進の欄の空欄は何もしません。ほかのエラーの文言は改訂版 Japanese.ini（ini に無いものは AdvanceMap）に合わせています（タイルセット番号が表に無い: 「AdvanceMapError(1): Try to read at pos 0! …」、大きすぎるマップ: 「マップの横幅200の時のマップの高さの最大サイズは33です」、フッターの 16 進が不正: 「マップフッターに無効なポインタが設定されています！」）。
 
-### AdvanceMap と違うところ（場所の設定・マップコネクション・野生ポケモンの設定）
-
-- 「保存」は ROM ではなく編集中の状態へ反映します（上記）。
-- タイルセット番号に表に無い番号（9999 など）を入れたときは、AdvanceMap は受け付けて崩れた絵を出しますが、ZigzaguMap は指せるタイルセットが無いのでエラーにします。マップの横幅に -1 を入れたとき、AdvanceMap は落ちますが ZigzaguMap はエラーにします。
-- 高度なヘッダーの位置・ポインタは表示だけです。不正な 16 進を保存したとき、AdvanceMap は続けて「AdvanceMapError(1)」も出してヘッダーを壊しますが、ZigzaguMap は最初のエラーだけを出して何も変えません。
-- マップコネクションの矢印ボタンの有効・無効は、下書きの表の方向から決めます（AdvanceMap は方向を変えたときに表と合わない状態になることがあります）。
-- 「スクリプトを開く」は、設定 > スクリプトエディタの選択 で選んだ exe に、ベース ROM のパスとオフセットを渡します（maps\ の JSON から読んだマップでは、ベース ROM 上のオフセットと一致しないことがあります）。選んでいなければステータスバーにオフセットを出します。
-
 ### 新規マップ・作成したマップ（.map / .evt）
 
 ファイル > マップ の 4 項目と、ツールバーの「新規マップの作成」「マップの追加/挿入」です。
@@ -165,14 +158,6 @@ AdvanceMap 1.92 に実際に書かせて確かめた形式です。ZigzaguMap �
 | `.evt` | 人（24 バイト）、ワープ（8 バイト）、スクリプト（16 バイト）、看板（12 バイト）の一覧を ROM と同じ並びで続け、末尾に件数 4 バイト（人・ワープ・スクリプト・看板） |
 
 タイルセットはポインタではなく AdvanceMap のタイルセット番号（ベース ROM のタイルセット表の何番目か）で書きます。表に無いタイルセット（`maps\tilesets` で新しく作ったものなど）を使うマップは `.map` に書けず、エラーになります。ヘッダー・接続・マップスクリプト・野生はどちらのファイルにも入りません。
-
-#### AdvanceMap と違う点（新規マップ・追加/挿入）
-
-- AdvanceMap は新規作成したマップを `.map` に保存すると、直前に開いていたマップのイベントを `.evt` に書きます。ZigzaguMap は作業用のマップのイベント（新規作成なら無し = 件数 0 の 4 バイト）を書きます。
-- 名前に `/` などファイル名に使えない文字があるとき、AdvanceMap は保存ダイアログを開けませんが、ZigzaguMap はその文字を `_` にしたファイル名を初期値にします。
-- マップの追加/挿入は、野生と落とし物（Bochi の ItemBalls。HiddenItem.s のラベルが重なるため）を写しません。
-- 「マップの追加数」は、加えるマップの数ではありません（いつも 1 つ）。
-- マップバンクヘッダーの「変更の適用」で作るバンクには、空のバンクの代わりにマップ 0 を置きます。
 
 ### ブロックエディタ（ツール > ブロックエディタ、Ctrl+B）
 
@@ -215,13 +200,6 @@ AdvanceMap 1.92 に実際に書かせて確かめた形式です。ZigzaguMap �
 - マップを切り替えると、別ウィンドウはそのマップのタイルセットに追従します。ROM を開き直したときとマップを閉じたときは閉じます。
 - 未出力のタイルセットの変更があるときも、閉じる・別の ROM を開くときに「変更を出力しますか？」と聞きます。
 
-### AdvanceMap と違うところ（ブロックエディタ）
-
-- 「変更」「パレットの変更をROMに上書きする」「変更を保存する」「ブロック数の追加/変更」は ROM へ書かず、編集中の状態へ反映します（出力で `maps\tilesets\` に書く）。メニューの文言は「パレットの変更を反映する」にしました。
-- 8 マスに置くタイルのパレット番号は、選んでいるパレットにします（AdvanceMap では反映されない場合があり、条件は分かっていません）。右クリックで拾うとパレットも拾います。
-- タイルセット画像・`.bvd` の読み込みは、AdvanceMap では「Invalid filename.」で失敗しますが、ZigzaguMap では読み込めます。
-- 一括変更の右の欄は 10 進で読みます（表の初期値が 10 進のため。数でなければ AdvanceMap と同じエラー）。
-
 ## 画面の構成
 
 AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。
@@ -233,6 +211,34 @@ AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.
 - 未出力のマップは、一覧の名前の後ろに ` *` が付きます。未出力のまま閉じる・別の ROM を開くときは「変更を出力しますか？」と聞きます
 - 入力ダイアログ・確認・エラーは画面内に出します（Windows 標準のメッセージボックスと同じ並び）。ファイルやフォルダを選ぶダイアログだけは Windows 標準です
 - まだ作っていないメニュー項目も全部置いてあり、押すとステータスバーに「未実装: 項目名」と出ます
+
+## ショートカット
+
+入力欄の中では反応しません（Ctrl+Z / Ctrl+Y も、入力欄の中では文字の取り消しになります）。
+
+| キー | 動作 |
+|---|---|
+| Ctrl+O | ROMを開く |
+| F5 | ROMの再読み込み |
+| Ctrl+S | 出力（別ウィンドウの中でも同じ） |
+| Ctrl+Z | 元に戻す（どのウィンドウでも、メインと同じ履歴） |
+| Ctrl+Y、Ctrl+Shift+Z | やり直す |
+| Ctrl+G | グリッドの表示 |
+| Ctrl+P | ブロックパレットの横幅 |
+| Ctrl+T | ツールバーの表示 |
+| Ctrl+H | 高度なヘッダーを表示 |
+| Ctrl+B | ブロックエディタ |
+| Ctrl+A | マップコネクション |
+| Ctrl+W | ワールドマップエディタ |
+| Ctrl+M | マップを指定して開く |
+| Alt+BkSp | 以前開いたマップを開く |
+| F1 | ZigzaguMapについて |
+| F2 | エンドユーザー規約 |
+| Alt | メニューバーへ移る（矢印キーで移動、Enter・アクセスキーで実行、Esc で閉じる） |
+| Enter | マップ一覧で選んでいるマップを開く（ダブルクリックと同じ） |
+| Esc | 画面内の入力・確認のダイアログを閉じる（Cancel・× と同じ。マップコネクションは閉じない） |
+
+ショートカットはメニューの定義（`apps/desktop/src/app/menuDefinition.ts` の `shortcut`）から作っています。メニューに出る表記と同じです。
 
 ## 設定
 
@@ -256,17 +262,84 @@ AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.
 
 PC に手を入れる最後の 3 つは、自動操作の入口を付けて起動したときは、確認で「はい」を押しても実行しません。
 
+`settings.json` の主な項目は次のとおりです。初期値は AdvanceMap の初期状態に合わせています。項目名は保存形式なので変えません。
+
+| 項目 | 内容 | 初期値 |
+|---|---|---|
+| `grid`、`showObjects`、`showToolbar`、`comboBox` | グリッド・オブジェクト・ツールバー・コンボボックスの表示 | false、false、true、false |
+| `zoomMap`・`zoomMovement`・`zoomEvent`・`zoomBlockPalette`・`zoomMovementPalette` | 表示サイズ（2 倍表示） | すべて false |
+| `paletteWidth` | ブロックパレットの 1 行のブロック数（1〜64） | 8 |
+| `movementOpacity` | 移動エリアの透明度（マップ側の重み、0〜1） | 0.3 |
+| `sortMode` | マップ一覧の並べ替え（0〜4） | 4 |
+| `mapListSource` | マップ一覧の根（`both` / `header` / `ini`） | `both` |
+| `recent`、`recentMax`、`recentShowPath` | 最近開いたもの（ROM とフォルダの組）、最大数（1〜9）、パスの表示 | 空、5、false |
+| `rememberLast`、`last` | 最後に選択したものを覚える、前回のマップとタブ | true、null |
+| `advancedHeader`、`hideEventPanel`、`autoSearch` | 高度なヘッダー、イベントパネルの非表示、自動的にオフセットを検索する | true、true、true |
+| `romShortcut`、`contextMenu` | 最後に開いた ROM のショートカット、右クリックへの登録 | false、false |
+| `scriptEditor`、`scriptSpaceSeparator` | スクリプトエディタの exe と、ROM とオフセットの区切り（true なら空白） | null、false |
+| `mapFiles`、`mapFileDir`、`imageDir` | マップ一覧の「マップファイル」、`.map` と画像を保存したフォルダ | 空、null、null |
+| `leftWidth`、`window` | 左の欄の幅、ウィンドウの位置と大きさ | 232、null |
+
 ## AdvanceMap と違う点
 
-比較テストで見つかった違いのうち、ZigzaguMap の動作を残すと決めたものです（括弧は issue 番号）。
+AdvanceMap 1.92 との違いのうち、意図して残しているものの一覧です。比較テスト（[docs/compare-test.md](docs/compare-test.md)）では、これらを「仕様上の違い」として理由つきで除外しています。
+
+### 全体
+
+- ROM へは書き込みません。「ROMの保存」は「出力」（Ctrl+S、`maps\` へ書く）、「ROMに名前を付けて保存」は「出力先を指定して出力」です。ROM へすぐ書く「保存」ボタン類は、編集中の状態への反映に読み替えます（「[「保存」ボタンの読み替え](#保存ボタンの読み替え)」）。
+- AdvanceMap に無いものを足しています: 元に戻す・やり直す（Ctrl+Z / Ctrl+Y）、ROM とフォルダのドラッグ＆ドロップ、「CFRU-JPのフォルダを開く」。起動時のタイトルロゴはありません。
+- 未出力の変更があっても、別のマップへ移るとき（「マップの移動」を含む）に確認しません。マップごとの変更を持ったまま切り替え、一覧の名前に ` *` を付け、閉じる・別の ROM を開くときにだけ「変更を出力しますか？」と聞きます。
+- 画面は日本語だけです（言語メニューは Japanese の 1 項目）。アプリ名は ZigzaguMap です（「Advance Mapについて」は「ZigzaguMapについて」、ダイアログの題名も ZigzaguMap）。
+- ROM へ書かないので意味の無い機能（開いたときにバックアップを作成、ダミーデータ系、空き領域の検索、ワールドマップのルーチンの変更）は、「ZigzaguMap は ROM へ書き込まないため、この機能は不要です」と案内します。「バックアップの作成」は「出力先を指定して出力」と同じです。
+- 確認・エラー・入力のダイアログは画面内に出します（Windows 標準のメッセージボックスは使わない。並びと文言は同じ）。
+- 「オブジェクトの表示」の Ctrl+Z は、アンドゥに使うため外しています。
+- マップ&イベント画像の保存は、どのタブでもイベントを重ねた画像を書きます（AdvanceMap はイベントタブ以外では 0 バイトのファイル）。
+- 1×1 のマップ（3.50、3.51）は、AdvanceMap では黒く表示されますが、ZigzaguMap はブロックを描きます（#115。AdvanceMap の不具合とみなす）。
+
+### 比較テストで決めた違い
 
 | 項目 | AdvanceMap | ZigzaguMap | 理由 |
 |---|---|---|---|
 | ファイルメニューの最近開いたファイル（#161） | 最大数の行をいつも出す（履歴の無い行は空） | 履歴にあるものだけ出す | 空の行は何の情報も持たないため |
 | 設定 >「最後に開いたROMのショートカットを作成する」の初期状態（#162） | オン | オフ | ユーザーが頼んでいないファイルを exe のフォルダに作らないため |
 | 「タイルセット番号で並び替え」の最後のグループ（#163） | 「Tileset 67」のあとに名前が空のグループを 1 つ出す | 出さない | AdvanceMap の不具合とみなす |
-| 合わないタイルセットの組（#164） | ブロック表の外のデータもブロックとして描く | ブロック表の長さだけ読み、それより後ろのブロック番号は背景色で描く | ブロック数はブロックエディタと出力（`maps	ilesets`）にも使うので、表の外を読むとその中身まで出力に混ざるため |
+| 合わないタイルセットの組（#164） | ブロック表の外のデータもブロックとして描く | ブロック表の長さだけ読み、それより後ろのブロック番号は背景色で描く | ブロック数はブロックエディタと出力（`maps\tilesets`）にも使うので、表の外を読むとその中身まで出力に混ざるため |
 | マップを指定して開く（Ctrl+M）を取り消したあと（#166） | Cancel で閉じたり整数でない値を入れたりすると、「以前開いたマップを開く」が動かなくなる | いつも前のマップを開く | AdvanceMap の不具合とみなす |
+
+### イベントタブ
+
+- 「マップの移動」で、行き先のマップの、ワープ No. のワープを選びます（AdvanceMap は番号 0 を選ぶ）。
+- アイテム ID の名前は ROM の文字コード表で読みます（AdvanceMap では一部が文字化けする）。
+- ポインタが 0 のイベントにスクリプトのオフセットを入れたときは、上位 1 バイトを 08 にします。
+
+### 場所の設定・マップコネクション・野生ポケモンの設定
+
+- 「保存」は ROM ではなく編集中の状態へ反映します（「[「保存」ボタンの読み替え](#保存ボタンの読み替え)」）。
+- タイルセット番号に表に無い番号（9999 など）を入れたときは、AdvanceMap は受け付けて崩れた絵を出しますが、ZigzaguMap は指せるタイルセットが無いのでエラーにします。マップの横幅に -1 を入れたとき、AdvanceMap は落ちますが ZigzaguMap はエラーにします。
+- 高度なヘッダーの位置・ポインタは表示だけです。不正な 16 進を保存したとき、AdvanceMap は続けて「AdvanceMapError(1)」も出してヘッダーを壊しますが、ZigzaguMap は最初のエラーだけを出して何も変えません。
+- マップコネクションの矢印ボタンの有効・無効は、下書きの表の方向から決めます（AdvanceMap は方向を変えたときに表と合わない状態になることがあります）。
+- 「スクリプトを開く」は、設定 > スクリプトエディタの選択 で選んだ exe に、ベース ROM のパスとオフセットを渡します（maps\ の JSON から読んだマップでは、ベース ROM 上のオフセットと一致しないことがあります）。選んでいなければステータスバーにオフセットを出します。
+- タイルセット番号に -1 を入れたとき、AdvanceMap は同じエラー（AdvanceMapError(1)）を 2 回続けて出しますが、ZigzaguMap は 1 回です（AdvanceMap の不具合とみなす）。
+
+### 新規マップ・作成したマップ・追加/挿入
+
+- AdvanceMap は新規作成したマップを `.map` に保存すると、直前に開いていたマップのイベントを `.evt` に書きます。ZigzaguMap は作業用のマップのイベント（新規作成なら無し = 件数 0 の 4 バイト）を書きます。
+- 名前に `/` などファイル名に使えない文字があるとき、AdvanceMap は保存ダイアログを開けませんが、ZigzaguMap はその文字を `_` にしたファイル名を初期値にします。
+- マップの追加/挿入は、野生と落とし物（Bochi の ItemBalls。HiddenItem.s のラベルが重なるため）を写しません。
+- 「マップの追加数」は、加えるマップの数ではありません（いつも 1 つ）。
+- マップバンクヘッダーの「変更の適用」で作るバンクには、空のバンクの代わりにマップ 0 を置きます。
+
+### ブロックエディタ・パレットエディタ・一括変更
+
+- 「変更」「パレットの変更をROMに上書きする」「変更を保存する」「ブロック数の追加/変更」は ROM へ書かず、編集中の状態へ反映します（出力で `maps\tilesets\` に書く）。メニューの文言は「パレットの変更を反映する」にしました。
+- 8 マスに置くタイルのパレット番号は、選んでいるパレットにします（AdvanceMap では反映されない場合があり、条件は分かっていません）。右クリックで拾うとパレットも拾います。
+- タイルセット画像・`.bvd` の読み込みは、AdvanceMap では「Invalid filename.」で失敗しますが、ZigzaguMap では読み込めます。
+- 一括変更の右の欄は 10 進で読みます（表の初期値が 10 進のため。数でなければ AdvanceMap と同じエラー）。
+
+### ワールドマップエディタ
+
+- AdvanceMap は素の BPRJ ではワールドマップエディタを開けません（エラーが続けて出て窓が出ない）が、ZigzaguMap では地図の絵と全ての表を読めます。
+- 「保存」は編集中の状態への確定です。「ルーチンの変更」は ROM を書き換えないので、質問だけを出して何もしません。
 
 ## ワールドマップエディタ
 
@@ -307,17 +380,59 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 
 ## 出力の仕様
 
-- 書き出し先は `maps\BB\MM.json`（バンク・マップは 2 桁。ND の `scripts/map_project.py` と BochiBochiEditor 改造版と同じ形式）。
-- 書くのは、ベース ROM と内容が違い、既存のファイルとも違うマップだけです。ベース ROM と同じに戻ったマップは、JSON があれば消します。
-- タイルセット（ブロックエディタで変えたもの）は `maps\tilesets\<primary|secondary>_<ヘッダーの位置>\tileset.json` と `tiles.png` に書きます（Bochi と同じ形式）。ベース ROM と同じに戻ったら消します。同じタイルセットを使うマップはどれも、次に開いたときからこの内容で読みます。
-- 何か書くときに `maps\project.json` が無ければ作ります。
-- タウンマップの変更は `maps\regionmap.json` に書きます（上の「ワールドマップエディタ」）。
-- ベース ROM には書き込みません。
+出力（Ctrl+S）は、変更のあったものだけをプロジェクトフォルダへ書きます。自動では出力しません。ベース ROM には書き込みません。読み書きの処理は `packages/core/src/project/`（パスは `paths.ts`、全体の流れは `CfruProject.save`）にまとめ、`maps\` の形式が変わってもここだけを直せばよいようにしています。
+
+| ファイル | いつ書くか | 形式 |
+|---|---|---|
+| `maps\BB\MM.json`（バンク・マップは 2 桁） | ベース ROM と内容が違い、既存のファイルとも違うマップ。ベース ROM と同じに戻ったら消す。マップ名を変えたときは、同じ地名番号の全マップ | ND の `scripts/map_project.py` と BochiBochiEditor 改造版（`SaveCfruProject`）と同じ形式。下の表 |
+| `maps\project.json` | 何か書くときに無ければ作る | `{"Format":1,"BaseBankCounts":[…]}`（ベース ROM のバンクごとのマップ数。字下げなし） |
+| `maps\tilesets\<primary\|secondary>_<ヘッダーの位置 6 桁>\tileset.json` と `tiles.png` | ブロックエディタなどで変えたタイルセット。ベース ROM と同じに戻ったら消す | Bochi と同じ。`tileset.json` は `Format`・`HeaderAddress`・`Secondary`・`New`・`Header`・`TileCount`・`BlockCount`・`BlockBytes`・`BehaviorBytes`・`Compressed`・`ImageSha256`・`Palettes`・`Blocks`・`Behaviors`、`tiles.png` はタイルのインデックス PNG |
+| `assembly\overworld_scripts\HiddenItem.s` | 落とし物（人の ItemBalls）が変わったとき | `@ BBE-BEGIN <識別子>`〜`@ BBE-END <識別子>` の生成範囲だけを作り直す（手書き部分は残す。Bochi と同じ）。ラベルは `HiddenItem_BB_MM_<識別子>` |
+| `maps\regionmap.json` | タウンマップ・フライトポジションを変えたとき。全部ベース ROM と同じに戻ったら消す | 「[maps\regionmap.json](#mapsregionmapjson)」 |
+
+JSON はどれも Bochi（.NET の System.Text.Json）と同じ整形です。2 空白の字下げ、改行は CRLF、末尾に改行 1 つ、バイト列は base64、文字列は ASCII の表示文字以外と `"` `&` `'` `+` `<` `>` と逆引用符を `\uXXXX` にします（`\` は `\\`）。同じタイルセットを使うマップはどれも、次に開いたときから `maps\tilesets` の内容で読みます。
+
+`maps\BB\MM.json` の項目は次のとおりです（Bochi の `CfruMapSource` と同じ並び）。
+
+| キー | 中身 |
+|---|---|
+| `Format`・`Bank`・`Number` | 1、バンク番号、マップ番号 |
+| `Header` | マップヘッダー 28 バイト（0x00〜0x0F のポインタは 0） |
+| `Footer` | マップフッター 28 バイト（0x08〜0x17 のポインタは 0） |
+| `Layout`・`Border` | 配置と境界ブロック（1 マス 2 バイト。ブロック番号と移動許可） |
+| `PrimaryTileset`・`SecondaryTileset` | タイルセットのヘッダーのポインタ値 |
+| `MapName` | 地名の文字列（ROM の文字コード） |
+| `EventHeader`・`Persons`・`Warps`・`Traps`・`Signs` | イベントの見出し（一覧のポインタは 0）と 4 種類の一覧（落とし物の人のスクリプトのポインタは 0） |
+| `ConnectionsHeader`・`Connections` | コネクションの見出しと一覧 |
+| `MapScripts`・`MapScriptLists` | マップスクリプトと、種類 2・4 の条件表（`TableOffset`・`Data`。表を指すポインタは 0） |
+| `ItemBalls` | 落とし物（`Id`・`PersonIndex`・`ItemId`・`Label`） |
+| `Wild` | 野生（`Time` と `Areas`。各エリアは `Rate` と `Slots`） |
+
+構造体どうしをつなぐポインタはすべて 0 にして書き、ビルド（`map_project.py`）が作り直します。新しいマップは既存のバンクの末尾か、最後のバンクの次の新しいバンクにだけ置けます（[新規マップ・作成したマップ](#新規マップ作成したマップmap--evt)）。`.map` / `.evt` は出力ではなく、AdvanceMap と同じ作業用のファイルです（[.map / .evt の形式](#map--evt-の形式)）。
 
 ## 構成
 
-- `packages/core`: ROM の解析・描画・操作コマンド（TypeScript。Node とブラウザの両方で動く）
-- `apps/desktop`: デスクトップアプリ（Tauri 2 + Vite + 素の TypeScript）。`src/windows/` が別ウィンドウ（`block-editor/`・`palette-editor/`・`block-adjust/`、メインとの同期は `ToolWindowHost`・`ToolClient`・`protocol`）
+pnpm の workspace です。
+
+- `packages/core`: ROM の解析・描画・操作コマンド・出力（TypeScript。Node とブラウザの両方で動き、画面なしでテストできる）
+  - `rom/`・`binary/`: ROM とバイト列の読み書き、LZ77、base64、16 進の表記（`formatHex`）
+  - `map/`・`event/`・`connection/`・`mapscript/`・`wild/`・`fly/`・`name/`・`sprite/`・`regionmap/`: ROM の各データの読み書き（`*Codec` が構造体、`*Reader`・`*Table` が表）
+  - `model/`: 編集中のマップ（`MapDocument`）とベース ROM からの読み込み
+  - `tileset/`・`render/`: タイルセットの編集用データと描画（`BlockRenderer`、`renderBlocks`、`MapRenderer`）
+  - `command/`: 操作コマンド（`commands/` に種類ごと）、`CommandBus`（実行・アンドゥ・リドゥ・履歴）、`CommandRegistry`（JSON の記録からコマンドを作る）、`CommandGroup`（複数のコマンドを 1 回の操作にまとめる。記録から作り直せる）、`DocumentStore`（編集中の状態）
+  - `project/`: `maps\` の読み書き（出力の形式は全部ここ）。`amfile/` は AdvanceMap の `.map` / `.evt`
+- `apps/desktop`: デスクトップアプリ（Tauri 2 + Vite + 素の TypeScript）
+  - `src/app/`: アプリ全体（`App`）、状態（`EditorState`）、ROM とプロジェクト（`ProjectSession`、`TauriProjectFs`）、マップ一覧（`MapCatalog`、`MapTreeModel`）、メニューの定義とアクション（`menuDefinition`、`Actions`、`Shortcuts`）、設定（`Settings`、`SettingPrompts`、`SystemSettings`）、ファイル（`FileDialogs`）、自動操作（`automation/`）
+  - `src/ui/`: メニューバー、ツールバー、マップ一覧、タブ、ステータスバー、画面内のダイアログ（`Dialog`、`MessageBox`、`InputDialog`）、Canvas の共通処理（`canvas.ts`）、`map/`（マップ表示・パレット・重ね描き）、`tabs/`・`event/`・`header/`・`wild/`・`connection/`・`newmap/`（タブとダイアログ）、`form/`（16 進欄・スピン・コンボなどの入力部品と入力エラー）
+  - `src/input/`: マウス操作（ブロック・移動許可の配置）
+  - `src/windows/`: 別ウィンドウ。入口は `tool.html`（`src/tool.ts` → `startToolWindow.ts` の表でラベルから中身を選ぶ）。`block-editor/`・`palette-editor/`・`block-adjust/`（メインとの同期は `ToolWindowHost`・`ToolClient`・`protocol`）、`world-map/`（`WorldMapHost`・`WorldMapClient`）
+  - `src/i18n/`: 文言、`src/styles/`: 部品ごとの CSS、`src/util/`: 小さな共通処理
+  - `src-tauri/`: Rust 側。ファイルの入出力、ウィンドウの管理、自動操作の入口（HTTP）、画面の撮影だけを受け持つ
+- `scripts/`: ビルド・文言の生成と確認・計測、`tests/`: 自動操作の確認と比較テスト、`tools/`: AdvanceMap を動かすハーネスなど
+
+編集はすべて `packages/core` の操作コマンドを CommandBus で実行します（別ウィンドウもコマンドの JSON をメインへ送り、メインが実行する）。ダイアログの中の下書き（コネクション・マップスクリプトの表など）は写しを編集し、「保存」でコマンドにします。例外は、作成したマップを `.map` に保存したときの名前とパスの記録（保存の結果で、取り消す対象ではない）です。
+
+別ウィンドウを足すとき（Phase2 のスクリプトエディタなど）は、`src/windows/startToolWindow.ts` の表と `src-tauri/capabilities/default.json` の `windows` に足します。
 
 ## 開発
 
@@ -325,9 +440,13 @@ Node.js 22 以降、pnpm、Rust（1.96 以降）、WebView2 が必要です。
 
 ```sh
 pnpm install
-pnpm typecheck   # 型チェック
+pnpm typecheck   # 型チェック（使っていない変数・引数もエラーにする）
 pnpm test        # 単体テスト
+pnpm lint        # 型チェック + 文言の生成物の確認 + 文言の突き合わせ
+scripts\build.cmd clippy   # Rust の lint（警告もエラーにする）
 ```
+
+単体テスト（`packages/core/test`）には、出力の往復テストを含みます: マップを JSON にして読み直すと同じになること（`project.test.ts`。素の ROM では `realRomProject.test.ts` が全マップ）、全種類のコマンドを実行して出力し、開き直すと同じで、全部取り消すと JSON が消えること（`realRomEdit.test.ts`）、タイルセット・落とし物・新しいマップ・マップ名の出力（`editSave.test.ts`）。
 
 画面の文言は、改訂版 `apps/desktop/src/i18n/source/Japanese.ini`（UTF-8）に、補正 `apps/desktop/src/i18n/source/overrides.ini`（同じ書式、UTF-8）を重ねたものです。`scripts/gen-i18n.mjs` が「Japanese.ini → overrides.ini」の順にキー（節と番号）ごとに値を重ね、文言のモジュール `apps/desktop/src/i18n/ini.generated.ts` を作ります。`ja*.ts` は生成物の値を `ini.節["番号"]` で引いています。
 
@@ -381,16 +500,36 @@ pnpm tauri dev     # 開発用に起動（自動操作の入口がポート 1789
 scripts\build.cmd          # リリースビルド
 scripts\build.cmd debug    # デバッグビルド
 scripts\build.cmd check    # cargo check だけ
+scripts\build.cmd clippy   # cargo clippy（Rust の lint）
 ```
 
 出力先を変えたいときは、環境変数 `CARGO_TARGET_DIR` を設定してから実行します（exe は `<CARGO_TARGET_DIR>\release\zigzagumap.exe` にできます）。
 
-### メモリの計測
+自動操作の入口（テスト用の HTTP の命令）は [docs/automation.md](docs/automation.md)、AdvanceMap との比較テストの回し方は [docs/compare-test.md](docs/compare-test.md) にあります。
+
+## 性能
+
+| 項目 | 目標 | 測り方 |
+|---|---|---|
+| 起動からマップ表示まで | 1 秒以内 | `scripts/measure-startup.mjs` |
+| マップの切り替え | 100ms 以内 | `scripts/measure-startup.mjs`（`scripts\measure-memory.ps1` も出す） |
+| 待機時メモリ（WebView2 込み） | 150MB 以下 | `scripts\measure-memory.ps1` の専用ワーキングセットの合計 |
+| 配布物 | 10MB 以下 | `zigzagumap.exe` の大きさ |
+
+### 起動とマップ切り替えの時間
+
+`scripts/measure-startup.mjs` で測ります。毎回、一時フォルダの `--profile` に前回のマップ（3.0）を覚えた設定を置き、`zigzagumap.exe --automation <ポート> --profile <一時フォルダ> <ROM>` で起動して（画面外・非アクティブ。通常の設定には触れない）、exe を起動してからマップを描き終えるまで（画面側の記録 `mapShown`）を測ります。続けてマップを 10 枚切り替え、自動操作の `selectMap` の返事の `switchMs`（読み込み・描画・一覧の更新まで）を集めます。
+
+```sh
+node scripts/measure-startup.mjs --exe <zigzagumap.exe> --rom <素の BPRJ> [--port 17996] [--runs 5]
+```
+
+### メモリ
 
 待機時メモリ（目標 150MB 以下、WebView2 込み）は `scripts\measure-memory.ps1` で測ります。exe を `--automation` と一時フォルダの `--profile` で起動し（画面外・非アクティブ。通常の設定には触れない）、起動直後／ROM を開いた後（3.0）／マップを 10 枚切り替えた後／ブロックエディタを開いた後／閉じた後の 5 場面で、それぞれ 10 秒待ってから測ります。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Out result.json]
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Port 17995] [-Out result.json]
 ```
 
 - exe とその子孫（WebView2 のブラウザ・レンダラー・GPU・ユーティリティ・crashpad）を、種類ごとに「専用ワーキングセット」「プライベート（コミット）」「ワーキングセット」で出します。目標は **専用ワーキングセットの合計** で判定します（タスクマネージャーの「メモリ」の列と同じ値。ワーキングセットは共有ページを二重に数えるので合計に向かない）。メインの JavaScript のヒープ（`state` の `jsHeap`）、入口が応答するまでの時間、マップ切り替えの時間も出します。
@@ -399,206 +538,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -
 
 WebView2 には、計測で効果のあった引数だけを付けています（`src-tauri/src/lib.rs` の `BROWSER_ARGS`）: `--disable-gpu`（GPU プロセスの約 50MB が無くなる。Canvas 2D と合成はソフトウェアで行い、描画とマップ切り替えの速さは変わらない）、`--enable-features=NetworkServiceInProcess2`（ネットワークのプロセスをまとめる。約 5MB）。
 
-コードの置き場所（`apps/desktop/src`）:
+### 配布物
 
-- `app/`: 状態（`EditorState`）、ROM とプロジェクト（`ProjectSession`、`TauriProjectFs`）、マップ一覧の組み立て（`MapCatalog`、`MapTreeModel`）、メニューの定義とアクション、設定、自動操作
-- `ui/`: メニューバー、ツールバー、マップ一覧、タブ、ステータスバー、`ui/map/`（マップ表示・パレット・重ね描き）、`ui/tabs/`（各タブ）、`ui/event/`（イベントタブ: 共通部、種別ごとのパネル、マップ上の操作、イベントマネージャー）、`ui/form/`（16 進欄・スピン・コンボなどの入力部品）
-- `input/`: マウス操作（ブロック・移動許可の配置）
-- `styles/`: 部品ごとの CSS
-- 画面の操作はすべて `packages/core` の操作コマンド（`paintBlocks`、`paintMovement`、`paintBorder` など）を CommandBus で実行します
-
-## 自動操作の入口（テスト用）
-
-開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
-
-- リリースの exe に付けたときは、操作を奪わないよう、メインも別ウィンドウも作った時点から画面外に置き、アクティブにせず、タスクバーにも出しません（見えない状態で作ってから画面外へ動かして表示する）。音も出しません（WebView2 に `--mute-audio` を付け、Windows 標準のメッセージボックスは出さない。画面内のダイアログは音を鳴らさない）。
-- `--automation` を付けたときは、個人設定と WebView2 のデータを通常の場所（`%APPDATA%\io.github.pit-true.zigzagumap\`、`%LOCALAPPDATA%\io.github.pit-true.zigzagumap\EBWebView`）に置きません。`--profile <フォルダ>` を付ければそのフォルダ、付けなければ一時フォルダ（`%TEMP%\zigzagumap-profile-<プロセスID>`。終了時に消す）を使います。`state` の `profile` が使っているフォルダです。
-- 確認作業でも比較テストでも、**`--profile` を必ず付けて**起動してください（設定を残したいときは同じフォルダを渡す）。
-- 開発ビルドの既定のポート（17890）で起動したときは、`--automation` を付けていないので通常の個人設定を使います。
-
-```sh
-zigzagumap.exe --automation 17891 --profile C:\temp\zzm-profile
-node scripts/automation-client.mjs 17891 '{"cmd":"state"}'
-node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
-```
-
-確かめるスクリプト（`tests/automation`。ポート 17990〜17999 を使い、自分が起動したプロセスだけを終わらせる）:
-
-```sh
-python tests/automation/profile_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>    # 通常の設定と WebView2 のデータが 1 バイトも変わらないこと
-python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>  # どのウィンドウも画面内に出ず、前面にならないこと
-```
-
-本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
-
-命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
-
-| cmd | 引数 | 動作 |
-|---|---|---|
-| `open` | `rom`、`project`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ |
-| `selectMap` | `bank`、`map` | マップを開く。返事の `switchMs` は切り替えにかかった時間 |
-| `tab` | `name`（`map` / `movement` / `event` / `wild` / `header`） | タブを切り替える |
-| `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`） |
-| `undo` / `redo` | | 元に戻す／やり直す |
-| `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
-| `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |
-| `action` | `id` | メニューのアクションを ID で実行する（例: `view.grid`。有効かどうかは見ない） |
-| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など） |
-| `mouse` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`）か `id`、位置は `cell: [x, y]`（マス。中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）、`action`（`click`（既定）/ `dblclick` / `rightClick` / `drag` / `hover` / `down` / `move` / `up`）、`drag` は `to: [x, y]`（マス）か `toPx` と `steps`（既定 8）、`button`（`left` / `right`）、`ctrl`、`shift` | マウス操作。実際のマウスは動かさず、部品へ pointer・mouse・click・dblclick・contextmenu の出来事を実際の操作と同じ順に送る（画面側は人の操作と同じ処理を通る）。拡大表示は設定から読む。返事は選択中のブロック・移動許可・イベントとステータスバー |
-| `pointer`（別名） | `target`、`type`（`down` / `move` / `up`）、`x`・`y`（画素）、`button`、`ctrl`、`shift` | `mouse` の `action`・`px` と同じ（古い名前） |
-| `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
-| `selectMovement` | `value` | 移動許可の選択を変える（移動エリアタブなら、パレットのそのマスを左クリックするのと同じ） |
-| `selection` | | 選択中のブロック（`block`）・移動許可（`movement`）・イベント（`event`: 種別・番号・数）とステータスバー |
-| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、コンボなら `index` と `options`（64 件を超えるときは件数） |
-| `setField` | `id`、`value` | 部品に値を入れ、人が入力したときと同じく `input` → `change` を送る。コンボは番号か項目の文字、チェックは true / false。返事は `getField` と同じものと、開いているダイアログ（`dialogs`） |
-| `click` | `id` | ボタンなどを押す（無効なら失敗）。返事は開いているダイアログ |
-| `ui.list` | `root`（省略可） | 部品の一覧（ID、AdvanceMap の部品名、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
-| `ui.type` | `id`、`text` | 1 文字ずつ入力する |
-| `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル） |
-| `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ）か `id`（部品。`field:RandBox` など） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
-| `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
-| `cells` | | 表示中のマップの配置とボーダーの値 |
-| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB） |
-| `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
-| `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
-| `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
-| `dialog` | `input`、`press`（どちらも省略可）、`title`（省略時は手前のもの） | ダイアログに入力して、ボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。ファイルのダイアログは `input` にパスを入れて `ok`（か「開く」「保存」）、`cancel` で取り消し。返事は押す前と後の一覧 |
-| `queuePath` | `path`（null でキャンセル） | ファイル・フォルダを選ぶダイアログの答え。開いているダイアログがあればそれに答え（返事の `answered` が true）、無ければ次に出るダイアログの答えとして積む。自動操作のときは Windows のダイアログは一切出さず、答えが無ければ `dialogs` に出して待つ（Rust 側の `pick_*` も自動操作のときはダイアログを開かずにエラーを返す） |
-| `menu.list` | | メニューの全項目（`path`: 階層の文言の列、`id`、`enabled`（親が無効なら無効）、`checked`、`submenu`、`shortcut`）。最近開いたものも含む。区切り線は出さない |
-| `menu.run` | `path`（`"設定 > グリッドの表示"` か `["設定", "グリッドの表示"]`）か `id`、`wait`（ms、既定 100） | メニューの項目を実行する。メニューバーで選んだときと同じく、無効な項目とサブメニューは実行しない（失敗）。返事はステータスバーと開いているダイアログ |
-| `tree.list` | `visibleOnly`（省略可） | マップ一覧の全項目（`text`: 未出力の印 ` *` を含む文字列、`depth`、`hasChildren`、`expanded`、`selected`、`opened`（開いているマップ）、`dirty`、`mapId`、`key`）。`visibleOnly: true` で開いている枝の中だけ |
-| `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
-| `romInfo` | | 左下の ROM 情報（見出しと値の組） |
-| `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない） |
-| `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、最後に起動したスクリプトエディター |
-| `commands` | | 登録されている命令の名前 |
-| `windows` | | 開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`） |
-| `exit` | | 確認なしで終了する |
-| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
-
-AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
-
-イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
-
-部品の ID は `<場所>.<名前>` の形です（例: 場所の設定タブ `header.music`・`header.saveScripts`、高度な表示 `pro.footer`・`pro.saveFooter`、コネクションマネージャー `conn.direction`・`conn.save`・`conn.down1`、出現ポケモンタブ `wild.type`・`wild.rate`・`wild.rateBar`・`wild.min.1`・`wild.species.1`・`wild.save`、追加ダイアログ `wildAdd.0`〜`wildAdd.3`・`wildAdd.ok`、ブロックエディタ `be.blocks`・`be.tiles`・`be.block`・`be.palette`・`be.xflip`・`be.attr0`〜`be.attr3`・`be.behavior`・`be.save`、パレットエディタ `pal.color.0`〜`pal.color.15`・`pal.red`・`pal.hex`・`pal.apply`・`pal.pick`、一括変更 `adj.tileset2`・`adj.to.0`〜`adj.to.14`・`adj.save`、新しいマップ `newMap.name`・`newMap.width`・`newMap.tileset1`・`newMap.create`、マップの追加/挿入 `mapInsert.replaceBank`・`mapInsert.replaceMap`・`mapInsert.replace`・`mapInsert.countBank`・`mapInsert.count`・`mapInsert.countApply`、マップバンクヘッダー `bankHeader.remaining.<バンク>`・`bankHeader.newBank`・`bankHeader.apply`、マップタブの `map.makeMap`・`map.makeBank`、マップ一覧の根 `tree.root.h`・`tree.root.i`・`tree.root.f` と「マップファイル」の項目 `tree.mapFile.<番号>`（根と項目は `key` の `Enter` で開く）。一覧は各部品を作るコードの第 1 引数です。作業用のマップ（新規作成・`.map`。バンク -1）は `selectMap` では開けません（`action` の `tools.previousMap` で戻れます）。
-
-### 別ウィンドウ（ワールドマップエディタ）
-
-要求に `"window": "world-map"` を付けると、そのウィンドウへ送ります（`screenshot` に付けるとそのウィンドウを撮る）。`{"cmd":"windows"}` は開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`）です。部品の ID は AdvanceMap の部品名（`Txt_Wert`、`Cbo_Wert_NamenListe`、`Txt_PosX`、`Cmd_NameSpeichern`、`Txt_FlugWert`、`Cmd_GotoFlugPos`、`Cbo_Anzahl`、`WorldmapBox` など。トップレイヤーは名前の後ろに `2`）です。
-
-| cmd | 引数 | 動作 |
-|---|---|---|
-| `state` | | 読み込んだか、面、選んでいるマス、両レイヤーの値、マスの値、地名の位置と行き先、メインで開いているマップ、履歴の有無 |
-| `fields` / `getField` | `id`（getField） | 部品の値（`value`・`checked`・`text`・`enabled`、コンボは `index` と `count`） |
-| `setField` | `id`、`value` | 入力欄は文字列、チェックは true/false、コンボは番号か文字列。input と change を起こす |
-| `click` | `id` | ボタンを押す。返事は開いているダイアログ |
-| `pointer` | `id`、`type`（`down` / `move` / `up`）、`x`・`y`、`button` | 部品の左上からの位置でマウス操作をまねる（世界地図は 1 マス 8px、マス (0,0) が (32,32)） |
-| `canvasPng` | `id`（`WorldmapBox`） | 世界地図の Canvas を PNG（Base64）で返す |
-| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略時はフォーカスのある部品） | キー操作をまねる |
-| `dialog` | `input`、`press` | メインと同じ |
-
-画面側の準備ができる前の要求には `{"ok":false,"error":"画面の準備ができていません"}` を返します。
-
-## 比較テスト
-
-AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の状態（マップ表示領域の画像、入力欄・一覧の値、ダイアログの有無）を比べます（`tests/compare`）。出力まで進めることは確かめますが、出力物の中身は比べません。Windows だけで動きます。
-
-- AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
-- ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
-- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。スクリプトエディタは両方とも `scriptEditorStub`（区切りは空白）にします。
-
-### 準備
-
-1. リポジトリの外に作業フォルダを作り、AdvanceMap 1.92 日本語版のコピーと素の BPRJ のコピーを置きます（AdvanceMap 本体・ROM・画面キャプチャはリポジトリに入れません）。
-2. `pip install -r tools/am-harness/requirements.txt`（Pillow と numpy。仮想環境はリポジトリ外か `.venv`）。
-3. `tests/compare/local.config.example.json` を `tests/compare/local.config.json` にコピーし、パスを直します（`.gitignore` 対象）。環境変数でも上書きできます。
-
-| 項目 | 環境変数 | 内容 |
-|---|---|---|
-| `amSourceDir` | `ZZM_CMP_AM_SRC` | AdvanceMap のコピー（ここから `amWorkDir` を作る） |
-| `amWorkDir` | `ZZM_CMP_AM_DIR` | 比較テスト専用の AdvanceMap（Ini の表示設定は毎回戻す） |
-| `romOriginal` | `ZZM_CMP_ROM` | 素の BPRJ（読むだけ） |
-| `scriptEditorStub` | `ZZM_CMP_STUB` | スクリプトエディタの代わりの exe（省略可） |
-| `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
-| `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
-| `keepRuns` | | 残す結果の数（既定 5。実行の最後に、これより古い結果フォルダを消す。消せなかったものは summary に書く） |
-| `langOld` | `ZZM_CMP_LANG_OLD` | AdvanceMap 本体の言語ファイル（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`） |
-| `langNew` | `ZZM_CMP_LANG_NEW` | ZigzaguMap の文言の基準（既定は `apps/desktop/src/i18n/source/Japanese.ini`） |
-
-exe のビルド出力を別のドライブに置くときは、`CARGO_TARGET_DIR` を設定してから `scripts\build.cmd` を実行し、`zigzaguExe` にその下の `release\zigzagumap.exe` を書きます。
-
-### 実行
-
-```sh
-python tests/compare/run.py                         # 全シナリオ
-python tests/compare/run.py --scenario S04 S08      # 名前の先頭で選ぶ
-python tests/compare/run.py --only-zigzagu          # ZigzaguMap だけ動かし、AdvanceMap は前回の結果と比べる
-python tests/compare/run.py --list-ops              # 抽象操作 → 実操作の対応表
-python tests/compare/run.py --rejudge <結果フォルダ>  # アプリを動かさず、いまの判定とシナリオの理由書きで判定し直す（手順を変えていないシナリオだけ）
-python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナリオを issue にする（--dry-run で本文だけ表示）
-```
-
-失敗かエラーがあると終了コード 1 になります。`file_issues.py` は失敗したシナリオごとに issue（ラベル「テスト失敗」、マイルストーン「Phase1」）を作り、同じ題名の issue が開いていればコメントを足します。画像は上げず、結果フォルダ内のパスだけを書きます。
-
-### シナリオ
-
-`tests/compare/scenarios/*.json` に 1 本ずつ書きます（1 ステップ 1 行）。`name`、`title`、`issues`（関連する issue 番号）、`note`（省略可）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
-
-```json
-{"op": "selectMap", "bank": 3, "map": 0}
-{"op": "selectBlock", "block": 9}
-{"op": "dragPaint", "from": [2, 6], "to": [9, 9]}
-{"op": "snapshot", "name": "after_drag", "target": "map"}
-{"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
-```
-
-- 別の窓の部品は `screen` に AdvanceMap のフォームのクラス名（`TBlockEditorForm`・`TPalettenForm`・`TBlockdatenAnpassenForm`・`TWeltkarteForm`・`TAnbindungenForm`・`TMapForm`・`TMapEinfuegenForm`・`TMapBankHeaderForm`・`TCreateWildePokemonForm`）で書きます。AdvanceMap では窓をクラス名で探し、ZigzaguMap では別ウィンドウかメインの中のダイアログへ送ります（`lib/screens.py`）。
-- 欄は `field:<部品名>`（値）と `enabled:<部品名>`（押せる・入力できるか）。AdvanceMap に同じ名前の部品が複数あるとき（イベントの各フレームの `Txt_PosX`、野生と場所の設定の `Cbo_Typ` など）は、表示中のもの、その中でフォームが直接持つものを使います。表示していないタブのページの部品は、そのページへ切り替えて読み書きし、元のページへ戻します。
-- コンボの選択は位置（番号）で書きます。入力ダイアログは `answerDialog` の `input`、× は `button: "close"`、ファイルを選ぶダイアログは `answerFile`（結果フォルダの中の名前。`null` で取り消し）。別の窓のメニューは `menu` に `screen` と AdvanceMap の文言の `path`、ZigzaguMap のアクション ID の `zigzagu` を書きます。部品の中のクリックは `clickComp`、部品の画像は `snapshot` の `target: "comp"`、両アプリが書いた画像ファイルは `compareFile` で比べます。
-
-操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap のクリックやドラッグは自動操作の入口の `mouse`（画面と同じ処理を通る）、入力欄とボタンは `setField` / `click` の `field:<AdvanceMap の部品名>`、ダイアログは `dialogs` / `dialog` で行います。
-
-文言の扱い:
-
-- メニューはシナリオに言語ファイルのキー（`"key": ["Menue.12", "Menue.120"]`。`menu.state:Menue.12/Menue.120` も同じ）で書きます。AdvanceMap 側は本体の言語ファイル（`Ini\Sprachen\Japanese.ini`、cp932）の文言で、ZigzaguMap 側は文言の基準（`apps/desktop/src/i18n/source/Japanese.ini` に `overrides.ini` を重ねたもの。`scripts/gen-i18n.mjs` と同じ規則）の文言で `menu.run` します。文言で見つからない項目は `tests/compare/zigzagu_menu.json`（キーの階層 → アクション ID）で実行します。コンボの選択は番号で書きます。
-- ZigzaguMap の文言の基準は、AdvanceMap 本体の言語ファイルと同じキーで 500 件ほど文言が違います。比べる前に、AdvanceMap 側で読んだ文字列（欄の値・一覧・メニュー・ダイアログ）を、両方の言語ファイルをキー（セクション名.番号）で対応づけた表で新しい文言へ読み替えます（`lib/langmap.py`。新しい文言の頭の `(AM1.95未使用)` などの注記は外す。同じ旧文言が別々の新文言になるものは読み替えない）。表に無い文字列の食い違いは失敗のままです。言語ファイルの場所は設定の `langOld`（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`）と `langNew` で変えられます。
-- ダイアログは、AdvanceMap のメッセージボックス（#32770）と ZigzaguMap の画面内のダイアログを題名・本文・ボタン（アクセスキーの表記を除く）で、AdvanceMap の VCL のフォームと ZigzaguMap の別ウィンドウは題名だけで比べます。
-
-画像の比べ方（`snapshot` の `compare`）:
-
-- `gba`（既定）: 各色を 5bit に落として画素ごとに比べる（AdvanceMap と ZigzaguMap で 8bit への広げ方が違うため）
-- `cellMean`: マスごとの平均色で比べる（移動許可の文字の字形の違いを許す）
-- `overlayCells`: ブロックだけの画像との差から「重ね描きのあるマス」を求め、その位置だけ比べる（イベントの箱の色や形は比べない）
-- `target` に `blocks` を指定すると、どのタブにいてもブロックだけの画像（マップタブ）を比べる
-
-入力欄の値は、全角・半角の空白、16 進の大文字小文字、先頭の `$` や `0x` をそろえてから比べます。
-
-### 結果の見方
-
-`<resultsDir>/<日時>/` に出ます。
-
-- `summary.md` / `summary.json`: シナリオごとの判定と件数、失敗の中身
-- `<シナリオ>/report.md`: ステップごとの両者の状態、値の対応表、画像のパス
-- `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
-- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
-
-判定は「合格」（比べたものがすべて同じか、シナリオに理由を書いた仕様上の違いだけ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）、「保留」（要判断の結論待ちの違いがある）です。
-
-### 仕様上の違いと保留
-
-SPEC やこれまでの判断で決めた違いは、黙って外さず、シナリオのステップに理由を書きます。summary.md の「仕様上の違いとして除外したステップ・欄」「保留（要判断）」に一覧で出ます。
-
-| 書き方 | 意味 |
-|---|---|
-| `"expectedDifference": "理由"` | このステップが違っても「仕様上の違い」（失敗に数えない） |
-| `"expectedDifference": {"field:X": "理由"}` | compareFields の欄ごと。`menu.state` のような辞書の欄は `{"menu.state": {"ファイル/ROMの保存": "理由", "設定/言語/*": "理由"}}` と項目ごと（ワイルドカード可。理由の無い項目が違えば失敗） |
-| `"expectedDifference": {"title": "理由"}` | expectDialog で、題名（アプリ名など）だけの違いを許す。本文とボタンは比べる |
-| `"pending": "要判断 #番号: 理由"` | 違っても「保留」。項目ごとなら `{"pending": "…"}` を値に書く |
-| `"only": "zigzagu"`（または `"advancemap"`）と `expectedDifference` | 片方のアプリだけで行う手順。ZigzaguMap だけの compareFields は `expected`（AdvanceMap の調査記録の値）と比べる（素の BPRJ で開けないワールドマップエディターなど） |
-| `compare` の `maxDiffRatio` と `expectedDifference` | 違う画素の割合がこれ以下なら「仕様上の違い」（マップ＆イベント画像の約 3% など） |
-
-上の一覧に無い食い違いを仕様上の違いにしたいときは、issue にラベル「要判断」を付けて両者の挙動を書き、そのステップを `pending` にします。
+配布物は `zigzagumap.exe` 1 つです（画面のコードと文言は exe に入っています。WebView2 は Windows のものを使う）。大きさは `scripts\build.cmd` で作った exe のファイルの大きさで判定します。
 
 ## ライセンス
 

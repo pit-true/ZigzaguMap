@@ -29,7 +29,7 @@ interface AutomationEvent {
 /**
  * 別ウィンドウの自動操作の入口。メインと同じく Rust が `"window": "<ラベル>"` 付きの要求を
  * `automation-request-window` でこのウィンドウへ送り、`automation_reply` で返事を返す（ワールドマップエディターと同じ仕組み）。
- * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（README の表）。
+ * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（docs/automation.md の表）。
  */
 export async function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): Promise<void> {
   if ((await invoke<number | null>("automation_port")) === null) return;

@@ -36,7 +36,7 @@ const registry = new CommandRegistry([
 /**
  * 自動操作の入口の画面側（テスト用）。Rust が 127.0.0.1 で受けた JSON を `automation-request` で受け取り、
  * 結果を `automation_reply` で返す。起動引数 `--automation` か開発ビルドのときだけ、App が初めて読み込む（通常の起動では読まない）。
- * 命令の一覧は README の「自動操作の入口」（`{"cmd":"commands"}` でも出る）。
+ * 命令の一覧は docs/automation.md（`{"cmd":"commands"}` でも出る）。
  */
 export async function startAutomation(app: App): Promise<void> {
   installNativeDialogs();
