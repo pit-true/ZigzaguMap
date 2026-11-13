@@ -26,6 +26,7 @@ import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
 import { FileDialogs, writeFile } from "./FileDialogs";
 import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
 import { ImageExport, type ImageKind } from "./ImageExport";
+import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
@@ -50,6 +51,7 @@ export class App implements ActionTarget {
   readonly actions: Actions;
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
+  readonly system: SystemSettings;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   private readonly tree: MapTree;
@@ -74,6 +76,7 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.system = new SystemSettings(state, this.files, () => this.automation);
     this.actions = new Actions(state, this);
     this.menu = new MenuBar({
       items: () => buildMenu(this.recentItems()),
@@ -232,6 +235,7 @@ export class App implements ActionTarget {
       this.romInfo.show(session.project.game);
       this.hint.hidden = true;
       state.settings.addRecent({ rom, project: session.projectDir });
+      void this.system.updateRomShortcut(rom);
       state.emit("session");
       state.emit("map");
       await this.setTitle(null);

@@ -59,26 +59,8 @@ export const ja = {
   recentMax: "最近開いたファイルリストの最大数の変更",
   recentClear: "最近開いたファイルリストの履歴を削除する",
   recentShowPath: "最近開いたファイルリストのファイルパスを表示",
-  /** 設定 > 言語 の一覧（AdvanceMap と同じ並び）。 */
-  languages: [
-    "Deutsch",
-    "English",
-    "Polish",
-    "Français",
-    "Netherlands",
-    "Español",
-    "Suomi",
-    "Português",
-    "Italiano",
-    "Português Brasileiro",
-    "Afrikaans",
-    "Japanese",
-    "Greek",
-    "Dansk",
-    "Slovensky",
-    "Chinese",
-    "Korean",
-  ],
+  /** 設定 > 言語（画面は日本語だけなので Japanese の 1 項目）。 */
+  languageJapanese: "Japanese",
 
   // [Menue] ヘッダーのソート
   sortModes: [
@@ -118,6 +100,23 @@ export const ja = {
   allFiles: "All files (*.*)",
   allFilesGerman: "Alle Dateien (*.*)",
   imageSaved: (path: string) => `画像を保存しました: ${path}`,
+  // ファイルを開く・PC の設定（[Allgemein] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
+  openFileTitle: "ファイルを開く",
+  programFilter: "Programme (*.exe)",
+  notExeFile: "プログラムファイルは存在していないか、*.exe のバイナリファイルではありません！",
+  scriptSeparatorQuestion:
+    'Are offsets seperated from the ROM name by ":" (default) or " " in the preferred script editor? => Yes for ":"; No for " ".',
+  scriptEditorSet: (path: string) => `スクリプトエディター: ${path}`,
+  romShortcutName: "Most recently used ROM",
+  romShortcutQuestion:
+    "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか?",
+  desktopShortcutQuestion: "デスクトップにZigzaguMapのショートカットを作成しますか?",
+  desktopShortcutCreated: "デスクトップにショートカットを作成しました",
+  contextMenuLabel: "ZigzaguMapで開く",
+  contextMenuAddQuestion: "エクスプローラーの .gba の右クリックに「ZigzaguMapで開く」を追加します（現在のユーザーのレジストリに書きます）。よろしいですか?",
+  contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか?",
+  skippedInAutomation: "自動操作で起動しているため、PC の設定は変えませんでした",
+  notNeededWithoutRomWrite: "ZigzaguMap は ROM へ書き込まないため、この機能は不要です",
   iniFolderTitle: "Iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
   iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
