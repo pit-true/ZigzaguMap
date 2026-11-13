@@ -79,8 +79,8 @@ export const jaBlockEditor = {
   apply: ini.PalettenForm["10"],
   gbcValue: ini.PalettenForm["11"],
   hexToRgb: ini.PalettenForm["12"],
-  /** 改訂版の [PalettenForm] 13 は注記だけで空なので旧版の文言。 */
-  pickColor: "色の選択",
+  /** 改訂版の [PalettenForm] 13 は注記だけで空なので、overrides.ini で旧版の文言にしてある。 */
+  pickColor: ini.PalettenForm["13"],
   paletteLabel: "Palette:",
 
   // [BlockDatenAnpassenForm]
@@ -88,7 +88,7 @@ export const jaBlockEditor = {
   changeTileset1: ini.BlockDatenAnpassenForm["10"],
   changeTileset2: ini.BlockDatenAnpassenForm["11"],
   adjustHint: ini.BlockDatenAnpassenForm["12"],
-  /** 右の欄の見出し（旧版は「パ」の 1 文字）。 */
+  /** 右の欄の見出し（旧版は「パ」の 1 文字。overrides.ini で補正）。 */
   adjustTo: ini.BlockDatenAnpassenForm["13"],
   adjustSave: ini.BlockDatenAnpassenForm["14"],
 
