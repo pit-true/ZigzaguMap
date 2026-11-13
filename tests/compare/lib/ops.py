@@ -43,6 +43,8 @@ OPS: dict[str, dict] = {
     "export": dict(args={"dir": "str（ZigzaguMap の出力先。結果フォルダの中の名前、既定 export）"}, taints=[],
                    desc="出力（AdvanceMap は ROM の保存）。出力物の中身は比べない（ZigzaguMap だけ output.files で書いたファイルを確かめられる）"),
     "wait": dict(args={"seconds": "float"}, taints=[], desc="待つ"),
+    "resizeWindow": dict(args={"width": "int", "height": "int"}, taints=["all"],
+                         desc="メインウィンドウの大きさを変える（AdvanceMap は比較のために大きな窓で動かしているので、スクロールを比べるときに同じ大きさにそろえる）"),
     "scrollView": dict(args={"target": "map|movement|event|palette|movementPalette", "to": "end|start"}, taints=[],
                        desc="表示領域のスクロールバーを右下の端（end）か左上（start）へ動かす"),
     # --- 比べる（observe）

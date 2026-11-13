@@ -72,7 +72,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 
 表示の見え方:
 
-- `scrollView`（`target`、`to`: `end` / `start`）で表示領域のスクロールバーを端へ動かし、`compareFields` の `view.scroll:<target>` で横・縦のスクロールバーが出ていて使えるかを比べます（AdvanceMap は枠のウィンドウの WS_HSCROLL / WS_VSCROLL、ZigzaguMap は自動操作の `view.scroll`）。大きいマップ（3.6）と 2 倍表示で、はみ出した部分までスクロールできることを確かめます（`S56_view_scroll`）。
+- AdvanceMap は比較のために大きな窓（2400×1600）で動かしているので、スクロールを比べるシナリオは先に `resizeWindow`（`width`・`height`）で両アプリの窓の大きさをそろえます。`scrollView`（`target`、`to`: `end` / `start`）で表示領域のスクロールバーを端へ動かし、`compareFields` の `view.scroll:<target>` で横・縦のスクロールバーが出ていて使えるかを比べます（AdvanceMap は枠のウィンドウの WS_HSCROLL / WS_VSCROLL、ZigzaguMap は自動操作の `view.scroll`）。大きいマップ（3.6）と 2 倍表示で、はみ出した部分までスクロールできることを確かめます（`S56_view_scroll`）。
 - `export` に `dir` を付けると、ZigzaguMap はその名前のフォルダ（結果フォルダの中）へ出力します。`output.files:<dir>` は ZigzaguMap が書いたファイルの一覧で、`only: "zigzagu"` と `expected` で確かめます（`S57_export_to_other_folder`）。
 
 入力欄の値は、全角・半角の空白、16 進の大文字小文字、先頭の `$` や `0x` をそろえてから比べます。

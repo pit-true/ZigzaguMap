@@ -96,6 +96,7 @@ class AdvanceMapDriver(Driver):
         "openRom": "ファイル > ROMを開く → ファイルダイアログに作業用 ROM を入れて OK",
         "selectMap": "MapList（ツリー）で選んで Enter（だめならダブルクリック）",
         "selectTab": "TabbedNotebook1 の見出しをクリック",
+        "resizeWindow": "メインウィンドウを MoveWindow で (0,0) と指定の大きさへ",
         "scrollView": "部品を載せた枠（TScrollBox）へ WM_HSCROLL / WM_VSCROLL（SB_RIGHT・SB_BOTTOM か SB_LEFT・SB_TOP）",
         "sortTree": "設定 > マップの表示設定 > ヘッダーのソート > 各項目",
         "selectBlock": "BlockPalette を左クリック（8 個/行）",
@@ -290,6 +291,11 @@ class AdvanceMapDriver(Driver):
         d = self.am.comp(self.COMP[target])
         h, _, _ = self.am._host(d)
         return h
+
+    def op_resizeWindow(self, step):
+        self.am.move_window(self.am.main, 0, 0, int(step["width"]), int(step["height"]))
+        time.sleep(0.5)
+        self.am.idle()
 
     def op_scrollView(self, step):
         am, lib = self.am, self.amlib
@@ -658,6 +664,7 @@ class ZigzaguDriver(Driver):
         "openRom": "cmd open {rom}",
         "selectMap": "cmd selectMap {bank, map}",
         "selectTab": "cmd tab {name}",
+        "resizeWindow": "cmd resize {width, height}",
         "scrollView": "cmd scroll {target, to}",
         "sortTree": "cmd action sort.N",
         "selectBlock": "cmd mouse（palette を左クリック。8 個/行）",
@@ -874,6 +881,9 @@ class ZigzaguDriver(Driver):
 
     def op_selectTab(self, step):
         self.call({"cmd": "tab", "name": step["tab"]})
+
+    def op_resizeWindow(self, step):
+        self.call({"cmd": "resize", "width": int(step["width"]), "height": int(step["height"])})
 
     def op_scrollView(self, step):
         self.call({"cmd": "scroll", "target": step["target"], "to": step.get("to", "end")})
