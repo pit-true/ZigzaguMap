@@ -57,6 +57,9 @@ class LangMap:
         same = {self.old[k] for k in old if k in self.new and old[k] == self.new[k]}
         self.table = {o: next(iter(n)) for o, n in table.items() if len(n) == 1 and o not in same and o.strip()}
         self.menu_table = {menu_norm(o): menu_norm(n) for o, n in self.table.items()}
+        # 組み立てた文字列（「ブロックエディタ     タイルセット1: 0 …」など）の中の部分を読み替えるための表（長いものから。3 文字以上）
+        self.known_old = set(old.values())
+        self.parts = sorted(((o, n) for o, n in self.table.items() if len(o.strip()) >= 3), key=lambda x: -len(x[0]))
 
     @classmethod
     def load(cls, old_path: pathlib.Path | None, new_path: pathlib.Path | None) -> "LangMap | None":
@@ -100,6 +103,11 @@ class LangMap:
         m = menu_norm(s)
         if m in self.menu_table:
             return self.menu_table[m]
+        if s in self.known_old:
+            return s  # 言語ファイルの文言そのもので、変わっていないもの
+        for o, n in self.parts:
+            if o in s:
+                s = s.replace(o, n)
         return s
 
     def _key(self, k: str) -> str:

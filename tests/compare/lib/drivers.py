@@ -363,6 +363,8 @@ class AdvanceMapDriver(Driver):
             if h == self.am.main or not self._is_dialog(h):
                 continue
             info = self.am.dialog_info(h)
+            if self.amlib.cls_of(h) != "#32770" and not info.get("title"):
+                continue  # 題名の無い VCL の補助の窓（利用者には見えない）は数えない
             if self.amlib.cls_of(h) != "#32770":
                 info["texts"] = [c.text for c in self.am.flat(h) if c.text and c.cls in ("TLabel", "TStaticText", "Static")]
                 info["buttons"] = [c.text for c in self.am.flat(h) if c.cls in ("TButton", "TBitBtn", "Button") and c.visible]
