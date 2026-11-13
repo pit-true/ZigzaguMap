@@ -26,13 +26,15 @@ export interface ScriptDraft {
   flagOffset: number;
   /** 条件表に行があるか（元のデータ）。 */
   readonly hasRow: boolean;
+  /** 元のデータの種類（条件表の種類のままなら、ポインタは表の位置）。 */
+  readonly origType: number;
 }
 
 /** マップスクリプトの一覧から下書きを作る。 */
 export function scriptDrafts(list: readonly MapScriptEntry[]): ScriptDraft[] {
   return list.map((e) => {
     const row = e.table?.entries[0];
-    return { type: e.type, pointer: e.pointer, flag: row?.variable ?? 0, value: row?.value ?? 0, flagOffset: row?.script ?? e.pointer, hasRow: !!row };
+    return { type: e.type, pointer: e.pointer, flag: row?.variable ?? 0, value: row?.value ?? 0, flagOffset: row?.script ?? e.pointer, hasRow: !!row, origType: e.type };
   });
 }
 

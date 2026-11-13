@@ -114,8 +114,10 @@ export class MapScriptGroup {
     }
     selectIndex(this.type, d.type);
     const table = isTableType(d.type);
-    this.offset.disabled = table;
-    this.offset.value = offsetText(table ? 0 : pointerToOffset(d.pointer));
+    // AdvanceMap と同じく、条件表の種類と「00 スクリプト未設定」ではオフセットを入れられない。
+    // 読み込んだときから条件表のものは表の位置を、種類を条件表に変えたものは $000000 を出す
+    this.offset.disabled = table || d.type === 0;
+    this.offset.value = offsetText(table && !isTableType(d.origType) ? 0 : pointerToOffset(d.pointer));
     setEnabled(table, this.flag, this.flagValue, this.flagOffset);
     this.flag.value = table ? hex(d.flag, 4) : "";
     this.flagValue.value = table ? hex(d.value, 4) : "";
@@ -164,7 +166,7 @@ export class MapScriptGroup {
   private add(): void {
     if (!this.draft || !this.ctx) return;
     this.store();
-    this.index = this.draft.add({ type: 0, pointer: 0, flag: 0, value: 0, flagOffset: 0, hasRow: false });
+    this.index = this.draft.add({ type: 0, pointer: 0, flag: 0, value: 0, flagOffset: 0, hasRow: false, origType: 0 });
     this.show();
   }
 
