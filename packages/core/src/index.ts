@@ -133,11 +133,15 @@ export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
-export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener } from "./command/CommandBus.js";
+export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener, type ExecuteOptions } from "./command/CommandBus.js";
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
 export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";
+export { PaintCellsCommand, type CellWrite } from "./command/commands/PaintCellsCommand.js";
+export { PaintBlocksCommand, type PaintBlocksArgs } from "./command/commands/PaintBlocksCommand.js";
+export { PaintMovementCommand, type PaintMovementArgs } from "./command/commands/PaintMovementCommand.js";
+export { PaintBorderCommand, type PaintBorderArgs } from "./command/commands/PaintBorderCommand.js";
 
 // 編集コマンド（マップ全体・タイルセット・プロジェクト）
 export { EditError, EditErrorCode, checkRange, parseHexBytes, parseHexInput, parseIntInput, toHexBytes, type EditErrorParams } from "./command/EditError.js";

@@ -1,0 +1,100 @@
+/* メニューバーとポップアップ（Windows のメニューに寄せる）。 */
+.menu-bar {
+  display: flex;
+  height: 20px;
+  flex: none;
+  background: var(--window);
+  padding: 0 2px;
+}
+
+.menu-top {
+  padding: 0 7px;
+  line-height: 18px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.menu-top u,
+.menu-label u {
+  text-decoration: none;
+}
+
+.menu-top:hover,
+.menu-top.active {
+  background: var(--hot);
+  border-color: var(--hot-border);
+}
+
+/* 操作中だけアクセスキーに下線を出す。 */
+.menu-top.active u,
+.menu-top.open u,
+.menu-popup u {
+  text-decoration: underline;
+}
+
+.menu-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.menu-popup {
+  position: absolute;
+  pointer-events: auto;
+  min-width: 120px;
+  padding: 2px;
+  background: #f2f2f2;
+  border: 1px solid #ccc;
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.menu-item.active {
+  background: #91c9f7;
+  border-color: #91c9f7;
+}
+
+.menu-item.disabled {
+  color: var(--gray-text);
+}
+
+.menu-item.disabled.active {
+  background: #e6e6e6;
+  border-color: #e6e6e6;
+}
+
+.menu-check {
+  width: 26px;
+  text-align: center;
+  flex: none;
+}
+
+.menu-label {
+  flex: 1;
+  padding-right: 8px;
+}
+
+.menu-shortcut {
+  padding: 0 4px 0 24px;
+}
+
+.menu-arrow {
+  width: 18px;
+  font-size: 8px;
+  text-align: center;
+  flex: none;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 3px 1px 3px 28px;
+  background: #d7d7d7;
+}

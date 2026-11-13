@@ -10,6 +10,12 @@ export interface CommandEvent {
   readonly command: Command | null;
 }
 
+/** execute の追加の指定。 */
+export interface ExecuteOptions {
+  /** 直前のコマンドにまとめる（まとめられなければ普通に積む）。ドラッグ中の 2 回目以降に使う。 */
+  readonly merge?: boolean;
+}
+
 /** 購読者。 */
 export type CommandListener = (event: CommandEvent) => void;
 
@@ -21,10 +27,15 @@ export class CommandBus {
 
   constructor(private readonly context: EditorContext) {}
 
-  /** コマンドを実行して履歴に積む。リドゥの履歴は消える。 */
-  execute(command: Command): void {
+  /**
+   * コマンドを実行して履歴に積む。リドゥの履歴は消える。
+   * `merge` を指定すると、直前のコマンドがまとめられる場合は履歴を増やさずにまとめる。
+   */
+  execute(command: Command, options: ExecuteOptions = {}): void {
     command.do(this.context);
-    this.done.push(command);
+    const last = this.done[this.done.length - 1];
+    const merged = options.merge === true && this.undone.length === 0 && last?.merge?.(command) === true;
+    if (!merged) this.done.push(command);
     this.undone.length = 0;
     this.emit({ type: "execute", command });
   }

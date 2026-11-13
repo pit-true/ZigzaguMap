@@ -11,6 +11,8 @@ export type JsonObject = { [key: string]: JsonValue };
 export interface EditorContext {
   /** マップの編集中の配置を返す。 */
   grid(id: MapId): BlockGrid;
+  /** マップの編集中のボーダーを返す（ボーダーを編集するコマンドだけが使う）。 */
+  border?(id: MapId): BlockGrid;
 }
 
 /** 操作コマンド。画面の操作はすべてこれを通す。 */
@@ -23,6 +25,11 @@ export interface Command<A extends JsonObject = JsonObject> {
   do(context: EditorContext): void;
   /** 実行前の状態に戻す。 */
   undo(context: EditorContext): void;
+  /**
+   * 実行済みの `next` を自分にまとめる（ドラッグ中の連続配置を 1 回の操作にするため）。
+   * まとめられたら true。まとめた後は、自分の undo で `next` の分も戻ること。
+   */
+  merge?(next: Command): boolean;
 }
 
 /** コマンドを JSON にしたもの（操作列の 1 行）。 */
