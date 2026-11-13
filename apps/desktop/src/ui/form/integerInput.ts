@@ -53,3 +53,14 @@ export function checkOnInput(input: HTMLInputElement, format: IntegerFormat, onV
     if (value !== null) onValue(value);
   });
 }
+
+/**
+ * 入力のたびに読んで連動させるが、読めなくてもエラーを出さない欄にする
+ * （AdvanceMap の高度な表示の境界ブロックの横幅・高さ。読めない間は何もしない）。
+ */
+export function followInput(input: HTMLInputElement, format: IntegerFormat, onValue: (value: number) => void): void {
+  input.addEventListener("input", () => {
+    const value = tryInteger(input.value, format);
+    if (value !== null) onValue(value);
+  });
+}

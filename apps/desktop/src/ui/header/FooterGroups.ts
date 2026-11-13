@@ -14,7 +14,7 @@ import { ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { autoId, button, edit, group, label, memo, place } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
-import { checkOnInput } from "../form/integerInput";
+import { checkOnInput, followInput } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
 import { tilesetNumber } from "./LayoutGroups";
 import { locationText, readOnlyEdit } from "./ProHeaderGroups";
@@ -107,18 +107,21 @@ export class FooterGroups {
       }
       this.dirty();
     });
-    // AdvanceMap と同じく入力のたびに読み、フッターの 16 進へ連動する（読めなければエラー）。
-    const field = (input: HTMLInputElement, write: (n: number) => void): void => {
-      checkOnInput(input, "int", (n) => {
+    // AdvanceMap と同じく入力のたびに読み、フッターの 16 進へ連動する。横幅・高さ・タイルセット番号は読めなければエラー、
+    // 境界ブロックの横幅・高さはエラーを出さない（AdvanceMap で確かめた動作）。
+    const field = (input: HTMLInputElement, write: (n: number) => void, check = true): void => {
+      const apply = (n: number): void => {
         write(n);
         this.showFields(true);
         this.dirty();
-      });
+      };
+      if (check) checkOnInput(input, "int", apply);
+      else followInput(input, "int", apply);
     };
     field(this.width, (n) => setU32(this.bytes, MAP_FOOTER.width, n));
     field(this.height, (n) => setU32(this.bytes, MAP_FOOTER.height, n));
-    field(this.borderWidth, (n) => (this.bytes[MAP_FOOTER.borderWidth] = n & 0xff));
-    field(this.borderHeight, (n) => (this.bytes[MAP_FOOTER.borderHeight] = n & 0xff));
+    field(this.borderWidth, (n) => (this.bytes[MAP_FOOTER.borderWidth] = n & 0xff), false);
+    field(this.borderHeight, (n) => (this.bytes[MAP_FOOTER.borderHeight] = n & 0xff), false);
     field(this.tileset1No, (n) => this.setTileset(MAP_FOOTER.primaryTileset, n));
     field(this.tileset2No, (n) => this.setTileset(MAP_FOOTER.secondaryTileset, n));
     this.border.addEventListener("input", () => {
