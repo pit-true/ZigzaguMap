@@ -23,6 +23,15 @@ ROM が要るテストは、環境変数 `ZIGZAGU_TEST_ROM` に素の BPRJ の�
 $env:ZIGZAGU_TEST_ROM = "C:\path\to\BPRJ.gba"; pnpm test
 ```
 
+ND のベース ROM と NeoDark-CFRU のフォルダを `ZIGZAGU_TEST_ND_ROM` と `ZIGZAGU_TEST_ND_PROJECT` に入れると、`maps\` の JSON を読むテストも実行されます（フォルダには書き込みません）。
+
+コアライブラリを Node から使うときは `pnpm --filter @zigzagumap/core build` で `dist` を作ります（`@zigzagumap/core` と `@zigzagumap/core/node`）。マップを PNG に書いて確かめるには次のようにします。
+
+```sh
+pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --events
+pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --project <CFRU-JP のフォルダ>
+```
+
 アプリの起動とビルド:
 
 ```sh
