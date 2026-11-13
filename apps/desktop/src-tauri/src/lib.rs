@@ -128,8 +128,6 @@ pub fn run() {
             startup_args,
             files::pick_rom,
             files::pick_folder,
-            files::ask_yes_no_cancel,
-            files::show_message,
             files::read_rom,
             files::is_dir,
             files::load_settings,

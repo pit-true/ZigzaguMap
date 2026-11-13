@@ -8,7 +8,7 @@ export { sha256, sha256Hex } from "./binary/sha256.js";
 // ROM
 export { Rom, ROM_BASE } from "./rom/Rom.js";
 export { RomError } from "./rom/RomError.js";
-export { decompressLz77, looksLikeLz77 } from "./rom/lz77.js";
+export { decompressLz77 } from "./rom/lz77.js";
 
 // ゲーム判定とオフセット
 export { detectGame, requireSupportedGame, type GameInfo } from "./game/GameInfo.js";
@@ -172,7 +172,7 @@ export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./comman
 export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
 export { SetItemBallCommand, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
-export { FLY_FIELD_NAMES, SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
+export { SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
 export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
 export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";
 export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/header/SetRawHeaderCommand.js";

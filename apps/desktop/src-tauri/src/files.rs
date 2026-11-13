@@ -2,7 +2,7 @@
 
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
+use tauri_plugin_dialog::DialogExt;
 
 use crate::profile::Profile;
 use crate::project_fs::display_path;
@@ -47,51 +47,6 @@ pub async fn pick_folder(window: WebviewWindow, args: State<'_, StartupArgs>, ti
         .blocking_pick_folder()
         .and_then(|file| file.into_path().ok())
         .map(|path| display_path(&path)))
-}
-
-/// 「はい／いいえ／キャンセル」の質問を出す。戻り値は "yes" / "no" / "cancel"。
-/// Windows 標準のメッセージボックスは警告音を鳴らし前面にも出るので、自動操作のときは出さずに "cancel" を返す。
-#[tauri::command]
-pub async fn ask_yes_no_cancel(window: WebviewWindow, args: State<'_, StartupArgs>, title: String, message: String) -> Result<String, ()> {
-    if args.automation.is_some() {
-        return Ok("cancel".to_string());
-    }
-    let result = window
-        .dialog()
-        .message(message)
-        .title(title)
-        .kind(MessageDialogKind::Warning)
-        .parent(&window)
-        .buttons(MessageDialogButtons::YesNoCancelCustom(
-            "はい".into(),
-            "いいえ".into(),
-            "キャンセル".into(),
-        ))
-        .blocking_show_with_result();
-    Ok(match result {
-        MessageDialogResult::Yes => "yes",
-        MessageDialogResult::No => "no",
-        MessageDialogResult::Custom(s) if s == "はい" => "yes",
-        MessageDialogResult::Custom(s) if s == "いいえ" => "no",
-        _ => "cancel",
-    }
-    .to_string())
-}
-
-/// 情報・エラーのメッセージを出す（OK のみ）。自動操作のときは出さない（警告音と前面化を避けるため）。
-#[tauri::command]
-pub async fn show_message(window: WebviewWindow, args: State<'_, StartupArgs>, title: String, message: String, error: bool) -> Result<(), ()> {
-    if args.automation.is_some() {
-        return Ok(());
-    }
-    window
-        .dialog()
-        .message(message)
-        .title(title)
-        .kind(if error { MessageDialogKind::Error } else { MessageDialogKind::Info })
-        .parent(&window)
-        .blocking_show();
-    Ok(())
 }
 
 /// ROM を読み、バイト列のまま返す（JSON にしない）。ROM へは書き込まない。
