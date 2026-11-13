@@ -414,6 +414,8 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
 
+命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
+
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `open` | `rom`、`project`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ |
@@ -422,28 +424,43 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`） |
 | `undo` / `redo` | | 元に戻す／やり直す |
 | `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
-| `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックを変える |
-| `action` | `id` | メニューのアクションを実行する（例: `view.grid`） |
+| `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |
+| `action` | `id` | メニューのアクションを ID で実行する（例: `view.grid`。有効かどうかは見ない） |
 | `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など） |
-| `getField` | `id` | 部品（`data-auto-id` 属性の ID）の状態。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、コンボなら `index` と `options`（64 件を超えるときは件数） |
-| `setField` | `id`、`value` | 部品に値を入れ、人が入力したときと同じく `input` → `change` を送る。コンボは番号か項目の文字、チェックは true / false。返事は `getField` と同じ |
-| `click` | `id` | ボタンなどを押す（無効なら失敗） |
-| `canvasPng` | `tab`（省略時は表示中のタブ） | マップ表示の Canvas（重ね描きとグリッドを含む）を PNG（Base64）で返す |
-| `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
-| `cells` | | 表示中のマップの配置とボーダーの値 |
-| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、時間の記録 |
-| `dialog` | `input`、`press`（どちらも省略可） | 画面内のダイアログ（入力・確認・エラー・ヘルプの窓）を読む。`input` で入力欄に入れ、`press` でボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。返事は開いているダイアログの一覧 |
-| `queuePath` | `path`（null でキャンセル） | 次に出るファイル・フォルダのダイアログで選ぶパスを積む（Windows のダイアログは出さない） |
-| `pointer` | `target`（`map` / `movement` / `event` / `palette`）、`type`（`down` / `move` / `up`）、`x`・`y`（部品の左上からの表示上のピクセル）、`button`、`ctrl`、`shift` | マウス操作をまねる。返事はステータスバー |
-| `exit` | | 確認なしで終了する |
-| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディターと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialog`、`queuePath`、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
-| `ui.list` | `root`（省略可） | 部品の一覧（`data-auto-id` の ID、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
+| `mouse` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`）か `id`、位置は `cell: [x, y]`（マス。中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）、`action`（`click`（既定）/ `dblclick` / `rightClick` / `drag` / `hover` / `down` / `move` / `up`）、`drag` は `to: [x, y]`（マス）か `toPx` と `steps`（既定 8）、`button`（`left` / `right`）、`ctrl`、`shift` | マウス操作。実際のマウスは動かさず、部品へ pointer・mouse・click・dblclick・contextmenu の出来事を実際の操作と同じ順に送る（画面側は人の操作と同じ処理を通る）。拡大表示は設定から読む。返事は選択中のブロック・移動許可・イベントとステータスバー |
+| `pointer`（別名） | `target`、`type`（`down` / `move` / `up`）、`x`・`y`（画素）、`button`、`ctrl`、`shift` | `mouse` の `action`・`px` と同じ（古い名前） |
+| `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
+| `selectMovement` | `value` | 移動許可の選択を変える（移動エリアタブなら、パレットのそのマスを左クリックするのと同じ） |
+| `selection` | | 選択中のブロック（`block`）・移動許可（`movement`）・イベント（`event`: 種別・番号・数）とステータスバー |
+| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、コンボなら `index` と `options`（64 件を超えるときは件数） |
+| `setField` | `id`、`value` | 部品に値を入れ、人が入力したときと同じく `input` → `change` を送る。コンボは番号か項目の文字、チェックは true / false。返事は `getField` と同じものと、開いているダイアログ（`dialogs`） |
+| `click` | `id` | ボタンなどを押す（無効なら失敗）。返事は開いているダイアログ |
+| `ui.list` | `root`（省略可） | 部品の一覧（ID、AdvanceMap の部品名、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
 | `ui.type` | `id`、`text` | 1 文字ずつ入力する |
 | `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル） |
+| `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
+| `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
+| `cells` | | 表示中のマップの配置とボーダーの値 |
+| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB） |
+| `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
+| `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
+| `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
+| `dialog` | `input`、`press`（どちらも省略可）、`title`（省略時は手前のもの） | ダイアログに入力して、ボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。ファイルのダイアログは `input` にパスを入れて `ok`（か「開く」「保存」）、`cancel` で取り消し。返事は押す前と後の一覧 |
+| `queuePath` | `path`（null でキャンセル） | ファイル・フォルダを選ぶダイアログの答え。開いているダイアログがあればそれに答え（返事の `answered` が true）、無ければ次に出るダイアログの答えとして積む。自動操作のときは Windows のダイアログは出さず、答えが無ければ `dialogs` に出して待つ |
+| `menu.list` | | メニューの全項目（`path`: 階層の文言の列、`id`、`enabled`（親が無効なら無効）、`checked`、`submenu`、`shortcut`）。最近開いたものも含む。区切り線は出さない |
+| `menu.run` | `path`（`"設定 > グリッドの表示"` か `["設定", "グリッドの表示"]`）か `id`、`wait`（ms、既定 100） | メニューの項目を実行する。メニューバーで選んだときと同じく、無効な項目とサブメニューは実行しない（失敗）。返事はステータスバーと開いているダイアログ |
+| `tree.list` | `visibleOnly`（省略可） | マップ一覧の全項目（`text`: 未出力の印 ` *` を含む文字列、`depth`、`hasChildren`、`expanded`、`selected`、`opened`（開いているマップ）、`dirty`、`mapId`、`key`）。`visibleOnly: true` で開いている枝の中だけ |
+| `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
+| `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.mouse` | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY` | マップ上のマウス操作（座標はマス）。返事は選択（`hover` はステータスバー） |
 | `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、最後に起動したスクリプトエディター |
+| `commands` | | 登録されている命令の名前 |
+| `windows` | | 開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`） |
+| `exit` | | 確認なしで終了する |
+| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
+
+AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
 
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 
@@ -488,6 +505,8 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 | `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
 | `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
 | `keepRuns` | | 残す結果の数（既定 5。これより古い結果は summary に削除候補として書く。自動では消さない） |
+| `langOld` | `ZZM_CMP_LANG_OLD` | AdvanceMap 本体の言語ファイル（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`） |
+| `langNew` | `ZZM_CMP_LANG_NEW` | ZigzaguMap の文言の基準（既定は `apps/desktop/src/i18n/source/Japanese.ini`） |
 
 exe のビルド出力を別のドライブに置くときは、`CARGO_TARGET_DIR` を設定してから `scripts\build.cmd` を実行し、`zigzaguExe` にその下の `release\zigzagumap.exe` を書きます。
 
@@ -515,7 +534,13 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 {"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
 ```
 
-操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap の自動操作の入口にマウス操作の命令がないため、クリックやドラッグはコマンドで「代用」しています（代用した後はステータスバーの比較を「未対応」にします）。メニューの対応は `tests/compare/zigzagu_menu.json` です。
+操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap のクリックやドラッグは自動操作の入口の `mouse`（画面と同じ処理を通る）、入力欄とボタンは `setField` / `click` の `field:<AdvanceMap の部品名>`、ダイアログは `dialogs` / `dialog` で行います。
+
+文言の扱い:
+
+- メニューはシナリオに言語ファイルのキー（`"key": ["Menue.12", "Menue.120"]`。`menu.state:Menue.12/Menue.120` も同じ）で書きます。AdvanceMap 側は本体の言語ファイル（`Ini\Sprachen\Japanese.ini`、cp932）の文言で、ZigzaguMap 側は文言の基準（`apps/desktop/src/i18n/source/Japanese.ini`）の文言で `menu.run` します。文言で見つからない項目は `tests/compare/zigzagu_menu.json`（キーの階層 → アクション ID）で実行します。コンボの選択は番号で書きます。
+- ZigzaguMap の文言の基準は、AdvanceMap 本体の言語ファイルと同じキーで 500 件ほど文言が違います。比べる前に、AdvanceMap 側で読んだ文字列（欄の値・一覧・メニュー・ダイアログ）を、両方の言語ファイルをキー（セクション名.番号）で対応づけた表で新しい文言へ読み替えます（`lib/langmap.py`。新しい文言の頭の `(AM1.95未使用)` などの注記は外す。同じ旧文言が別々の新文言になるものは読み替えない）。表に無い文字列の食い違いは失敗のままです。言語ファイルの場所は設定の `langOld`（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`）と `langNew` で変えられます。
+- ダイアログは、AdvanceMap のメッセージボックス（#32770）と ZigzaguMap の画面内のダイアログを題名・本文・ボタン（アクセスキーの表記を除く）で、AdvanceMap の VCL のフォームと ZigzaguMap の別ウィンドウは題名だけで比べます。
 
 画像の比べ方（`snapshot` の `compare`）:
 
@@ -533,7 +558,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 - `summary.md` / `summary.json`: シナリオごとの判定と件数、失敗の中身
 - `<シナリオ>/report.md`: ステップごとの両者の状態、値の対応表、画像のパス
 - `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
-- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`
+- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
 
 判定は「合格」（比べたものがすべて同じ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）です。
 
