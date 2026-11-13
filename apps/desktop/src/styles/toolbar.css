@@ -1,0 +1,50 @@
+/* ツールバー（高さ 45px、32×32 のアイコン、上下の区切り線）。 */
+.toolbar {
+  height: 45px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 1px;
+  border-top: 2px groove var(--face);
+  border-bottom: 2px groove var(--face);
+  background: var(--face);
+}
+
+.toolbar-button {
+  width: 36px;
+  height: 36px;
+  margin: 0 -1px;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-button svg {
+  display: block;
+}
+
+.toolbar-button:hover:not(.disabled) {
+  border-color: #fff #a0a0a0 #a0a0a0 #fff;
+  background: #f8f8f8;
+}
+
+.toolbar-button:active:not(.disabled),
+.toolbar-button.checked {
+  border-color: #a0a0a0 #fff #fff #a0a0a0;
+  background: #e0e0e0;
+}
+
+.toolbar-separator {
+  width: 2px;
+  height: 32px;
+  margin: 0 2px;
+  border-left: 1px solid var(--shadow);
+  border-right: 1px solid var(--highlight);
+}
+
+.toolbar-sort {
+  width: 161px;
+  height: 21px;
+  margin: 0 3px;
+}
