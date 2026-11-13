@@ -35,6 +35,8 @@ const RENAMED = new Map([
   ["BlockDatenAnpassenForm/Titel", "BlockDatenAnpassenForm/Title"],
   ["WorldMapEditor/Titel", "WorldMapEditor/Title"],
   ["AnbindungsForm/136", "AnbindungsForm/Title"],
+  ["NewMapForm/21", "NewMapForm/Title"],
+  ["MapEinfuegenForm/15", "MapEinfuegenForm/Title"],
   // 種別名は [EventType] へ
   ["Events/40", "EventType/01"],
   ["Events/41", "EventType/00"],
@@ -108,10 +110,7 @@ const INTENTIONAL = new Map([
 
 /** まだ作っていない機能の文言（作るときに ini から引く）。報告はするが問題には数えない。 */
 const UNIMPLEMENTED = new Map([
-  ["Allgemein/900", "マップタブの「マップバンクの作成」ボタン"],
-  ["Allgemein/901", "マップタブの「新規マップ作成」ボタン"],
-  ["NewMapForm", "新規マップの作成ダイアログ"],
-  ["MapEinfuegenForm", "マップの追加/挿入ダイアログ"],
+  // 今は無い（例: ["NewMapForm", "新規マップの作成ダイアログ"]）
 ]);
 
 function parseArgs(argv) {
