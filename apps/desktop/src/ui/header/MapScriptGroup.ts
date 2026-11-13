@@ -105,8 +105,9 @@ export class MapScriptGroup {
     setEnabled(count > 1, this.number.input, ...this.number.root.querySelectorAll("button"));
     setEnabled(d !== null, this.type, this.offset, this.remove, this.open);
     if (!d) {
-      this.type.selectedIndex = -1;
-      this.offset.value = "";
+      // AdvanceMap と同じく、スクリプトが無いときは種類「00 スクリプト未設定」とオフセット $000000 を出す
+      this.type.selectedIndex = 0;
+      this.offset.value = offsetText(0);
       for (const el of [this.flag, this.flagValue, this.flagOffset]) el.value = "";
       setEnabled(false, this.flag, this.flagValue, this.flagOffset);
       return;
