@@ -146,10 +146,6 @@ export const ja = {
   statusPaletteBlock: (block: number, offset: number | null) =>
     `ブロック: ${hex(block, 2)} オフセット: ${offset === null ? "------" : hex(offset, 6)}`,
   statusMovementPalette: (value: number, name: string) => `ブロック移動：: ${hex(value, 2)} ${name}`,
-  statusEventCell: (x: number, y: number, event: string) => `X: ${hex(x, 2)} Y: ${hex(y, 2)}　　${event}`,
-  eventKindNames: { person: "人", warp: "ワープ", trap: "スクリプト", sign: "看板" } as Readonly<Record<string, string>>,
-  noteOk: "ノート:特に異常無し",
-  noteOutside: "ノート:マップの外にイベントがあります。",
   noEvents: "イベントはありません.",
   loading: "読み込み中…",
   notImplemented: (name: string) => `未実装: ${name}`,
@@ -206,27 +202,6 @@ export const ja = {
 
   // [Events] [EventMenge] ほか（ja.event.ts）
   event: jaEvent,
-  // [Events]（旧）
-  eventTypes: ["人", "ワープ", "スクリプト", "看板"],
-  eventNumber: "イベント番号:",
-  eventPosition: "座標(X/Y) :",
-  eventFields: {
-    person: {
-      localId: "人 No.:",
-      graphicsId: "画像 No.:",
-      elevation: "属性:",
-      movementType: "アクション:",
-      movementRange: "移動範囲(YX) :",
-      trainerType: "トレーナー:",
-      trainerRange: "視界範囲:",
-      script: "オフセット:",
-      flag: "人 ID:",
-    },
-    warp: { elevation: "属性:", warpId: "ワープNo.:", bank: "バンク番号:", map: "マップ番号:" },
-    trap: { elevation: "属性:", variable: "フラグ No.:", value: "フラグの値:", script: "オフセット:" },
-    sign: { elevation: "属性:", kind: "イベントタイプ:", script: "オフセット:", item: "アイテムID:", hiddenId: "隠しID:", amount: "個数:" },
-  },
-  noEventsInMap: "このマップにはイベントが存在しません",
 
   // [WildePokemon]
   wildAreas: ["草むら", "水上", "岩砕き/木", "釣り"],
