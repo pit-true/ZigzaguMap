@@ -11,6 +11,8 @@ export interface ProjectFs {
   writeText(path: string, text: string): Promise<void>;
   /** バイナリファイルを読む（tiles.png など）。 */
   readBytes(path: string): Promise<Uint8Array>;
+  /** バイナリファイルを書く（tiles.png）。フォルダが無ければ作る。無い実装ではタイルセットを保存できない。 */
+  writeBytes?(path: string, bytes: Uint8Array): Promise<void>;
   /** ファイルかフォルダがあるか。 */
   exists(path: string): Promise<boolean>;
   /** ファイルを消す。無ければ何もしない。 */
@@ -37,9 +39,9 @@ export class MemoryProjectFs implements ProjectFs {
     this.files.set(path, text);
   }
 
-  /** バイナリファイルを置く（テスト用）。 */
-  writeBytes(path: string, bytes: Uint8Array): void {
-    this.files.set(path, bytes);
+  /** バイナリファイルを置く。 */
+  async writeBytes(path: string, bytes: Uint8Array): Promise<void> {
+    this.files.set(path, bytes.slice());
   }
 
   async readBytes(path: string): Promise<Uint8Array> {
