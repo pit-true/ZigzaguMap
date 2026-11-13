@@ -99,8 +99,6 @@ export const jaEvent = {
   itemChoice: (name: string, id: number) => `${name} (${hex(id, 4)})`,
 
   // ダイアログ
-  /** 16 進・10 進の欄に読めない文字（Delphi の例外メッセージそのまま）。 */
-  invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
   mapNotFound: ini.Allgemein["100"],
 };
 
