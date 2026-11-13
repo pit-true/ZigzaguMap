@@ -65,7 +65,7 @@ select {
 
 .wild-grid {
   display: grid;
-  grid-template-columns: 80px 30px 30px 1fr;
+  grid-template-columns: 80px 36px 36px minmax(97px, 160px);
   gap: 5px 2px;
   align-items: center;
   margin-top: 8px;

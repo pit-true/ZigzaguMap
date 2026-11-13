@@ -11,9 +11,10 @@ import {
 import "../../styles/event.css";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
-import { showMessage } from "../form/messageDialog";
+import { showError } from "../MessageBox";
 import { drawEvents, eventAt, placedEvents, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
+import { spriteSourceFor } from "../map/spriteCanvases";
 import { EventCommonPanel } from "./EventCommonPanel";
 import { EventEditor } from "./EventEditor";
 import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
@@ -236,7 +237,8 @@ export class EventTab {
 
   private draw(): void {
     const selected = this.showCursor ? this.selectedPlaced() : null;
-    drawEvents(this.view.layer, this.placed, this.view.cellSize, selected);
+    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
+    drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites);
   }
 
   private selectedPlaced(): PlacedEvent | null {
@@ -328,7 +330,7 @@ export class EventTab {
     const session = this.state.session;
     if (!session) return;
     const id = { bank, map };
-    if (!session.catalog.has(id)) return showMessage(ja.event.errorTitle, ja.event.mapNotFound);
+    if (!session.catalog.has(id)) return void (await showError(ja.event.mapNotFound));
     await this.host.openMap(id);
     const doc = this.state.map?.doc;
     if (!doc || this.state.map!.id.bank !== bank || this.state.map!.id.map !== map) return;

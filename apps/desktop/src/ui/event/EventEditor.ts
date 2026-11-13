@@ -2,7 +2,7 @@ import { EditError, type Command, type CommandBus } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { invalidIntegerText } from "../form/controls";
-import { showMessage } from "../form/messageDialog";
+import { showError } from "../MessageBox";
 
 /**
  * イベントタブの編集を CommandBus で実行する窓口。
@@ -69,7 +69,7 @@ export class EventEditor {
 
   /** 読めない入力のダイアログ（AdvanceMap と同じく入力のたびに出る）。 */
   inputError(error: EditError): void {
-    void showMessage(ja.appTitle, invalidIntegerText(error, ja.event.invalidInteger));
+    void showError(invalidIntegerText(error, ja.event.invalidInteger), ja.appTitle);
   }
 
   private report(e: unknown): void {

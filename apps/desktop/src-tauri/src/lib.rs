@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod project_fs;
 mod script_editor;
+mod system;
 
 use std::sync::Arc;
 
@@ -84,7 +85,15 @@ pub fn run() {
             } else {
                 builder = builder.center();
             }
-            builder.build()?;
+            let placement = if args.automation.is_none() { files::saved_window_placement(app.handle()) } else { None };
+            if placement.is_some() {
+                builder = builder.visible(false);
+            }
+            let window = builder.build()?;
+            if let Some(p) = placement {
+                files::apply_window_placement(&window, &p);
+                let _ = window.show();
+            }
             automation::start(app.handle().clone(), app.state::<Arc<Automation>>().inner().clone());
             Ok(())
         })
@@ -98,6 +107,15 @@ pub fn run() {
             files::is_dir,
             files::load_settings,
             files::save_settings,
+            system::pick_save_file,
+            system::pick_open_file,
+            system::write_file,
+            system::file_exists,
+            system::exe_path,
+            system::desktop_dir,
+            system::create_shortcut,
+            system::register_context_menu,
+            system::unregister_context_menu,
             project_fs::project_set_root,
             project_fs::fs_read_text,
             project_fs::fs_write_text,

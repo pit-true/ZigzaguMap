@@ -196,7 +196,6 @@ export const jaEvent = {
   // ダイアログ
   /** 16 進・10 進の欄に読めない文字（Delphi の例外メッセージそのまま）。 */
   invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
-  errorTitle: "エラー",
   mapNotFound: "指定したマップは存在しません！", // [Allgemein] 100
 };
 

@@ -1,10 +1,13 @@
 import { ja } from "../i18n/ja";
 import type { EditorState } from "./EditorState";
+import type { ImageKind } from "./ImageExport";
+import type { SystemSettings } from "./SystemSettings";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
 import type { SettingsData } from "./Settings";
 
 /** アクションが呼ぶ App の操作。 */
 export interface ActionTarget {
+  readonly system: SystemSettings;
   openRomDialog(): Promise<void>;
   openProjectDialog(): Promise<void>;
   reload(): Promise<void>;
@@ -18,33 +21,32 @@ export interface ActionTarget {
   askPaletteWidth(): Promise<void>;
   askOpacity(): Promise<void>;
   askRecentMax(): Promise<void>;
+  saveImage(kind: ImageKind): Promise<void>;
+  createIniFromHeader(): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
 const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.grid": "grid",
+  "view.objects": "showObjects",
   "zoom.map": "zoomMap",
   "zoom.movement": "zoomMovement",
   "zoom.event": "zoomEvent",
   "zoom.palette": "zoomBlockPalette",
   "zoom.movementPalette": "zoomMovementPalette",
   "view.toolbar": "showToolbar",
+  "view.combobox": "comboBox",
   "opt.rememberLast": "rememberLast",
   "recent.showPath": "recentShowPath",
+  "view.hideEventPanel": "hideEventPanel",
+  "opt.autoSearch": "autoSearch",
+  "opt.advancedHeader": "advancedHeader",
+  "opt.romShortcut": "romShortcut",
+  "opt.contextMenu": "contextMenu",
 };
 
-/**
- * 未実装の項目で、AdvanceMap の初期状態でチェックが付いているもの（表示だけ合わせる）。
- * 言語は Japanese（11 番目）にチェックを付ける。
- */
-const FIXED_CHECKS = new Set([
-  "view.hideEventPanel",
-  "opt.autoSearch",
-  "opt.advancedHeader",
-  "opt.backupOnOpen",
-  "opt.romShortcut",
-  "lang.11",
-]);
+/** いつもチェックが付く項目（言語は日本語だけ）。 */
+const FIXED_CHECKS = new Set(["lang.ja"]);
 
 /**
  * メニュー・ツールバー・ショートカットのアクション。ID から処理を引き、有効・チェックの状態を答える。
@@ -69,12 +71,33 @@ export class Actions {
       h.set(id, () => target.changeSetting({ [key]: !this.state.settings.data[key] }));
     }
     for (let i = 0; i < ja.sortModes.length; i++) h.set(`sort.${i}`, () => target.setSort(i));
+    // 確認してから切り替えるもの（TOGGLES の既定の動作を上書きする）。
+    h.set("opt.romShortcut", () => target.system.toggleRomShortcut());
+    h.set("opt.contextMenu", () => target.system.toggleContextMenu());
+    h.set("opt.scriptEditor", () => target.system.chooseScriptEditor());
+    h.set("tools.desktopShortcut", () => target.system.createDesktopShortcut());
+    // ROM へ書き込まないので意味の無いもの。
+    for (const id of ["opt.backupOnOpen", "tools.find", "dummy.bankHeader", "dummy.bank", "dummy.connections", "dummy.wildHeader", "dummy.manage"]) {
+      h.set(id, () => target.system.notNeeded());
+    }
+    // バックアップの作成は「出力先を指定して出力」に読み替える。
+    h.set("file.backup", () => target.exportMaps(true));
+    h.set("lang.ja", () => undefined);
+    h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
+    h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
+    h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
     h.set("view.paletteWidth", () => target.askPaletteWidth());
     h.set("view.opacity", () => target.askOpacity());
     h.set("recent.max", () => target.askRecentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
+    h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));
+    h.set("display.createIni", () => target.createIniFromHeader());
+    h.set("image.map", () => target.saveImage("map"));
+    h.set("image.mapEvent", () => target.saveImage("mapEvent"));
+    h.set("image.palette", () => target.saveImage("palette"));
   }
 
   /** 実装済みか。 */
@@ -111,6 +134,8 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
+    if (id === "display.header") return this.state.settings.data.mapListSource === "header";
+    if (id === "display.ini") return this.state.settings.data.mapListSource === "ini";
     return FIXED_CHECKS.has(id);
   }
 }

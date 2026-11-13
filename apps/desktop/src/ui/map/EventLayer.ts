@@ -42,6 +42,9 @@ export interface PlacedEvent {
   readonly graphicsId?: number;
 }
 
+/** 画像番号から OW の画像（Canvas）を返す。無ければ null。 */
+export type SpriteSource = (graphicsId: number) => (CanvasImageSource & { width: number; height: number }) | null;
+
 /** フライトポジション（表の番号と位置）。 */
 export interface PlacedFly {
   readonly index: number;
@@ -74,16 +77,33 @@ export function eventAt(events: readonly PlacedEvent[], x: number, y: number): P
   return null;
 }
 
-/** イベントを種別ごとの文字の箱で描く。`selected` があれば赤い 1px の枠で囲む（カーソルの表示）。 */
-export function drawEvents(canvas: HTMLCanvasElement, events: readonly PlacedEvent[], cellSize: number, selected: PlacedEvent | null): void {
+/**
+ * イベントを種別ごとの文字の箱で描く。`selected` があれば赤い 1px の枠で囲む（カーソルの表示）。
+ * `sprites` を渡すと（オブジェクトの表示）、AdvanceMap と同じく人を OW 画像で描き、人以外の箱は描かない。
+ * OW 画像はマスの下端にそろえ、横はマスの中央に置く。画像が無い人は箱で描く。
+ */
+export function drawEvents(
+  canvas: HTMLCanvasElement,
+  events: readonly PlacedEvent[],
+  cellSize: number,
+  selected: PlacedEvent | null,
+  sprites: SpriteSource | null = null,
+): void {
   const c = canvas.getContext("2d")!;
   c.clearRect(0, 0, canvas.width, canvas.height);
-  drawEventsOn(c, events, cellSize, selected);
+  drawEventsOn(c, events, cellSize, selected, sprites);
 }
 
 /** `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。 */
-export function drawEventsOn(c: CanvasRenderingContext2D, events: readonly PlacedEvent[], cellSize: number, selected: PlacedEvent | null): void {
+export function drawEventsOn(
+  c: CanvasRenderingContext2D,
+  events: readonly PlacedEvent[],
+  cellSize: number,
+  selected: PlacedEvent | null,
+  sprites: SpriteSource | null = null,
+): void {
   const scale = cellSize / 16;
+  c.imageSmoothingEnabled = false;
   c.font = `${Math.round(14 * scale)}px Arial, sans-serif`;
   c.textAlign = "center";
   c.textBaseline = "middle";
@@ -92,6 +112,16 @@ export function drawEventsOn(c: CanvasRenderingContext2D, events: readonly Place
     const x = e.x * cellSize;
     const y = e.y * cellSize;
     if (x + cellSize <= 0 || y + cellSize <= 0 || x >= c.canvas.width || y >= c.canvas.height) continue;
+    if (sprites) {
+      if (e.kind !== "person") continue;
+      const image = e.graphicsId !== undefined ? sprites(e.graphicsId) : null;
+      if (image) {
+        const w = image.width * scale;
+        const h = image.height * scale;
+        c.drawImage(image, x + (cellSize - w) / 2, y + cellSize - h, w, h);
+        continue;
+      }
+    }
     drawBox(c, STYLE[e.kind], x, y, cellSize, scale);
   }
   if (selected) {

@@ -1,0 +1,51 @@
+{
+  "name": "S49_open_map_by_number",
+  "title": "マップを指定して開く・以前開いたマップ",
+  "source": "S49",
+  "issues": [
+    96
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "マップを指定して開く"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "Cancel"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 37
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "以前開いたマップを開く"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "title.map"
+      ]
+    }
+  ]
+}

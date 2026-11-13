@@ -1,0 +1,60 @@
+{
+  "name": "S27_connections_edit",
+  "title": "コネクションの追加・削除・保存",
+  "source": "S27",
+  "issues": [
+    66
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "マップの移動"
+      ]
+    },
+    {
+      "op": "clickButton",
+      "screen": "マップの移動",
+      "button": "Cmd_AnbHinzufugen"
+    },
+    {
+      "op": "clickButton",
+      "screen": "マップの移動",
+      "button": "Cmd_AnbEntfernen"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "いいえ"
+    },
+    {
+      "op": "setField",
+      "screen": "マップの移動",
+      "field": "Txt_Verschiebung",
+      "value": 5
+    },
+    {
+      "op": "clickButton",
+      "screen": "マップの移動",
+      "button": "Cmd_AnbSpeichern"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_Verschiebung"
+      ]
+    }
+  ]
+}

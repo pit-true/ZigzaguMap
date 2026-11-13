@@ -1,0 +1,11 @@
+{
+  "_説明": "local.config.json にコピーして自分の環境のパスに直す（local.config.json はコミットしない）。環境変数 ZZM_CMP_* でも上書きできる。zigzaguExe は省略するとリポジトリ内の既定の出力先、相対パスはリポジトリからの位置",
+  "amSourceDir": "C:\\path\\to\\ZigzaguMap-work\\am192",
+  "amWorkDir": "C:\\path\\to\\ZigzaguMap-work\\am192_cmp",
+  "romOriginal": "C:\\path\\to\\ZigzaguMap-work\\rom\\BPRJ_orig.gba",
+  "scriptEditorStub": "C:\\path\\to\\ZigzaguMap-work\\harness\\stub\\ScriptEditorStub.exe",
+  "zigzaguExe": "D:\\zigzagu-build\\compare-runner\\release\\zigzagumap.exe",
+  "resultsDir": "C:\\path\\to\\ZigzaguMap-work\\compare-results",
+  "zigzaguPorts": [17930, 17939],
+  "keepRuns": 5
+}

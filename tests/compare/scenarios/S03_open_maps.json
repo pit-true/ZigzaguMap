@@ -1,0 +1,100 @@
+{
+  "name": "S03_open_maps",
+  "title": "マップを開く（3.0 / 4.1 / 1.1 / 3.37）",
+  "source": "S03",
+  "issues": [
+    26,
+    29,
+    30,
+    31,
+    33
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "title.map",
+        "map.size",
+        "tab"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "map_3_0",
+      "target": "map"
+    },
+    {
+      "op": "selectMap",
+      "bank": 4,
+      "map": 1
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "title.map",
+        "map.size"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "map_4_1",
+      "target": "map"
+    },
+    {
+      "op": "selectMap",
+      "bank": 1,
+      "map": 1
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "title.map",
+        "map.size"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "map_1_1",
+      "target": "map"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 37
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "title.map",
+        "map.size"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "map_3_37",
+      "target": "map"
+    },
+    {
+      "op": "snapshot",
+      "name": "border_3_37",
+      "target": "border"
+    },
+    {
+      "op": "snapshot",
+      "name": "palette_3_37",
+      "target": "palette"
+    }
+  ]
+}

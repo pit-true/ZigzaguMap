@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { openMessages } from "../ui/form/messageDialog";
 import { EventTab } from "../ui/event/EventTab";
 import { KIND_ORDER, type UiKind } from "../ui/event/eventModel";
 import type { App } from "./App";
@@ -56,17 +55,6 @@ export async function handleUi(app: App, req: Record<string, unknown>): Promise<
           height: Math.max(1, Math.round(r.height * s)),
         }),
       };
-    }
-    case "ui.dialog": {
-      // 開いているメッセージを読む。`press` を渡すと最後のメッセージのそのボタンを押す。
-      const list = openMessages.map((m) => ({ title: m.title, text: m.text, buttons: m.buttons }));
-      const press = req["press"];
-      if (typeof press === "string") {
-        const last = openMessages[openMessages.length - 1];
-        if (!last) throw new Error("ダイアログは開いていません");
-        last.press(press);
-      }
-      return { value: list };
     }
     case "setting": {
       // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない。スクリプトエディターの確認用）。
