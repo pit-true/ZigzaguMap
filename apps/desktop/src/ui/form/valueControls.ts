@@ -124,9 +124,12 @@ export class SpinEdit implements ValueControl {
       }
     });
     this.input.addEventListener("input", () => this.commit());
-    this.input.addEventListener("blur", () => {
+    // 確定したとき（Enter・フォーカスを外したとき）は、丸めた値を表示し直す。
+    const reformat = (): void => {
       this.input.value = String(this.value);
-    });
+    };
+    this.input.addEventListener("change", reformat);
+    this.input.addEventListener("blur", reformat);
   }
 
   /** 範囲を変える（イベント番号は種別の個数で変わる）。 */
