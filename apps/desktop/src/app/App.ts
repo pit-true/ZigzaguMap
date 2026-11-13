@@ -28,6 +28,7 @@ import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
 import { FileDialogs, fileNameOf as fileName, writeFile } from "./FileDialogs";
 import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
 import { ImageExport, type ImageKind } from "./ImageExport";
+import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
@@ -60,6 +61,8 @@ export class App implements ActionTarget {
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
   readonly system: SystemSettings;
+  /** 数を入力して変える設定。 */
+  readonly prompts: SettingPrompts;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   /** 左のマップ一覧（自動操作の `tree.list` も読む）。 */
@@ -99,6 +102,7 @@ export class App implements ActionTarget {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
     this.system = new SystemSettings(state, this.files, () => this.automation);
+    this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
     this.newMaps = new NewMapController({
       state,
@@ -524,35 +528,6 @@ export class App implements ActionTarget {
     this.state.emit("recent");
   }
 
-  /** 設定 > マップブロックの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
-  async askPaletteWidth(): Promise<void> {
-    const text = await inputDialog(ja.blockWidthTitle, ja.blockWidthPrompt, String(this.state.settings.data.paletteWidth));
-    if (text === null) return;
-    const n = parseInteger(text);
-    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
-    if (n < 1 || n > 64) return void (await showError(ja.invalidInput));
-    this.changeSetting({ paletteWidth: n });
-  }
-
-  /** 設定 > 移動エリアの設定の透明度。 */
-  async askOpacity(): Promise<void> {
-    const text = await inputDialog(ja.movementOpacity, ja.opacityPrompt, String(this.state.settings.data.movementOpacity));
-    if (text === null) return;
-    const n = Number(text.trim().replace(",", "."));
-    if (text.trim() === "" || !Number.isFinite(n) || n < 0 || n > 1) return void (await showError(ja.invalidInput));
-    this.changeSetting({ movementOpacity: n });
-  }
-
-  /** 設定 > 最近開いたファイルの設定 > 最近開いたファイルリストの最大数の変更。 */
-  async askRecentMax(): Promise<void> {
-    const text = await inputDialog(ja.recentMax, ja.recentMaxPrompt, String(this.state.settings.data.recentMax));
-    if (text === null) return;
-    const n = parseInteger(text);
-    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
-    if (n < 1 || n > 9) return void (await showError(ja.invalidInput));
-    this.changeSetting({ recentMax: n, recent: this.state.settings.data.recent.slice(0, n) });
-  }
-
   /** ツール > 画像の保存（3 種）。 */
   async saveImage(kind: ImageKind): Promise<void> {
     const path = await new ImageExport(this.state, this.files, () => this.eventTab.exportOverlay()).save(kind);
@@ -649,10 +624,6 @@ function changesMapList(command: Command): boolean {
   return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
 }
 
-/** Delphi の StrToInt と同じく、前後の空白を除いた 10 進の整数だけを受け付ける。 */
-function parseInteger(text: string): number | null {
-  return /^\s*[+-]?\d+\s*$/.test(text) ? Number(text) : null;
-}
 
 
 function toolbarLabel(id: string): string {
