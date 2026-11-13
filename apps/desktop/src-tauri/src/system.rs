@@ -87,6 +87,12 @@ pub fn file_exists(path: String) -> bool {
     Path::new(&path).is_file()
 }
 
+/// 外部のプログラム（スクリプトエディター）を起動する。終わるのは待たない。
+#[tauri::command]
+pub fn launch_program(program: String, args: Vec<String>) -> Result<(), String> {
+    std::process::Command::new(&program).args(&args).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 /// exe のパス。
 #[tauri::command]
 pub fn exe_path() -> Result<String, String> {

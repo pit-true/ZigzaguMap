@@ -35,8 +35,8 @@ export const jaHeader = {
   flagOffset: "フラグのオフセット:",
   removeScript: "選択したスクリプト削除",
   addScript: "スクリプト追加",
-  /** 「スクリプトを開く」（外部のスクリプトエディターは未対応）。 */
-  openScriptUnsupported: (offset: string) => `スクリプトエディターの呼び出しには未対応です（オフセット ${offset}）`,
+  /** 「スクリプトを開く」でスクリプトエディターを選んでいないとき。 */
+  noScriptEditor: (offset: string) => `スクリプトエディターが選ばれていません（設定 > スクリプトエディターの選択）。オフセット: ${offset}`,
   /** 種類 0 のまま保存しようとしたとき。 */
   scriptTypeUnset: (index: number) => `スクリプトNo ${index} の種類が「スクリプト未設定」です。種類を選んでから保存してください`,
   /** 名前表の項目（Cbo_Name）の表記。 */

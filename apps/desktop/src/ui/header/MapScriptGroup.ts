@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { isTableType } from "@zigzagumap/core";
 import { hex, ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
@@ -191,11 +192,22 @@ export class MapScriptGroup {
     }
   }
 
+  /**
+   * 「スクリプトを開く」: 設定 > スクリプトエディターの選択 で選んだ exe に、ベース ROM のパスとオフセット（16 進）を渡して起動する
+   * （AdvanceMap と同じく、区切りは空白か「:」）。エディターを選んでいなければステータスバーに出す。
+   */
   private openScript(): void {
     const d = this.current;
     const c = this.ctx;
     if (!d || !c) return;
     const pointer = isTableType(d.type) ? d.flagOffset : d.pointer;
-    c.state.setStatus(ja.header.openScriptUnsupported(offsetText(pointerToOffset(pointer))));
+    const offset = hex(pointerToOffset(pointer), 6);
+    const s = c.state.settings.data;
+    if (!s.scriptEditor) {
+      c.state.setStatus(ja.header.noScriptEditor(offset));
+      return;
+    }
+    const args = s.scriptSpaceSeparator ? [c.session.romPath, offset] : [`${c.session.romPath}:${offset}`];
+    invoke("launch_program", { program: s.scriptEditor, args }).catch((e: unknown) => c.state.setStatus(ja.error(String(e)), undefined, true));
   }
 }
