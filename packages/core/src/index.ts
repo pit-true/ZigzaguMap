@@ -197,6 +197,7 @@ export { SetWildRateCommand, type SetWildRateArgs } from "./command/commands/wil
 export { SetWildSlotCommand, type SetWildSlotArgs } from "./command/commands/wild/SetWildSlotCommand.js";
 export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/wild/SetWildAreasCommand.js";
 export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
+export * from "./amfile/index.js";
 export { SetBlockCommand, type SetBlockArgs } from "./command/commands/tileset/SetBlockCommand.js";
 export { SetBlockCountCommand, type SetBlockCountArgs } from "./command/commands/tileset/SetBlockCountCommand.js";
 export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/commands/tileset/SetPaletteColorsCommand.js";
