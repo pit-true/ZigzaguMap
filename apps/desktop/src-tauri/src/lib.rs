@@ -3,6 +3,7 @@
 mod automation;
 mod capture;
 mod files;
+mod pick;
 mod project_fs;
 mod system;
 mod windows;
@@ -90,6 +91,10 @@ pub fn run() {
                 builder = builder.visible(false);
             }
             let window = builder.build()?;
+            if args.automation.is_some() && !cfg!(debug_assertions) {
+                // 作るときの位置が画面外だと既定の位置に置かれることがあるので、作ったあとにもう一度画面外へ出す。
+                let _ = window.set_position(tauri::PhysicalPosition::new(-12000, -12000));
+            }
             if let Some(p) = placement {
                 files::apply_window_placement(&window, &p);
                 let _ = window.show();
@@ -129,6 +134,9 @@ pub fn run() {
             automation::automation_reply,
             automation::automation_ready,
             windows::open_tool_window,
+            windows::close_tool_window,
+            pick::cursor_color,
+            pick::window_pixel,
             automation::automation_capture,
         ])
         .run(tauri::generate_context!())

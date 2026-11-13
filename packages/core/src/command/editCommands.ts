@@ -28,6 +28,7 @@ import { CreateMapCommand } from "./commands/project/CreateMapCommand.js";
 import { RemapBlockPalettesCommand } from "./commands/tileset/RemapBlockPalettesCommand.js";
 import { SetBlockCommand } from "./commands/tileset/SetBlockCommand.js";
 import { SetBlockCountCommand } from "./commands/tileset/SetBlockCountCommand.js";
+import { SetBlockDataCommand } from "./commands/tileset/SetBlockDataCommand.js";
 import { SetPaletteColorsCommand } from "./commands/tileset/SetPaletteColorsCommand.js";
 import { SetTilesCommand } from "./commands/tileset/SetTilesCommand.js";
 import { SetTilesetHeaderCommand } from "./commands/tileset/SetTilesetHeaderCommand.js";
@@ -75,6 +76,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   // タイルセット
   SetBlockCommand,
   SetBlockCountCommand,
+  SetBlockDataCommand,
   SetPaletteColorsCommand,
   SetTilesCommand,
   RemapBlockPalettesCommand,

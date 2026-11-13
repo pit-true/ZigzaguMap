@@ -134,6 +134,9 @@ export {
 } from "./tileset/blockFormat.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
 export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
+export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
+export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
+export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, parseColorHex, type ColorValue } from "./tileset/ColorValue.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
@@ -199,6 +202,7 @@ export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/w
 export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
 export { SetBlockCommand, type SetBlockArgs } from "./command/commands/tileset/SetBlockCommand.js";
 export { SetBlockCountCommand, type SetBlockCountArgs } from "./command/commands/tileset/SetBlockCountCommand.js";
+export { SetBlockDataCommand, type SetBlockDataArgs } from "./command/commands/tileset/SetBlockDataCommand.js";
 export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/commands/tileset/SetPaletteColorsCommand.js";
 export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
 export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";

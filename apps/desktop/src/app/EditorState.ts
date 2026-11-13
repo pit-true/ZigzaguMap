@@ -28,6 +28,7 @@ export interface StatusText {
  * - session: ROM・プロジェクトを開いた／閉じた
  * - map: 表示するマップが変わった
  * - cells: 表示中のマップの配置・ボーダーが変わった（操作・アンドゥ）
+ * - tiles: 表示中のマップのタイルセット（ブロック・タイル・パレット）が変わった（ブロックエディタ）
  * - tab / selection / movement / view: タブ、選択中のブロック、選択中の移動許可、表示設定
  * - stamp: Ctrl＋右ドラッグで矩形を選んだ（Grosser Block ウィンドウを出す）
  * - dirty: 未出力の印が変わった
@@ -38,6 +39,7 @@ export type StateTopic =
   | "session"
   | "map"
   | "cells"
+  | "tiles"
   | "tab"
   | "selection"
   | "stamp"

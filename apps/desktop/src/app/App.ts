@@ -35,6 +35,7 @@ import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
+import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 
@@ -337,6 +338,7 @@ export class App implements ActionTarget {
 
   /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
   private onCommand(e: CommandEvent): void {
+    if (this.onTilesetCommand(e)) return;
     const args = e.command?.args as { bank?: unknown; map?: unknown } | undefined;
     if (typeof args?.bank !== "number" || typeof args.map !== "number") return;
     const id = { bank: args.bank, map: args.map };
@@ -354,6 +356,19 @@ export class App implements ActionTarget {
     this.pendingDirty.set(`${id.bank}.${id.map}`, id);
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
     this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
+  }
+
+  /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */
+  private onTilesetCommand(e: CommandEvent): boolean {
+    const refs = tilesetRefsOf(e.command);
+    if (refs.length === 0) return false;
+    const changed = refs.flatMap((ref) => this.state.session?.refreshTilesets(ref) ?? []);
+    if (this.state.map && changed.includes(this.state.map.tiles)) {
+      this.state.mapImage?.redrawAll();
+      this.state.emit("cells");
+      this.state.emit("tiles");
+    }
+    return true;
   }
 
   /** 未出力の印を付け直す。 */
@@ -402,7 +417,7 @@ export class App implements ActionTarget {
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
   private async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
-    if (!session || (session.modifiedMaps().length === 0 && !session.isRegionMapModified())) return true;
+    if (!session || (session.modifiedMaps().length === 0 && !session.hasUnsavedChanges() && !session.isRegionMapModified())) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
@@ -482,6 +497,12 @@ export class App implements ActionTarget {
     await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
     await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
     this.state.setStatus(ja.iniCreated(folder));
+  }
+
+  /** 別ウィンドウ（ブロックエディタなど）を開く。窓口のコードは初めて開くときに読み込む。 */
+  async openToolWindow(kind: "block-editor"): Promise<void> {
+    const { ToolWindowHost } = await import("../windows/ToolWindowHost");
+    await (await ToolWindowHost.get(this)).open(kind);
   }
 
   // ---- 内部 ----

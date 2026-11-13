@@ -1,10 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "メインウィンドウと道具のウィンドウ（ワールドマップエディター）の権限",
+  "description": "メインウィンドウと道具のウィンドウ（ワールドマップエディター・ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の権限",
   "windows": [
     "main",
-    "world-map"
+    "world-map",
+    "block-editor",
+    "palette-editor",
+    "block-adjust"
   ],
   "permissions": [
     "core:default",

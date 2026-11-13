@@ -13,6 +13,7 @@ import {
   type MapDocument,
   type MapId,
   type SaveResult,
+  type TilesetRef,
 } from "@zigzagumap/core";
 import { MapCatalog } from "./MapCatalog";
 import { TauriProjectFs } from "./TauriProjectFs";
@@ -146,6 +147,30 @@ export class ProjectSession {
   /** 未出力の変更があるか。 */
   isModified(id: MapId): boolean {
     return this.project.isModified(id);
+  }
+
+  /** 未出力の変更があるか（マップ・タイルセット・マップ名）。 */
+  hasUnsavedChanges(): boolean {
+    return this.project.hasUnsavedChanges();
+  }
+
+  /**
+   * タイルセットを編集したあと、それを使う組（キャッシュにあるもの）を作り直す。作り直した組を返す。
+   * 組のキーは「主のポインタ値:副のポインタ値」。
+   */
+  refreshTilesets(ref: TilesetRef): TilesetView[] {
+    const context = this.project.editorContext();
+    const out: TilesetView[] = [];
+    for (const view of this.tilesets.values()) {
+      const [primary, secondary] = view.key.split(":").map(Number) as [number, number];
+      if ((ref.secondary ? secondary : primary) !== ref.pointer >>> 0) continue;
+      view.reload(
+        context.tileset({ pointer: primary, secondary: false }).toTileset(),
+        context.tileset({ pointer: secondary, secondary: true }).toTileset(),
+      );
+      out.push(view);
+    }
+    return out;
   }
 
   /** タウンマップに未出力の変更があるか。 */
