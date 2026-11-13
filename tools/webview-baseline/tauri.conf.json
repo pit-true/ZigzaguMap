@@ -1,0 +1,8 @@
+{
+  "productName": "webview-baseline",
+  "version": "0.0.0",
+  "identifier": "io.github.pit-true.zigzagumap-baseline",
+  "build": { "frontendDist": "page" },
+  "app": { "windows": [] },
+  "bundle": { "active": false, "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"] }
+}

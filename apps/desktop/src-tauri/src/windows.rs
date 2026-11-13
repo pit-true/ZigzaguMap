@@ -1,5 +1,5 @@
 //! 別ウィンドウ（ワールドマップエディターなどの道具のウィンドウ）を開く。
-//! 中身はメインと同じ index.html で、画面側がウィンドウのラベルを見て組み立てる。
+//! 中身は別ウィンドウ用の入口 tool.html（tool.ts）で、画面側がウィンドウのラベルを見て組み立てる。
 
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWind
 use crate::automation::Automation;
 use crate::offscreen;
 use crate::profile::Profile;
-use crate::{StartupArgs, AUTOMATION_BROWSER_ARGS};
+use crate::{StartupArgs, AUTOMATION_BROWSER_ARGS, BROWSER_ARGS};
 
 /// メインと道具のウィンドウに共通の設定（WebView2 のデータの置き場所と追加の引数、自動操作なら画面外で作る準備）。
 /// WebView2 は同じユーザーデータのフォルダを使うウィンドウどうしで同じ引数でないと作れないので、ここにまとめる。
@@ -22,13 +22,10 @@ pub(crate) fn prepare<'a, R: Runtime, M: Manager<R>>(
         builder = builder.data_directory(dir);
     }
     if args.offscreen() {
-        builder = builder
-            .visible(false)
-            .focused(false)
-            .skip_taskbar(true)
-            .additional_browser_args(AUTOMATION_BROWSER_ARGS);
+        builder.visible(false).focused(false).skip_taskbar(true).additional_browser_args(AUTOMATION_BROWSER_ARGS)
+    } else {
+        builder.additional_browser_args(BROWSER_ARGS)
     }
-    builder
 }
 
 /// 道具のウィンドウを開く。同じラベルのウィンドウがあれば前に出すだけ。
@@ -58,7 +55,8 @@ pub async fn open_tool_window(
         return Ok(());
     }
     let main = app.get_webview_window("main").ok_or("メインウィンドウがありません")?;
-    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
+    // 中身は別ウィンドウ用の入口（tool.html）。メインの画面のコードは読み込まない。
+    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("tool.html".into()))
         .title(title)
         .inner_size(width, height)
         .resizable(false)

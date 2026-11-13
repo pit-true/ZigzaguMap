@@ -30,7 +30,7 @@ export interface OpenMap {
 export class UnknownRomError extends Error {}
 
 /** 同時に持っておくタイルセットの組の数（メモリを抑えるため古いものから捨てる）。 */
-const TILESET_CACHE_SIZE = 8;
+const TILESET_CACHE_SIZE = 2;
 
 /**
  * 開いている ROM（とプロジェクトフォルダ）。マップの読み込み、タイルセットのキャッシュ、操作の履歴、出力を受け持つ。

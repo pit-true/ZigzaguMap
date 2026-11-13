@@ -54,9 +54,9 @@ impl Profile {
         }
     }
 
-    /// WebView2 のユーザーデータのフォルダ（通常の場所なら None = Tauri の既定）。
+    /// WebView2 のユーザーデータを置くフォルダ（通常の場所なら None = Tauri の既定）。WebView2 がこの下に `EBWebView` を作る。
     pub fn webview_dir(&self) -> Option<PathBuf> {
-        self.dir.as_ref().map(|d| d.join("EBWebView"))
+        self.dir.clone()
     }
 
     /// 一時フォルダなら消す（終了時）。WebView2 のプロセスは exe より少し後に終わり、それまでファイルを掴んでいるので、
