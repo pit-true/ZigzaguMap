@@ -138,7 +138,9 @@ export class RegionMapJson {
   }
 }
 
-const hex = formatHex;
+function hex(v: number, digits: number): string {
+  return formatHex(v, digits);
+}
 
 function id(index: number): string {
   return "0x" + hex(MAPSEC_FIRST + index, 2);

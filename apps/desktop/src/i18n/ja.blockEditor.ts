@@ -6,7 +6,9 @@ import { fmt, hexRecord, ini } from "./ini";
 
 const B = ini.BlockEditorForm;
 
-const hex = formatHex;
+function hex(v: number, digits: number): string {
+  return formatHex(v, digits);
+}
 
 /** 00〜FF の 256 件（名前の無い値は 16 進 2 桁だけ）。 */
 function comboItems(names: Readonly<Record<number, string>>): string[] {
@@ -100,4 +102,6 @@ export const jaBlockEditor = {
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */
-export const hexText = formatHex;
+export function hexText(n: number, digits: number): string {
+  return formatHex(n, digits);
+}

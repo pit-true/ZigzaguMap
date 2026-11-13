@@ -281,7 +281,9 @@ export const ja = {
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */
-export const hex = formatHex;
+export function hex(value: number, digits: number): string {
+  return formatHex(value, digits);
+}
 
 /** 選択肢に名前が無いときの表示（「0A ???」）。 */
 function unknownChoice(value: number): string {
