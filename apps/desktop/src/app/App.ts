@@ -61,7 +61,8 @@ export class App implements ActionTarget {
   readonly system: SystemSettings;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
-  private readonly tree: MapTree;
+  /** 左のマップ一覧（自動操作の `tree.list` も読む）。 */
+  readonly tree: MapTree;
   private readonly combo: MapCombo;
   private readonly splitter: Splitter;
   private readonly romInfo = new RomInfoPanel();
@@ -111,7 +112,7 @@ export class App implements ActionTarget {
     this.actions.register("map.insert", () => this.newMaps.insert());
     this.actions.register("dummy.manage", () => this.newMaps.bankHeader());
     this.menu = new MenuBar({
-      items: () => buildMenu(this.recentItems()),
+      items: () => this.menuItems(),
       isEnabled: (item) => this.actions.isEnabled(item),
       isChecked: (id) => this.actions.isChecked(id),
       run: (id, label) => this.actions.run(id, label),
@@ -199,7 +200,7 @@ export class App implements ActionTarget {
     this.automation = args.automation !== null;
     this.profileDir = args.profile;
     // 自動操作の入口のコードは、自動操作で起動したときだけ読み込む（通常の起動では読まない）。
-    if (args.automation) await (await import("./Automation")).startAutomation(this);
+    if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     if (args.rom) await this.openSession(args.rom, args.project);
   }
@@ -574,6 +575,11 @@ export class App implements ActionTarget {
   }
 
   // ---- 内部 ----
+
+  /** メニューの全項目（今の状態で。メニューバーと自動操作の `menu.list` が使う）。 */
+  menuItems(): MenuItem[] {
+    return buildMenu(this.recentItems());
+  }
 
   /** ファイル > 最近開いたもの（登録されている分だけ。最大数を超えた分は出さない）。 */
   private recentItems(): MenuItem[] {

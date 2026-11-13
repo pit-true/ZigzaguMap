@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { click, findField, getField, setField } from "../app/AutomationUi";
+import { installNativeDialogs, listDialogs, operateDialog, queuePath } from "../app/automation/dialogs";
+import { click, findField, getField, listFields, setField, useAmNames } from "../app/automation/ui";
 import type { FileDialogs } from "../app/FileDialogs";
-import { openDialogs } from "../ui/Dialog";
 import type { ToolClient } from "./ToolClient";
 
 /** 別ウィンドウが自動操作に見せるもの。 */
@@ -31,6 +31,9 @@ interface AutomationEvent {
  */
 export async function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): Promise<void> {
   if ((await invoke<number | null>("automation_port")) === null) return;
+  // AdvanceMap の部品名（field:<名前>）の対応表と、Windows のファイルのダイアログの代わり（メインと同じ）
+  useAmNames(client.kind);
+  installNativeDialogs();
   await getCurrentWebviewWindow().listen<AutomationEvent>("automation-request-window", (event) => {
     const { id, request } = event.payload;
     void (async () => {
@@ -62,6 +65,11 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
     case "click":
       click(str(req, "id"));
       return null;
+    case "ui.list":
+    case "fields":
+      return listFields();
+    case "dialogs":
+      return { dialogs: listDialogs() };
     case "action": {
       const id = str(req, "id");
       const run = target.actions[id];
@@ -73,31 +81,12 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
         .catch((e: unknown) => (error = e));
       await Promise.race([p, settle(150)]);
       if (error) throw error instanceof Error ? error : new Error(String(error));
-      return { dialogs: describeDialogs() };
+      return { dialogs: listDialogs() };
     }
-    case "dialog": {
-      const top = openDialogs[openDialogs.length - 1];
-      const press = typeof req["press"] === "string" ? req["press"] : typeof req["button"] === "string" ? req["button"] : undefined;
-      if (!top) {
-        if (press !== undefined || req["input"] !== undefined) throw new Error("ダイアログが開いていません");
-        return { dialogs: [] };
-      }
-      if (typeof req["input"] === "string") {
-        if (!top.setInput) throw new Error("入力欄がありません");
-        top.setInput(req["input"]);
-      }
-      if (press !== undefined) {
-        const before = describeDialogs();
-        if (press === "close") top.close();
-        else top.press(press);
-        await settle();
-        return { pressed: press, before, dialogs: describeDialogs() };
-      }
-      return { dialogs: describeDialogs() };
-    }
+    case "dialog":
+      return operateDialog(req);
     case "queuePath":
-      target.files.queue(typeof req["path"] === "string" ? req["path"] : null);
-      return null;
+      return queuePath(target.files, typeof req["path"] === "string" ? req["path"] : null);
     case "key": {
       const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
       const el = typeof req["id"] === "string" ? findField(req["id"]) : (document.activeElement ?? document.body);
@@ -150,10 +139,6 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
     }
   }
-}
-
-function describeDialogs(): unknown[] {
-  return openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons, input: d.input?.() ?? null }));
 }
 
 function settle(ms = 50): Promise<void> {
