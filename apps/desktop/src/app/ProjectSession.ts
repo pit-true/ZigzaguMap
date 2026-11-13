@@ -196,7 +196,7 @@ export class ProjectSession {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
     const result = await this.project.save();
-    // フライトポジションは mapsegionmap.json の HealLocations に書くので、タウンマップを開いていなくても読んで書く。
+    // フライトポジションは maps\regionmap.json の HealLocations に書くので、タウンマップを開いていなくても読んで書く。
     if (!this.regionMapValue && !this.project.isFlyPositionsModified()) return result;
     const region = await (await this.openRegionMap()).save(this.fs);
     this.project.markFlyPositionsSaved();
