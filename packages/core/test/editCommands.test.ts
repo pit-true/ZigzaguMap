@@ -327,6 +327,11 @@ describe("マップの大きさ・ボーダー", () => {
         expect([doc.width, doc.height, doc.border.width, doc.border.height]).toEqual([3, 2, 1, 1]);
       },
     );
+    // 幅・高さを変えると、配置は同じ並びのまま新しい幅で折り返す（AdvanceMap と同じ。足りないマスは 0）
+    const q = await open();
+    const before = [...q.loaded(M00)!.grid.cells];
+    new CommandBus(q.editorContext()).execute(new SetRawFooterCommand({ ...M00, footer }));
+    expect([...q.loaded(M00)!.grid.cells]).toEqual(Array.from({ length: 6 }, (_, i) => before[i] ?? 0));
     const p = await open();
     expectEditError(p, new SetBorderCommand({ ...M00, width: 2, height: 1, cells: [1] }), EditErrorCode.InvalidRawBytes);
   });

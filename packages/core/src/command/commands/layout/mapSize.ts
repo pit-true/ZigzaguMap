@@ -34,3 +34,13 @@ export function resizeGrid(grid: BlockGrid, width: number, height: number, fill 
   }
   return out;
 }
+
+/**
+ * 同じ並びのまま幅・高さだけを変えた配置を作る（AdvanceMap の高度なヘッダーで、フッターの幅・高さを書き換えて保存したときと同じ。
+ * 配置のデータはそのままで、新しい幅で折り返して読む）。足りないマスは `fill`。
+ */
+export function reflowGrid(grid: BlockGrid, width: number, height: number, fill = 0): BlockGrid {
+  const out = new Uint16Array(width * height).fill(fill);
+  out.set(grid.cells.subarray(0, Math.min(out.length, grid.cells.length)));
+  return new BlockGrid(width, height, out);
+}
