@@ -11,30 +11,42 @@ use crate::StartupArgs;
 /// 個人設定のファイル名（app data dir 直下）。
 const SETTINGS_FILE: &str = "settings.json";
 
+/// 自動操作で起動しているときは、Windows のファイル・フォルダを選ぶダイアログを一切開かない（画面に出て操作を奪うため）。
+/// 画面側は `queuePath` で予約した答えを使う。予約が無いままここに来たらエラーにする。
+pub(crate) fn deny_native_dialog(args: &StartupArgs) -> Result<(), String> {
+    if args.automation.is_some() {
+        Err("自動操作中は Windows のファイルのダイアログを開きません（queuePath で選ぶパスを予約してください）".into())
+    } else {
+        Ok(())
+    }
+}
+
 /// ROM を選ぶダイアログを出し、選ばれたパスを返す。キャンセルなら None。
 #[tauri::command]
-pub async fn pick_rom(window: WebviewWindow) -> Option<String> {
-    window
+pub async fn pick_rom(window: WebviewWindow, args: State<'_, StartupArgs>) -> Result<Option<String>, String> {
+    deny_native_dialog(&args)?;
+    Ok(window
         .dialog()
         .file()
         .set_parent(&window)
         .add_filter("GBA ROM", &["gba"])
         .blocking_pick_file()
         .and_then(|file| file.into_path().ok())
-        .map(|path| display_path(&path))
+        .map(|path| display_path(&path)))
 }
 
 /// フォルダを選ぶダイアログを出す。キャンセルなら None。
 #[tauri::command]
-pub async fn pick_folder(window: WebviewWindow, title: String) -> Option<String> {
-    window
+pub async fn pick_folder(window: WebviewWindow, args: State<'_, StartupArgs>, title: String) -> Result<Option<String>, String> {
+    deny_native_dialog(&args)?;
+    Ok(window
         .dialog()
         .file()
         .set_parent(&window)
         .set_title(title)
         .blocking_pick_folder()
         .and_then(|file| file.into_path().ok())
-        .map(|path| display_path(&path))
+        .map(|path| display_path(&path)))
 }
 
 /// 「はい／いいえ／キャンセル」の質問を出す。戻り値は "yes" / "no" / "cancel"。

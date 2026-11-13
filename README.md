@@ -450,7 +450,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
 | `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
 | `dialog` | `input`、`press`（どちらも省略可）、`title`（省略時は手前のもの） | ダイアログに入力して、ボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。ファイルのダイアログは `input` にパスを入れて `ok`（か「開く」「保存」）、`cancel` で取り消し。返事は押す前と後の一覧 |
-| `queuePath` | `path`（null でキャンセル） | ファイル・フォルダを選ぶダイアログの答え。開いているダイアログがあればそれに答え（返事の `answered` が true）、無ければ次に出るダイアログの答えとして積む。自動操作のときは Windows のダイアログは出さず、答えが無ければ `dialogs` に出して待つ |
+| `queuePath` | `path`（null でキャンセル） | ファイル・フォルダを選ぶダイアログの答え。開いているダイアログがあればそれに答え（返事の `answered` が true）、無ければ次に出るダイアログの答えとして積む。自動操作のときは Windows のダイアログは一切出さず、答えが無ければ `dialogs` に出して待つ（Rust 側の `pick_*` も自動操作のときはダイアログを開かずにエラーを返す） |
 | `menu.list` | | メニューの全項目（`path`: 階層の文言の列、`id`、`enabled`（親が無効なら無効）、`checked`、`submenu`、`shortcut`）。最近開いたものも含む。区切り線は出さない |
 | `menu.run` | `path`（`"設定 > グリッドの表示"` か `["設定", "グリッドの表示"]`）か `id`、`wait`（ms、既定 100） | メニューの項目を実行する。メニューバーで選んだときと同じく、無効な項目とサブメニューは実行しない（失敗）。返事はステータスバーと開いているダイアログ |
 | `tree.list` | `visibleOnly`（省略可） | マップ一覧の全項目（`text`: 未出力の印 ` *` を含む文字列、`depth`、`hasChildren`、`expanded`、`selected`、`opened`（開いているマップ）、`dirty`、`mapId`、`key`）。`visibleOnly: true` で開いている枝の中だけ |
@@ -542,7 +542,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 
 文言の扱い:
 
-- メニューはシナリオに言語ファイルのキー（`"key": ["Menue.12", "Menue.120"]`。`menu.state:Menue.12/Menue.120` も同じ）で書きます。AdvanceMap 側は本体の言語ファイル（`Ini\Sprachen\Japanese.ini`、cp932）の文言で、ZigzaguMap 側は文言の基準（`apps/desktop/src/i18n/source/Japanese.ini`）の文言で `menu.run` します。文言で見つからない項目は `tests/compare/zigzagu_menu.json`（キーの階層 → アクション ID）で実行します。コンボの選択は番号で書きます。
+- メニューはシナリオに言語ファイルのキー（`"key": ["Menue.12", "Menue.120"]`。`menu.state:Menue.12/Menue.120` も同じ）で書きます。AdvanceMap 側は本体の言語ファイル（`Ini\Sprachen\Japanese.ini`、cp932）の文言で、ZigzaguMap 側は文言の基準（`apps/desktop/src/i18n/source/Japanese.ini` に `overrides.ini` を重ねたもの。`scripts/gen-i18n.mjs` と同じ規則）の文言で `menu.run` します。文言で見つからない項目は `tests/compare/zigzagu_menu.json`（キーの階層 → アクション ID）で実行します。コンボの選択は番号で書きます。
 - ZigzaguMap の文言の基準は、AdvanceMap 本体の言語ファイルと同じキーで 500 件ほど文言が違います。比べる前に、AdvanceMap 側で読んだ文字列（欄の値・一覧・メニュー・ダイアログ）を、両方の言語ファイルをキー（セクション名.番号）で対応づけた表で新しい文言へ読み替えます（`lib/langmap.py`。新しい文言の頭の `(AM1.95未使用)` などの注記は外す。同じ旧文言が別々の新文言になるものは読み替えない）。表に無い文字列の食い違いは失敗のままです。言語ファイルの場所は設定の `langOld`（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`）と `langNew` で変えられます。
 - ダイアログは、AdvanceMap のメッセージボックス（#32770）と ZigzaguMap の画面内のダイアログを題名・本文・ボタン（アクセスキーの表記を除く）で、AdvanceMap の VCL のフォームと ZigzaguMap の別ウィンドウは題名だけで比べます。
 
