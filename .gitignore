@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+*.gba
+*.bak
+*.sav
+*.sa1
+*.log
+.vite/
+coverage/
+apps/desktop/src-tauri/gen/schemas/
