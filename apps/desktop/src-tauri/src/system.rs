@@ -5,10 +5,12 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use tauri::ipc::Request;
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
+use crate::files::deny_native_dialog;
 use crate::project_fs::display_path;
+use crate::StartupArgs;
 
 /// ファイルの種類（名前と拡張子。拡張子に "*" を入れると全部）。
 #[derive(Deserialize)]
@@ -32,11 +34,13 @@ fn with_filters(
 #[tauri::command]
 pub async fn pick_save_file(
     window: WebviewWindow,
+    args: State<'_, StartupArgs>,
     title: String,
     filters: Vec<Filter>,
     directory: Option<String>,
     file_name: Option<String>,
-) -> Option<String> {
+) -> Result<Option<String>, String> {
+    deny_native_dialog(&args)?;
     let mut b = with_filters(window.dialog().file().set_parent(&window).set_title(title), &filters);
     if let Some(d) = directory.filter(|d| Path::new(d).is_dir()) {
         b = b.set_directory(d);
@@ -44,18 +48,20 @@ pub async fn pick_save_file(
     if let Some(n) = file_name {
         b = b.set_file_name(n);
     }
-    b.blocking_save_file().and_then(|f| f.into_path().ok()).map(|p| display_path(&p))
+    Ok(b.blocking_save_file().and_then(|f| f.into_path().ok()).map(|p| display_path(&p)))
 }
 
 /// 「ファイルを開く」。キャンセルなら None。
 #[tauri::command]
 pub async fn pick_open_file(
     window: WebviewWindow,
+    args: State<'_, StartupArgs>,
     title: String,
     filters: Vec<Filter>,
     directory: Option<String>,
     file_name: Option<String>,
-) -> Option<String> {
+) -> Result<Option<String>, String> {
+    deny_native_dialog(&args)?;
     let mut b = with_filters(window.dialog().file().set_parent(&window).set_title(title), &filters);
     if let Some(d) = directory.filter(|d| Path::new(d).is_dir()) {
         b = b.set_directory(d);
@@ -63,7 +69,7 @@ pub async fn pick_open_file(
     if let Some(n) = file_name {
         b = b.set_file_name(n);
     }
-    b.blocking_pick_file().and_then(|f| f.into_path().ok()).map(|p| display_path(&p))
+    Ok(b.blocking_pick_file().and_then(|f| f.into_path().ok()).map(|p| display_path(&p)))
 }
 
 /// ファイルを書く。パスはヘッダー `path`（URL エンコード）、中身は本文のバイト列。
