@@ -6,7 +6,6 @@ import { FlyTable, cloneFlyPositions } from "../fly/FlyTable.js";
 import { HEAL_LOCATION_COUNT } from "../regionmap/constants.js";
 import { healOf, writeHeal } from "../regionmap/RegionMapDocument.js";
 import { RegionMapJson } from "../regionmap/RegionMapJson.js";
-import { REGION_MAP_PATH } from "../regionmap/RegionMapProject.js";
 import type { DocumentContext } from "../command/DocumentContext.js";
 import { TilesetTable } from "../map/TilesetTable.js";
 import { TILESET_HEADER_SIZE } from "../map/constants.js";
@@ -28,6 +27,7 @@ import {
   HIDDEN_ITEM_PATH,
   MAPS_DIR,
   PROJECT_MANIFEST_PATH,
+  REGION_MAP_PATH,
   TILESETS_DIR,
   TILESET_IMAGE_FILE,
   TILESET_INFO_FILE,

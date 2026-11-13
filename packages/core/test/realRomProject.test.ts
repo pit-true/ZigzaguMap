@@ -157,7 +157,8 @@ describe.skipIf(!romPath)("実 ROM: イベント・接続・マップスクリ�
       expect(back.grid.cells).toEqual(doc.grid.cells);
       expect(back.events).toEqual(doc.events);
       expect(back.connections).toEqual(doc.connections);
-      expect(back.mapScripts).toEqual(doc.mapScripts);
+      // 条件表のポインタ（ROM 上の表の位置）は表示用で JSON には書かない（出力で表を書き直す）ので、0 になる
+      expect(back.mapScripts).toEqual(doc.mapScripts?.map((e) => (e.table ? { ...e, pointer: 0 } : e)) ?? null);
       expect(back.wild).toEqual(doc.wild);
       expect(back.header).toEqual(doc.header);
     }

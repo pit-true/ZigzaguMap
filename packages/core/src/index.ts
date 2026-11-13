@@ -114,7 +114,7 @@ export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
 export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
-export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock } from "./project/HiddenItemSource.js";
+export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock, itemBallLabel } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
 export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
@@ -171,7 +171,7 @@ export { RemoveEventCommand, type RemoveEventArgs } from "./command/commands/eve
 export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./command/commands/event/MoveEventCommand.js";
 export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
-export { SetItemBallCommand, itemBallLabel, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
+export { SetItemBallCommand, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
 export { FLY_FIELD_NAMES, SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
 export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
 export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";

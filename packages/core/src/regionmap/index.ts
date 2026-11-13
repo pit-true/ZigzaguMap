@@ -17,7 +17,8 @@ export {
 export { RegionMapGraphics, type RegionMapGraphicsData, type RegionMapGraphicsSource } from "./RegionMapGraphics.js";
 export { RegionMapReader, formatRomOffset, type RegionMapRomData, type RegionMapTableAddresses } from "./RegionMapReader.js";
 export { REGION_MAP_FORMAT, RegionMapJson } from "./RegionMapJson.js";
-export { REGION_MAP_PATH, RegionMapProject } from "./RegionMapProject.js";
+export { RegionMapProject } from "./RegionMapProject.js";
+export { REGION_MAP_PATH } from "../project/paths.js";
 export { isRegionMapContext, regionMapContext, withRegionMap, type RegionMapContext } from "./RegionMapContext.js";
 export { SetRegionSectionCommand, type SetRegionSectionArgs } from "./commands/SetRegionSectionCommand.js";
 export { SetRegionCellsCommand, type RegionCellWrite, type SetRegionCellsArgs } from "./commands/SetRegionCellsCommand.js";

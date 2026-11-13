@@ -1,4 +1,5 @@
 import type { MapDocument } from "../../../model/MapDocument.js";
+import { itemBallLabel } from "../../../project/HiddenItemSource.js";
 import { EditError, EditErrorCode, checkRange } from "../../EditError.js";
 import { argInt, argMapId, argOptString, type Args } from "../../jsonArgs.js";
 import { EventsCommand, type MapArgs } from "../base/MapPartCommand.js";
@@ -12,11 +13,6 @@ export type SetItemBallArgs = MapArgs & {
   /** 識別子（32 桁の 16 進）。省略すると作ったときに決め、引数に残す（操作列の再生で同じ値になる）。 */
   id?: string;
 };
-
-/** 落とし物のラベル名（Bochi と同じ `HiddenItem_BB_MM_<id>`）。 */
-export function itemBallLabel(bank: number, map: number, id: string): string {
-  return `HiddenItem_${String(bank).padStart(2, "0")}_${String(map).padStart(2, "0")}_${id}`;
-}
 
 /** 新しい識別子（32 桁の 16 進。.NET の Guid.ToString("N") と同じ形）。 */
 export function newItemBallId(): string {
