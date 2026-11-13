@@ -177,7 +177,7 @@ AdvanceMap で ROM へすぐ書き込む「保存」ボタン類（マップ名�
 
 ## 画面の構成
 
-AdvanceMap 1.92 日本語版に合わせています（文言は `apps/desktop/src/i18n/ja.ts` に集め、Japanese.ini の表記を使います）。
+AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。
 
 - 上: メニューバー（Alt でフォーカス、矢印キーで移動、Enter・アクセスキーで実行、Esc で閉じる）、ツールバー（AdvanceMap と同じ並び。アイコンは自作の SVG）
 - 左: マップ一覧（根は「ヘッダー」「iniファイル」「マップファイル」。並べ替えはツールバーのコンボか 設定 > マップリスト > ヘッダーのソート）と ROM 情報。境目の分割バーで幅を変えられます。設定 > コンボボックス をオンにすると、左の欄の代わりにツールバーの下へ「マップ名」と「マップ」のコンボが出ます（マップを選ぶと開く）。設定 > ツールバーの表示（Ctrl+T）でツールバーを隠せます
@@ -269,6 +269,17 @@ pnpm install
 pnpm typecheck   # 型チェック
 pnpm test        # 単体テスト
 ```
+
+画面の文言を変えるときは、`apps/desktop/src/i18n/source/Japanese.ini`（UTF-8）を直すか差し替えて、文言のモジュール `apps/desktop/src/i18n/ini.generated.ts` を作り直し、両方をコミットします。`ja*.ts` は生成物の値を `ini.節["番号"]` で引いています。
+
+```sh
+node scripts/gen-i18n.mjs          # ini.generated.ts を作り直す
+node scripts/gen-i18n.mjs --check  # ini と生成物が合っているか確かめる
+```
+
+- 値の中の AdvanceMap 1.95 向けの注記（「(AM1.95未使用)」「(※AM1.95使用不可)」）は外します。外し方は `scripts/gen-i18n.mjs` の `stripNote` だけで決めています。行末の空白も外します。
+- 注記を外して空になった番号と、ini に無い番号は生成物に入りません。`ja*.ts` がそれを引いていると型チェック（`pnpm typecheck`）で止まるので、旧版の文言を直接書くか、ini に足してください。
+- ルビー・サファイア・エメラルドの挙動や季節など、ZigzaguMap に該当する機能の無い節は出しません（`EXCLUDED_SECTIONS`）。
 
 ROM が要るテストは、環境変数 `ZIGZAGU_TEST_ROM` に素の BPRJ のパスを入れたときだけ実行されます。ROM はリポジトリに入れません。
 
