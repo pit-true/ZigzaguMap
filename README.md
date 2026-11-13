@@ -328,7 +328,7 @@ node scripts/gen-i18n.mjs --check  # ini・overrides.ini と生成物が合っ�
 node scripts/check-i18n.mjs        # 文言の突き合わせ（下記）
 ```
 
-`scripts/check-i18n.mjs` は、改訂版 Japanese.ini に overrides.ini を重ねた値を基準に、ini に無い番号の参照と、ini の値と同じなのに ini から引かず直接書いた文字列を探します。`--inventory <inventory のフォルダ> --old-ini <AdvanceMap 1.92 の Japanese.ini>` を付けると、AdvanceMap の画面を調べた部品表の文字列（1.92 の表記）を旧版の ini で番号に直し、アプリに対応が無いものも探します。意図した違いと番号の読み替え（改訂版で並びが変わったツールバーなど）は、スクリプトの `INTENTIONAL`・`RENAMED` に理由を付けて書きます（`--verbose` で一覧）。
+`scripts/check-i18n.mjs` は、改訂版 Japanese.ini に overrides.ini を重ねた値を基準に、ini に無い番号の参照と、ini の値と同じなのに ini から引かず直接書いた文字列と、画面で使っている文言に残った英語だけの値・文字化け・タブ文字を探します（画面で使ってよい英語「OK」「BGM:」などは、スクリプトの `ALLOWED_ENGLISH` に理由を付けて書きます）。`--inventory <inventory のフォルダ> --old-ini <AdvanceMap 1.92 の Japanese.ini>` を付けると、AdvanceMap の画面を調べた部品表の文字列（1.92 の表記）を旧版の ini で番号に直し、アプリに対応が無いものも探します。意図した違いと番号の読み替え（改訂版で並びが変わったツールバーなど）は、スクリプトの `INTENTIONAL`・`RENAMED` に理由を付けて書きます（`--verbose` で一覧）。
 
 - 値の中の AdvanceMap 1.95 向けの注記（「(AM1.95未使用)」「(※AM1.95使用不可)」）は外します。外し方は `scripts/gen-i18n.mjs` の `stripNote` だけで決めています。行末の空白も外します。
 - 注記を外して空になった番号と、ini に無い番号は生成物に入りません。`ja*.ts` がそれを引いていると型チェック（`pnpm typecheck`）で止まるので、旧版の文言を直接書くか、ini に足してください。

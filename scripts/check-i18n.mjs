@@ -1,12 +1,14 @@
-// 画面の文言を、改訂版 Japanese.ini（apps/desktop/src/i18n/source/Japanese.ini）を基準に突き合わせる。
+// 画面の文言を、改訂版 Japanese.ini（apps/desktop/src/i18n/source/Japanese.ini）に補正 overrides.ini を重ねたものを基準に突き合わせる。
 //
 //   node scripts/check-i18n.mjs [--inventory <inventory のフォルダ>] [--old-ini <AdvanceMap 1.92 の Japanese.ini>] [--verbose]
 //
 // 調べること:
-//   1. ini.generated.ts が Japanese.ini と合っているか
+//   1. ini.generated.ts が Japanese.ini・overrides.ini と合っているか
 //   2. ja*.ts が引いている番号が ini にあるか（注記を外して空になった番号も「無い」扱い）
 //   3. ja*.ts に直接書いた文字列のうち、ini の値と同じもの（ini から引くべきもの）
-//   4. inventory の部品表と部品の一覧（AdvanceMap の画面の文字列）のうち、アプリに対応が無いもの
+//   4. 画面で使っている文言（ja*.ts が引いている番号と、節ごと使っている節の値）に残った
+//      英語だけの値・文字化け・タブ文字（直すときは overrides.ini に書く。許す英語は ALLOWED_ENGLISH）
+//   5. inventory の部品表と部品の一覧（AdvanceMap の画面の文字列）のうち、アプリに対応が無いもの
 //      inventory の文字列は AdvanceMap 1.92 の表記なので、旧版の ini（--old-ini、cp932）で節と番号を求め、
 //      改訂版の同じ番号をアプリが引いているか（または同じ文言を持っているか）で判断する。
 // 見つかったものがあれば終了コード 1。意図した違いは INTENTIONAL に理由を付けて書く。
@@ -107,6 +109,25 @@ const INTENTIONAL = new Map([
   ["INI-Version/SchriftArt", "フォントは CSS で指定する"],
   ["Cancel", "Delphi の入力ダイアログのボタン（ini の Cancel は別の画面のもの）"],
 ]);
+
+/**
+ * 画面で使っていてよい英語だけの値（値 → 理由）。旧版でも英語で、画面の用語として定着しているもの。
+ * [INI-Version] と各節の Amount（件数）は文言ではないので調べない。
+ */
+const ALLOWED_ENGLISH = new Map([
+  ["OK", "ボタン（旧版も OK）"],
+  ["Read me", "ヘルプのメニュー（旧版も Read me）"],
+  ["Tileset", "タイルセット番号で並べたときの一覧の見出し（AdvanceMap 1.92 も「Tileset 0」）"],
+  ["BGM:", "場所の設定タブの見出し（BGM は日本語の用語として定着）"],
+  ["No.:", "BGM の番号の欄（「ワープNo.:」などと同じ書き方）"],
+  ["15bit to RGB", "パレットエディタのボタン（旧版も英語）"],
+  ["Most recently used ROM", "最後に開いたROMのショートカットのファイル名（旧版も英語）"],
+]);
+
+/** 文字化けらしい値（cp932 と Latin-1 の取り違え「Pok駑on」「PokÃ©mon」と、置換文字）。 */
+function looksGarbled(value) {
+  return /[A-Za-z][^\x00-\x7F\u3000-\u30FF\uFF00-\uFFEF]+[A-Za-z]/.test(value) || /[\u00C2\u00C3][\u0080-\u00BF]/.test(value) || /\uFFFD/.test(value);
+}
 
 /** まだ作っていない機能の文言（作るときに ini から引く）。報告はするが問題には数えない。 */
 const UNIMPLEMENTED = new Map([
@@ -224,7 +245,7 @@ function main() {
   };
 
   const { text, overrides, sections, notes } = loadNewIni();
-  console.log(`改訂版 Japanese.ini: ${[...sections.values()].reduce((n, s) => n + s.size, 0)} 件（${sections.size} 節）`);
+  console.log(`改訂版 Japanese.ini（overrides.ini を重ねたもの）: ${[...sections.values()].reduce((n, s) => n + s.size, 0)} 件（${sections.size} 節）`);
   console.log(`外した注記: ${[...notes].map(([n, c]) => `${n} ${c} 件`).join("、") || "なし"}`);
 
   // 1. 生成物
@@ -266,7 +287,25 @@ function main() {
     .map((l) => `${l.where} 「${l.text.trim()}」 → ${newByValue.get(l.text.trim()).join(", ")}`);
   report("ini の値と同じなのに ini から引いていない文字列", hardcoded);
 
-  // 4. inventory との突き合わせ
+  // 4. 画面で使っている文言に残った英語・文字化け・タブ文字
+  const shown = new Map(); // 節/番号 → 値
+  for (const r of app.refs) {
+    const v = sections.get(r.section)?.get(r.key);
+    if (v !== undefined) shown.set(`${r.section}/${r.key}`, v);
+  }
+  for (const s of app.wholeSections) for (const [k, v] of sections.get(s) ?? []) if (k !== "Amount") shown.set(`${s}/${k}`, v);
+  const leftovers = [];
+  for (const [key, v] of [...shown].sort()) {
+    if (key.startsWith("INI-Version/")) continue;
+    const why = [];
+    if (/^[\x00-\x7F]+$/.test(v) && /[A-Za-z]/.test(v) && !ALLOWED_ENGLISH.has(v.trim())) why.push("英語だけ");
+    if (looksGarbled(v)) why.push("文字化け");
+    if (v.includes("\t")) why.push("タブ文字");
+    if (why.length > 0) leftovers.push(`${key} 「${v.replace(/\t/g, "\\t")}」（${why.join("・")}）`);
+  }
+  report("画面で使っている文言に残った英語・文字化け・タブ文字", leftovers);
+
+  // 5. inventory との突き合わせ
   if (args.inventory) {
     if (!args.oldIni) throw new Error("--inventory には --old-ini（AdvanceMap 1.92 の Japanese.ini）も指定してください");
     const oldIni = parseIni(new TextDecoder("shift_jis").decode(readFileSync(args.oldIni)));
@@ -316,6 +355,8 @@ function main() {
   }
 
   if (args.verbose) {
+    console.log("\n## 画面で使ってよい英語");
+    for (const [v, why] of ALLOWED_ENGLISH) console.log(`- ${v}: ${why}`);
     console.log("\n## 意図した違い");
     for (const [k, why] of INTENTIONAL) console.log(`- ${k}: ${why}`);
     console.log("\n## 番号の読み替え（旧版 → 改訂版）");
