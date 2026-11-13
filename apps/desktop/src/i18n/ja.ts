@@ -1,3 +1,5 @@
+import { jaEvent } from "./ja.event";
+
 /**
  * 画面の文言（日本語）。文言はすべてここに集める。
  * AdvanceMap 1.92 日本語化パックの Japanese.ini の表記をそのまま使う（「ROMの保存」系は「出力」に読み替える）。
@@ -202,7 +204,9 @@ export const ja = {
   selectedBlock: (block: number) => `選択中: ${hex(block, 3)}`,
   selectedStamp: (w: number, h: number) => `選択中: ${w}×${h}`,
 
-  // [Events]
+  // [Events] [EventMenge] ほか（ja.event.ts）
+  event: jaEvent,
+  // [Events]（旧）
   eventTypes: ["人", "ワープ", "スクリプト", "看板"],
   eventNumber: "イベント番号:",
   eventPosition: "座標(X/Y) :",
