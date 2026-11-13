@@ -1,5 +1,6 @@
 import { BLOCK_ID_MASK, BLOCK_PIXELS, createImage, type BlockGrid, type RgbaImage } from "@zigzagumap/core";
 import type { TilesetView } from "../../app/TilesetView";
+import { toImageData } from "../canvas";
 
 /** 書き換わった範囲（ピクセル）。 */
 export interface DirtyRect {
@@ -30,7 +31,7 @@ export class MapImage {
     readonly tiles: TilesetView,
   ) {
     this.image = createImage(grid.width * BLOCK_PIXELS, grid.height * BLOCK_PIXELS);
-    this.imageData = new ImageData(this.image.data, this.image.width, this.image.height);
+    this.imageData = toImageData(this.image);
     this.drawn = new Uint16Array(grid.width * grid.height);
     for (let i = 0; i < this.drawn.length; i++) {
       const block = grid.cells[i]! & BLOCK_ID_MASK;

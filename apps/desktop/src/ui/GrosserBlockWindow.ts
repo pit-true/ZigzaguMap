@@ -1,6 +1,7 @@
-import { BLOCK_PIXELS } from "@zigzagumap/core";
+import { renderBlocks } from "@zigzagumap/core";
 import type { EditorState } from "../app/EditorState";
 import { ja } from "../i18n/ja";
+import { drawRgba } from "./canvas";
 import { createDialog, type DialogFrame } from "./Dialog";
 
 /**
@@ -50,14 +51,6 @@ export class GrosserBlockWindow {
     const map = this.state.map;
     if (!canvas || !map) return;
     const s = this.state.selection;
-    canvas.width = s.width * BLOCK_PIXELS;
-    canvas.height = s.height * BLOCK_PIXELS;
-    const image = new ImageData(canvas.width, canvas.height);
-    for (let y = 0; y < s.height; y++) {
-      for (let x = 0; x < s.width; x++) {
-        map.tiles.renderer.blit(s.blocks[y * s.width + x] ?? 0, image.data, canvas.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
-      }
-    }
-    canvas.getContext("2d")!.putImageData(image, 0, 0);
+    drawRgba(canvas, renderBlocks(map.tiles.renderer, s.width, s.height, (x, y) => s.blocks[y * s.width + x] ?? 0));
   }
 }

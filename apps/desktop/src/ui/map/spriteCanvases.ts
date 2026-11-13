@@ -1,4 +1,5 @@
 import type { ProjectSession } from "../../app/ProjectSession";
+import { canvasOf } from "../canvas";
 import type { SpriteSource } from "./EventLayer";
 
 const sources = new WeakMap<ProjectSession, SpriteSource>();
@@ -18,13 +19,7 @@ export function spriteSourceFor(session: ProjectSession | null): SpriteSource | 
     let canvas = canvases.get(id);
     if (canvas === undefined) {
       const image = sprites.image(id);
-      canvas = null;
-      if (image) {
-        canvas = document.createElement("canvas");
-        canvas.width = image.width;
-        canvas.height = image.height;
-        canvas.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
-      }
+      canvas = image ? canvasOf(image) : null;
       canvases.set(id, canvas);
     }
     return canvas;

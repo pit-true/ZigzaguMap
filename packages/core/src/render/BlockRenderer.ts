@@ -1,6 +1,6 @@
 import { PRIMARY_BLOCK_COUNT, PRIMARY_PALETTE_COUNT, PRIMARY_TILE_COUNT, TILE_BYTES } from "../map/constants.js";
 import type { Tileset } from "../map/types.js";
-import { writeBgr555 } from "./color.js";
+import { createImage, writeBgr555, type RgbaImage } from "./color.js";
 
 /** ブロック 1 個の一辺のピクセル数。 */
 export const BLOCK_PIXELS = 16;
@@ -107,4 +107,24 @@ export class BlockRenderer {
     const c = this.paletteRgba;
     return c[a] === c[z] && c[a + 1] === c[z + 1] && c[a + 2] === c[z + 2];
   }
+}
+
+/**
+ * `width`×`height` マスのブロックを並べた画像を描く。`blockAt` は各マスのブロック番号（移動許可を除いた値）で、
+ * null・undefined を返したマスは描かない（透明のまま）。
+ */
+export function renderBlocks(
+  renderer: BlockRenderer,
+  width: number,
+  height: number,
+  blockAt: (x: number, y: number) => number | null | undefined,
+): RgbaImage {
+  const image = createImage(width * BLOCK_PIXELS, height * BLOCK_PIXELS);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const block = blockAt(x, y);
+      if (block !== null && block !== undefined) renderer.blit(block, image.data, image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
+    }
+  }
+  return image;
 }

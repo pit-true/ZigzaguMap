@@ -11,6 +11,7 @@ import {
   RegionMapGraphics,
   type RegionMapDocument,
 } from "@zigzagumap/core";
+import { toImageData } from "../../ui/canvas";
 
 /** 何を重ねて描くか（左下のチェックボックス）。 */
 export interface WorldMapOverlay {
@@ -125,7 +126,7 @@ export class WorldMapCanvas {
     let image = this.pages.get(page);
     if (!image) {
       const rgba = this.graphics.render(page);
-      image = new ImageData(rgba.data, rgba.width, rgba.height);
+      image = toImageData(rgba);
       this.pages.set(page, image);
     }
     return image;
