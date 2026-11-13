@@ -80,6 +80,27 @@ export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, ha
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";
 export { RomMapSource } from "./model/RomMapSource.js";
 
+// maps\ の形式
+export { BOCHI_NEWLINE, writeCompactJson, writeIndentedJson, type BochiJsonValue } from "./project/BochiJson.js";
+export { ProjectFormatError } from "./project/ProjectFormatError.js";
+export {
+  MAP_SOURCE_FORMAT,
+  MapSourceJson,
+  type CfruMapSource,
+  type ItemBallSource,
+  type MapScriptListSource,
+  type WildAreaSource,
+  type WildTimeSource,
+} from "./project/MapSourceJson.js";
+export { MapSourceConverter } from "./project/MapSourceConverter.js";
+export { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./project/ProjectManifest.js";
+export { MemoryProjectFs, type ProjectFs } from "./project/ProjectFs.js";
+export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
+export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js";
+export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
+export * from "./project/paths.js";
+export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
