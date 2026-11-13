@@ -74,6 +74,8 @@ export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
 // マップ名
 export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
 export { TextCodec } from "./name/TextCodec.js";
+export { CharmapTable, type CharmapEntry } from "./name/CharmapTable.js";
+export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 
 // 編集モデル

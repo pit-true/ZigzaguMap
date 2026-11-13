@@ -10,7 +10,9 @@ import { MapSourceJson } from "./MapSourceJson.js";
 import type { ProjectFs } from "./ProjectFs.js";
 import { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./ProjectManifest.js";
 import { TilesetSourceJson, type TilesetSource } from "./TilesetSource.js";
+import { TextCodec } from "../name/TextCodec.js";
 import {
+  CHARMAP_PATH,
   MAPS_DIR,
   PROJECT_MANIFEST_PATH,
   TILESETS_DIR,
@@ -50,6 +52,8 @@ interface TilesetEntry {
 export class CfruProject {
   readonly rom: Rom;
   readonly game: GameInfo & { readonly offsets: GameOffsets };
+  /** 文字列の変換器（プロジェクトの charmap.tbl。無ければ同梱の ND の表）。 */
+  readonly textCodec: TextCodec;
   /** ベース ROM からの読み取り。 */
   readonly base: RomMapSource;
   private manifestValue: ProjectManifest | null;
@@ -67,8 +71,10 @@ export class CfruProject {
     manifest: ProjectManifest | null,
     jsonMaps: Set<string>,
     tilesets: Map<string, TilesetEntry>,
+    textCodec: TextCodec,
   ) {
     this.rom = rom;
+    this.textCodec = textCodec;
     this.game = requireSupportedGame(rom);
     this.manifestValue = manifest;
     this.base = new RomMapSource(rom, this.game.offsets, manifest?.baseBankCounts);
@@ -98,7 +104,8 @@ export class CfruProject {
       const source = TilesetSourceJson.parse(await fs.readText(info), info);
       tilesets.set(tilesetKey(ROM_BASE + source.headerAddress, source.secondary), { folder, source });
     }
-    return new CfruProject(fs, rom, manifest, jsonMaps, tilesets);
+    const codec = (await fs.exists(CHARMAP_PATH)) ? TextCodec.fromCharmap(await fs.readText(CHARMAP_PATH)) : TextCodec.japanese;
+    return new CfruProject(fs, rom, manifest, jsonMaps, tilesets, codec);
   }
 
   /** maps\project.json の中身。無ければ null。 */

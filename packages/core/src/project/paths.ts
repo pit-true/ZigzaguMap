@@ -4,6 +4,10 @@ import type { MapId } from "../map/types.js";
 export const MAPS_DIR = "maps";
 /** maps\project.json のパス。 */
 export const PROJECT_MANIFEST_PATH = `${MAPS_DIR}/project.json`;
+/** プロジェクトの文字コード表（無ければ同梱の ND の表を使う）。 */
+export const CHARMAP_PATH = "charmap.tbl";
+/** 落とし物のスクリプトを書くファイル。 */
+export const HIDDEN_ITEM_PATH = "assembly/overworld_scripts/HiddenItem.s";
 /** タイルセットのフォルダ。 */
 export const TILESETS_DIR = `${MAPS_DIR}/tilesets`;
 /** タイルセットの情報ファイル名。 */
