@@ -24,6 +24,7 @@ export interface ActionTarget {
   openConnections(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
   createIniFromHeader(): Promise<void>;
+  openToolWindow(kind: "block-editor"): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
@@ -100,6 +101,7 @@ export class Actions {
     h.set("image.map", () => target.saveImage("map"));
     h.set("image.mapEvent", () => target.saveImage("mapEvent"));
     h.set("image.palette", () => target.saveImage("palette"));
+    h.set("tools.blockEditor", () => target.openToolWindow("block-editor"));
   }
 
   /** 実装済みか。 */

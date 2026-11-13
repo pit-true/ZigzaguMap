@@ -35,6 +35,7 @@ import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
+import { tilesetRefsOf } from "../windows/tilesetRefs";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -347,9 +348,9 @@ export class App implements ActionTarget {
 
   /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */
   private onTilesetCommand(e: CommandEvent): boolean {
-    const args = e.command?.args as { tileset?: unknown; secondary?: unknown } | undefined;
-    if (typeof args?.tileset !== "number" || typeof args.secondary !== "boolean") return false;
-    const changed = this.state.session?.refreshTilesets({ pointer: args.tileset, secondary: args.secondary }) ?? [];
+    const refs = tilesetRefsOf(e.command);
+    if (refs.length === 0) return false;
+    const changed = refs.flatMap((ref) => this.state.session?.refreshTilesets(ref) ?? []);
     if (this.state.map && changed.includes(this.state.map.tiles)) {
       this.state.mapImage?.redrawAll();
       this.state.emit("cells");
@@ -479,6 +480,12 @@ export class App implements ActionTarget {
     await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
     await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
     this.state.setStatus(ja.iniCreated(folder));
+  }
+
+  /** 別ウィンドウ（ブロックエディタなど）を開く。窓口のコードは初めて開くときに読み込む。 */
+  async openToolWindow(kind: "block-editor"): Promise<void> {
+    const { ToolWindowHost } = await import("../windows/ToolWindowHost");
+    await (await ToolWindowHost.get(this)).open(kind);
   }
 
   // ---- 内部 ----

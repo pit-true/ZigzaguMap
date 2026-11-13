@@ -53,6 +53,11 @@ pub async fn open_tool_window(
         builder = builder.position(x.max(0.0), y.max(0.0));
     }
     let window = builder.build().map_err(|e| e.to_string())?;
+    if automation {
+        // 作るときの位置が画面外だと既定の位置に置かれることがあるので、作ったあとにもう一度画面外へ出す。
+        let index = TOOL_LABELS.iter().position(|l| *l == label).unwrap_or(0) as i32;
+        let _ = window.set_position(tauri::PhysicalPosition::new(-11000 + index * 1000, -12000));
+    }
     let handle = app.clone();
     let closed = label.clone();
     window.on_window_event(move |event| {

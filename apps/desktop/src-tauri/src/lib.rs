@@ -91,6 +91,10 @@ pub fn run() {
                 builder = builder.visible(false);
             }
             let window = builder.build()?;
+            if args.automation.is_some() && !cfg!(debug_assertions) {
+                // 作るときの位置が画面外だと既定の位置に置かれることがあるので、作ったあとにもう一度画面外へ出す。
+                let _ = window.set_position(tauri::PhysicalPosition::new(-12000, -12000));
+            }
             // メインを閉じたら、別ウィンドウ（ブロックエディタなど）が残っていても終了する。
             let handle = app.handle().clone();
             window.on_window_event(move |event| {
