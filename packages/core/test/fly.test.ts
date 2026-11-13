@@ -5,6 +5,7 @@ import {
   CommandBus,
   DocumentStore,
   EditError,
+  ItemNameTable,
   MemoryProjectFs,
   SetFlyPositionCommand,
   createDefaultRegistry,
@@ -68,5 +69,16 @@ describe.skipIf(!romPath)("実 ROM のフライトポジション", () => {
     expect(fly[i]).toEqual({ bank: 3, map: 0, x: 6, y: 8, unknown: 0 });
     expect(fly[findFlyPosition(fly, { bank: 3, map: 1 })]).toMatchObject({ x: 0x1a, y: 0x1b });
     expect(findFlyPosition(fly, { bank: 4, map: 1 })).toBe(-1);
+  });
+});
+
+describe.skipIf(!romPath)("実 ROM の道具名", () => {
+  it("375 件を読み、1 番はマスターボール", async () => {
+    const project = await CfruProject.open(new Uint8Array(readFileSync(romPath!)), new MemoryProjectFs());
+    const o = project.game.offsets;
+    const table = ItemNameTable.read(project.rom, o.itemTablePointer, o.itemCount, project.textCodec);
+    expect(table.count).toBe(375);
+    expect(table.names[1]).toBe("マスターボール");
+    expect(table.names[13]).toBe("キズぐすり");
   });
 });
