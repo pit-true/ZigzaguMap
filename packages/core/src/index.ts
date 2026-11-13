@@ -22,6 +22,17 @@ export { MapLayoutReader } from "./map/MapLayoutReader.js";
 export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
+export {
+  MAP_FOOTER,
+  MAP_HEADER,
+  MapFooterCodec,
+  MapHeaderCodec,
+  mapFooterCodec,
+  mapHeaderCodec,
+  type MapHeaderFields,
+  type RawMapFooter,
+  type RawMapHeader,
+} from "./map/MapHeaderCodec.js";
 
 // イベント
 export * from "./event/layout.js";
@@ -65,15 +76,19 @@ export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
 export { TextCodec } from "./name/TextCodec.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 
+// 編集モデル
+export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";
+export { RomMapSource } from "./model/RomMapSource.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
-export { MapRenderer, renderMap } from "./render/MapRenderer.js";
+export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
 export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener } from "./command/CommandBus.js";
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
-export { GridStore } from "./command/GridStore.js";
+export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";

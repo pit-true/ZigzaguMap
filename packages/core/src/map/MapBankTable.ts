@@ -51,6 +51,27 @@ export class MapBankTable {
     return new MapBankTable(root, banks);
   }
 
+  /**
+   * バンクごとのマップ数を指定して表を読む（maps\project.json の BaseBankCounts 用）。
+   * 推定はしない。ポインタが ROM 外なら RomError。
+   */
+  static readWithCounts(rom: Rom, tablePointerOffset: number, counts: readonly number[]): MapBankTable {
+    const root = rom.pointer(tablePointerOffset);
+    const banks = counts.map((count, bank) => {
+      if (count === 0) return [];
+      const list = rom.pointer(root + bank * 4);
+      const headers: number[] = [];
+      for (let i = 0; i < count; i++) headers.push(rom.pointer(list + i * 4));
+      return headers;
+    });
+    return new MapBankTable(root, banks);
+  }
+
+  /** 各バンクのマップ数。 */
+  counts(): number[] {
+    return this.banks.map((b) => b.length);
+  }
+
   /** バンクの数。 */
   get bankCount(): number {
     return this.banks.length;

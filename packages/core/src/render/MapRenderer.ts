@@ -1,13 +1,20 @@
 import { BLOCK_ID_MASK } from "../map/constants.js";
-import type { LoadedMap } from "../map/types.js";
+import type { Tileset } from "../map/types.js";
 import { BLOCK_PIXELS, BlockRenderer } from "./BlockRenderer.js";
 import { createImage, type RgbaImage } from "./color.js";
+
+/** 描画に要るデータ（LoadedMap や MapDocument.toRenderable() の結果）。 */
+export interface RenderableMap {
+  readonly layout: { readonly width: number; readonly height: number; readonly blocks: Uint16Array };
+  readonly primary: Tileset;
+  readonly secondary: Tileset;
+}
 
 /** マップ 1 枚を RGBA 画像に描くクラス。ブロックの描画結果は保持して使い回す。 */
 export class MapRenderer {
   private readonly blocks: BlockRenderer;
 
-  constructor(private readonly map: LoadedMap) {
+  constructor(private readonly map: RenderableMap) {
     this.blocks = new BlockRenderer(map.primary, map.secondary);
   }
 
@@ -34,6 +41,6 @@ export class MapRenderer {
 }
 
 /** マップ 1 枚を RGBA 画像に描く（MapRenderer の簡易版）。 */
-export function renderMap(map: LoadedMap, grid?: Uint16Array): RgbaImage {
+export function renderMap(map: RenderableMap, grid?: Uint16Array): RgbaImage {
   return new MapRenderer(map).render(grid);
 }
