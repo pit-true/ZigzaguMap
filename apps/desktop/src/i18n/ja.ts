@@ -180,6 +180,14 @@ export const ja = {
   recentMaxPrompt: "「ファイル」の下に表示する、最近開いたファイルをいくつリストアップしますか?",
   ok: "OK",
   cancel: "Cancel",
+  /** メッセージボックスのボタン（Windows 標準の日本語表記）。 */
+  yes: "はい(Y)",
+  no: "いいえ(N)",
+  cancelJa: "キャンセル",
+  /** Delphi の StrToInt の例外（AdvanceMap では英語のまま。題名はアプリ名）。 */
+  invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
+  /** ROM でないファイルを開いたとき（AdvanceMap の AdvanceMapError(12) の文言）。 */
+  unknownRomType: "AdvanceMapError(12): Unknown Rom Type! This Rom cannot be edited with Advancemap.",
 
   // [Allgemein] マップ一覧
   rootHeader: "ヘッダー",
@@ -231,6 +239,8 @@ export const ja = {
   wildLevel: "最小/最大 Lv",
   wildSpecies: "Pokemon:",
   wildSlot: (n: number) => `Pokemon${n}:`,
+  /** 種族のコンボの 0 番。 */
+  wildChooseSpecies: "選択してください",
   noWild: "このマップには野生ポケモンが存在しません",
 
   // [Header]
