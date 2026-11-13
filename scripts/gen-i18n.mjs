@@ -1,9 +1,12 @@
-// 画面の文言の元になる Japanese.ini から、文言のモジュール（ini.generated.ts）を作る。
+// 画面の文言の元になる Japanese.ini と overrides.ini から、文言のモジュール（ini.generated.ts）を作る。
 //
 //   node scripts/gen-i18n.mjs          作り直す
 //   node scripts/gen-i18n.mjs --check  作り直した結果と今のファイルが同じか確かめる（違えば終了コード 1）
 //
 // ini は apps/desktop/src/i18n/source/Japanese.ini（UTF-8。BOM と CRLF はあってもよい）。
+// Japanese.ini はユーザーが用意した改訂版の写しなので書き換えない。英語のまま・文字化けなどの値は、
+// 同じ書式の source/overrides.ini にキー（節と番号）ごとに書き、「Japanese.ini → overrides.ini」の順に重ねる。
+// overrides.ini に Japanese.ini に無い節・番号があればエラーにする（書き間違いを見つけるため）。
 // 値の扱い:
 //   - AdvanceMap 1.95 向けの注記（「(AM1.95未使用)」など）は stripNote で外す
 //   - 行末の空白とタブは外す
@@ -15,6 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const INI_PATH = join(ROOT, "apps/desktop/src/i18n/source/Japanese.ini");
+export const OVERRIDES_PATH = join(ROOT, "apps/desktop/src/i18n/source/overrides.ini");
 export const OUT_PATH = join(ROOT, "apps/desktop/src/i18n/ini.generated.ts");
 
 /** ZigzaguMap に該当する機能が無いので出さない節（ルビー・サファイア・エメラルドの挙動、季節など）。 */
@@ -67,6 +71,35 @@ export function parseIni(text) {
   return sections;
 }
 
+/**
+ * 改訂版に overrides を重ねた節ごとの { 番号: 値 }（値は ini のまま）。並びは改訂版のとおり。
+ * overrides に改訂版に無い節・番号があれば例外を投げる。
+ */
+export function mergeIni(text, overridesText = "") {
+  const sections = parseIni(text);
+  const unknown = [];
+  for (const [name, entries] of parseIni(overridesText)) {
+    const base = sections.get(name);
+    for (const [key, value] of entries) {
+      if (base?.has(key)) base.set(key, value);
+      else unknown.push(`[${name}] ${key}`);
+    }
+  }
+  if (unknown.length > 0) throw new Error(`overrides.ini に Japanese.ini に無い番号があります: ${unknown.join("、")}`);
+  return sections;
+}
+
+/** Japanese.ini と overrides.ini の中身（overrides.ini が無ければ空）。 */
+export function readSources() {
+  let overrides = "";
+  try {
+    overrides = readFileSync(OVERRIDES_PATH, "utf8");
+  } catch {
+    // 無ければ補正なし
+  }
+  return { text: readFileSync(INI_PATH, "utf8"), overrides };
+}
+
 /** 画面に出す値（注記と行末の空白を外したもの。空になれば null）。 */
 export function displayValue(value) {
   const v = stripNote(value).replace(/[ \t]+$/, "");
@@ -74,13 +107,13 @@ export function displayValue(value) {
 }
 
 /** 生成するモジュールの中身。 */
-export function generate(text) {
-  const sections = parseIni(text);
+export function generate(text, overridesText = "") {
+  const sections = mergeIni(text, overridesText);
   const out = [
-    "// このファイルは scripts/gen-i18n.mjs が source/Japanese.ini から作る。手で直さない。",
-    "// 文言を変えるときは source/Japanese.ini を直して `node scripts/gen-i18n.mjs` を実行する。",
+    "// このファイルは scripts/gen-i18n.mjs が source/Japanese.ini と source/overrides.ini から作る。手で直さない。",
+    "// 文言を変えるときは source/overrides.ini（または source/Japanese.ini）を直して `node scripts/gen-i18n.mjs` を実行する。",
     "",
-    "/** Japanese.ini の値（節 → 番号 → 文言）。AdvanceMap 1.95 向けの注記は外してある。 */",
+    "/** Japanese.ini に overrides.ini を重ねた値（節 → 番号 → 文言）。AdvanceMap 1.95 向けの注記は外してある。 */",
     "export const ini = {",
   ];
   for (const [name, entries] of sections) {
@@ -97,8 +130,8 @@ export function generate(text) {
 }
 
 function main() {
-  const text = readFileSync(INI_PATH, "utf8");
-  const next = generate(text);
+  const { text, overrides } = readSources();
+  const next = generate(text, overrides);
   if (process.argv.includes("--check")) {
     let now = "";
     try {
@@ -107,10 +140,10 @@ function main() {
       // 無ければ違うとみなす
     }
     if (now !== next) {
-      console.error("ini.generated.ts が Japanese.ini と合っていません。node scripts/gen-i18n.mjs で作り直してください。");
+      console.error("ini.generated.ts が Japanese.ini・overrides.ini と合っていません。node scripts/gen-i18n.mjs で作り直してください。");
       process.exit(1);
     }
-    console.log("ini.generated.ts は Japanese.ini と合っています。");
+    console.log("ini.generated.ts は Japanese.ini・overrides.ini と合っています。");
     return;
   }
   writeFileSync(OUT_PATH, next);

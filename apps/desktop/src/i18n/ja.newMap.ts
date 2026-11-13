@@ -39,8 +39,8 @@ export const jaNewMap = {
   currentFile: I["11"],
   currentMap: I["12"],
   insertPosition: I["13"],
-  /** 改訂版の 14 は注記だけで空なので旧版の文言。 */
-  showBankHeader: "マップバンクヘッダーの表示",
+  /** 改訂版の 14 は注記だけで空なので、overrides.ini で旧版の文言にしてある。 */
+  showBankHeader: I["14"],
   replaceHead: I["20"],
   bankNumber: I["21"],
   mapNumber: I["22"],
