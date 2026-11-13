@@ -1,5 +1,5 @@
 import { ja } from "../i18n/ja";
-import { createDialog, dialogButton } from "./Dialog";
+import { createDialog, dialogButton, handleDialogKeys, pressable } from "./Dialog";
 
 /**
  * AdvanceMap の入力ダイアログ（InputQuery: 題名、本文、入力欄、OK と Cancel）の再現。
@@ -24,20 +24,16 @@ export function inputDialog(title: string, prompt: string, initial: string): Pro
       dialogButton(ja.cancel, () => finish(null)),
     );
     frame.body.append(text, input, buttons);
-    frame.box.addEventListener("keydown", (e) => {
-      e.stopPropagation();
+    handleDialogKeys(frame, () => finish(null), (e) => {
       if (e.key === "Enter") finish(input.value);
-      else if (e.key === "Escape") finish(null);
     });
     frame.register({
       title,
       text: prompt,
-      buttons: [ja.ok, ja.cancel],
-      press: (b) => {
-        if (b === ja.ok) finish(input.value);
-        else if (b === ja.cancel) finish(null);
-        else throw new Error(`ボタンがありません: ${b}`);
-      },
+      ...pressable([
+        { label: ja.ok, run: () => finish(input.value) },
+        { label: ja.cancel, run: () => finish(null) },
+      ]),
       setInput: (v) => {
         input.value = v;
       },

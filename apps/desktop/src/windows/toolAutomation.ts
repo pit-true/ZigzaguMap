@@ -5,6 +5,9 @@ import { installNativeDialogs, listDialogs, operateDialog, queuePath } from "../
 import { click, findField, getField, listFields, setField, useAmNames } from "../app/automation/ui";
 import type { FileDialogs } from "../app/FileDialogs";
 import type { ToolClient } from "./ToolClient";
+import { errorText } from "../util/errors";
+import { num, settle, str } from "../app/automation/registry";
+import { describeScroll, scrollBy, scrollContainerOf } from "../app/automation/scroll";
 
 /** 別ウィンドウが自動操作に見せるもの。 */
 export interface ToolAutomationTarget {
@@ -27,7 +30,7 @@ interface AutomationEvent {
 /**
  * 別ウィンドウの自動操作の入口。メインと同じく Rust が `"window": "<ラベル>"` 付きの要求を
  * `automation-request-window` でこのウィンドウへ送り、`automation_reply` で返事を返す（ワールドマップエディターと同じ仕組み）。
- * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（README の表）。
+ * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（docs/automation.md の表）。
  */
 export async function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): Promise<void> {
   if ((await invoke<number | null>("automation_port")) === null) return;
@@ -46,7 +49,7 @@ export async function installToolAutomation(client: ToolClient, target: ToolAuto
         await settle();
         reply = { ok: true, result: result ?? null };
       } catch (e) {
-        reply = { ok: false, error: e instanceof Error ? e.message : String(e) };
+        reply = { ok: false, error: errorText(e) };
       }
       await invoke("automation_reply", { id, body: JSON.stringify(reply) });
     })();
@@ -125,6 +128,11 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
     case "snapshot":
       // メインから届いている写し（出力を読み直した結果と比べる用）。
       return { snapshot: client.snapshot, ui: client.ui };
+    case "scroll":
+      // ブロック一覧などのスクロール（スクロールバーを動かしたときと同じ）。`id` の部品の枠を動かす
+      return scrollBy(scrollContainerOf(findField(str(req, "id"))), req);
+    case "view.scroll":
+      return describeScroll(scrollContainerOf(findField(str(req, "id"))));
     case "close":
       // 返事を送ってから閉じる。
       setTimeout(() => void getCurrentWindow().close(), 300);
@@ -139,20 +147,4 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
     }
   }
-}
-
-function settle(ms = 50): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function str(req: Record<string, unknown>, key: string): string {
-  const v = req[key];
-  if (typeof v !== "string") throw new Error(`${key} は文字列で指定してください`);
-  return v;
-}
-
-function num(req: Record<string, unknown>, key: string): number {
-  const v = req[key];
-  if (typeof v !== "number") throw new Error(`${key} は数で指定してください`);
-  return v;
 }

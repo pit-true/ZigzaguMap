@@ -8,9 +8,6 @@ import { SnapshotCommand } from "../base/SnapshotCommand.js";
 /** 項目ごとの範囲。 */
 const FLY_FIELDS: Readonly<Record<keyof FlyPosition, number>> = { bank: 0xff, map: 0xff, x: 0xffff, y: 0xffff, unknown: 0xffff };
 
-/** フライトポジションの項目名。 */
-export const FLY_FIELD_NAMES = Object.keys(FLY_FIELDS) as (keyof FlyPosition)[];
-
 /** 「フライトポジションを変える」の引数。 */
 export type SetFlyPositionArgs = JsonObject & {
   /** 表の何番目か。 */

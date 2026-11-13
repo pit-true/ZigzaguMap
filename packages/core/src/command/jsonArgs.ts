@@ -24,11 +24,6 @@ export function argBool(args: Args, key: string): boolean {
   return value;
 }
 
-/** 省略できる真偽値。 */
-export function argOptBool(args: Args, key: string): boolean | undefined {
-  return args[key] === undefined ? undefined : argBool(args, key);
-}
-
 /** 文字列。 */
 export function argString(args: Args, key: string): string {
   const value = args[key];

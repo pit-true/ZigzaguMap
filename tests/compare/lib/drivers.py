@@ -96,6 +96,8 @@ class AdvanceMapDriver(Driver):
         "openRom": "ファイル > ROMを開く → ファイルダイアログに作業用 ROM を入れて OK",
         "selectMap": "MapList（ツリー）で選んで Enter（だめならダブルクリック）",
         "selectTab": "TabbedNotebook1 の見出しをクリック",
+        "resizeWindow": "メインウィンドウを MoveWindow で (0,0) と指定の大きさへ",
+        "scrollView": "部品を載せた枠（TScrollBox）へ WM_HSCROLL / WM_VSCROLL（SB_RIGHT・SB_BOTTOM か SB_LEFT・SB_TOP）",
         "sortTree": "設定 > マップの表示設定 > ヘッダーのソート > 各項目",
         "selectBlock": "BlockPalette を左クリック（8 個/行）",
         "pickPaletteStamp": "BlockPalette を Ctrl＋右ドラッグ",
@@ -283,6 +285,28 @@ class AdvanceMapDriver(Driver):
         if not self.am.select_map(int(step["bank"]), int(step["map"])):
             raise RuntimeError(f"マップ {step['bank']}.{step['map']} が開きません（ステータス: {self.am.status()}）")
         time.sleep(0.3)
+
+    def _scroll_host(self, target: str):
+        """部品（MapBox など）を載せている、スクロールの枠のウィンドウ。"""
+        d = self.am.comp(self.COMP[target])
+        h, _, _ = self.am._host(d)
+        return h
+
+    def op_resizeWindow(self, step):
+        self.am.move_window(self.am.main, 0, 0, int(step["width"]), int(step["height"]))
+        time.sleep(0.5)
+        self.am.idle()
+
+    def op_scrollView(self, step):
+        am, lib = self.am, self.amlib
+        h = self._scroll_host(step["target"])
+        code = 7 if step.get("to", "end") == "end" else 6  # SB_BOTTOM / SB_RIGHT = 7、SB_TOP / SB_LEFT = 6
+        am.send(h, lib.WM_HSCROLL, code, 0)
+        am.send(h, lib.WM_HSCROLL, 8, 0)
+        am.send(h, lib.WM_VSCROLL, code, 0)
+        am.send(h, lib.WM_VSCROLL, 8, 0)
+        time.sleep(0.2)
+        am.idle()
 
     def op_selectTab(self, step):
         if not self.am.tab(TAB_NAMES.index(step["tab"])):
@@ -567,6 +591,10 @@ class AdvanceMapDriver(Driver):
             return f"{d['width'] // b}x{d['height'] // b}"
         if fid == "tab":
             return TAB_NAMES[self._current_tab()]
+        if fid.startswith("view.scroll:"):
+            # 枠のウィンドウにスクロールバーがあるか（WS_HSCROLL / WS_VSCROLL）
+            style = lib.user32.GetWindowLongW(self._scroll_host(fid.split(":", 1)[1]), -16)
+            return {"h": bool(style & 0x00100000), "v": bool(style & 0x00200000)}
         if fid.startswith("tree."):
             items = am.map_items()
             if fid == "tree.roots":
@@ -636,6 +664,8 @@ class ZigzaguDriver(Driver):
         "openRom": "cmd open {rom}",
         "selectMap": "cmd selectMap {bank, map}",
         "selectTab": "cmd tab {name}",
+        "resizeWindow": "cmd resize {width, height}",
+        "scrollView": "cmd scroll {target, to}",
         "sortTree": "cmd action sort.N",
         "selectBlock": "cmd mouse（palette を左クリック。8 個/行）",
         "pickPaletteStamp": "cmd mouse（palette を Ctrl＋右ドラッグ）",
@@ -852,6 +882,12 @@ class ZigzaguDriver(Driver):
     def op_selectTab(self, step):
         self.call({"cmd": "tab", "name": step["tab"]})
 
+    def op_resizeWindow(self, step):
+        self.call({"cmd": "resize", "width": int(step["width"]), "height": int(step["height"])})
+
+    def op_scrollView(self, step):
+        self.call({"cmd": "scroll", "target": step["target"], "to": step.get("to", "end")})
+
     def op_sortTree(self, step):
         self.call({"cmd": "action", "id": f"sort.{int(step['mode'])}"})
 
@@ -987,7 +1023,7 @@ class ZigzaguDriver(Driver):
         return {"image": str(p)}
 
     def op_export(self, step):
-        d = self.out / "export"
+        d = self.out / step.get("dir", "export")
         d.mkdir(parents=True, exist_ok=True)
         return {"export": self.call({"cmd": "export", "dir": str(d)})}
 
@@ -1044,6 +1080,12 @@ class ZigzaguDriver(Driver):
             return f"{m['width']}x{m['height']}" if m else ""
         if fid == "tab":
             return st["tab"]
+        if fid.startswith("output.files:"):
+            d = self.out / fid.split(":", 1)[1]
+            return sorted(p.relative_to(d).as_posix() for p in d.rglob("*") if p.is_file()) if d.exists() else []
+        if fid.startswith("view.scroll:"):
+            r = self.call({"cmd": "view.scroll", "target": fid.split(":", 1)[1]})
+            return {"h": r["h"], "v": r["v"]}
         if fid.startswith("tree."):
             items = self.call({"cmd": "tree.list"})
             if fid == "tree.roots":

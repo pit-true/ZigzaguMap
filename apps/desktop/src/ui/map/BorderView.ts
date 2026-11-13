@@ -1,6 +1,7 @@
-import { BLOCK_ID_MASK, BLOCK_PIXELS, createImage, type BlockGrid } from "@zigzagumap/core";
+import { BLOCK_ID_MASK, renderBlocks, type BlockGrid } from "@zigzagumap/core";
 import type { TilesetView } from "../../app/TilesetView";
 import { attachCellPointer } from "../../input/CellPointer";
+import { drawRgba } from "../canvas";
 import type { Cell } from "./MapView";
 
 /** 境界ブロックの欄が使う窓口。 */
@@ -47,15 +48,7 @@ export class BorderView {
       this.element.height = 0;
       return;
     }
-    const image = createImage(border.width * BLOCK_PIXELS, border.height * BLOCK_PIXELS);
-    for (let y = 0; y < border.height; y++) {
-      for (let x = 0; x < border.width; x++) {
-        tiles.renderer.blit(border.getCell(x, y) & BLOCK_ID_MASK, image.data, image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
-      }
-    }
-    this.element.width = image.width;
-    this.element.height = image.height;
-    this.element.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+    drawRgba(this.element, renderBlocks(tiles.renderer, border.width, border.height, (x, y) => border.getCell(x, y) & BLOCK_ID_MASK));
   }
 
   private cellAt(e: MouseEvent): Cell | null {

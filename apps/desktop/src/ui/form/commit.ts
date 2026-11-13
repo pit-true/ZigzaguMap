@@ -1,5 +1,4 @@
-import type { Command } from "@zigzagumap/core";
-import { CommandGroup } from "../../app/CommandGroup";
+import { CommandGroup, type Command } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { showEditError } from "./inputErrors";
 
@@ -13,7 +12,7 @@ export function commit(state: EditorState, commands: readonly Command[]): boolea
   if (!bus) return false;
   if (commands.length === 0) return true;
   try {
-    bus.execute(commands.length === 1 ? commands[0]! : new CommandGroup(commands));
+    bus.execute(CommandGroup.of(commands));
     return true;
   } catch (e) {
     void showEditError(e);

@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import type { ItemBall } from "../model/MapDocument.js";
 
 /** 生成範囲（`@ BBE-BEGIN <id>`〜`@ BBE-END <id>`）。Bochi の BuildHiddenItemSource と同じ形。 */
@@ -6,6 +7,11 @@ const BLOCK_PATTERN = /^@ BBE-BEGIN (?<id>[0-9a-fA-F]{32})\r?\n[\s\S]*?^@ BBE-EN
 const BEGIN_PATTERN = /^@ BBE-BEGIN /gm;
 /** 手書き部分が空のときの先頭。 */
 const DEFAULT_MANUAL = ".text\n.thumb\n.align 2\n";
+
+/** 落とし物のラベル名（Bochi と同じ `HiddenItem_BB_MM_<id>`。HiddenItem.s の生成範囲と maps\ の JSON に書く）。 */
+export function itemBallLabel(bank: number, map: number, id: string): string {
+  return `HiddenItem_${String(bank).padStart(2, "0")}_${String(map).padStart(2, "0")}_${id}`;
+}
 
 /** HiddenItem.s の生成範囲の終わりが見つからないときの Error。 */
 export class HiddenItemSourceError extends Error {
@@ -69,5 +75,5 @@ export function hiddenItemBlock(item: ItemBall): string {
 }
 
 function hex2(v: number): string {
-  return v.toString(16).toUpperCase().padStart(2, "0");
+  return formatHex(v, 2);
 }

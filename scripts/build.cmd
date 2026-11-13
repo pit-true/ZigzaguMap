@@ -3,6 +3,7 @@ rem ZigzaguMap build helper. Works from cmd, PowerShell and Git Bash.
 rem Git Bash puts its own link.exe first on PATH, so load the MSVC environment first.
 rem   scripts\build.cmd          -> pnpm tauri build (release exe)
 rem   scripts\build.cmd check    -> cargo check only
+rem   scripts\build.cmd clippy   -> cargo clippy (Rust lint; warnings fail)
 rem   scripts\build.cmd debug    -> pnpm tauri build --debug
 setlocal
 set "ROOT=%~dp0.."
@@ -21,10 +22,15 @@ if not exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" (
 call "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 
 :ready
+if /i "%~1"=="clippy" (
+  cd /d "%ROOT%\apps\desktop\src-tauri" || exit /b 1
+  cargo clippy --all-targets -- -D warnings || exit /b 1
+  exit /b 0
+)
 if /i "%~1"=="check" (
   cd /d "%ROOT%\apps\desktop\src-tauri" || exit /b 1
-  cargo check
-  exit /b %ERRORLEVEL%
+  cargo check || exit /b 1
+  exit /b 0
 )
 cd /d "%ROOT%\apps\desktop" || exit /b 1
 if /i "%~1"=="debug" (

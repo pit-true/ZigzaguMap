@@ -7,6 +7,7 @@ import { readInteger } from "../../ui/form/integerInput";
 import { showError } from "../../ui/MessageBox";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
+import { errorText } from "../../util/errors";
 
 /** 行の数（パレット 0〜14）。 */
 const ROWS = 15;
@@ -18,7 +19,6 @@ const ROWS = 15;
  * 右の欄は 10 進で読む（数でなければ AdvanceMap と同じ「'$zz' is not a valid integer value.」）。
  */
 export class BlockAdjustWindow {
-  private readonly tileset1: HTMLInputElement;
   private readonly tileset2: HTMLInputElement;
   private readonly to: HTMLInputElement[] = [];
 
@@ -42,7 +42,6 @@ export class BlockAdjustWindow {
     };
     const r1 = radio("adj.tileset1", t.changeTileset1, 8, true);
     const r2 = radio("adj.tileset2", t.changeTileset2, 136, false);
-    this.tileset1 = r1.input;
     this.tileset2 = r2.input;
     const form = document.createElement("div");
     form.className = "adjust-form";
@@ -87,7 +86,7 @@ export class BlockAdjustWindow {
     try {
       await this.client.execute("remapBlockPalettes", { tileset: data.pointer, secondary, mapping });
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e));
+      await showError(errorText(e));
       return;
     }
     // 自動操作の返事が先に届くよう、少し待ってから閉じる。

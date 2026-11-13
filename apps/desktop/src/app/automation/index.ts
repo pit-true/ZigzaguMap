@@ -11,6 +11,8 @@ import { mouseCommands } from "./mouse";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
+import { viewCommands } from "./view";
+import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
 interface AutomationEvent {
@@ -29,13 +31,14 @@ const registry = new CommandRegistry([
   imageCommands,
   statusCommands,
   eventCommands,
+  viewCommands,
   { commands: () => registry.names() },
 ]);
 
 /**
  * 自動操作の入口の画面側（テスト用）。Rust が 127.0.0.1 で受けた JSON を `automation-request` で受け取り、
  * 結果を `automation_reply` で返す。起動引数 `--automation` か開発ビルドのときだけ、App が初めて読み込む（通常の起動では読まない）。
- * 命令の一覧は README の「自動操作の入口」（`{"cmd":"commands"}` でも出る）。
+ * 命令の一覧は docs/automation.md（`{"cmd":"commands"}` でも出る）。
  */
 export async function startAutomation(app: App): Promise<void> {
   installNativeDialogs();
@@ -47,7 +50,7 @@ export async function startAutomation(app: App): Promise<void> {
         await nextFrame();
         return { ok: true, result: result ?? null };
       })
-      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+      .catch((e: unknown) => ({ ok: false, error: errorText(e) }))
       .then((reply) => invoke("automation_reply", { id, body: JSON.stringify(reply) }));
   });
   await invoke("automation_ready");

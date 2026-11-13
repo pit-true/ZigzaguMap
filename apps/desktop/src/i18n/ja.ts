@@ -1,3 +1,4 @@
+import { formatHex } from "@zigzagumap/core";
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
 import { jaWild } from "./ja.wild";
@@ -281,7 +282,7 @@ export const ja = {
 
 /** 16 進（大文字、桁そろえ）。 */
 export function hex(value: number, digits: number): string {
-  return value.toString(16).toUpperCase().padStart(digits, "0");
+  return formatHex(value, digits);
 }
 
 /** 選択肢に名前が無いときの表示（「0A ???」）。 */

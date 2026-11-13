@@ -2,13 +2,13 @@
 export { DataError } from "./binary/DataError.js";
 export { StructCodec } from "./binary/StructCodec.js";
 export { decodeBase64, encodeBase64 } from "./binary/base64.js";
-export { bytesEqual, concatBytes } from "./binary/bytes.js";
+export { bytesEqual, concatBytes, formatHex, formatHexBytes } from "./binary/bytes.js";
 export { sha256, sha256Hex } from "./binary/sha256.js";
 
 // ROM
 export { Rom, ROM_BASE } from "./rom/Rom.js";
 export { RomError } from "./rom/RomError.js";
-export { decompressLz77, looksLikeLz77 } from "./rom/lz77.js";
+export { decompressLz77 } from "./rom/lz77.js";
 
 // ゲーム判定とオフセット
 export { detectGame, requireSupportedGame, type GameInfo } from "./game/GameInfo.js";
@@ -114,7 +114,7 @@ export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
 export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
-export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock } from "./project/HiddenItemSource.js";
+export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock, itemBallLabel } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
 export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
@@ -141,13 +141,14 @@ export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, pars
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
-export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
+export { BLOCK_PIXELS, BlockRenderer, renderBlocks } from "./render/BlockRenderer.js";
 export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
 export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener, type ExecuteOptions } from "./command/CommandBus.js";
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
+export { CommandGroup, flattenCommandRecords } from "./command/CommandGroup.js";
 export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";
@@ -170,8 +171,8 @@ export { RemoveEventCommand, type RemoveEventArgs } from "./command/commands/eve
 export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./command/commands/event/MoveEventCommand.js";
 export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
-export { SetItemBallCommand, itemBallLabel, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
-export { FLY_FIELD_NAMES, SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
+export { SetItemBallCommand, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
+export { SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
 export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
 export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";
 export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/header/SetRawHeaderCommand.js";

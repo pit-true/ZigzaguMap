@@ -65,6 +65,11 @@ export class FileDialogs {
   }
 }
 
+/** ファイルをバイト列のまま読む（Rust の read_rom。ROM 以外のファイルにも使う）。 */
+export async function readFile(path: string): Promise<Uint8Array> {
+  return new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path }));
+}
+
 /** ファイルにバイト列を書く（上書き）。 */
 export async function writeFile(path: string, data: Uint8Array): Promise<void> {
   await invoke("write_file", data, { headers: { path: encodeURIComponent(path) } });

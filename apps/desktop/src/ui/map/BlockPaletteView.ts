@@ -2,6 +2,7 @@ import { BLOCK_PIXELS } from "@zigzagumap/core";
 import type { BlockSelection } from "../../app/EditorState";
 import type { TilesetView } from "../../app/TilesetView";
 import { attachCellPointer } from "../../input/CellPointer";
+import { toImageData } from "../canvas";
 import { drawGrid, type Cell } from "./MapView";
 
 /** ブロックパレットが使う窓口。 */
@@ -116,7 +117,7 @@ export class BlockPaletteView {
     this.base.height = h;
     if (tiles) {
       const image = tiles.paletteImage(this.width);
-      this.base.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+      this.base.getContext("2d")!.putImageData(toImageData(image), 0, 0);
     }
     const dw = w * this.zoom;
     const dh = h * this.zoom;

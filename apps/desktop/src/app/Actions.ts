@@ -1,13 +1,16 @@
 import { ja } from "../i18n/ja";
 import type { EditorState } from "./EditorState";
 import type { ImageKind } from "./ImageExport";
+import type { SettingPrompts } from "./SettingPrompts";
 import type { SystemSettings } from "./SystemSettings";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
 import type { SettingsData } from "./Settings";
+import { errorText } from "../util/errors";
 
 /** アクションが呼ぶ App の操作。 */
 export interface ActionTarget {
   readonly system: SystemSettings;
+  readonly prompts: SettingPrompts;
   openRomDialog(): Promise<void>;
   openProjectDialog(): Promise<void>;
   reload(): Promise<void>;
@@ -18,9 +21,6 @@ export interface ActionTarget {
   openPreviousMap(): Promise<void>;
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
-  askPaletteWidth(): Promise<void>;
-  askOpacity(): Promise<void>;
-  askRecentMax(): Promise<void>;
   openConnections(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
   createIniFromHeader(): Promise<void>;
@@ -86,9 +86,9 @@ export class Actions {
     h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
     h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
     h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
-    h.set("view.paletteWidth", () => target.askPaletteWidth());
-    h.set("view.opacity", () => target.askOpacity());
-    h.set("recent.max", () => target.askRecentMax());
+    h.set("view.paletteWidth", () => target.prompts.paletteWidth());
+    h.set("view.opacity", () => target.prompts.opacity());
+    h.set("recent.max", () => target.prompts.recentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
@@ -122,7 +122,7 @@ export class Actions {
     }
     Promise.resolve()
       .then(handler)
-      .catch((e: unknown) => this.state.setStatus(ja.error(e instanceof Error ? e.message : String(e)), undefined, true));
+      .catch((e: unknown) => this.state.setStatus(ja.error(errorText(e)), undefined, true));
   }
 
   /** 押せる条件を満たすか。 */

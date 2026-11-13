@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import { EditError, EditErrorCode } from "../command/EditError.js";
 
 /** パレットエディタの 1 色（赤・緑・青の 0〜31 と、15 ビットの値）。 */
@@ -30,7 +31,7 @@ export function colorFromRgb8(r: number, g: number, b: number): ColorValue {
 
 /** 15 ビットの値の表記（16 進 4 桁、大文字）。 */
 export function formatColorHex(value: number): string {
-  return (value & 0x7fff).toString(16).toUpperCase().padStart(4, "0");
+  return formatHex(value & 0x7fff, 4);
 }
 
 /**

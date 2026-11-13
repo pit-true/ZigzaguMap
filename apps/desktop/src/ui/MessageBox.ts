@@ -1,5 +1,5 @@
 import { ja } from "../i18n/ja";
-import { createDialog, dialogButton } from "./Dialog";
+import { createDialog, dialogButton, handleDialogKeys, pressable } from "./Dialog";
 
 /** メッセージの種類（左のアイコン）。 */
 export type MessageIcon = "error" | "info" | "question" | "warning";
@@ -52,22 +52,11 @@ export function messageBox(title: string, text: string, icon: MessageIcon = "inf
     bar.append(...elements);
     frame.body.append(row, bar);
     frame.box.tabIndex = -1;
-    frame.box.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape") finish(closeResult);
-      else if (buttons !== "ok" && e.key.toLowerCase() === "y") finish("yes");
+    handleDialogKeys(frame, () => finish(closeResult), (e) => {
+      if (buttons !== "ok" && e.key.toLowerCase() === "y") finish("yes");
       else if (buttons !== "ok" && e.key.toLowerCase() === "n") finish("no");
     });
-    frame.register({
-      title,
-      text,
-      buttons: defs.map(([label]) => label),
-      press: (b) => {
-        const def = defs.find(([label, result]) => label === b || result === b);
-        if (!def) throw new Error(`ボタンがありません: ${b}`);
-        finish(def[1]);
-      },
-    });
+    frame.register({ title, text, ...pressable(defs.map(([label, result]) => ({ label, aliases: [result], run: () => finish(result) }))) });
     elements[0]?.focus();
   });
 }

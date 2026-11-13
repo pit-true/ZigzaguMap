@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { openDialogs } from "../../ui/Dialog";
+import { errorText } from "../../util/errors";
+import { nextFrame, num, settle, str } from "../../app/automation/registry";
+
+/** 押したあとの処理（メインウィンドウとのやり取り）が進むのを待つ時間（ms）。 */
+const WORLD_MAP_SETTLE_MS = 150;
 
 /** Rust から届く要求。 */
 interface AutomationEvent {
@@ -37,7 +42,7 @@ export async function startToolWindowAutomation(handler: ToolWindowAutomation): 
         await nextFrame();
         return { ok: true, result: result ?? null };
       })
-      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+      .catch((e: unknown) => ({ ok: false, error: errorText(e) }))
       .then((reply) => invoke("automation_reply", { id, body: JSON.stringify(reply) }));
   });
   await invoke("automation_ready");
@@ -70,14 +75,14 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
       } else throw new Error(`値を入れられない部品です: ${str(req, "id")}`);
-      await settle();
+      await settle(WORLD_MAP_SETTLE_MS);
       return describeField(el);
     }
     case "click": {
       const el = find(str(req, "id"));
       if ((el as HTMLButtonElement).disabled) throw new Error(`押せない状態です: ${str(req, "id")}`);
       el.click();
-      await settle();
+      await settle(WORLD_MAP_SETTLE_MS);
       return { dialogs: describeDialogs() };
     }
     case "pointer": {
@@ -97,7 +102,7 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
           cancelable: true,
         }),
       );
-      await settle();
+      await settle(WORLD_MAP_SETTLE_MS);
       return null;
     }
     case "canvasPng": {
@@ -110,9 +115,13 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
       const target = typeof req["id"] === "string" ? find(req["id"]) : (document.activeElement ?? document.body);
       target.dispatchEvent(new KeyboardEvent("keydown", init));
       target.dispatchEvent(new KeyboardEvent("keyup", init));
-      await settle();
+      await settle(WORLD_MAP_SETTLE_MS);
       return null;
     }
+    case "close":
+      // × を押したときと同じく閉じる（返事を送ってから）。
+      setTimeout(() => void getCurrentWebviewWindow().close(), 300);
+      return null;
     case "dialogs":
       // 開いているダイアログ（メインの `dialogs` と同じ形）
       return { dialogs: openDialogs.map((d) => ({ kind: "app", title: d.title, text: d.text, buttons: d.buttons })) };
@@ -130,7 +139,7 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
         const before = describeDialogs();
         if (req["press"] === "close") top.close();
         else top.press(req["press"]);
-        await settle();
+        await settle(WORLD_MAP_SETTLE_MS);
         return { pressed: req["press"], before, dialogs: describeDialogs() };
       }
       return { dialogs: describeDialogs() };
@@ -156,33 +165,4 @@ function describeField(el: HTMLElement): unknown {
 
 function describeDialogs(): unknown[] {
   return openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons, input: d.input?.() ?? null }));
-}
-
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, 300);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        clearTimeout(timer);
-        resolve();
-      }),
-    );
-  });
-}
-
-/** 押したあとの処理（メインウィンドウとのやり取り）が進むのを少し待つ。 */
-function settle(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 150));
-}
-
-function str(req: Record<string, unknown>, key: string): string {
-  const v = req[key];
-  if (typeof v !== "string") throw new Error(`${key} は文字列で指定してください`);
-  return v;
-}
-
-function num(req: Record<string, unknown>, key: string): number {
-  const v = req[key];
-  if (typeof v !== "number") throw new Error(`${key} は数で指定してください`);
-  return v;
 }

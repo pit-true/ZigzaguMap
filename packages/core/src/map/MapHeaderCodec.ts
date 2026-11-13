@@ -20,9 +20,6 @@ export const MAP_HEADER = {
   battleType: 0x1b,
 } as const;
 
-/** ポインタ部分の終わり（ここから後ろがマップの設定）。 */
-export const MAP_HEADER_POINTERS_END = 0x10;
-
 /** フッター（レイアウト、28 バイト）のフィールド位置。 */
 export const MAP_FOOTER = {
   width: 0x00,

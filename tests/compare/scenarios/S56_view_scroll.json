@@ -1,0 +1,31 @@
+{
+  "name": "S56_view_scroll",
+  "title": "マップ表示領域とブロックパレットのスクロール（大きいマップ・2 倍表示）",
+  "source": "S56",
+  "issues": [39],
+  "note": "両アプリのメインウィンドウを 1000×700 にそろえてから比べる。F02-23（マップのスクロール）、F02-21・F14-11（2 倍表示）。マップがはみ出すとスクロールバーが出て、右下の端までスクロールできること。マップタブでスクロールバーが出なかった不具合（動画の作成中に見つかったもの）の再発を見る",
+  "steps": [
+    {"op": "resizeWindow", "width": 1000, "height": 700},
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 6},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "compareFields", "fields": ["map.size", "view.scroll:map", "view.scroll:palette"]},
+    {"op": "scrollView", "target": "map", "to": "end"},
+    {"op": "compareFields", "fields": ["view.scroll:map"]},
+    {"op": "scrollView", "target": "palette", "to": "end"},
+    {"op": "compareFields", "fields": ["view.scroll:palette"]},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "compareFields", "fields": ["view.scroll:movement"]},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "compareFields", "fields": ["view.scroll:event"]},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1260"]},
+    {"op": "compareFields", "fields": ["view.scroll:map"]},
+    {"op": "scrollView", "target": "map", "to": "end"},
+    {"op": "compareFields", "fields": ["view.scroll:map"]},
+    {"op": "snapshot", "name": "zoom_map_3_0", "target": "map", "compare": {"cell": 32}},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1260"]},
+    {"op": "compareFields", "fields": ["view.scroll:map"]}
+  ]
+}

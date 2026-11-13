@@ -6,7 +6,6 @@ import { FlyTable, cloneFlyPositions } from "../fly/FlyTable.js";
 import { HEAL_LOCATION_COUNT } from "../regionmap/constants.js";
 import { healOf, writeHeal } from "../regionmap/RegionMapDocument.js";
 import { RegionMapJson } from "../regionmap/RegionMapJson.js";
-import { REGION_MAP_PATH } from "../regionmap/RegionMapProject.js";
 import type { DocumentContext } from "../command/DocumentContext.js";
 import { TilesetTable } from "../map/TilesetTable.js";
 import { TILESET_HEADER_SIZE } from "../map/constants.js";
@@ -28,6 +27,7 @@ import {
   HIDDEN_ITEM_PATH,
   MAPS_DIR,
   PROJECT_MANIFEST_PATH,
+  REGION_MAP_PATH,
   TILESETS_DIR,
   TILESET_IMAGE_FILE,
   TILESET_INFO_FILE,
@@ -369,8 +369,10 @@ export class CfruProject {
     const hiddenNew = buildHiddenItemSource(hiddenOld, items, this.fileItemBalls);
     if (hiddenNew !== null && (!hiddenExists || hiddenNew !== hiddenOld)) writes.push({ path: HIDDEN_ITEM_PATH, text: hiddenNew });
 
-    if (writes.length > 0 && !this.manifestValue && !(await this.fs.exists(PROJECT_MANIFEST_PATH))) {
-      const manifest = { format: PROJECT_MANIFEST_FORMAT, baseBankCounts: this.base.bankTable.counts() };
+    // project.json は出力先ごとに「無ければ作る」（出力先を指定して別のフォルダへ書いたときも作る）。
+    // 中身は読み込んだもの（無ければベース ROM のバンクごとのマップ数）。
+    if (writes.length > 0 && !(await this.fs.exists(PROJECT_MANIFEST_PATH))) {
+      const manifest = this.manifestValue ?? { format: PROJECT_MANIFEST_FORMAT, baseBankCounts: this.base.bankTable.counts() };
       writes.unshift({ path: PROJECT_MANIFEST_PATH, text: ProjectManifestJson.stringify(manifest) });
       this.manifestValue = manifest;
     }

@@ -9,7 +9,7 @@ import {
 } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { hex, ja } from "../../i18n/ja";
-import { createDialog, type DialogFrame } from "../Dialog";
+import { createDialog, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
 import { askYesNo } from "../MessageBox";
 import { commit, watchCommands } from "../form/commit";
 import { button, combo, edit, label, panel, selectIndex, setEnabled, spin } from "../form/controls";
@@ -164,15 +164,8 @@ export class ConnectionManager {
     frame.body.append(this.content);
     frame.box.style.left = `${Math.max(0, Math.round((window.innerWidth - 410) / 2))}px`;
     frame.box.style.top = `${Math.max(0, Math.round((window.innerHeight - 262) / 2))}px`;
-    frame.box.addEventListener("keydown", (e) => e.stopPropagation());
-    frame.register({
-      title: ja.conn.title,
-      text: "",
-      buttons: [],
-      press: (b) => {
-        throw new Error(`ボタンがありません: ${b}`);
-      },
-    });
+    handleDialogKeys(frame, null);
+    frame.register({ title: ja.conn.title, text: "", ...pressable([]) });
     this.frame = frame;
     this.reload(true);
   }

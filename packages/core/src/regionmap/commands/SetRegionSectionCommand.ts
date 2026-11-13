@@ -3,7 +3,7 @@ import { documentContext } from "../../command/DocumentContext.js";
 import { EditError, EditErrorCode, checkRange } from "../../command/EditError.js";
 import { argInt, argOptInt, argOptString, type Args } from "../../command/jsonArgs.js";
 import { MAP_NAME_MAX_BYTES, hasMapName } from "../../name/MapNameTable.js";
-import { HEAL_LOCATION_COUNT, hasFlyDestination, isRegionSection } from "../constants.js";
+import { HEAL_LOCATION_COUNT, isRegionSection } from "../constants.js";
 import type { RegionMapContext } from "../RegionMapContext.js";
 import { RegionMapCommand } from "./RegionMapCommand.js";
 

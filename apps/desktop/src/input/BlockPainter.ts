@@ -1,4 +1,4 @@
-import { PaintBlocksCommand } from "@zigzagumap/core";
+import { PaintBlocksCommand, formatHex } from "@zigzagumap/core";
 import type { EditorState } from "../app/EditorState";
 import { ja } from "../i18n/ja";
 import type { Cell, MapView } from "../ui/map/MapView";
@@ -114,5 +114,5 @@ export class BlockPainter {
 }
 
 function hex4(n: number): string {
-  return n.toString(16).toUpperCase().padStart(4, "0");
+  return formatHex(n, 4);
 }

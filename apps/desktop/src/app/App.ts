@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
@@ -25,9 +25,10 @@ import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { FileDialogs, writeFile } from "./FileDialogs";
+import { FileDialogs, fileNameOf as fileName, writeFile } from "./FileDialogs";
 import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
 import { ImageExport, type ImageKind } from "./ImageExport";
+import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
@@ -39,6 +40,7 @@ import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
+import { errorText } from "../util/errors";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -59,6 +61,8 @@ export class App implements ActionTarget {
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
   readonly system: SystemSettings;
+  /** 数を入力して変える設定。 */
+  readonly prompts: SettingPrompts;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   /** 左のマップ一覧（自動操作の `tree.list` も読む）。 */
@@ -98,6 +102,7 @@ export class App implements ActionTarget {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
     this.system = new SystemSettings(state, this.files, () => this.automation);
+    this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
     this.newMaps = new NewMapController({
       state,
@@ -189,7 +194,7 @@ export class App implements ActionTarget {
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
-      if (p.type === "drop" && p.paths.length > 0) void this.openDropped(p.paths[0]!);
+      if (p.type === "drop") void this.drop(p.paths);
     });
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
@@ -229,7 +234,10 @@ export class App implements ActionTarget {
     if (rom) await this.openSession(rom, folder);
   }
 
-  private async openDropped(path: string): Promise<void> {
+  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダならプロジェクト、.gba なら ROM。 */
+  async drop(paths: readonly string[]): Promise<void> {
+    const path = paths[0];
+    if (path === undefined) return;
     if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
     else if (path.toLowerCase().endsWith(".gba")) await this.openSession(path, null);
     else this.state.setStatus(ja.unsupportedFile, undefined, true);
@@ -509,6 +517,11 @@ export class App implements ActionTarget {
 
   // ---- 設定 ----
 
+  /** 左の欄の幅を変える（分割バーを動かしたときと同じ。決まった幅を返す）。 */
+  setLeftWidth(width: number): number {
+    return this.splitter.setWidth(width);
+  }
+
   setSort(mode: number): void {
     this.state.settings.update({ sortMode: mode });
     this.rebuildTree();
@@ -521,35 +534,6 @@ export class App implements ActionTarget {
     if (rebuild) this.rebuildTree();
     this.state.emit("view");
     this.state.emit("recent");
-  }
-
-  /** 設定 > マップブロックの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
-  async askPaletteWidth(): Promise<void> {
-    const text = await inputDialog(ja.blockWidthTitle, ja.blockWidthPrompt, String(this.state.settings.data.paletteWidth));
-    if (text === null) return;
-    const n = parseInteger(text);
-    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
-    if (n < 1 || n > 64) return void (await showError(ja.invalidInput));
-    this.changeSetting({ paletteWidth: n });
-  }
-
-  /** 設定 > 移動エリアの設定の透明度。 */
-  async askOpacity(): Promise<void> {
-    const text = await inputDialog(ja.movementOpacity, ja.opacityPrompt, String(this.state.settings.data.movementOpacity));
-    if (text === null) return;
-    const n = Number(text.trim().replace(",", "."));
-    if (text.trim() === "" || !Number.isFinite(n) || n < 0 || n > 1) return void (await showError(ja.invalidInput));
-    this.changeSetting({ movementOpacity: n });
-  }
-
-  /** 設定 > 最近開いたファイルの設定 > 最近開いたファイルリストの最大数の変更。 */
-  async askRecentMax(): Promise<void> {
-    const text = await inputDialog(ja.recentMax, ja.recentMaxPrompt, String(this.state.settings.data.recentMax));
-    if (text === null) return;
-    const n = parseInteger(text);
-    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
-    if (n < 1 || n > 9) return void (await showError(ja.invalidInput));
-    this.changeSetting({ recentMax: n, recent: this.state.settings.data.recent.slice(0, n) });
   }
 
   /** ツール > 画像の保存（3 種）。 */
@@ -635,35 +619,20 @@ export class App implements ActionTarget {
   }
 }
 
-/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）か。まとめたものは中を見る。 */
 const SET_MAP_NAME = "setMapName";
+/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）。 */
+const MAP_LIST_COMMANDS = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
 
 /** コマンドとその中のコマンド（まとめたもの）の名前。 */
 function commandNames(command: Command): string[] {
-  const inner = command.args["commands"];
-  const names = Array.isArray(inner) ? inner.map((c) => String((c as { name?: unknown } | null)?.name ?? "")) : [];
-  return [command.name, ...names];
+  return flattenCommandRecords(command).map((r) => r.name);
 }
 
 function changesMapList(command: Command): boolean {
-  const names = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
-  if (names.has(command.name)) return true;
-  const inner = command.args["commands"];
-  return Array.isArray(inner) && inner.some((c) => typeof c === "object" && c !== null && names.has(String((c as { name?: unknown }).name)));
+  return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
 }
 
-function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
-/** Delphi の StrToInt と同じく、前後の空白を除いた 10 進の整数だけを受け付ける。 */
-function parseInteger(text: string): number | null {
-  return /^\s*[+-]?\d+\s*$/.test(text) ? Number(text) : null;
-}
-
-function fileName(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
 
 function toolbarLabel(id: string): string {
   const map: Record<string, string> = {

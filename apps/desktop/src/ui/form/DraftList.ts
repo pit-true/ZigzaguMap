@@ -28,7 +28,7 @@ export class DraftList<T> {
 
   constructor(
     source: readonly T[],
-    private readonly copy: (value: T) => T,
+    copy: (value: T) => T,
     private readonly key: (list: readonly T[]) => string,
   ) {
     this.items = source.map((value, src) => ({ value: copy(value), src }));

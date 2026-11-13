@@ -1,6 +1,6 @@
 import "./styles/all";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { startToolWindow } from "./windows/world-map/startToolWindow";
+import { startToolWindow } from "./windows/startToolWindow";
 
 /**
  * 別ウィンドウ（ワールドマップエディター・ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の入口（tool.html）。

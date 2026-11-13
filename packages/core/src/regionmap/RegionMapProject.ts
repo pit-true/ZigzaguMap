@@ -1,4 +1,4 @@
-import { MAPS_DIR } from "../project/paths.js";
+import { REGION_MAP_PATH } from "../project/paths.js";
 import type { ProjectFs } from "../project/ProjectFs.js";
 import type { FlyPosition } from "../fly/types.js";
 import type { Rom } from "../rom/Rom.js";
@@ -6,9 +6,6 @@ import type { RegionMapDocument } from "./RegionMapDocument.js";
 import type { RegionMapGraphics } from "./RegionMapGraphics.js";
 import { RegionMapJson } from "./RegionMapJson.js";
 import { RegionMapReader, type RegionMapTableAddresses } from "./RegionMapReader.js";
-
-/** maps\regionmap.json のパス。 */
-export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 
 /**
  * プロジェクトのタウンマップ（ベース ROM + maps\regionmap.json）。

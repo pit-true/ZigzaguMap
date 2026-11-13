@@ -1,5 +1,6 @@
 import { BLOCK_PIXELS, type RgbaImage } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
+import { canvasOf } from "../ui/canvas";
 import { drawEventsOn, type EventOverlay } from "../ui/map/EventLayer";
 import { spriteSourceFor } from "../ui/map/spriteCanvases";
 import type { EditorState } from "./EditorState";
@@ -49,11 +50,7 @@ export class ImageExport {
     if (kind === "map") return mapImage.image;
     if (kind === "palette") return map.tiles.paletteImage(this.state.settings.data.paletteWidth);
     const { width, height } = mapImage.image;
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const c = canvas.getContext("2d")!;
-    c.putImageData(new ImageData(mapImage.image.data, width, height), 0, 0);
+    const c = canvasOf(mapImage.image).getContext("2d")!;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     const { events, selected } = this.overlay();
     drawEventsOn(c, events, BLOCK_PIXELS, selected, sprites);

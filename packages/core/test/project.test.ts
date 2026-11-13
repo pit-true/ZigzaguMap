@@ -154,6 +154,32 @@ describe("CfruProject（合成 ROM + メモリ上のフォルダ）", () => {
     expect(fs.files.has(mapSourcePath(id))).toBe(false);
   });
 
+  it("出力先を指定して別の空のフォルダへ書くと、そこにも project.json を作り、読み直すと同じ", async () => {
+    // アプリの「出力先を指定して出力」と同じく、同じ ProjectFs の書き込み先だけを切り替える
+    const first = new MemoryProjectFs();
+    let current = first;
+    const fs = new Proxy(first, {
+      get: (_t, key) => {
+        const v = (current as unknown as Record<string | symbol, unknown>)[key];
+        return typeof v === "function" ? v.bind(current) : v;
+      },
+    });
+    const project = await CfruProject.open(rom, fs);
+    await project.load(id);
+    const bus = new CommandBus(project.gridStore());
+    bus.execute(new PlaceBlockCommand({ ...id, x: 1, y: 1, block: 7 }));
+    expect((await project.save()).written).toEqual(["maps/project.json", mapSourcePath(id)]);
+
+    const second = new MemoryProjectFs();
+    current = second;
+    expect((await project.save()).written).toEqual(["maps/project.json", mapSourcePath(id)]);
+    expect(second.files.get("maps/project.json")).toBe(first.files.get("maps/project.json"));
+    const reopened = await CfruProject.open(rom, second);
+    expect(reopened.manifest).toEqual(project.manifest);
+    expect((await reopened.load(id)).grid.getBlock(1, 1)).toBe(7);
+    expect(await reopened.save()).toEqual({ written: [], removed: [] });
+  });
+
   it("project.json の BaseBankCounts をマップ数に使い、JSON だけの新しいマップも数える", async () => {
     const fs = new MemoryProjectFs();
     await fs.writeText("maps/project.json", '{"Format":1,"BaseBankCounts":[1,1]}\r\n');

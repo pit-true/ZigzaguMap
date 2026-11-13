@@ -11,6 +11,7 @@ import { createBlockEditorMenu } from "./BlockEditorMenu";
 import { BlockListView } from "./BlockListView";
 import { TilesetIo } from "./TilesetIo";
 import { TileSheetView } from "./TileSheetView";
+import { errorText } from "../../util/errors";
 
 /**
  * ブロックエディタ（別ウィンドウ）。左にブロック一覧、中央にブロックの編集面とタイル一覧、右にマップアクションデータ。
@@ -83,7 +84,7 @@ export class BlockEditorWindow {
       "palette.open": () => this.io.openPalette(),
       "palette.remap": () => client.request({ op: "open", kind: "block-adjust" }),
     };
-    const menu = createBlockEditorMenu(actions, (e) => void showError(e instanceof Error ? e.message : String(e)));
+    const menu = createBlockEditorMenu(actions, (e) => void showError(errorText(e)));
     const body = document.createElement("div");
     body.className = "be-body";
     body.append(this.list.element, this.panel.element, this.attributes.element);
@@ -149,7 +150,7 @@ export class BlockEditorWindow {
         attribute: attributeFromBytes(this.attributes.bytes()),
       });
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e));
+      await showError(errorText(e));
     }
   }
 

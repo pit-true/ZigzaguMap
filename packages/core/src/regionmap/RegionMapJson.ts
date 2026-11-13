@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import { writeIndentedJson, type BochiJsonValue } from "../project/BochiJson.js";
 import { ProjectFormatError } from "../project/ProjectFormatError.js";
 import { asRecord, parseJsonObject, readArray, readInt, readString, type JsonRecord } from "../project/jsonRead.js";
@@ -138,7 +139,7 @@ export class RegionMapJson {
 }
 
 function hex(v: number, digits: number): string {
-  return v.toString(16).toUpperCase().padStart(digits, "0");
+  return formatHex(v, digits);
 }
 
 function id(index: number): string {

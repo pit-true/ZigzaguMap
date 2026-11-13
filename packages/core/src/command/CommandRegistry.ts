@@ -1,4 +1,5 @@
 import type { Command, CommandRecord } from "./Command.js";
+import { CommandGroup } from "./CommandGroup.js";
 import { PlaceBlockCommand } from "./commands/PlaceBlockCommand.js";
 import { PlaceMovementCommand } from "./commands/PlaceMovementCommand.js";
 import { PaintBlocksCommand } from "./commands/PaintBlocksCommand.js";
@@ -41,5 +42,6 @@ export function createDefaultRegistry(): CommandRegistry {
     .register(PaintBlocksCommand.NAME, PaintBlocksCommand.fromJson)
     .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
     .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
+  registry.register(CommandGroup.NAME, (args) => CommandGroup.fromJson(args, (r) => registry.create(r)));
   return registerRegionMapCommands(registerEditCommands(registry));
 }

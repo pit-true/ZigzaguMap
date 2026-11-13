@@ -1,16 +1,16 @@
 import {
   BLOCK_ID_MASK,
-  BLOCK_PIXELS,
   MAP_FOOTER,
   RomLocations,
   SetBorderCommand,
   SetRawFooterCommand,
-  createImage,
+  renderBlocks,
   toHexBytes,
   toOffset,
   type Command,
 } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
+import { drawRgba } from "../canvas";
 import { commit } from "../form/commit";
 import { autoId, button, edit, group, label, memo, place } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
@@ -193,21 +193,15 @@ export class FooterGroups {
   /** 境界ブロックの画像（境界の欄の値で描く。大きさはフッターの欄の値）。 */
   private drawBorder(): void {
     const c = this.ctx;
-    const ctx2d = this.canvas.getContext("2d");
-    if (!c || !ctx2d) return;
+    if (!c) return;
     const w = this.bytes[MAP_FOOTER.borderWidth]! || 1;
     const h = this.bytes[MAP_FOOTER.borderHeight]! || 1;
     const cells = this.borderCells() ?? [];
-    const image = createImage(w * BLOCK_PIXELS, h * BLOCK_PIXELS);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const cell = cells[y * w + x];
-        if (cell !== undefined) c.map.tiles.renderer.blit(cell & BLOCK_ID_MASK, image.data, image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
-      }
-    }
-    this.canvas.width = image.width;
-    this.canvas.height = image.height;
-    ctx2d.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+    const image = renderBlocks(c.map.tiles.renderer, w, h, (x, y) => {
+      const cell = cells[y * w + x];
+      return cell === undefined ? null : cell & BLOCK_ID_MASK;
+    });
+    drawRgba(this.canvas, image);
   }
 
   private apply(): void {

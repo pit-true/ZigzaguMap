@@ -69,7 +69,7 @@ pub fn automation_ready(window: WebviewWindow, state: State<'_, Arc<Automation>>
 pub async fn automation_capture(app: AppHandle, x: i32, y: i32, width: i32, height: i32) -> Result<Value, String> {
     let window = app.get_webview_window("main").ok_or("ウィンドウがありません")?;
     #[cfg(windows)]
-    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
+    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0;
     #[cfg(not(windows))]
     let hwnd = {
         let _ = &window;
@@ -177,7 +177,7 @@ fn windows(app: &AppHandle, state: &Automation) -> Value {
 fn screenshot(app: &AppHandle, label: &str) -> Result<Value, String> {
     let window = app.get_webview_window(label).ok_or(format!("ウィンドウ {label} がありません"))?;
     #[cfg(windows)]
-    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
+    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0;
     #[cfg(not(windows))]
     let hwnd = {
         let _ = &window;

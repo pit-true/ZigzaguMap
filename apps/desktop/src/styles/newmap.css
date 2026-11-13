@@ -40,11 +40,9 @@
   margin: 4px 0 6px 12px;
 }
 
-/* マップタブの「新規マップ作成」「マップバンクの作成」（AdvanceMap の Cmd_MakeMap / Cmd_MakeBank）。 */
-.map-tab {
-  position: relative;
-}
-
+/* マップタブの「新規マップ作成」「マップバンクの作成」（AdvanceMap の Cmd_MakeMap / Cmd_MakeBank）。
+   ボタンの位置はタブのページ（.tab-page の position: absolute）を基準にする。ページの position を上書きすると、
+   ページがタブの大きさに収まらずマップのスクロールバーが出なくなるので、ここでは position を指定しない。 */
 .map-make-button {
   z-index: 5;
 }

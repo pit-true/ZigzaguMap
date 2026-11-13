@@ -1,3 +1,5 @@
+import { formatHexBytes } from "./bytes.js";
+
 /** SHA-256（同期。依存なし）。tileset.json の ImageSha256 に使う。 */
 
 const K = new Uint32Array([
@@ -60,9 +62,7 @@ export function sha256(data: Uint8Array): Uint8Array {
 
 /** SHA-256 を 16 進の大文字で返す（.NET の Convert.ToHexString と同じ形）。 */
 export function sha256Hex(data: Uint8Array): string {
-  let s = "";
-  for (const b of sha256(data)) s += b.toString(16).toUpperCase().padStart(2, "0");
-  return s;
+  return formatHexBytes(sha256(data));
 }
 
 function rotr(x: number, n: number): number {

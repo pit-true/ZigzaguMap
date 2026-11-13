@@ -33,21 +33,3 @@ function buildTable(): (string | null)[] {
 /** バイト → 文字。null は表に無いバイト。 */
 export const JP_CHARSET: readonly (string | null)[] = buildTable();
 
-/** 書くときだけ受け付ける別表記 → バイト。 */
-export const JP_ALIASES: Readonly<Record<string, number>> = {
-  " ": 0x00,
-  "０": 0xa1,
-  "１": 0xa2,
-  "２": 0xa3,
-  "３": 0xa4,
-  "４": 0xa5,
-  "５": 0xa6,
-  "６": 0xa7,
-  "７": 0xa8,
-  "８": 0xa9,
-  "９": 0xaa,
-  "！": 0xab,
-  "？": 0xac,
-  "･": 0xaf,
-  "＞": 0xef,
-};

@@ -2,7 +2,7 @@ import { EditError, parseIntInput, type MapId } from "@zigzagumap/core";
 import "../../styles/newmap.css";
 import { ja } from "../../i18n/ja";
 import { jaNewMap } from "../../i18n/ja.newMap";
-import { createDialog } from "../Dialog";
+import { createDialog, pressable } from "../Dialog";
 import { button, combo, edit, label, panel, setOptions } from "../form/controls";
 import { showEditError } from "../form/inputErrors";
 import { messageBox } from "../MessageBox";
@@ -163,14 +163,17 @@ export function openMapInsertDialog(host: MapInsertHost): Promise<void> {
     frame.register({
       title: t.insertTitle,
       text: t.insertNotice,
-      buttons: [t.showBankHeader, t.replace, t.dummyImport, t.countApply],
-      press: (b) => {
-        if (b === t.showBankHeader) void showBankHeader();
-        else if (b === t.replace) void replace();
-        else if (b === t.countApply) void changeCount();
-        else if (b === t.dummyImport) throw new Error("ダミーマップにインポートは押せません");
-        else throw new Error(`ボタンがありません: ${b}`);
-      },
+      ...pressable([
+        { label: t.showBankHeader, run: () => void showBankHeader() },
+        { label: t.replace, run: () => void replace() },
+        {
+          label: t.dummyImport,
+          run: () => {
+            throw new Error("ダミーマップにインポートは押せません");
+          },
+        },
+        { label: t.countApply, run: () => void changeCount() },
+      ]),
     });
   });
 }

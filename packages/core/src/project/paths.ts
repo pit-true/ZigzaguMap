@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import type { MapId } from "../map/types.js";
 
 /** maps\ のフォルダ名。 */
@@ -14,6 +15,8 @@ export const TILESETS_DIR = `${MAPS_DIR}/tilesets`;
 export const TILESET_INFO_FILE = "tileset.json";
 /** タイルセットの画像ファイル名。 */
 export const TILESET_IMAGE_FILE = "tiles.png";
+/** タウンマップ（maps/regionmap.json）のパス。 */
+export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 
 /** マップの JSON のパス（maps/BB/MM.json。2 桁にそろえる）。 */
 export function mapSourcePath(id: MapId): string {
@@ -22,7 +25,7 @@ export function mapSourcePath(id: MapId): string {
 
 /** タイルセットのフォルダ（maps/tilesets/primary_XXXXXX など。番号はヘッダーの位置の 16 進 6 桁）。 */
 export function tilesetFolder(headerAddress: number, secondary: boolean): string {
-  return `${TILESETS_DIR}/${secondary ? "secondary" : "primary"}_${headerAddress.toString(16).toUpperCase().padStart(6, "0")}`;
+  return `${TILESETS_DIR}/${secondary ? "secondary" : "primary"}_${formatHex(headerAddress, 6)}`;
 }
 
 /** 数字だけの名前か（バンク・マップのフォルダとファイルの判定用）。 */

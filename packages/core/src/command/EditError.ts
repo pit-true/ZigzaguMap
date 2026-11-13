@@ -1,3 +1,5 @@
+import { formatHexBytes } from "../binary/bytes.js";
+
 /**
  * 編集コマンドの入力エラーの種類。文言は画面側が持ち、ここでは ID と引数だけを決める。
  * 括弧内は AdvanceMap 1.92（日本語化版）で同じ場面に出る文言。
@@ -145,7 +147,5 @@ export function parseHexBytes(field: string, text: string, expected: number): Ui
 
 /** バイト列を 16 進の大文字にする（高度なヘッダーの欄の表示用）。 */
 export function toHexBytes(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += b.toString(16).toUpperCase().padStart(2, "0");
-  return s;
+  return formatHexBytes(bytes);
 }

@@ -2,6 +2,7 @@ import { EditError, type Command, type CommandBus } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { showEditError } from "../form/inputErrors";
+import { errorText } from "../../util/errors";
 
 /**
  * イベントタブの編集を CommandBus で実行する窓口。
@@ -73,6 +74,6 @@ export class EventEditor {
 
   private report(e: unknown): void {
     if (e instanceof EditError) this.state.setStatus(ja.error(e.message), undefined, true);
-    else this.state.setStatus(ja.error(e instanceof Error ? e.message : String(e)), undefined, true);
+    else this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
 }

@@ -36,9 +36,3 @@ export function decompressLz77(src: Uint8Array, offset: number): Uint8Array {
   return out;
 }
 
-/** 指定位置が LZ77 圧縮データの先頭らしいか（ヘッダーだけで判定）。 */
-export function looksLikeLz77(src: Uint8Array, offset: number): boolean {
-  if (offset < 0 || offset + 4 > src.length || src[offset] !== 0x10) return false;
-  const size = src[offset + 1]! | (src[offset + 2]! << 8) | (src[offset + 3]! << 16);
-  return size > 0;
-}
