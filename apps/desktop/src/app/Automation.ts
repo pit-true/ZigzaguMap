@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { App } from "./App";
+import { handleUi } from "./automationUi";
 import { TAB_ORDER, type TabId } from "./EditorState";
 import { timings } from "./timings";
 
@@ -115,8 +116,11 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
     case "state":
       app.checkDirty(true);
       return describe(app);
-    default:
+    default: {
+      const ui = await handleUi(app, req);
+      if (ui) return ui.value;
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
+    }
   }
 }
 
