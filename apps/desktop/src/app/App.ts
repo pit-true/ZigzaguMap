@@ -35,6 +35,8 @@ import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
+import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
+import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -68,6 +70,13 @@ export class App implements ActionTarget {
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
   private closing = false;
+  /** ワールドマップエディター（別ウィンドウ）の受け手。 */
+  private readonly worldMap = new WorldMapHost({
+    session: () => this.state.session,
+    currentMap: () => (this.state.map ? { id: this.state.map.id, section: this.state.map.doc.header.regionMapSectionId } : null),
+    openMap: (id) => this.openMap(id),
+    exportMaps: () => this.exportMaps(false),
+  });
   private connections: ConnectionManager | null = null;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
@@ -138,6 +147,8 @@ export class App implements ActionTarget {
     state.on("dirty", () => this.tree.refreshMarks());
     state.on("view", () => this.applyLayout());
     for (const topic of ["session", "map", "view"] as const) state.on(topic, () => this.toolbar.update());
+    state.on("session", () => this.worldMap.sessionChanged());
+    state.on("map", () => this.worldMap.mapChanged());
     this.statusBar.render(state.status);
     this.applyLayout();
     state.emit("view");
@@ -146,6 +157,7 @@ export class App implements ActionTarget {
   /** ドラッグ＆ドロップ、キー操作、終了の確認、自動操作を受け付け、起動引数の ROM を開く。 */
   async start(): Promise<void> {
     installShortcuts(this);
+    await this.worldMap.start();
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
@@ -390,11 +402,16 @@ export class App implements ActionTarget {
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
   private async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
-    if (!session || session.modifiedMaps().length === 0) return true;
+    if (!session || (session.modifiedMaps().length === 0 && !session.isRegionMapModified())) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
     return true;
+  }
+
+  /** ツール > ワールドマップエディター（Ctrl+W）。別ウィンドウで開く。 */
+  async openWorldMap(): Promise<void> {
+    if (this.state.session) await openWorldMapWindow(ja.worldMapEditor);
   }
 
   async exit(): Promise<void> {

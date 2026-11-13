@@ -1,19 +1,22 @@
 //! 自動操作の入口（テスト用）。開発ビルドか `--automation <ポート>` を付けたときだけ、
 //! 127.0.0.1 で HTTP の POST（本文は JSON）を受け付ける。通常の起動では待ち受けない。
 //!
-//! - `{"cmd":"screenshot"}` と `{"cmd":"exit"}` は Rust 側で処理する。
+//! - `{"cmd":"screenshot"}`、`{"cmd":"windows"}`、`{"cmd":"exit"}` は Rust 側で処理する。
 //! - それ以外は画面（TypeScript）へ `automation-request` で渡し、`automation_reply` の返事を返す。
+//! - `"window": "<ラベル>"` を付けると、そのウィンドウ（ワールドマップエディターなど）へ
+//!   `automation-request-window` で渡す（メインの購読と混ざらないよう名前を分けている）。
+//!   screenshot に付けるとそのウィンドウを撮る。
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 
 use crate::capture;
 
@@ -25,14 +28,25 @@ const REPLY_TIMEOUT: Duration = Duration::from_secs(120);
 pub struct Automation {
     port: Option<u16>,
     next_id: AtomicU64,
-    /// 画面が要求を受け取れる状態になったか。
-    ready: AtomicBool,
+    /// 要求を受け取れる状態になったウィンドウのラベル。
+    ready: Mutex<HashSet<String>>,
     pending: Mutex<HashMap<u64, Sender<String>>>,
 }
 
 impl Automation {
     pub fn new(port: Option<u16>) -> Self {
         Self { port, ..Default::default() }
+    }
+
+    fn is_ready(&self, label: &str) -> bool {
+        self.ready.lock().map(|r| r.contains(label)).unwrap_or(false)
+    }
+
+    /// ウィンドウを閉じたときに受け付けを外す。
+    pub fn forget(&self, label: &str) {
+        if let Ok(mut r) = self.ready.lock() {
+            r.remove(label);
+        }
     }
 }
 
@@ -42,10 +56,12 @@ pub fn automation_port(state: State<'_, Arc<Automation>>) -> Option<u16> {
     state.port
 }
 
-/// 画面が要求を受け取れるようになったことを知らせる。
+/// 画面が要求を受け取れるようになったことを知らせる（呼んだウィンドウごと）。
 #[tauri::command]
-pub fn automation_ready(state: State<'_, Arc<Automation>>) {
-    state.ready.store(true, Ordering::Release);
+pub fn automation_ready(window: WebviewWindow, state: State<'_, Arc<Automation>>) {
+    if let Ok(mut r) = state.ready.lock() {
+        r.insert(window.label().to_string());
+    }
 }
 
 /// ウィンドウのクライアント領域の一部（物理ピクセル）を PNG にする（自動操作の `ui.shot` 用。画面側が部品の位置を渡す）。
@@ -102,9 +118,11 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
         Err(e) => return respond(&mut stream, &json!({"ok": false, "error": format!("JSON が読めません: {e}")}).to_string()),
     };
     let cmd = request.get("cmd").and_then(Value::as_str).unwrap_or("");
+    let label = request.get("window").and_then(Value::as_str).unwrap_or("main").to_string();
     match cmd {
+        "windows" => respond(&mut stream, &json!({"ok": true, "result": windows(app, state)}).to_string()),
         "screenshot" => {
-            let reply = match screenshot(app) {
+            let reply = match screenshot(app, &label) {
                 Ok(v) => json!({"ok": true, "result": v}),
                 Err(e) => json!({"ok": false, "error": e}),
             };
@@ -115,8 +133,9 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
             app.exit(0);
             Ok(())
         }
-        _ if !state.ready.load(Ordering::Acquire) => {
-            respond(&mut stream, &json!({"ok": false, "error": "画面の準備ができていません"}).to_string())
+        _ if !state.is_ready(&label) => {
+            let error = if app.get_webview_window(&label).is_some() { "画面の準備ができていません".to_string() } else { format!("ウィンドウ {label} は開いていません") };
+            respond(&mut stream, &json!({"ok": false, "error": error}).to_string())
         }
         _ => {
             let id = state.next_id.fetch_add(1, Ordering::Relaxed);
@@ -124,7 +143,8 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
             if let Ok(mut p) = state.pending.lock() {
                 p.insert(id, tx);
             }
-            let _ = app.emit_to("main", "automation-request", json!({"id": id, "request": request}));
+            let event = if label == "main" { "automation-request" } else { "automation-request-window" };
+            let _ = app.emit_to(label.as_str(), event, json!({"id": id, "request": request}));
             let reply = rx
                 .recv_timeout(REPLY_TIMEOUT)
                 .unwrap_or_else(|_| json!({"ok": false, "error": "画面からの返事がありません"}).to_string());
@@ -136,8 +156,26 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
     }
 }
 
-fn screenshot(app: &AppHandle) -> Result<Value, String> {
-    let window = app.get_webview_window("main").ok_or("ウィンドウがありません")?;
+/// 開いているウィンドウの一覧（ラベル、題名、表示中か、自動操作を受け付けるか）。
+fn windows(app: &AppHandle, state: &Automation) -> Value {
+    let mut list: Vec<Value> = app
+        .webview_windows()
+        .into_iter()
+        .map(|(label, w)| {
+            json!({
+                "label": label,
+                "title": w.title().unwrap_or_default(),
+                "visible": w.is_visible().unwrap_or(false),
+                "ready": state.is_ready(&label),
+            })
+        })
+        .collect();
+    list.sort_by(|a, b| a["label"].as_str().cmp(&b["label"].as_str()));
+    Value::Array(list)
+}
+
+fn screenshot(app: &AppHandle, label: &str) -> Result<Value, String> {
+    let window = app.get_webview_window(label).ok_or(format!("ウィンドウ {label} がありません"))?;
     #[cfg(windows)]
     let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
     #[cfg(not(windows))]
