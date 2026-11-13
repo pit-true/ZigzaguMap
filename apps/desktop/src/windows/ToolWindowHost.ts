@@ -50,7 +50,7 @@ export class ToolWindowHost {
   private unsubscribeBus: (() => void) | null = null;
   private broadcastQueued = false;
   private nextAutomation = 1;
-  private readonly automationWaits = new Map<number, (reply: AutomationReply) => void>();
+  private readonly automationWaits = new Map<number, { kind: ToolKind; resolve: (reply: AutomationReply) => void }>();
 
   private constructor(private readonly app: App) {}
 
@@ -97,9 +97,12 @@ export class ToolWindowHost {
         this.automationWaits.delete(requestId);
         resolve({ ok: false, error: "別ウィンドウからの返事がありません" });
       }, AUTOMATION_TIMEOUT);
-      this.automationWaits.set(requestId, (r) => {
-        clearTimeout(timer);
-        resolve(r);
+      this.automationWaits.set(requestId, {
+        kind: kind as ToolKind,
+        resolve: (r) => {
+          clearTimeout(timer);
+          resolve(r);
+        },
       });
       void this.send(kind as ToolKind, { type: "automation", requestId, request });
     });
@@ -160,7 +163,7 @@ export class ToolWindowHost {
         await this.open(req.kind);
         return null;
       case "automationReply":
-        this.automationWaits.get(req.requestId)?.(req.reply);
+        this.automationWaits.get(req.requestId)?.resolve(req.reply);
         this.automationWaits.delete(req.requestId);
         return null;
     }
@@ -190,6 +193,12 @@ export class ToolWindowHost {
 
   private onClosed(kind: ToolKind): void {
     this.opened.delete(kind);
+    // 操作の途中で閉じた（「変更を保存する」で閉じる一括変更など）ときは、待っている自動操作に閉じたことを返す。
+    for (const [id, wait] of this.automationWaits) {
+      if (wait.kind !== kind) continue;
+      this.automationWaits.delete(id);
+      wait.resolve({ ok: true, result: { closed: true } });
+    }
     // パレットを編集する窓が全部閉じたら、一時適用した色は捨てる（AdvanceMap でも開き直すと元の色）。
     if (!this.opened.has("block-editor") && !this.opened.has("palette-editor")) this.ui.preview = {};
   }
