@@ -107,7 +107,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         sep,
         { id: "opt.rememberLast", label: ja.rememberLast, accel: "U" },
         { id: "opt.autoSearch", label: ja.autoSearchOffset, accel: "V" },
-        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", shortcut: ctrl("H") },
+        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", shortcut: ctrl("H"), enable: "rom" },
         { id: "opt.backupOnOpen", label: ja.backupOnOpen, accel: "X" },
         { id: "opt.romShortcut", label: ja.createRomShortcut, accel: "R" },
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
