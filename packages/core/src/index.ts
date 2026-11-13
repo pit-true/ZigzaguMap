@@ -33,6 +33,12 @@ export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
 
+// 接続
+export * from "./connection/layout.js";
+export type { ConnectionHeader, MapConnection } from "./connection/types.js";
+export { ConnectionCodec, ConnectionHeaderCodec, connectionCodec, connectionHeaderCodec } from "./connection/ConnectionCodec.js";
+export { ConnectionReader } from "./connection/ConnectionReader.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
