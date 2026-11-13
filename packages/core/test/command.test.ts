@@ -3,6 +3,7 @@ import {
   BPRJ_OFFSETS,
   BlockGrid,
   CommandBus,
+  CommandGroup,
   GridStore,
   MapLoader,
   PaintBlocksCommand,
@@ -12,6 +13,7 @@ import {
   PlaceMovementCommand,
   Rom,
   createDefaultRegistry,
+  flattenCommandRecords,
   type CommandEvent,
   type EditorContext,
 } from "../src/index.js";
@@ -214,5 +216,36 @@ describe("PaintBorderCommand", () => {
     const registry = createDefaultRegistry();
     expect(() => registry.create({ name: "paintBlocks", args: { bank: 0, map: 0, cells: {} } })).toThrow(TypeError);
     expect(() => registry.create({ name: "paintMovement", args: { bank: 0, map: 0, cells: [{ x: 0, y: 0 }] } })).toThrow(TypeError);
+  });
+});
+
+describe("CommandGroup", () => {
+  it("1 回の操作として実行・アンドゥし、記録から作り直せる", () => {
+    const grid = new BlockGrid(2, 1, Uint16Array.from([1, 2]));
+    const bus = new CommandBus(singleGridContext(grid));
+    const group = CommandGroup.of([
+      new PlaceBlockCommand({ bank: 0, map: 0, x: 0, y: 0, block: 7 }),
+      new PlaceBlockCommand({ bank: 0, map: 0, x: 1, y: 0, block: 8 }),
+    ]);
+    bus.execute(group);
+    expect([grid.getBlock(0, 0), grid.getBlock(1, 0)]).toEqual([7, 8]);
+    expect(group.args["bank"]).toBe(0);
+    bus.undo();
+    expect([grid.getBlock(0, 0), grid.getBlock(1, 0)]).toEqual([1, 2]);
+
+    // 履歴の記録（name: "group"）を、登録表から作り直して再生できる
+    const record = JSON.parse(JSON.stringify({ name: group.name, args: group.args }));
+    bus.execute(createDefaultRegistry().create(record));
+    expect([grid.getBlock(0, 0), grid.getBlock(1, 0)]).toEqual([7, 8]);
+    expect(flattenCommandRecords(record).map((r) => r.name)).toEqual(["group", "placeBlock", "placeBlock"]);
+  });
+
+  it("1 つだけならまとめない。途中で失敗したら実行した分を戻す", () => {
+    const one = new PlaceBlockCommand({ bank: 0, map: 0, x: 0, y: 0, block: 7 });
+    expect(CommandGroup.of([one])).toBe(one);
+    const grid = new BlockGrid(1, 1, Uint16Array.from([1]));
+    const bad = new CommandGroup([one, new PlaceBlockCommand({ bank: 0, map: 0, x: 5, y: 0, block: 8 })]);
+    expect(() => bad.do(singleGridContext(grid))).toThrow();
+    expect(grid.getBlock(0, 0)).toBe(1);
   });
 });

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+  CommandGroup,
   CreateMapCommand,
   CreateWorkMapCommand,
   InsertMapCommand,
@@ -13,7 +14,6 @@ import {
   type Command,
   type MapId,
 } from "@zigzagumap/core";
-import { CommandGroup } from "../../app/CommandGroup";
 import type { EditorState } from "../../app/EditorState";
 import { fileExists, fileNameOf, folderOf, writeFile, type FileDialogs } from "../../app/FileDialogs";
 import { mapLabel } from "../../app/MapTreeModel";
@@ -254,7 +254,7 @@ export class NewMapController {
         }),
       );
       try {
-        session.bus.execute(commands.length === 1 ? commands[0]! : new CommandGroup(commands));
+        session.bus.execute(CommandGroup.of(commands));
       } catch (e) {
         await showNewMapError(e);
         return;

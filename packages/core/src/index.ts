@@ -148,6 +148,7 @@ export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
 export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener, type ExecuteOptions } from "./command/CommandBus.js";
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
+export { CommandGroup, flattenCommandRecords } from "./command/CommandGroup.js";
 export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";

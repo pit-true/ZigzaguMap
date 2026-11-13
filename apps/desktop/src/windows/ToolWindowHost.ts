@@ -1,8 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import { ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
+import { CommandGroup, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
 import type { App } from "../app/App";
-import { CommandGroup } from "../app/CommandGroup";
 import { jaBlockEditor as t } from "../i18n/ja.blockEditor";
 import {
   TOOL_MESSAGE_EVENT,
@@ -153,8 +152,7 @@ export class ToolWindowHost {
       commands.push(new SetPaletteColorsCommand({ tileset: pointer, secondary, palette, colors: [...colors] }));
     }
     this.ui.preview = {};
-    if (commands.length === 1) session.bus.execute(commands[0]!);
-    else if (commands.length > 1) session.bus.execute(new CommandGroup(commands));
+    if (commands.length > 0) session.bus.execute(CommandGroup.of(commands));
     void this.broadcast({ type: "ui", ui: this.uiState() });
     return commands.length;
   }

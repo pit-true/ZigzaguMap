@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
@@ -635,21 +635,17 @@ export class App implements ActionTarget {
   }
 }
 
-/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）か。まとめたものは中を見る。 */
 const SET_MAP_NAME = "setMapName";
+/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）。 */
+const MAP_LIST_COMMANDS = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
 
 /** コマンドとその中のコマンド（まとめたもの）の名前。 */
 function commandNames(command: Command): string[] {
-  const inner = command.args["commands"];
-  const names = Array.isArray(inner) ? inner.map((c) => String((c as { name?: unknown } | null)?.name ?? "")) : [];
-  return [command.name, ...names];
+  return flattenCommandRecords(command).map((r) => r.name);
 }
 
 function changesMapList(command: Command): boolean {
-  const names = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
-  if (names.has(command.name)) return true;
-  const inner = command.args["commands"];
-  return Array.isArray(inner) && inner.some((c) => typeof c === "object" && c !== null && names.has(String((c as { name?: unknown }).name)));
+  return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
 }
 
 function errorText(e: unknown): string {
