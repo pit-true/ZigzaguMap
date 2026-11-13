@@ -1,10 +1,11 @@
 //! ROM の読み込み、ダイアログ、個人設定（AppData）の読み書き。
 
 use tauri::ipc::Response;
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
 
 use crate::project_fs::display_path;
+use crate::StartupArgs;
 
 /// 個人設定のファイル名（app data dir 直下）。
 const SETTINGS_FILE: &str = "settings.json";
@@ -36,8 +37,12 @@ pub async fn pick_folder(window: WebviewWindow, title: String) -> Option<String>
 }
 
 /// 「はい／いいえ／キャンセル」の質問を出す。戻り値は "yes" / "no" / "cancel"。
+/// Windows 標準のメッセージボックスは警告音を鳴らし前面にも出るので、自動操作のときは出さずに "cancel" を返す。
 #[tauri::command]
-pub async fn ask_yes_no_cancel(window: WebviewWindow, title: String, message: String) -> String {
+pub async fn ask_yes_no_cancel(window: WebviewWindow, args: State<'_, StartupArgs>, title: String, message: String) -> Result<String, ()> {
+    if args.automation.is_some() {
+        return Ok("cancel".to_string());
+    }
     let result = window
         .dialog()
         .message(message)
@@ -50,19 +55,22 @@ pub async fn ask_yes_no_cancel(window: WebviewWindow, title: String, message: St
             "キャンセル".into(),
         ))
         .blocking_show_with_result();
-    match result {
+    Ok(match result {
         MessageDialogResult::Yes => "yes",
         MessageDialogResult::No => "no",
         MessageDialogResult::Custom(s) if s == "はい" => "yes",
         MessageDialogResult::Custom(s) if s == "いいえ" => "no",
         _ => "cancel",
     }
-    .to_string()
+    .to_string())
 }
 
-/// 情報・エラーのメッセージを出す（OK のみ）。
+/// 情報・エラーのメッセージを出す（OK のみ）。自動操作のときは出さない（警告音と前面化を避けるため）。
 #[tauri::command]
-pub async fn show_message(window: WebviewWindow, title: String, message: String, error: bool) {
+pub async fn show_message(window: WebviewWindow, args: State<'_, StartupArgs>, title: String, message: String, error: bool) -> Result<(), ()> {
+    if args.automation.is_some() {
+        return Ok(());
+    }
     window
         .dialog()
         .message(message)
@@ -70,6 +78,7 @@ pub async fn show_message(window: WebviewWindow, title: String, message: String,
         .kind(if error { MessageDialogKind::Error } else { MessageDialogKind::Info })
         .parent(&window)
         .blocking_show();
+    Ok(())
 }
 
 /// ROM を読み、バイト列のまま返す（JSON にしない）。ROM へは書き込まない。

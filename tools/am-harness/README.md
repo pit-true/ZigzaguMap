@@ -16,6 +16,7 @@ AdvanceMap を「見えない別デスクトップ」で起動し、ウィンド
 | ツリー/タブ/ステータスバー | 共通コントロールのメッセージ。構造体は AdvanceMap（32bit）のプロセス内に `VirtualAllocEx` で確保して読み書き |
 | 画面取得 | `PrintWindow(PW_RENDERFULLCONTENT)`。隠しデスクトップでも描画される。`BitBlt` は隠しデスクトップでは画面の別内容が混じるので使わない |
 | 部品名の取得 | Delphi の `ControlOfs<HInstance><ThreadId>` ウィンドウプロパティ → プロセスメモリの `TComponent.FName`。ウィンドウを持たない部品も、フォームの `FComponents` をたどって位置・表示状態・文字列・ヒントを読む（`vcl_dump`） |
+| 音 | 起動直後に、その AdvanceMap のプロセスの中の音を鳴らす関数（`user32!MessageBeep`、`win32u!NtUserMessageBeep`・`NtUserPlayEventSound`（メッセージボックスの警告音）、`Beep`、`winmm!PlaySound*`・`sndPlaySound*`）の先頭を、呼ばれた回数を数えて何もせず戻る小さな関数への jmp に書き換える（`mute.py`。`winmm.dll` は先に読み込ませてから書き換える）。ほかのプロセスとシステムの音の設定には触れない。既定で有効（`AM(mute=False)` か環境変数 `ZZM_AM_SOUND=1` で無効）。呼ばれた回数は `AM.sound_counts()` |
 | フォーム定義 | `dump_dfm.py`: 実行中プロセスのメモリ（UPX 展開後）から TPF0 リソースを読み、テキストの DFM へ変換（`<work>/inventory/_ref/dfm/`。`dump_dfm_images.py` で埋め込み画像も取り出せる） |
 
 ## 準備
@@ -36,6 +37,7 @@ python your_script.py      # tools\am-harness を sys.path に入れて `from am
 - 並行して動かすときは、作業ごとに別の NAME にする（AdvanceMap の Ini と ROM を分けるため）。
 - `make_worker.py NAME --reset-rom` で作業用 ROM を素の状態に戻せる。
 - `--stub` を付けると、Ini のスクリプトエディタを `stub\ScriptEditorStub.exe` にする。「スクリプトを開く」を押しても、渡されたコマンドラインが exe と同じフォルダの `ScriptEditorStub.log` に追記されるだけで、外部エディタは起動しない。exe は `stub\ScriptEditorStub.cs` を `csc ScriptEditorStub.cs` でビルドして作る（リポジトリには入れない）。
+- 音が鳴っていないかは `powershell -NoProfile -ExecutionPolicy Bypass -File toolsm-harnessudio_peaks.ps1 -Seconds 60` で確かめられる（既定の再生デバイスの音声セッションごとのピークの最大値を JSON で出す。読むだけで設定は変えない。`system-sounds` がメッセージボックスなどのシステム音）。
 - 比較テスト（`tests/compare`）はこのライブラリを使う。使い方はリポジトリの README の「比較テスト」。
 
 ## 基本の使い方

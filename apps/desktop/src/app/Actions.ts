@@ -106,6 +106,11 @@ export class Actions {
     h.set("tools.blockEditor", () => target.openToolWindow("block-editor"));
   }
 
+  /** 処理を登録する（同じ ID があれば置き換える）。機能ごとのモジュールが自分のアクションを足すのに使う。 */
+  register(id: string, handler: () => unknown): void {
+    this.handlers.set(id, handler);
+  }
+
   /** 実装済みか。 */
   isImplemented(id: string): boolean {
     return this.handlers.has(id);

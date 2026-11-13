@@ -264,8 +264,12 @@ class AM:
     """One AdvanceMap instance on a private hidden desktop."""
 
     def __init__(self, desktop_name: str | None = None, hidden: bool = True,
-                 am_dir: str | os.PathLike | None = None, shots: str | os.PathLike | None = None):
+                 am_dir: str | os.PathLike | None = None, shots: str | os.PathLike | None = None,
+                 mute: bool = True):
         self.hidden = hidden
+        # 起動した AdvanceMap の中の音を鳴らす関数（MessageBeep・PlaySound など）を無効にする（mute.py）。既定で有効
+        self.mute = mute and os.environ.get("ZZM_AM_SOUND") != "1"
+        self.muter = None
         self.am_dir = pathlib.Path(am_dir) if am_dir else AM_DIR
         self.shots = pathlib.Path(shots) if shots else SHOTS
         self.desktop_name = desktop_name or f"ZZM_AM_{os.getpid()}"
@@ -299,6 +303,8 @@ class AM:
             raise ctypes.WinError(ctypes.get_last_error())
         self.pi, self.pid = pi, pi.dwProcessId
         user32.WaitForInputIdle(pi.hProcess, 10000)
+        if self.mute:
+            self.silence()
         t0 = time.time()
         while time.time() - t0 < wait:
             m = self.find_main()
@@ -307,6 +313,22 @@ class AM:
                 break
             time.sleep(0.2)
         return self
+
+    def silence(self) -> list[str]:
+        """このプロセスの音を鳴らす関数を無効にする（まだのものだけ）。書き換えた関数の名前を返す。"""
+        from mute import Muter
+        if self.muter is None or self.muter.pid != self.pid:
+            if self.muter:
+                self.muter.close()
+            self.muter = Muter(self.pid)
+        done = self.muter.mute()
+        if done:
+            self.log.append("音を止めた: " + ", ".join(done))
+        return done
+
+    def sound_counts(self) -> dict[str, int]:
+        """無効にした関数が呼ばれた回数（鳴らずに済んだ回数）。"""
+        return self.muter.counts() if self.muter else {}
 
     def alive(self) -> bool:
         return bool(self.pi) and kernel32.WaitForSingleObject(self.pi.hProcess, 0) == 0x102

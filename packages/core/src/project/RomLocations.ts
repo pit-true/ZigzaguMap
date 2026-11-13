@@ -48,7 +48,7 @@ export class RomLocations {
   locations(id: MapId): MapLocations {
     const rom = this.project.rom;
     const table = this.project.base.bankTable;
-    const bankList = id.bank < table.bankCount ? safe(() => rom.pointer(table.offset + id.bank * 4)) : null;
+    const bankList = id.bank >= 0 && id.bank < table.bankCount ? safe(() => rom.pointer(table.offset + id.bank * 4)) : null;
     const none = { header: null, layout: null, events: null, scripts: null, connections: null, border: null, blocks: null };
     if (!this.placed(id)) return { bankTable: table.offset, bankList, ...none };
     const headerAt = table.headerOffset(id);

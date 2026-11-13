@@ -2,6 +2,7 @@ import type { FlyPosition } from "../fly/types.js";
 import type { BlockGrid } from "../map/BlockGrid.js";
 import type { MapId } from "../map/types.js";
 import type { MapDocument } from "../model/MapDocument.js";
+import { isWorkMapId, type WorkMapInfo } from "../model/WorkMap.js";
 import { hasMapName } from "../name/MapNameTable.js";
 import { TextCodec } from "../name/TextCodec.js";
 import type { TilesetDocument, TilesetRef } from "../tileset/TilesetDocument.js";
@@ -19,6 +20,10 @@ export interface DocumentStoreSource {
   baseBankCounts?(): number[];
   /** タイルセットとして指せるか（省略時は 0 以外なら可）。 */
   tilesetExists?(pointer: number): boolean;
+  /** AdvanceMap のタイルセット番号のポインタ値（省略時は番号を使えない）。 */
+  tilesetPointer?(index: number): number | null;
+  /** ポインタ値の AdvanceMap のタイルセット番号。 */
+  tilesetIndex?(pointer: number): number | null;
 }
 
 /**
@@ -34,6 +39,8 @@ export class DocumentStore implements DocumentContext {
   readonly addedMaps = new Set<string>();
   /** addMap で加えた後に removeMap で除いたマップ（保存済みなら JSON を消す）。 */
   readonly removedMaps = new Set<string>();
+  /** 作業用のマップ（バンク -1）の名前とパス。 */
+  readonly workMaps = new Map<string, WorkMapInfo>();
   /** このセッションで変えたマップ名。 */
   readonly mapNameEdits = new Map<number, Uint8Array>();
   /** 編集中のフライトポジションの表（CfruProject が ROM の表を写し、maps\regionmap.json があれば重ねる）。 */
@@ -120,6 +127,7 @@ export class DocumentStore implements DocumentContext {
     const counts = this.source.baseBankCounts?.() ?? [];
     for (const doc of this.documents.values()) {
       const { bank, map } = doc.id;
+      if (isWorkMapId(doc.id)) continue;
       while (counts.length <= bank) counts.push(0);
       counts[bank] = Math.max(counts[bank]!, map + 1);
     }
@@ -132,6 +140,45 @@ export class DocumentStore implements DocumentContext {
     this.put(doc);
     this.addedMaps.add(k);
     this.removedMaps.delete(k);
+  }
+
+  tilesetPointer(index: number): number | null {
+    return this.source.tilesetPointer?.(index) ?? null;
+  }
+
+  tilesetIndex(pointer: number): number | null {
+    return this.source.tilesetIndex?.(pointer) ?? null;
+  }
+
+  putWorkMap(doc: MapDocument, info: WorkMapInfo): void {
+    const k = mapKey(doc.id);
+    if (!isWorkMapId(doc.id)) throw new Error(`マップ ${k} は作業用のマップの番号ではありません`);
+    if (this.documents.has(k)) throw new Error(`マップ ${k} は既にあります`);
+    this.put(doc);
+    this.workMaps.set(k, { ...info });
+  }
+
+  removeWorkMap(id: MapId): void {
+    const k = mapKey(id);
+    if (!this.workMaps.has(k)) throw new Error(`マップ ${k} は作業用のマップではありません`);
+    this.documents.delete(k);
+    this.workMaps.delete(k);
+  }
+
+  workMapInfo(id: MapId): WorkMapInfo | null {
+    return this.workMaps.get(mapKey(id)) ?? null;
+  }
+
+  setWorkMapInfo(id: MapId, info: WorkMapInfo): void {
+    const k = mapKey(id);
+    if (!this.workMaps.has(k)) throw new Error(`マップ ${k} は作業用のマップではありません`);
+    this.workMaps.set(k, { ...info });
+  }
+
+  nextWorkMapNumber(): number {
+    let next = 0;
+    for (const doc of this.documents.values()) if (isWorkMapId(doc.id)) next = Math.max(next, doc.id.map + 1);
+    return next;
   }
 
   removeMap(id: MapId): void {

@@ -50,7 +50,7 @@ export class ProjectSession {
     readonly romPath: string,
     private readonly fs: TauriProjectFs,
     readonly project: CfruProject,
-    readonly catalog: MapCatalog,
+    private catalogValue: MapCatalog,
     /** 開くのにかかった時間（ミリ秒）。 */
     readonly loadMs: number,
   ) {
@@ -74,6 +74,17 @@ export class ProjectSession {
     const project = await CfruProject.open(bytes, fs);
     const catalog = await MapCatalog.build(project);
     return new ProjectSession(romPath, fs, project, catalog, performance.now() - start);
+  }
+
+  /** マップ一覧用の情報。 */
+  get catalog(): MapCatalog {
+    return this.catalogValue;
+  }
+
+  /** マップ一覧用の情報を作り直す（マップを加えた・取り消したとき）。 */
+  async refreshCatalog(): Promise<MapCatalog> {
+    this.catalogValue = await MapCatalog.build(this.project);
+    return this.catalogValue;
   }
 
   /** プロジェクトフォルダ（素の ROM だけなら null）。 */
@@ -185,7 +196,10 @@ export class ProjectSession {
 
   /** 未出力の変更があるマップ（バンク・マップの順）。 */
   modifiedMaps(): MapId[] {
-    return [...this.opened.values()].filter((id) => this.project.isModified(id)).sort((a, b) => a.bank - b.bank || a.map - b.map);
+    // 開いたマップと、読み込み済みのマップ（追加・差し替えたもの、開かずに足したバンクも含む）。
+    const ids = new Map(this.opened);
+    for (const id of this.project.mapIds()) if (this.project.loaded(id)) ids.set(mapKey(id), id);
+    return [...ids.values()].filter((id) => this.project.isModified(id)).sort((a, b) => a.bank - b.bank || a.map - b.map);
   }
 
   /**
