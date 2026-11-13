@@ -1,11 +1,12 @@
 // ブロックエディタ・パレットエディタ・ブロックパレット一括変更の文言。
 // 改訂版 Japanese.ini（[BlockEditorForm]・[PalettenForm]・[BlockDatenAnpassenForm]・
 // [Verhalten_FRLG]・[Hintergrund_FRLG]）の値を使う。
+import { formatHex } from "@zigzagumap/core";
 import { fmt, hexRecord, ini } from "./ini";
 
 const B = ini.BlockEditorForm;
 
-const hex = (n: number, digits: number): string => n.toString(16).toUpperCase().padStart(digits, "0");
+const hex = formatHex;
 
 /** 00〜FF の 256 件（名前の無い値は 16 進 2 桁だけ）。 */
 function comboItems(names: Readonly<Record<number, string>>): string[] {
@@ -99,6 +100,4 @@ export const jaBlockEditor = {
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */
-export function hexText(n: number, digits: number): string {
-  return hex(n, digits);
-}
+export const hexText = formatHex;

@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import type { ItemBall } from "../model/MapDocument.js";
 
 /** 生成範囲（`@ BBE-BEGIN <id>`〜`@ BBE-END <id>`）。Bochi の BuildHiddenItemSource と同じ形。 */
@@ -74,5 +75,5 @@ export function hiddenItemBlock(item: ItemBall): string {
 }
 
 function hex2(v: number): string {
-  return v.toString(16).toUpperCase().padStart(2, "0");
+  return formatHex(v, 2);
 }

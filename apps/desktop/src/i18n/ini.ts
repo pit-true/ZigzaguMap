@@ -1,3 +1,4 @@
+import { formatHex } from "@zigzagumap/core";
 import { ini } from "./ini.generated";
 
 /**
@@ -14,14 +15,14 @@ export function fmt(template: string, ...args: readonly (string | number)[]): st
   return template.replace(/%(\d*)([dsx])/g, (_, width: string, kind: string) => {
     const arg = args[i++];
     if (arg === undefined) return "";
-    const text = kind === "x" && typeof arg === "number" ? arg.toString(16).toUpperCase() : String(arg);
+    const text = kind === "x" && typeof arg === "number" ? formatHex(arg) : String(arg);
     return width ? text.padStart(Number(width), kind === "x" ? "0" : " ") : text;
   });
 }
 
 /** 16 進 2 桁の番号（00, 01, …）で引いた値。無い番号は undefined。 */
 export function byHex(section: Section, index: number): string | undefined {
-  return section[index.toString(16).toUpperCase().padStart(2, "0")];
+  return section[formatHex(index, 2)];
 }
 
 /** 00〜(count-1) を 16 進 2 桁の番号で引いた並び。無い番号は undefined。 */
@@ -31,7 +32,7 @@ export function hexList(section: Section, count: number): (string | undefined)[]
 
 /** 「00-値」の形（値の先頭に番号が無い節を、旧版と同じ見た目で並べる）。 */
 export function numbered(index: number, value: string): string {
-  return `${index.toString(16).toUpperCase().padStart(2, "0")}-${value}`;
+  return `${formatHex(index, 2)}-${value}`;
 }
 
 /** 16 進 2 桁の番号の値を、番号（数）から引ける表にする。 */

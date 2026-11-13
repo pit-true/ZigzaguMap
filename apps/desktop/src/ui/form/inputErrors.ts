@@ -1,4 +1,4 @@
-import { EditError, EditErrorCode } from "@zigzagumap/core";
+import { EditError, EditErrorCode, formatHex } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
 
@@ -57,5 +57,5 @@ export function toByte(value: number): number {
 
 /** `$` 付き 6 桁の 16 進（AdvanceMap のオフセット欄の書式）。 */
 export function offsetText(offset: number): string {
-  return "$" + (offset >>> 0).toString(16).toUpperCase().padStart(6, "0");
+  return "$" + formatHex(offset >>> 0, 6);
 }

@@ -2,7 +2,7 @@
 export { DataError } from "./binary/DataError.js";
 export { StructCodec } from "./binary/StructCodec.js";
 export { decodeBase64, encodeBase64 } from "./binary/base64.js";
-export { bytesEqual, concatBytes } from "./binary/bytes.js";
+export { bytesEqual, concatBytes, formatHex, formatHexBytes } from "./binary/bytes.js";
 export { sha256, sha256Hex } from "./binary/sha256.js";
 
 // ROM

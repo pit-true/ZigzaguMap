@@ -1,3 +1,4 @@
+import { formatHex } from "../binary/bytes.js";
 import type { MapId } from "../map/types.js";
 
 /** maps\ のフォルダ名。 */
@@ -24,7 +25,7 @@ export function mapSourcePath(id: MapId): string {
 
 /** タイルセットのフォルダ（maps/tilesets/primary_XXXXXX など。番号はヘッダーの位置の 16 進 6 桁）。 */
 export function tilesetFolder(headerAddress: number, secondary: boolean): string {
-  return `${TILESETS_DIR}/${secondary ? "secondary" : "primary"}_${headerAddress.toString(16).toUpperCase().padStart(6, "0")}`;
+  return `${TILESETS_DIR}/${secondary ? "secondary" : "primary"}_${formatHex(headerAddress, 6)}`;
 }
 
 /** 数字だけの名前か（バンク・マップのフォルダとファイルの判定用）。 */

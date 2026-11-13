@@ -1,5 +1,5 @@
 import { DataError } from "../binary/DataError.js";
-import { bytesEqual } from "../binary/bytes.js";
+import { bytesEqual, formatHexBytes } from "../binary/bytes.js";
 import { CharmapTable, type CharmapEntry } from "./CharmapTable.js";
 import { ND_CHARMAP_TBL } from "./charmapNd.js";
 
@@ -160,7 +160,5 @@ function matchesAt(bytes: Uint8Array, at: number, pattern: Uint8Array): boolean 
 }
 
 function escape(bytes: Uint8Array): string {
-  let s = "[";
-  for (const b of bytes) s += b.toString(16).toUpperCase().padStart(2, "0");
-  return s + "]";
+  return `[${formatHexBytes(bytes)}]`;
 }

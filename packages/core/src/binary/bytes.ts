@@ -1,5 +1,17 @@
 import { DataError } from "./DataError.js";
 
+/** 16 進の大文字（`digits` 桁に 0 で埋める）。表示・ファイル名・JSON の 16 進表記はこれでそろえる。 */
+export function formatHex(value: number, digits = 0): string {
+  return value.toString(16).toUpperCase().padStart(digits, "0");
+}
+
+/** バイト列を 2 桁ずつの 16 進の大文字にする（区切りなし）。 */
+export function formatHexBytes(bytes: Iterable<number>): string {
+  let s = "";
+  for (const b of bytes) s += formatHex(b, 2);
+  return s;
+}
+
 /** バイト列の `offset` から `length` バイトが収まっているかを確かめ、足りなければ DataError を投げる。 */
 export function requireBytes(bytes: Uint8Array, offset: number, length: number, what: string): void {
   if (!Number.isInteger(offset) || offset < 0 || offset + length > bytes.length) {

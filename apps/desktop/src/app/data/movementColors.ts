@@ -1,3 +1,5 @@
+import { formatHex } from "@zigzagumap/core";
+
 /**
  * 移動許可の値（0x00〜0x3F）ごとの色。AdvanceMap 1.92 の移動エリアのパレットから取った値
  * （00〜0F は Windows の 16 色、10 以降は固定の色）。マップ上には透明度を掛けて重ねる。
@@ -15,5 +17,5 @@ export const MOVEMENT_COLORS: readonly string[] = [
 
 /** 移動許可の値の表示（先頭の 0 を省いた 16 進。例: 0x0C → "C"）。 */
 export function movementLabel(value: number): string {
-  return value.toString(16).toUpperCase();
+  return formatHex(value);
 }
