@@ -2,7 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   CfruProject,
   CommandBus,
+  OverworldSprites,
   Rom,
+  SpeciesNameTable,
   createDefaultRegistry,
   detectGame,
   type CommandRegistry,
@@ -36,6 +38,8 @@ export class ProjectSession {
   readonly registry: CommandRegistry = createDefaultRegistry();
   private readonly tilesets = new Map<string, TilesetView>();
   private readonly opened = new Map<string, MapId>();
+  private species: SpeciesNameTable | null | undefined;
+  private sprites: OverworldSprites | null | undefined;
 
   private constructor(
     readonly romPath: string,
@@ -87,6 +91,31 @@ export class ProjectSession {
     while (this.tilesets.size > TILESET_CACHE_SIZE) this.tilesets.delete(this.tilesets.keys().next().value!);
     this.opened.set(mapKey(id), id);
     return { id, doc, tiles };
+  }
+
+  /** 種族名表（初めて使うときに読む。読めなければ null）。 */
+  get speciesNames(): SpeciesNameTable | null {
+    if (this.species === undefined) {
+      try {
+        this.species = SpeciesNameTable.read(this.project.rom, this.project.game.offsets.speciesNameTablePointer);
+      } catch {
+        this.species = null;
+      }
+    }
+    return this.species;
+  }
+
+  /** OW の画像（初めて使うときに読む。読めなければ null）。 */
+  get overworldSprites(): OverworldSprites | null {
+    if (this.sprites === undefined) {
+      const o = this.project.game.offsets;
+      try {
+        this.sprites = OverworldSprites.read(this.project.rom, o.overworldGraphicsTablePointer, o.overworldPaletteTablePointer);
+      } catch {
+        this.sprites = null;
+      }
+    }
+    return this.sprites;
   }
 
   /** そのマップが読み込み済みか。 */

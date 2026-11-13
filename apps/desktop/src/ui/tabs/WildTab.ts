@@ -1,7 +1,7 @@
 import type { WildArea } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
-import { selectBox } from "./fields";
+import { readOnlySelect, selectBox } from "./fields";
 
 /** 種類ごとの枠の数（草むら 12、水上 5、岩砕き/木 5、釣り 10）。 */
 const SLOT_COUNTS = [12, 5, 5, 10];
@@ -39,11 +39,15 @@ export class WildTab {
       return;
     }
     const index = this.type.selectedIndex;
-    this.body.replaceChildren(areaTable(areas[index], SLOT_COUNTS[index] ?? 12));
+    const names = this.state.session?.speciesNames ?? null;
+    this.body.replaceChildren(areaTable(areas[index], SLOT_COUNTS[index] ?? 12, (n) => names?.name(n) ?? null));
   }
 }
 
-function areaTable(area: WildArea | undefined, count: number): HTMLElement {
+/**
+ * 1 種類分の表。種族は AdvanceMap と同じく種族名で出す（0 番は「選択してください」、名前が読めなければ番号）。
+ */
+function areaTable(area: WildArea | undefined, count: number, speciesName: (n: number) => string | null): HTMLElement {
   const box = document.createElement("div");
   box.className = "wild-table";
   if (!area || area.slots.length === 0) return box;
@@ -61,10 +65,15 @@ function areaTable(area: WildArea | undefined, count: number): HTMLElement {
   grid.append(cell(""), level, cell(ja.wildSpecies));
   for (let i = 0; i < count; i++) {
     const s = area.slots[i];
-    grid.append(cell(ja.wildSlot(i + 1)), readOnly(s ? String(s.minLevel) : ""), readOnly(s ? String(s.maxLevel) : ""), readOnly(s ? `No.${s.species}` : ""));
+    grid.append(cell(ja.wildSlot(i + 1)), readOnly(s ? String(s.minLevel) : ""), readOnly(s ? String(s.maxLevel) : ""), readOnlySelect(s ? speciesLabel(s.species, speciesName) : ""));
   }
   box.append(grid);
   return box;
+}
+
+function speciesLabel(species: number, name: (n: number) => string | null): string {
+  if (species === 0) return ja.wildChooseSpecies;
+  return name(species) ?? `No.${species}`;
 }
 
 function cell(text: string): HTMLElement {

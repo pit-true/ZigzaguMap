@@ -241,6 +241,8 @@ export const ja = {
   wildLevel: "最小/最大 Lv",
   wildSpecies: "Pokemon:",
   wildSlot: (n: number) => `Pokemon${n}:`,
+  /** 種族のコンボの 0 番。 */
+  wildChooseSpecies: "選択してください",
   noWild: "このマップには野生ポケモンが存在しません",
 
   // [Header]
