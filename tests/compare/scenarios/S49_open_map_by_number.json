@@ -25,7 +25,7 @@
     {"op": "menu", "key": ["Menue.13", "Menue.135"]},
     {"op": "answerDialog", "button": "Cancel"},
     {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
-    {"op": "compareFields", "fields": ["title.map"], "pending": "要判断 #166: AdvanceMap は、マップを指定して開くを Cancel で閉じたり整数でない値を入れたりしたあと「以前開いたマップを開く」が動かなくなる"},
+    {"op": "compareFields", "fields": ["title.map"], "expectedDifference": "判断 #166（README「AdvanceMap と違う点」）: AdvanceMap は、マップを指定して開くを Cancel で閉じたり整数でない値を入れたりしたあと「以前開いたマップを開く」が動かなくなるが、AdvanceMap の不具合とみなして再現しない"},
     {"op": "menu", "key": ["Menue.13", "Menue.135"]},
     {"op": "answerDialog", "button": "OK", "input": "abc"},
     {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
@@ -33,6 +33,6 @@
     {"op": "menu", "key": ["Menue.13", "Menue.135"]},
     {"op": "answerDialog", "button": "OK", "input": "3.0"},
     {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
-    {"op": "compareFields", "fields": ["title.map"], "pending": "要判断 #166: AdvanceMap は、マップを指定して開くを Cancel で閉じたり整数でない値を入れたりしたあと「以前開いたマップを開く」が動かなくなる"}
+    {"op": "compareFields", "fields": ["title.map"], "expectedDifference": "判断 #166（README「AdvanceMap と違う点」）: AdvanceMap は、マップを指定して開くを Cancel で閉じたり整数でない値を入れたりしたあと「以前開いたマップを開く」が動かなくなるが、AdvanceMap の不具合とみなして再現しない"}
   ]
 }

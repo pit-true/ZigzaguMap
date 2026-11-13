@@ -11,7 +11,7 @@
     {"op": "sortTree", "mode": 1},
     {"op": "compareFields", "fields": ["tree.count", "tree.first60"]},
     {"op": "sortTree", "mode": 2},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "pending": {"tree.count": "要判断 #163: AdvanceMap は「Tileset 67」のあとに名前が空のグループを 1 つ出す（ZigzaguMap は出さない）"}},
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "判断 #163（README「AdvanceMap と違う点」）: AdvanceMap は「Tileset 67」のあとに名前が空のグループを 1 つ出すが、AdvanceMap の不具合とみなして出さない"}},
     {"op": "sortTree", "mode": 3},
     {"op": "compareFields", "fields": ["tree.count", "tree.first60"]},
     {"op": "sortTree", "mode": 4},
