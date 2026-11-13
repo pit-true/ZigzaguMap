@@ -1,3 +1,9 @@
+// バイト列
+export { DataError } from "./binary/DataError.js";
+export { StructCodec } from "./binary/StructCodec.js";
+export { decodeBase64, encodeBase64 } from "./binary/base64.js";
+export { bytesEqual, concatBytes } from "./binary/bytes.js";
+
 // ROM
 export { Rom, ROM_BASE } from "./rom/Rom.js";
 export { RomError } from "./rom/RomError.js";
@@ -16,6 +22,16 @@ export { MapLayoutReader } from "./map/MapLayoutReader.js";
 export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
+
+// イベント
+export * from "./event/layout.js";
+export type { EventHeader, MapEvents, PersonEvent, SignEvent, SignHiddenItem, SignScript, TrapEvent, WarpEvent } from "./event/types.js";
+export { EventHeaderCodec, eventHeaderCodec } from "./event/EventHeaderCodec.js";
+export { PersonCodec, personCodec } from "./event/PersonCodec.js";
+export { WarpCodec, warpCodec } from "./event/WarpCodec.js";
+export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
+export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
+export { EventReader } from "./event/EventReader.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
