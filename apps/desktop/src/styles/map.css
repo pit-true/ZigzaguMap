@@ -1,0 +1,83 @@
+/* マップ表示、ブロックパレット、境界ブロック、移動許可のパレット。 */
+.map-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--face);
+  border: 1px solid var(--shadow);
+  border-right-color: var(--highlight);
+  border-bottom-color: var(--highlight);
+}
+
+.map-stage,
+.palette-stage {
+  position: relative;
+}
+
+.map-stage canvas,
+.palette-stage canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+}
+
+.map-base,
+.palette-stage canvas:first-child,
+.border-canvas {
+  image-rendering: pixelated;
+}
+
+.map-side {
+  width: 149px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.border-box {
+  height: 63px;
+  flex: none;
+  position: relative;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.border-label {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+}
+
+.border-canvas {
+  position: absolute;
+  left: 9px;
+  top: 17px;
+  width: 32px;
+  height: 32px;
+}
+
+.selected-block {
+  position: absolute;
+  left: 52px;
+  top: 34px;
+  color: var(--gray-text);
+}
+
+.block-palette {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  background: var(--face);
+}
+
+.movement-palette {
+  width: 52px;
+  flex: none;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+.movement-palette canvas {
+  display: block;
+}
