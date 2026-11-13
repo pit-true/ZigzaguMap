@@ -15,8 +15,9 @@ export class MapLoader {
   private readonly tilesets: TilesetReader;
   private readonly tilesetCache = new Map<string, Tileset>();
 
-  constructor(rom: Rom, offsets: GameOffsets) {
-    this.bankTable = MapBankTable.read(rom, offsets.mapBankTablePointer);
+  /** `bankTable` を省略すると、ROM からマップ数を推定して読む。 */
+  constructor(rom: Rom, offsets: GameOffsets, bankTable?: MapBankTable) {
+    this.bankTable = bankTable ?? MapBankTable.read(rom, offsets.mapBankTablePointer);
     this.headers = new MapHeaderReader(rom);
     this.layouts = new MapLayoutReader(rom);
     this.tilesets = new TilesetReader(rom);

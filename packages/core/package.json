@@ -6,11 +6,32 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "node": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./node": {
+      "node": {
+        "types": "./dist/node/index.d.ts",
+        "default": "./dist/node/index.js"
+      },
+      "types": "./src/node/index.ts",
+      "default": "./src/node/index.ts"
+    }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
-    "test": "vitest run"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && tsc -p test/tsconfig.json",
+    "test": "vitest run",
+    "dump-map": "tsc -p tsconfig.build.json && node scripts/dump-map.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
