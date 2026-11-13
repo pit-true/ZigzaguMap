@@ -106,6 +106,7 @@ pub fn run() {
             project_fs::fs_list,
             automation::automation_port,
             automation::automation_reply,
+            automation::automation_ready,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");

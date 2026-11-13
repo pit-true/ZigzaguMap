@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -25,6 +25,8 @@ const REPLY_TIMEOUT: Duration = Duration::from_secs(120);
 pub struct Automation {
     port: Option<u16>,
     next_id: AtomicU64,
+    /// 画面が要求を受け取れる状態になったか。
+    ready: AtomicBool,
     pending: Mutex<HashMap<u64, Sender<String>>>,
 }
 
@@ -38,6 +40,12 @@ impl Automation {
 #[tauri::command]
 pub fn automation_port(state: State<'_, Arc<Automation>>) -> Option<u16> {
     state.port
+}
+
+/// 画面が要求を受け取れるようになったことを知らせる。
+#[tauri::command]
+pub fn automation_ready(state: State<'_, Arc<Automation>>) {
+    state.ready.store(true, Ordering::Release);
 }
 
 /// 画面からの返事。`body` は JSON の文字列。
@@ -90,6 +98,9 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
             respond(&mut stream, &json!({"ok": true}).to_string())?;
             app.exit(0);
             Ok(())
+        }
+        _ if !state.ready.load(Ordering::Acquire) => {
+            respond(&mut stream, &json!({"ok": false, "error": "画面の準備ができていません"}).to_string())
         }
         _ => {
             let id = state.next_id.fetch_add(1, Ordering::Relaxed);
