@@ -23,6 +23,7 @@ export interface ActionTarget {
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
 const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.grid": "grid",
+  "view.objects": "showObjects",
   "zoom.map": "zoomMap",
   "zoom.movement": "zoomMovement",
   "zoom.event": "zoomEvent",
