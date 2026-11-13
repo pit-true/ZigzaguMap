@@ -316,15 +316,19 @@ pnpm typecheck   # 型チェック
 pnpm test        # 単体テスト
 ```
 
-画面の文言を変えるときは、`apps/desktop/src/i18n/source/Japanese.ini`（UTF-8）を直すか差し替えて、文言のモジュール `apps/desktop/src/i18n/ini.generated.ts` を作り直し、両方をコミットします。`ja*.ts` は生成物の値を `ini.節["番号"]` で引いています。
+画面の文言は、改訂版 `apps/desktop/src/i18n/source/Japanese.ini`（UTF-8）に、補正 `apps/desktop/src/i18n/source/overrides.ini`（同じ書式、UTF-8）を重ねたものです。`scripts/gen-i18n.mjs` が「Japanese.ini → overrides.ini」の順にキー（節と番号）ごとに値を重ね、文言のモジュール `apps/desktop/src/i18n/ini.generated.ts` を作ります。`ja*.ts` は生成物の値を `ini.節["番号"]` で引いています。
+
+- Japanese.ini はユーザーが用意した改訂版の写しなので、書き換えずにそのまま置きます。英語のまま・文字化け・機械翻訳のような値は overrides.ini で直します。各項目の上のコメントに、出どころ（旧版 = AdvanceMap 1.92 の日本語化パックの同じ番号の値／新規の案）と改訂版の値を書きます。
+- overrides.ini には Japanese.ini にある節・番号だけを書けます（無い番号を書くと生成でエラーになります）。
+- 言い回しを変えたいときは、overrides.ini を直すか（改訂版を差し替えるときは Japanese.ini を差し替えて）、生成し直し、生成物と一緒にコミットします。
 
 ```sh
 node scripts/gen-i18n.mjs          # ini.generated.ts を作り直す
-node scripts/gen-i18n.mjs --check  # ini と生成物が合っているか確かめる
+node scripts/gen-i18n.mjs --check  # ini・overrides.ini と生成物が合っているか確かめる
 node scripts/check-i18n.mjs        # 文言の突き合わせ（下記）
 ```
 
-`scripts/check-i18n.mjs` は、改訂版 Japanese.ini を基準に、ini に無い番号の参照と、ini の値と同じなのに ini から引かず直接書いた文字列を探します。`--inventory <inventory のフォルダ> --old-ini <AdvanceMap 1.92 の Japanese.ini>` を付けると、AdvanceMap の画面を調べた部品表の文字列（1.92 の表記）を旧版の ini で番号に直し、アプリに対応が無いものも探します。意図した違いと番号の読み替え（改訂版で並びが変わったツールバーなど）は、スクリプトの `INTENTIONAL`・`RENAMED` に理由を付けて書きます（`--verbose` で一覧）。
+`scripts/check-i18n.mjs` は、改訂版 Japanese.ini に overrides.ini を重ねた値を基準に、ini に無い番号の参照と、ini の値と同じなのに ini から引かず直接書いた文字列を探します。`--inventory <inventory のフォルダ> --old-ini <AdvanceMap 1.92 の Japanese.ini>` を付けると、AdvanceMap の画面を調べた部品表の文字列（1.92 の表記）を旧版の ini で番号に直し、アプリに対応が無いものも探します。意図した違いと番号の読み替え（改訂版で並びが変わったツールバーなど）は、スクリプトの `INTENTIONAL`・`RENAMED` に理由を付けて書きます（`--verbose` で一覧）。
 
 - 値の中の AdvanceMap 1.95 向けの注記（「(AM1.95未使用)」「(※AM1.95使用不可)」）は外します。外し方は `scripts/gen-i18n.mjs` の `stripNote` だけで決めています。行末の空白も外します。
 - 注記を外して空になった番号と、ini に無い番号は生成物に入りません。`ja*.ts` がそれを引いていると型チェック（`pnpm typecheck`）で止まるので、旧版の文言を直接書くか、ini に足してください。

@@ -1,7 +1,7 @@
-// このファイルは scripts/gen-i18n.mjs が source/Japanese.ini から作る。手で直さない。
-// 文言を変えるときは source/Japanese.ini を直して `node scripts/gen-i18n.mjs` を実行する。
+// このファイルは scripts/gen-i18n.mjs が source/Japanese.ini と source/overrides.ini から作る。手で直さない。
+// 文言を変えるときは source/overrides.ini（または source/Japanese.ini）を直して `node scripts/gen-i18n.mjs` を実行する。
 
-/** Japanese.ini の値（節 → 番号 → 文言）。AdvanceMap 1.95 向けの注記は外してある。 */
+/** Japanese.ini に overrides.ini を重ねた値（節 → 番号 → 文言）。AdvanceMap 1.95 向けの注記は外してある。 */
 export const ini = {
   "INI-Version": {
     "Sprache": "Japanese",

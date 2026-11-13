@@ -13,7 +13,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { displayValue, findNotes, generate, INI_PATH, OUT_PATH, parseIni } from "./gen-i18n.mjs";
+import { displayValue, findNotes, generate, mergeIni, OUT_PATH, parseIni, readSources } from "./gen-i18n.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const I18N_DIR = join(ROOT, "apps/desktop/src/i18n");
@@ -124,12 +124,12 @@ function parseArgs(argv) {
   return args;
 }
 
-/** 改訂版の ini の値（画面に出す形）。節 → 番号 → 値。 */
+/** 改訂版の ini に overrides.ini を重ねた値（画面に出す形）。節 → 番号 → 値。 */
 function loadNewIni() {
-  const text = readFileSync(INI_PATH, "utf8");
+  const { text, overrides } = readSources();
   const sections = new Map();
   const notes = new Map();
-  for (const [name, entries] of parseIni(text)) {
+  for (const [name, entries] of mergeIni(text, overrides)) {
     const out = new Map();
     for (const [key, raw] of entries) {
       for (const note of findNotes(raw)) notes.set(note, (notes.get(note) ?? 0) + 1);
@@ -138,7 +138,7 @@ function loadNewIni() {
     }
     sections.set(name, out);
   }
-  return { text, sections, notes };
+  return { text, overrides, sections, notes };
 }
 
 /** 文字列リテラルとテンプレートの固定部分を取り出す（コメント行は除く）。 */
@@ -223,7 +223,7 @@ function main() {
     if (items.length > 0) problems.push(title);
   };
 
-  const { text, sections, notes } = loadNewIni();
+  const { text, overrides, sections, notes } = loadNewIni();
   console.log(`改訂版 Japanese.ini: ${[...sections.values()].reduce((n, s) => n + s.size, 0)} 件（${sections.size} 節）`);
   console.log(`外した注記: ${[...notes].map(([n, c]) => `${n} ${c} 件`).join("、") || "なし"}`);
 
@@ -234,7 +234,7 @@ function main() {
   } catch {
     // 無ければ違う
   }
-  report("ini.generated.ts と Japanese.ini の食い違い", generated === generate(text) ? [] : ["node scripts/gen-i18n.mjs で作り直してください"]);
+  report("ini.generated.ts と Japanese.ini の食い違い", generated === generate(text, overrides) ? [] : ["node scripts/gen-i18n.mjs で作り直してください"]);
 
   // 2. 無い番号の参照
   const app = scanApp();
