@@ -1,0 +1,101 @@
+/* 全体の配色と文字（AdvanceMap の Windows 標準配色に寄せる）。 */
+:root {
+  --face: #f0f0f0;
+  --window: #ffffff;
+  --text: #000000;
+  --gray-text: #6d6d6d;
+  --shadow: #a0a0a0;
+  --highlight: #ffffff;
+  --border: #adadad;
+  --select: #0078d7;
+  --select-text: #ffffff;
+  --hot: #cce8ff;
+  --hot-border: #99d1ff;
+  font-family: "MS UI Gothic", "Meiryo UI", "Yu Gothic UI", sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--face);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+body {
+  background: var(--face);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+.main-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  flex: none;
+}
+
+.rom-info {
+  height: 84px;
+  flex: none;
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  grid-auto-rows: 16px;
+  align-content: start;
+  padding: 6px 0 0 8px;
+  border: 1px solid var(--shadow);
+  border-right-color: var(--highlight);
+  border-bottom-color: var(--highlight);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.splitter {
+  width: 7px;
+  flex: none;
+  cursor: col-resize;
+}
+
+#app.dragging .tabs {
+  outline: 3px dashed var(--select);
+  outline-offset: -4px;
+}
+
+.drop-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 45%;
+  margin: 0;
+  padding: 16px;
+  color: var(--gray-text);
+  text-align: center;
+  pointer-events: none;
+}

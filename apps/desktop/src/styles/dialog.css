@@ -1,0 +1,48 @@
+/* 入力ダイアログ（InputQuery の再現。外枠 276×139）。 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  width: 276px;
+  background: var(--face);
+  border: 1px solid #707070;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.dialog-title {
+  height: 26px;
+  line-height: 26px;
+  padding: 0 8px;
+  background: var(--window);
+}
+
+.dialog-body {
+  padding: 8px 14px 12px;
+}
+
+.dialog-body p {
+  margin: 0 0 6px;
+}
+
+.dialog-body input {
+  width: 100%;
+  height: 20px;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dialog-buttons button {
+  width: 75px;
+  height: 25px;
+}
