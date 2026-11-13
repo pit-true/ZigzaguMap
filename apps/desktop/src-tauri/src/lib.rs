@@ -4,6 +4,7 @@ mod automation;
 mod capture;
 mod files;
 mod project_fs;
+mod script_editor;
 
 use std::sync::Arc;
 
@@ -107,6 +108,7 @@ pub fn run() {
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
+            script_editor::launch_script_editor,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");
