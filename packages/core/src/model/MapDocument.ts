@@ -9,6 +9,7 @@ import { hasMapName } from "../name/MapNameTable.js";
 import type { RenderableMap } from "../render/MapRenderer.js";
 import type { WildEncounters } from "../wild/types.js";
 import type { RomMapSource } from "./RomMapSource.js";
+import { cloneConnections, cloneEvents, cloneItemBalls, cloneMapScripts, cloneWild } from "./clone.js";
 
 /** 落とし物（Bochi の ItemBalls）。人のスクリプトはビルド時に作られる。 */
 export interface ItemBall {
@@ -131,23 +132,11 @@ export class MapDocument {
       primaryTileset: this.primaryTileset,
       secondaryTileset: this.secondaryTileset,
       mapName: this.mapName ? this.mapName.slice() : null,
-      events: this.events
-        ? {
-            persons: this.events.persons.map((p) => ({ ...p })),
-            warps: this.events.warps.map((w) => ({ ...w })),
-            traps: this.events.traps.map((t) => ({ ...t })),
-            signs: this.events.signs.map((s) => ({ ...s, content: { ...s.content } })),
-          }
-        : null,
-      connections: this.connections ? this.connections.map((c) => ({ ...c })) : null,
-      mapScripts: this.mapScripts
-        ? this.mapScripts.map((e) => ({
-            ...e,
-            table: e.table ? { entries: e.table.entries.map((t) => ({ ...t })), tail: e.table.tail.slice() } : null,
-          }))
-        : null,
-      wild: this.wild.map((w) => ({ time: w.time, areas: w.areas.map((a) => ({ rate: a.rate, slots: a.slots.map((s) => ({ ...s })) })) })),
-      itemBalls: this.itemBalls.map((i) => ({ ...i })),
+      events: cloneEvents(this.events),
+      connections: cloneConnections(this.connections),
+      mapScripts: cloneMapScripts(this.mapScripts),
+      wild: cloneWild(this.wild),
+      itemBalls: cloneItemBalls(this.itemBalls),
     });
   }
 }
