@@ -58,6 +58,7 @@ export class MapTab {
       this.view.sync();
       this.border.redraw();
     });
+    state.on("tiles", () => this.palette.refresh());
     state.on("selection", () => this.showSelection());
     state.on("view", () => this.configure());
     this.configure();

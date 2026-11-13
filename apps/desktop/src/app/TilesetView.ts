@@ -14,18 +14,30 @@ import {
  * 同じ組のマップどうしで使い回す。
  */
 export class TilesetView {
-  readonly renderer: BlockRenderer;
+  renderer: BlockRenderer;
   /** 副タイルセットのブロック数（パレットに並べる数）。 */
-  readonly secondaryCount: number;
+  secondaryCount: number;
   private readonly paletteImages = new Map<number, RgbaImage>();
 
   constructor(
     readonly key: string,
-    readonly primary: Tileset,
-    readonly secondary: Tileset,
+    public primary: Tileset,
+    public secondary: Tileset,
   ) {
     this.renderer = new BlockRenderer(primary, secondary);
     this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
+  }
+
+  /**
+   * タイルセットを編集したあとに作り直す（ブロック数の変更などで配列が差し替わっていても追従する）。
+   * 描いたブロックとパレットの画像は捨てる。
+   */
+  reload(primary: Tileset, secondary: Tileset): void {
+    this.primary = primary;
+    this.secondary = secondary;
+    this.renderer = new BlockRenderer(primary, secondary);
+    this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
+    this.paletteImages.clear();
   }
 
   /** パレットに並べるブロックの総数（主の 640 個 + 副）。 */

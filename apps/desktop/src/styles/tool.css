@@ -1,0 +1,100 @@
+/* 別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）。AdvanceMap の配置と寸法に合わせる。 */
+#app.tool-app {
+  display: block;
+  position: relative;
+  font-family: "MS UI Gothic", "Meiryo UI", "Yu Gothic UI", sans-serif;
+  font-size: 12px;
+}
+
+.pixel-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* スクロールする枠（TScrollBox）。 */
+.be-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ---- ブロックエディタ ---- */
+.block-editor .be-body {
+  position: relative;
+  height: 233px;
+}
+
+.be-block-list {
+  overflow-y: scroll;
+  background: var(--face);
+}
+
+.be-main,
+.be-attributes {
+  overflow: hidden;
+}
+
+.be-tile-sheet {
+  overflow-y: scroll;
+}
+
+.be-heading {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: bold;
+}
+
+.be-small {
+  font-size: 11px;
+}
+
+/* ---- パレットエディタ ---- */
+.palette-editor {
+  height: 186px;
+}
+
+.pal-caption {
+  font-size: 15px;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.pal-swatch {
+  cursor: pointer;
+  outline: 1px solid transparent;
+}
+
+.pal-swatch.selected {
+  outline: 1px dotted #000000;
+  outline-offset: 1px;
+}
+
+.pal-box {
+  border: 1px solid var(--shadow);
+}
+
+.pal-slider {
+  margin: 0;
+  accent-color: #808080;
+}
+
+.pal-value {
+  font-weight: bold;
+  text-align: right;
+}
+
+.am-button.active {
+  border-color: #0078d7;
+  background: #cce4f7;
+}
+
+/* ---- ブロックパレット一括変更 ---- */
+#app.block-adjust {
+  height: 100%;
+  overflow: auto;
+}
+
+.adjust-form {
+  position: relative;
+  width: 265px;
+  height: 465px;
+}

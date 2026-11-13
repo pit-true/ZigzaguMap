@@ -80,6 +80,15 @@ export class MapImage {
     return rect;
   }
 
+  /** 全部のマスを描き直す（タイルセットを編集したとき）。 */
+  redrawAll(): void {
+    for (let i = 0; i < this.drawn.length; i++) this.blit(i, this.drawn[i]!);
+    this.update();
+    this.version++;
+    this.changes.push({ version: this.version, rect: { x: 0, y: 0, width: this.image.width, height: this.image.height } });
+    if (this.changes.length > HISTORY) this.changes.shift();
+  }
+
   /** `version` より後の変更をまとめた範囲。追いつけなければ全体、変更が無ければ null。 */
   dirtySince(version: number): DirtyRect | null {
     if (version === this.version) return null;
