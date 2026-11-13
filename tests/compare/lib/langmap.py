@@ -1,9 +1,9 @@
 """AdvanceMap 本体の言語ファイル（旧）と、ZigzaguMap の文言の基準（新）の対応表。
 
 - 旧: AdvanceMap 1.92 の `Ini/Sprachen/Japanese.ini`（cp932）。AdvanceMap の画面の文言はこれ。
-- 新: 改訂版 `Japanese.user.ini`（UTF-8）。ZigzaguMap の画面の文言はこれ。
+- 新: 改訂版 `Japanese.ini`（UTF-8）に補正用の `overrides.ini` を重ねたもの（scripts/gen-i18n.mjs と同じ規則）。ZigzaguMap の画面の文言はこれ。
 両方を「セクション名.番号」のキーで対応づけ、AdvanceMap 側で読んだ文字列を新しい文言へ読み替えてから比べる。
-新しいファイルの頭の注記（`(AM1.95未使用)`、`(※AM1.95使用不可)` など）は ZigzaguMap 側で取り除かれるので、ここでも取り除く。
+新しいファイルの注記（`(AM1.95未使用)`、`(※AM1.95使用不可)` など）と行末の空白は ZigzaguMap 側で取り除かれるので、ここでも取り除く。
 同じ旧文言が別々の新文言へ変わる場合（キーによって違う）は、文脈が無いと決められないので読み替えない（食い違いとして残る）。
 """
 from __future__ import annotations
@@ -11,12 +11,13 @@ from __future__ import annotations
 import pathlib
 import re
 
-_NOTE = re.compile(r"^\s*[（(]\s*※?\s*AM\s*1\.95[^)）]*[)）]\s*")
+_NOTE = re.compile(r"[(（]※?AM\d+(?:\.\d+)*(?:未使用|使用不可)[)）]")
 _ACCEL = re.compile(r"\(&.\)|&(?=.)")
 
 
 def strip_note(text: str) -> str:
-    return _NOTE.sub("", text)
+    """画面に出す値（gen-i18n.mjs の displayValue と同じ。注記を全部外し、行末の空白を外す）。"""
+    return _NOTE.sub("", text).rstrip(" \t")
 
 
 def menu_norm(text: str) -> str:
@@ -32,7 +33,7 @@ def parse_ini(path: pathlib.Path, encoding: str) -> dict[str, str]:
     text = raw.decode(encoding, errors="replace").lstrip("﻿")
     for line in text.splitlines():
         s = line.strip()
-        if not s or s.startswith(("/", ";")):
+        if not s or s.startswith(";"):
             continue
         if s.startswith("[") and s.endswith("]"):
             section = s[1:-1]
@@ -62,10 +63,16 @@ class LangMap:
         self.parts = sorted(((o, n) for o, n in self.table.items() if len(o.strip()) >= 3), key=lambda x: -len(x[0]))
 
     @classmethod
-    def load(cls, old_path: pathlib.Path | None, new_path: pathlib.Path | None) -> "LangMap | None":
+    def load(cls, old_path: pathlib.Path | None, new_path: pathlib.Path | None,
+             overrides_path: pathlib.Path | None = None) -> "LangMap | None":
+        """`overrides_path`（省略時は new_path と同じフォルダの overrides.ini）を、改訂版の後に重ねる（gen-i18n.mjs と同じ順）。"""
         if not old_path or not new_path or not old_path.exists() or not new_path.exists():
             return None
-        return cls(parse_ini(old_path, "cp932"), parse_ini(new_path, "utf-8"))
+        new = parse_ini(new_path, "utf-8")
+        ov = overrides_path or new_path.with_name("overrides.ini")
+        if ov.exists():
+            new.update(parse_ini(ov, "utf-8"))
+        return cls(parse_ini(old_path, "cp932"), new)
 
     # ------------------------------------------------------------------ キー → 文言
     def old_text(self, key: str) -> str:
