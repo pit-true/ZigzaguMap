@@ -3,6 +3,7 @@ export { DataError } from "./binary/DataError.js";
 export { StructCodec } from "./binary/StructCodec.js";
 export { decodeBase64, encodeBase64 } from "./binary/base64.js";
 export { bytesEqual, concatBytes } from "./binary/bytes.js";
+export { sha256, sha256Hex } from "./binary/sha256.js";
 
 // ROM
 export { Rom, ROM_BASE } from "./rom/Rom.js";
@@ -22,6 +23,7 @@ export { MapLayoutReader } from "./map/MapLayoutReader.js";
 export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
+export { TilesetTable } from "./map/TilesetTable.js";
 export {
   MAP_FOOTER,
   MAP_HEADER,
@@ -74,6 +76,8 @@ export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
 // マップ名
 export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
 export { TextCodec } from "./name/TextCodec.js";
+export { CharmapTable, type CharmapEntry } from "./name/CharmapTable.js";
+export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 export { SPECIES_COUNT, SPECIES_NAME_BYTES, SpeciesNameTable } from "./name/SpeciesNameTable.js";
 
@@ -83,6 +87,7 @@ export { OverworldSprites, type OverworldGraphicsInfo } from "./sprite/Overworld
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";
 export { RomMapSource } from "./model/RomMapSource.js";
+export { cloneConnections, cloneEvents, cloneItemBalls, cloneMapScripts, cloneWild } from "./model/clone.js";
 
 // maps\ の形式
 export { BOCHI_NEWLINE, writeCompactJson, writeIndentedJson, type BochiJsonValue } from "./project/BochiJson.js";
@@ -102,8 +107,28 @@ export { MemoryProjectFs, type ProjectFs } from "./project/ProjectFs.js";
 export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
 export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
+export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
+export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
+export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
+
+// タイルセットの編集
+export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
+export {
+  BLOCK_TILE_COUNT,
+  attributeBytes,
+  attributeFromBytes,
+  bgr555ToRgb,
+  packTileRef,
+  rgbToBgr555,
+  unpackBlockAttribute,
+  unpackTileRef,
+  type BlockAttributeFields,
+  type TileRef,
+} from "./tileset/blockFormat.js";
+export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
+export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
@@ -121,3 +146,54 @@ export { PaintCellsCommand, type CellWrite } from "./command/commands/PaintCells
 export { PaintBlocksCommand, type PaintBlocksArgs } from "./command/commands/PaintBlocksCommand.js";
 export { PaintMovementCommand, type PaintMovementArgs } from "./command/commands/PaintMovementCommand.js";
 export { PaintBorderCommand, type PaintBorderArgs } from "./command/commands/PaintBorderCommand.js";
+
+// 編集コマンド（マップ全体・タイルセット・プロジェクト）
+export { EditError, EditErrorCode, checkRange, parseHexBytes, parseHexInput, parseIntInput, toHexBytes, type EditErrorParams } from "./command/EditError.js";
+export { documentContext, isDocumentContext, type DocumentContext } from "./command/DocumentContext.js";
+export { DocumentStore, mapKey, tilesetKey, type DocumentStoreSource } from "./command/DocumentStore.js";
+export { EDIT_COMMANDS, registerEditCommands } from "./command/editCommands.js";
+export { SnapshotCommand } from "./command/commands/base/SnapshotCommand.js";
+export { type MapArgs } from "./command/commands/base/MapPartCommand.js";
+export { type TilesetArgs } from "./command/commands/base/TilesetCommand.js";
+export { EVENT_FIELD_NAMES, EVENT_KINDS, MAX_EVENTS_PER_KIND, type EventKind } from "./command/commands/event/eventFields.js";
+export { AddEventCommand, type AddEventArgs } from "./command/commands/event/AddEventCommand.js";
+export { RemoveEventCommand, type RemoveEventArgs } from "./command/commands/event/RemoveEventCommand.js";
+export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./command/commands/event/MoveEventCommand.js";
+export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
+export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
+export { SetItemBallCommand, itemBallLabel, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
+export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
+export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";
+export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/header/SetRawHeaderCommand.js";
+export { SetMapNameCommand, type SetMapNameArgs } from "./command/commands/header/SetMapNameCommand.js";
+export { MAP_SIZE_LIMIT, checkMapSize, maxMapHeight, resizeGrid } from "./command/commands/layout/mapSize.js";
+export { ResizeMapCommand, type ResizeMapArgs } from "./command/commands/layout/ResizeMapCommand.js";
+export { SetBorderCommand, type SetBorderArgs } from "./command/commands/layout/SetBorderCommand.js";
+export { SetTilesetsCommand, type SetTilesetsArgs } from "./command/commands/layout/SetTilesetsCommand.js";
+export { SetRawFooterCommand, type SetRawFooterArgs } from "./command/commands/layout/SetRawFooterCommand.js";
+export { AddMapScriptCommand, type AddMapScriptArgs } from "./command/commands/mapscript/AddMapScriptCommand.js";
+export { RemoveMapScriptCommand, type RemoveMapScriptArgs } from "./command/commands/mapscript/RemoveMapScriptCommand.js";
+export { SetMapScriptCommand, type SetMapScriptArgs } from "./command/commands/mapscript/SetMapScriptCommand.js";
+export {
+  AddMapScriptConditionCommand,
+  RemoveMapScriptConditionCommand,
+  SetMapScriptConditionCommand,
+  type AddMapScriptConditionArgs,
+  type RemoveMapScriptConditionArgs,
+  type SetMapScriptConditionArgs,
+} from "./command/commands/mapscript/MapScriptConditionCommands.js";
+export { type ConnectionFields } from "./command/commands/connection/connectionFields.js";
+export { AddConnectionCommand, type AddConnectionArgs } from "./command/commands/connection/AddConnectionCommand.js";
+export { RemoveConnectionCommand, type RemoveConnectionArgs } from "./command/commands/connection/RemoveConnectionCommand.js";
+export { SetConnectionCommand, type SetConnectionArgs } from "./command/commands/connection/SetConnectionCommand.js";
+export { newWildArea } from "./command/commands/wild/wildAreas.js";
+export { SetWildRateCommand, type SetWildRateArgs } from "./command/commands/wild/SetWildRateCommand.js";
+export { SetWildSlotCommand, type SetWildSlotArgs } from "./command/commands/wild/SetWildSlotCommand.js";
+export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/wild/SetWildAreasCommand.js";
+export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
+export { SetBlockCommand, type SetBlockArgs } from "./command/commands/tileset/SetBlockCommand.js";
+export { SetBlockCountCommand, type SetBlockCountArgs } from "./command/commands/tileset/SetBlockCountCommand.js";
+export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/commands/tileset/SetPaletteColorsCommand.js";
+export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
+export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";
+export { SetTilesetHeaderCommand, type SetTilesetHeaderArgs } from "./command/commands/tileset/SetTilesetHeaderCommand.js";

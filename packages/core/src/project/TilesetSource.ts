@@ -2,6 +2,7 @@ import { DataError } from "../binary/DataError.js";
 import { readU32 } from "../binary/bytes.js";
 import { TILESET_HEADER_SIZE, TILE_BYTES } from "../map/constants.js";
 import type { Tileset } from "../map/types.js";
+import { writeIndentedJson } from "./BochiJson.js";
 import { ProjectFormatError } from "./ProjectFormatError.js";
 import { parseJsonObject, readBool, readBytes, readInt, readString } from "./jsonRead.js";
 import { decodeIndexedPng } from "./png/PngDecoder.js";
@@ -110,7 +111,28 @@ export class TilesetSourceJson {
     };
   }
 
-  // TODO: tileset.json と tiles.png の書き出し（ImageSha256 の計算、4bpp PNG のエンコード、Bochi と同じ整形）。
+  /**
+   * tileset.json の文字列にする。Bochi の CfruTilesetCodec.Serialize と同じ整形
+   * （プロパティの並び、2 空白の字下げ、CRLF、末尾の改行）。書き出しは TilesetDocument.toJson / toPng を使う。
+   */
+  static stringify(source: TilesetSource): string {
+    return writeIndentedJson({
+      Format: source.format,
+      HeaderAddress: source.headerAddress,
+      Secondary: source.secondary,
+      New: source.isNew,
+      Header: source.header,
+      TileCount: source.tileCount,
+      BlockCount: source.blockCount,
+      BlockBytes: source.blockBytes,
+      BehaviorBytes: source.behaviorBytes,
+      Compressed: source.compressed,
+      ImageSha256: source.imageSha256,
+      Palettes: source.palettes,
+      Blocks: source.blocks,
+      Behaviors: source.behaviors,
+    });
+  }
 }
 
 /** 色番号の画像（幅×高さ）を 4bpp タイル（左上から横へ並べた順）にする。 */

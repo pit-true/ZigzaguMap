@@ -15,6 +15,10 @@ export interface GameOffsets {
   readonly overworldGraphicsTablePointer: number;
   /** OW のパレット表（sObjectEventSpritePalettes）へのポインタが置かれている位置。 */
   readonly overworldPaletteTablePointer: number;
+  /** タイルセットヘッダー（24 バイト）が番号順に並ぶ表の位置（AdvanceMap のタイルセット番号はこの並び）。 */
+  readonly tilesetHeaderTable: number;
+  /** 表のタイルセットの数。 */
+  readonly tilesetCount: number;
 }
 
 /** ファイアレッド日本語版（BPRJ）。 */
@@ -25,6 +29,8 @@ export const BPRJ_OFFSETS: GameOffsets = {
   speciesNameTablePointer: 0x144,
   overworldGraphicsTablePointer: 0x5ebb4,
   overworldPaletteTablePointer: 0x5ed98,
+  tilesetHeaderTable: 0x298b44,
+  tilesetCount: 68,
 };
 
 /** ゲームコードからオフセット定義を引く表。 */

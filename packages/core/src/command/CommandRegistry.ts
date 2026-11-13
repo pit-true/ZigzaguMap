@@ -4,6 +4,7 @@ import { PlaceMovementCommand } from "./commands/PlaceMovementCommand.js";
 import { PaintBlocksCommand } from "./commands/PaintBlocksCommand.js";
 import { PaintBorderCommand } from "./commands/PaintBorderCommand.js";
 import { PaintMovementCommand } from "./commands/PaintMovementCommand.js";
+import { registerEditCommands } from "./editCommands.js";
 
 /** JSON の引数からコマンドを作る関数。 */
 export type CommandFactory = (args: Record<string, unknown>) => Command;
@@ -33,10 +34,11 @@ export class CommandRegistry {
 
 /** 組み込みのコマンドをすべて登録した表を作る。 */
 export function createDefaultRegistry(): CommandRegistry {
-  return new CommandRegistry()
+  const registry = new CommandRegistry()
     .register(PlaceBlockCommand.NAME, PlaceBlockCommand.fromJson)
     .register(PlaceMovementCommand.NAME, PlaceMovementCommand.fromJson)
     .register(PaintBlocksCommand.NAME, PaintBlocksCommand.fromJson)
     .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
     .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
+  return registerEditCommands(registry);
 }

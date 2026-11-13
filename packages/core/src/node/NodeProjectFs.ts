@@ -22,6 +22,13 @@ export class NodeProjectFs implements ProjectFs {
     await rename(full + ".tmp", full);
   }
 
+  async writeBytes(path: string, bytes: Uint8Array): Promise<void> {
+    const full = this.resolve(path);
+    await mkdir(dirname(full), { recursive: true });
+    await writeFile(full + ".tmp", bytes);
+    await rename(full + ".tmp", full);
+  }
+
   async readBytes(path: string): Promise<Uint8Array> {
     return new Uint8Array(await readFile(this.resolve(path)));
   }
