@@ -1,6 +1,6 @@
 import { BLOCK_PIXELS, type RgbaImage } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
-import { drawEventsOn, placedEvents } from "../ui/map/EventLayer";
+import { drawEventsOn, type EventOverlay } from "../ui/map/EventLayer";
 import { spriteSourceFor } from "../ui/map/spriteCanvases";
 import type { EditorState } from "./EditorState";
 import { folderOf, writeFile, type FileDialogs, type FileFilter } from "./FileDialogs";
@@ -11,7 +11,8 @@ export type ImageKind = "map" | "mapEvent" | "palette";
 /**
  * 画像の保存（AdvanceMap と同じく、24 ビットの DIB（BMP と同じ形式）で書く）。
  * - マップ画像: マップのブロックだけ（1 ブロック 16px、境界ブロックとイベントは含まない）
- * - マップ&イベント画像: マップにイベントの印を重ねたもの（オブジェクトの表示がオンなら OW 画像）
+ * - マップ&イベント画像: マップにイベントタブと同じ印（フライトポジションと、カーソルの表示がオンなら選択中の赤い枠を含む）を
+ *   重ねたもの（オブジェクトの表示がオンなら OW 画像）
  * - パレット画像: ブロックパレット全体（今の横幅、等倍）
  * 保存ダイアログの初期フォルダは前回保存したフォルダ。拡張子が無ければ .DIB を付ける。
  */
@@ -19,6 +20,8 @@ export class ImageExport {
   constructor(
     private readonly state: EditorState,
     private readonly files: FileDialogs,
+    /** 重ねるイベントの印（イベントタブから受け取る）。 */
+    private readonly overlay: () => EventOverlay,
   ) {}
 
   /** 保存ダイアログを出して保存する。保存したパス（キャンセルなら null）。 */
@@ -52,7 +55,8 @@ export class ImageExport {
     const c = canvas.getContext("2d")!;
     c.putImageData(new ImageData(mapImage.image.data, width, height), 0, 0);
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
-    drawEventsOn(c, placedEvents(map.doc.events), BLOCK_PIXELS, null, sprites);
+    const { events, selected } = this.overlay();
+    drawEventsOn(c, events, BLOCK_PIXELS, selected, sprites);
     const data = c.getImageData(0, 0, width, height);
     return { width, height, data: data.data };
   }

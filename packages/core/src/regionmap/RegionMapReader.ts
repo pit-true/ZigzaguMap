@@ -82,7 +82,7 @@ export class RegionMapReader {
     const heal = [];
     for (let i = 0; i < HEAL_LOCATION_COUNT; i++) {
       const at = healAt + i * HEAL_LOCATION_SIZE;
-      heal.push({ bank: rom.u8(at), map: rom.u8(at + 1), x: s16(rom.u16(at + 2)), y: s16(rom.u16(at + 4)) });
+      heal.push({ bank: rom.u8(at), map: rom.u8(at + 1), x: s16(rom.u16(at + 2)), y: s16(rom.u16(at + 4)), unknown: rom.u16(at + 6) });
     }
 
     const switches = new FlagSwitchReader(rom, a.eventFlagCheck);

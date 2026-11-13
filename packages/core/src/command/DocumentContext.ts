@@ -50,7 +50,7 @@ export interface DocumentContext extends EditorContext {
   setWorkMapInfo(id: MapId, info: WorkMapInfo): void;
   /** 次に作る作業用のマップの番号。 */
   nextWorkMapNumber(): number;
-  /** 編集中のフライトポジションの表（ROM の表の写し。maps\ の形式には置き場所が無く、出力しない）。 */
+  /** 編集中のフライトポジションの表（ROM の表の写し。タウンマップの飛び先と同じ表で、maps\regionmap.json の HealLocations に出力する）。 */
   readonly flyPositions: FlyPosition[];
 }
 

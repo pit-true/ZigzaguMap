@@ -1,6 +1,6 @@
 import { hexText, jaBlockEditor as t } from "../../i18n/ja.blockEditor";
 import { combo, edit, label, place } from "../../ui/form/controls";
-import { readHex } from "../../ui/form/inputErrors";
+import { readInteger } from "../../ui/form/integerInput";
 
 /** 4 バイトの属性。 */
 export type AttributeBytes = [number, number, number, number];
@@ -69,7 +69,7 @@ export class AttributePanel {
     const text = this.fields[index]!.value.trim();
     // 空欄・マイナスは AdvanceMap でもエラーにならない（値は変えない）。
     if (text === "" || text === "-" || /^-\d*$/.test(text)) return;
-    const value = readHex(text);
+    const value = readInteger(text.replace(/^\$/, ""), "hex");
     if (value === null) return;
     this.values[index] = value & 0xff;
     this.syncCombos();

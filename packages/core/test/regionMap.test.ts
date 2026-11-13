@@ -23,7 +23,7 @@ function sample(): RegionMapDocument {
     layouts: Array.from({ length: 8 }, () => new Array<number>(REGION_MAP_CELLS).fill(0xc5)),
     sections: Array.from({ length: MAPSEC_COUNT }, (_, i) => ({ x: i % 22, y: i % 15, width: 1, height: 1 })),
     fly: Array.from({ length: FLY_DESTINATION_COUNT }, (_, i) => ({ bank: 3, map: i, heal: 0 })),
-    heal: Array.from({ length: HEAL_LOCATION_COUNT }, (_, i) => ({ bank: 3, map: i, x: 6, y: 8 })),
+    heal: Array.from({ length: HEAL_LOCATION_COUNT }, (_, i) => ({ bank: 3, map: i, x: 6, y: 8, unknown: 0 })),
     mapFlags: new Array<number>(MAPSEC_COUNT).fill(0xffff),
     dungeonFlags: new Array<number>(MAPSEC_COUNT).fill(0xffff),
   };
@@ -73,7 +73,7 @@ describe("タウンマップの表", () => {
     const after = doc.snapshot();
     expect(doc.section(0x58)).toMatchObject({ x: 1, y: 2 });
     expect(doc.flyDestination(0x58)).toEqual({ bank: 4, map: 5, heal: 2 });
-    expect(doc.healLocation(2)).toEqual({ bank: 3, map: 1, x: 3, y: 4 });
+    expect(doc.healLocation(2)).toEqual({ bank: 3, map: 1, x: 3, y: 4, unknown: 0 });
     expect(doc.cell(0, 0, 0, 0)).toBe(0x58);
     expect(doc.flag(0, 0x58)).toBe(0x890);
     while (bus.undo());

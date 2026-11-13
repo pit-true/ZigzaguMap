@@ -58,8 +58,8 @@ export class MapTree {
     const fragment = document.createDocumentFragment();
     for (const node of roots) fragment.append(this.build(node, 0));
     this.element.replaceChildren(fragment);
-    if (this.openedId) this.reveal(this.openedId, false);
-    else if (this.selectedKey) this.select(this.selectedKey);
+    if (this.selectedKey && this.rows.has(this.selectedKey)) this.select(this.selectedKey);
+    else if (this.openedId) this.reveal(this.openedId, true);
   }
 
   /** 空にする。 */
@@ -72,11 +72,26 @@ export class MapTree {
     this.element.replaceChildren();
   }
 
-  /** マップを開いたことを知らせる（「ヘッダー」の下で、その項目まで展開して選ぶ）。 */
+  /**
+   * マップを開いたことを知らせる。AdvanceMap と同じく、選んでいる項目がそのマップなら（「iniファイル」の下から
+   * 開いたときも）その項目を選んだままにし、そうでなければ「ヘッダー」の下で、その項目まで展開して選ぶ。
+   */
   setOpened(id: MapId | null): void {
     this.openedId = id;
     for (const row of this.rows.values()) this.decorate(row);
-    if (id) this.reveal(id, true);
+    if (!id) return;
+    const selected = this.selectedKey ? this.rows.get(this.selectedKey) : undefined;
+    if (selected?.node.mapId && sameId(selected.node.mapId, id)) return;
+    this.reveal(id, true);
+  }
+
+  /** 開いているマップの項目の文字列（AdvanceMap の題名に使う。選んでいる項目を優先する）。 */
+  openedLabel(): string | null {
+    const id = this.openedId;
+    if (!id) return null;
+    const selected = this.selectedKey ? this.rows.get(this.selectedKey) : undefined;
+    if (selected?.node.mapId && sameId(selected.node.mapId, id)) return selected.node.label;
+    return this.findOpenedPath(id)?.at(-1)?.label ?? null;
   }
 
   /** 未出力の印を付け直す。 */
@@ -164,10 +179,20 @@ export class MapTree {
     row.element.scrollIntoView({ block: "nearest" });
   }
 
-  /** 「ヘッダー」の下からマップの項目を探し、そこまで展開する。 */
-  private reveal(id: MapId, selectIt: boolean): void {
+  /** マップの項目を探す（「ヘッダー」の下を先に、無ければほかの根の下）。 */
+  private findOpenedPath(id: MapId): TreeNode[] | null {
     const header = this.roots.find((r) => r.key === HEADER_ROOT_KEY);
-    const path = header ? findPath(header, id) : null;
+    const order = header ? [header, ...this.roots.filter((r) => r !== header)] : this.roots;
+    for (const root of order) {
+      const path = findPath(root, id);
+      if (path) return path;
+    }
+    return null;
+  }
+
+  /** マップの項目を探し、そこまで展開する。 */
+  private reveal(id: MapId, selectIt: boolean): void {
+    const path = this.findOpenedPath(id);
     if (!path) return;
     for (const node of path.slice(0, -1)) {
       const row = this.rows.get(node.key);

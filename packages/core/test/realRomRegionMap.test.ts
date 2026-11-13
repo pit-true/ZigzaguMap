@@ -59,8 +59,8 @@ describe.skipIf(!romPath)("実 ROM: タウンマップ（ZIGZAGU_TEST_ROM）", (
     expect(doc.flyDestination(0x5d)).toEqual({ bank: 3, map: 5, heal: 6 });
     expect(doc.flyDestination(0x74)).toEqual({ bank: 3, map: 0x22, heal: 0 });
     expect(doc.flyDestination(0x68)).toEqual({ bank: 3, map: 0x16, heal: 0 });
-    expect(doc.healLocation(1)).toEqual({ bank: 3, map: 0, x: 6, y: 8 });
-    expect(doc.healLocation(6)).toEqual({ bank: 3, map: 5, x: 15, y: 7 });
+    expect(doc.healLocation(1)).toEqual({ bank: 3, map: 0, x: 6, y: 8, unknown: 0 });
+    expect(doc.healLocation(6)).toEqual({ bank: 3, map: 5, x: 15, y: 7, unknown: 0 });
     expect(doc.flag(0, 0x58)).toBe(0x890);
     expect(doc.flag(0, 0x5d)).toBe(0x895);
     expect(doc.flag(0, 0x74)).toBe(0xffff);
@@ -89,6 +89,40 @@ describe.skipIf(!romPath)("実 ROM: タウンマップ（ZIGZAGU_TEST_ROM）", (
         writeFileSync(join(pngDir, `page${page + 1}.png`), rgbaPng(image));
       }
     }
+  });
+
+  it("フライトポジションの変更を regionmap.json の HealLocations に書き、読み直して同じになる", async () => {
+    const fs = new MemoryProjectFs();
+    const bytes = new Uint8Array(readFileSync(romPath!));
+    const project = await CfruProject.open(bytes, fs);
+    const context = project.editorContext();
+    const bus = new CommandBus(context);
+    const registry = createDefaultRegistry();
+    // 0 番（マサラタウン 3.0）の座標と不明を変える。タウンマップを開く前の変更。
+    bus.execute(registry.create({ name: "setFlyPosition", args: { index: 0, fields: { x: 7, y: 9, unknown: 0x1234 } } }));
+    expect(project.isFlyPositionsModified()).toBe(true);
+
+    // タウンマップを開くと飛び先 1 は同じ表を見ている。タウンマップ側で変えるとフライトポジションも変わる。
+    const region = await RegionMapProject.open(project.rom, "BPRJ", fs, context.flyPositions);
+    expect(region.document.healLocation(1)).toEqual({ bank: 3, map: 0, x: 7, y: 9, unknown: 0x1234 });
+    expect(region.isModified()).toBe(true);
+    const regionBus = new CommandBus(withRegionMap(context, () => region.document));
+    regionBus.execute(registry.create({ name: "setRegionSection", args: { id: 0x5d, healIndex: 6, healX: 16 } }));
+    expect(context.flyPositions[5]!.x).toBe(16);
+
+    expect((await region.save(fs)).written).toEqual([REGION_MAP_PATH]);
+    project.markFlyPositionsSaved();
+    const text = fs.files.get(REGION_MAP_PATH) as string;
+    expect(text).toContain('"HealLocations"');
+    expect(text).toContain('"Unknown": 4660');
+
+    // 読み直すと、タウンマップを開かなくてもフライトポジションに重なる。
+    const again = await CfruProject.open(bytes, fs);
+    expect(again.editorContext().flyPositions).toEqual(context.flyPositions);
+    expect(again.isFlyPositionsModified()).toBe(false);
+    const reopened = await RegionMapProject.open(again.rom, "BPRJ", fs, again.editorContext().flyPositions);
+    expect(reopened.isModified()).toBe(false);
+    expect(reopened.document.healLocation(6)!.x).toBe(16);
   });
 
   it("コマンドで変え、regionmap.json に書き、読み直して同じになる", async () => {

@@ -1,10 +1,11 @@
-import { EditError, EditErrorCode, parseHexInput, parseIntInput } from "@zigzagumap/core";
+import { EditError } from "@zigzagumap/core";
 import "../../styles/valueControls.css";
 import { hex } from "../../i18n/ja";
+import { parseInteger } from "./integerInput";
 
 /**
  * AdvanceMap の入力部品（TEdit の 16 進欄、TSpinEdit、TComboBox、TCheckBox）の再現。
- * どれも入力のたびに値を知らせる（AdvanceMap の OnChange と同じく確定ボタンは無い）。
+ * どれも入力のたびに値を読んで知らせる（AdvanceMap の OnChange と同じく確定ボタンは無い）。読み方は integerInput と共通。
  * 実際の入力要素には `data-auto-id` に部品の ID を付ける（自動操作の入口から読み書き・クリックするため）。
  */
 
@@ -63,7 +64,7 @@ export class HexInput implements ValueControl {
   private commit(): void {
     let value: number;
     try {
-      value = parseHexInput(this.element.value);
+      value = parseInteger(this.element.value, "hex");
     } catch (e) {
       if (e instanceof EditError) return this.options.onError(e);
       throw e;
@@ -164,7 +165,7 @@ export class SpinEdit implements ValueControl {
     if (text.trim() === "" || this.options.readOnly) return;
     let n: number;
     try {
-      n = parseIntInput(text);
+      n = parseInteger(text, "int");
     } catch (e) {
       if (e instanceof EditError && this.options.onError) return this.options.onError(e);
       if (e instanceof EditError) return;
@@ -271,10 +272,4 @@ export function formLabel(text: string): HTMLElement {
   p.className = "form-row form-caption";
   p.textContent = text;
   return p;
-}
-
-/** 入力エラーの文言（読めない整数は Delphi の例外メッセージのまま）。 */
-export function invalidIntegerText(error: EditError, format: (text: string) => string): string {
-  if (error.code === EditErrorCode.InvalidInteger) return format(String(error.params["text"] ?? ""));
-  return error.message;
 }

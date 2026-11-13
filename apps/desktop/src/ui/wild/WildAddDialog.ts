@@ -1,4 +1,4 @@
-import { SetWildAreasCommand, type MapId } from "@zigzagumap/core";
+import { SetWildAreasCommand, toOffset, type MapId } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import type { ProjectSession } from "../../app/ProjectSession";
 import { ja } from "../../i18n/ja";
@@ -7,7 +7,6 @@ import { messageBox } from "../MessageBox";
 import { commit } from "../form/commit";
 import { button, check, label, panel } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
-import { toOffset } from "../header/RomLocations";
 import { shownWild } from "./WildTab";
 
 /** ベース ROM の野生のエリア情報の位置（ROM 上に無ければ 0）。 */

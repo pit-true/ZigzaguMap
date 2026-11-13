@@ -135,11 +135,15 @@ function canvas(className: string): HTMLCanvasElement {
   return c;
 }
 
-/** 16px（拡大時 32px）ごとに黒い 1px の線を引く。 */
+/**
+ * 16px（拡大時 32px）ごとに、AdvanceMap と同じくマスの左端・上端へ黒い線を引く。
+ * 線の太さは等倍で 1px、拡大時は 2px（等倍の線を拡大したのと同じ）。
+ */
 export function drawGrid(target: HTMLCanvasElement, step: number): void {
   const c = target.getContext("2d")!;
   c.clearRect(0, 0, target.width, target.height);
   c.fillStyle = "#000";
-  for (let x = step - 1; x < target.width; x += step) c.fillRect(x, 0, 1, target.height);
-  for (let y = step - 1; y < target.height; y += step) c.fillRect(0, y, target.width, 1);
+  const line = Math.max(1, Math.round(step / 16));
+  for (let x = 0; x < target.width; x += step) c.fillRect(x, 0, line, target.height);
+  for (let y = 0; y < target.height; y += step) c.fillRect(0, y, target.width, line);
 }
