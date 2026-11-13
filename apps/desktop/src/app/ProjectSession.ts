@@ -140,7 +140,7 @@ export class ProjectSession {
   }
 
   private requireRegionMap(): RegionMapProject {
-    if (!this.regionMapValue) throw new Error("ワールドマップエディターを開いてから実行してください");
+    if (!this.regionMapValue) throw new Error("ワールドマップエディタを開いてから実行してください");
     return this.regionMapValue;
   }
 

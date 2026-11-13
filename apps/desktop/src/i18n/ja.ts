@@ -1,11 +1,16 @@
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
 import { jaWild } from "./ja.wild";
+import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
+
+const M = ini.Menue;
+const A = ini.Allgemein;
+const T = ini.Toolbar;
 
 /**
  * 画面の文言（日本語）。文言はすべてここに集める。
- * AdvanceMap 1.92 日本語化パックの Japanese.ini の表記をそのまま使う（「ROMの保存」系は「出力」に読み替える）。
- * コメントの [節] 番号は Japanese.ini の位置。
+ * AdvanceMap の文言は改訂版の Japanese.ini（source/Japanese.ini）から `ini.節["番号"]` で引く。
+ * ini に無い ZigzaguMap 独自の文言だけを直接書く（「ROMの保存」系は「出力」に読み替える）。
  */
 export const ja = {
   appTitle: "ZigzaguMap",
@@ -13,108 +18,107 @@ export const ja = {
   windowTitle: (item: string) => `ZigzaguMap - ${item}`,
 
   // [Menue] トップ
-  menuFile: "ファイル",
-  menuSettings: "設定",
-  menuTools: "ツール",
-  menuHelp: "ヘルプ",
+  menuFile: M["11"],
+  menuSettings: M["12"],
+  menuTools: M["13"],
+  menuHelp: M["14"],
 
   // [Menue] ファイル
-  openRom: "ROMを開く",
+  openRom: M["110"],
   openProject: "CFRU-JPのフォルダを開く",
-  reloadRom: "ROMの再読み込み",
+  reloadRom: M["111"],
+  /** 112「ROMの保存」の読み替え。 */
   exportMaps: "出力",
+  /** 113「ROMに名前を付けて保存」の読み替え。 */
   exportMapsTo: "出力先を指定して出力",
-  createBackup: "バックアップの作成",
-  mapMenu: "マップ",
-  newMap: "新規マップの作成",
-  openCreatedMap: "作成したマップを開く",
-  saveCreatedMapAs: "名前をつけて作成したマップを保存",
-  insertMap: "マップの追加/挿入",
-  exit: "終了",
+  createBackup: M["116"],
+  mapMenu: M["114"],
+  newMap: M["1140"],
+  openCreatedMap: M["1141"],
+  saveCreatedMapAs: M["1143"],
+  insertMap: M["1144"],
+  exit: M["115"],
 
   // [Menue] 設定
-  showGrid: "グリッドの表示",
-  showObjects: "オブジェクトの表示",
-  hideEventPanel: "イベントパネルの非表示",
-  mapSize: "マップサイズの設定",
-  zoomMap: "マップの拡大表示",
-  zoomMovement: "移動エリアの拡大表示",
-  zoomEvent: "イベントの拡大表示",
-  zoomBlockPalette: "ブロックパレットの拡大表示",
-  zoomMovementPalette: "移動エリアパレットの拡大表示",
-  comboBox: "コンボボックス",
-  mapDisplay: "マップの表示設定",
-  mapHeader: "マップヘッダー",
-  showIni: "INIの表示",
-  headerSort: "ヘッダーのソート",
-  createIniFromHeader: "ヘッダーから新たなIniファイルを作る",
-  blockPaletteWidth: "マップブロックの横幅",
-  movementOpacity: "移動エリアの設定の透明度",
-  showToolbar: "ツールバーの表示",
-  language: "言語",
-  rememberLast: "最後に選択したものを覚える",
-  autoSearchOffset: "自動的にオフセットを検索する",
-  advancedHeader: "高度なヘッダーを表示",
-  backupOnOpen: "開いたときにバックアップを作成",
-  createRomShortcut: "最後に開いたROMのショートカットを作成する",
-  addContextMenu: "コンテキストメニューにAM context menuを追加する",
-  chooseScriptEditor: "スクリプトエディターの選択",
-  recentSettings: "最近開いたファイルの設定",
-  recentMax: "最近開いたファイルリストの最大数の変更",
-  recentClear: "最近開いたファイルリストの履歴を削除する",
-  recentShowPath: "最近開いたファイルリストのファイルパスを表示",
+  showGrid: M["120"],
+  showObjects: M["123"],
+  hideEventPanel: M["124"],
+  mapSize: M["126"],
+  zoomMap: M["1260"],
+  zoomMovement: M["1261"],
+  zoomEvent: M["1262"],
+  zoomBlockPalette: M["1263"],
+  zoomMovementPalette: M["1264"],
+  comboBox: M["121"],
+  mapDisplay: M["127"],
+  mapHeader: M["1270"],
+  showIni: M["1271"],
+  headerSort: M["1272"],
+  createIniFromHeader: M["1273"],
+  blockPaletteWidth: M["122"],
+  movementOpacity: M["1217"],
+  showToolbar: M["1211"],
+  language: M["125"],
+  rememberLast: M["128"],
+  autoSearchOffset: M["1210"],
+  advancedHeader: M["129"],
+  backupOnOpen: M["1212"],
+  createRomShortcut: M["1213"],
+  addContextMenu: M["1214"],
+  chooseScriptEditor: M["1215"],
+  recentSettings: M["1218"],
+  recentMax: M["1216"],
+  recentClear: M["12180"],
+  recentShowPath: M["12181"],
   /** 設定 > 言語（画面は日本語だけなので Japanese の 1 項目）。 */
-  languageJapanese: "Japanese",
+  languageJapanese: ini["INI-Version"].Sprache,
 
   // [Menue] ヘッダーのソート
-  sortModes: [
-    "バンク番号で並び替え",
-    "マップの名前で並び替え",
-    "タイルセット番号で並び替え",
-    "タイルセットのグループで並び替え",
-    "マップとタイルセットで並び替え",
-  ],
+  sortModes: [M["12720"], M["12721"], M["12722"], M["12723"], M["12724"]],
 
   // [Menue] ツール
-  blockEditor: "ブロックエディタ",
-  connections: "マップの移動",
-  worldMapEditor: "ワールドマップエディター",
-  previousMap: "以前開いたマップを開く",
-  desktopShortcut: "デスクトップにショートカットを作成",
-  openMapByNumber: "マップを指定して開く",
-  dummyData: "ダミーデータへ移す/ヘッダー管理",
-  moveBankHeader: "マップバンクヘッダーをダミーデータに移す",
-  moveBank: "マップバンクをダミーデータに移す",
-  moveConnections: "コネクションリストをダミーデータに移す",
-  moveWildHeader: "野生のポケモンのヘッダーをダミーデータに移す",
-  manageBankHeader: "マップバンクヘッダーの管理",
-  saveMapImage: "マップ画像の保存",
-  saveMapEventImage: "マップ&イベント画像の保存",
-  savePaletteImage: "パレット画像の保存",
+  blockEditor: M["130"],
+  connections: M["136"],
+  worldMapEditor: M["138"],
+  previousMap: M["1310"],
+  desktopShortcut: M["139"],
+  openMapByNumber: M["135"],
+  dummyData: M["137"],
+  moveBankHeader: M["1370"],
+  moveBank: M["1371"],
+  moveConnections: M["1372"],
+  moveWildHeader: M["1373"],
+  manageBankHeader: M["1374"],
+  saveMapImage: M["131"],
+  saveMapEventImage: M["133"],
+  savePaletteImage: M["132"],
 
   // [Menue] ヘルプ
-  readMe: "Read me",
-  about: "Advance Mapについて",
+  readMe: M["140"],
+  about: M["141"],
   aboutApp: "ZigzaguMapについて",
-  eula: "エンドユーザー規約",
+  eula: M["142"],
   /** ZigzaguMapについて（[AboutBox] の並び）。 */
   help: {
-    aboutTitle: "About",
-    credits: "クレジット:",
+    aboutTitle: ini.AboutBox.Title,
+    credits: ini.AboutBox["11"],
     sections: [
       [
-        "プログラミング:",
+        ini.AboutBox["20"],
         [
-          ["名前:", "pit-true"],
-          ["ウェブサイト:", "https://github.com/pit-true/ZigzaguMap"],
-          ["コメント:", "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\ の JSON に出力します。"],
+          [ini.AboutBox["21"], "pit-true"],
+          [ini.AboutBox["23"], "https://github.com/pit-true/ZigzaguMap"],
+          [ini.AboutBox["25"], "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\\ の JSON に出力します。"],
         ],
       ],
       [
         "元にしたソフト:",
         [
-          ["名前:", "Advance Map 1.92 (LU-HO Poké)"],
-          ["翻訳:", "Japanese 1.0.3_part_jap (Nanashi/Satry/Ealgrete/Louxies)"],
+          [ini.AboutBox["21"], "Advance Map 1.92 (LU-HO Poké)"],
+          [
+            ini.AboutBox["30"],
+            `${ini["INI-Version"].Sprache} ${ini["INI-Version"].Version} (${ini["INI-Version"].Ersteller})`,
+          ],
         ],
       ],
     ] as readonly (readonly [string, readonly (readonly [string, string])[]])[],
@@ -129,62 +133,62 @@ export const ja = {
   allFiles: "All files (*.*)",
   allFilesGerman: "Alle Dateien (*.*)",
   imageSaved: (path: string) => `画像を保存しました: ${path}`,
-  // ファイルを開く・PC の設定（[Allgemein] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
+  // ファイルを開く・PC の設定（[Menue] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
   openFileTitle: "ファイルを開く",
   programFilter: "Programme (*.exe)",
-  notExeFile: "プログラムファイルは存在していないか、*.exe のバイナリファイルではありません！",
-  scriptSeparatorQuestion:
-    'Are offsets seperated from the ROM name by ":" (default) or " " in the preferred script editor? => Yes for ":"; No for " ".',
-  scriptEditorSet: (path: string) => `スクリプトエディター: ${path}`,
-  romShortcutName: "Most recently used ROM",
+  notExeFile: M["12150"],
+  scriptSeparatorQuestion: M["12151"],
+  scriptEditorSet: (path: string) => `スクリプトエディタ: ${path}`,
+  romShortcutName: M["12130"],
   romShortcutQuestion:
-    "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか?",
-  desktopShortcutQuestion: "デスクトップにZigzaguMapのショートカットを作成しますか?",
+    "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか？",
+  desktopShortcutQuestion: ini.EndnutzerForm["30"].replace("AdvanceMap", "ZigzaguMap"),
   desktopShortcutCreated: "デスクトップにショートカットを作成しました",
   contextMenuLabel: "ZigzaguMapで開く",
-  contextMenuAddQuestion: "エクスプローラーの .gba の右クリックに「ZigzaguMapで開く」を追加します（現在のユーザーのレジストリに書きます）。よろしいですか?",
-  contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか?",
+  contextMenuAddQuestion: "エクスプローラーの .gba の右クリックに「ZigzaguMapで開く」を追加します（現在のユーザーのレジストリに書きます）。よろしいですか？",
+  contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか？",
   skippedInAutomation: "自動操作で起動しているため、PC の設定は変えませんでした",
   notNeededWithoutRomWrite: "ZigzaguMap は ROM へ書き込まないため、この機能は不要です",
-  iniFolderTitle: "Iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
+  iniFolderTitle: "iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
   iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
-  // [Toolbar]
+  // [Toolbar]（改訂版は番号の並びが 1.92 と違うので、ボタンの役割で対応させる）
   toolbar: {
-    open: "ROMを開く",
+    open: T["10"],
+    /** 11「ROMの保存」の読み替え。 */
     save: "出力",
-    newMap: "新規マップの作成",
-    insertMap: "マップの追加/挿入",
-    showObjects: "オブジェクトの表示",
-    connections: "マップの移動",
-    blockEditor: "ブロックエディタ",
-    find: "ダミーデータの検索",
-    about: "インフォメーション",
-    worldMap: "ワールドマップエディター",
-    previousMap: "以前開いたマップ",
+    newMap: T["12"],
+    insertMap: T["13"],
+    showObjects: T["15"],
+    connections: T["17"],
+    blockEditor: T["16"],
+    find: T["19"],
+    about: T["20"],
+    worldMap: T["18"],
+    previousMap: T["14"],
   },
 
   // [Allgemein] タブ
-  tabMap: "マップの設定",
-  tabMovement: "移動エリアの設定",
-  tabEvents: "イベントの設定",
-  tabWild: "出現ポケモン",
-  tabHeader: "場所の設定",
+  tabMap: A["20"],
+  tabMovement: A["21"],
+  tabEvents: A["22"],
+  tabWild: A["24"],
+  tabHeader: A["25"],
 
   // [Allgemein] ステータスバー
-  statusOpenRom: "ROMを開いてください",
-  statusRomLoaded: "ROMの読込完了しました マップを選択してください",
-  statusMapLoaded: (bank: number, map: number) => `マップの読込完了 ${bank}.${map}`,
-  statusLoadTime: (time: string) => `ROMを読み込むのに ${time} 程、時間がかかりました`,
-  statusMapCell: (x: number, y: number, block: string) => `X: ${hex(x, 2)} Y: ${hex(y, 2)}        ブロック: ${block}`,
-  statusBlock: (block: number) => `ブロック: ${hex(block, 4)}`,
+  statusOpenRom: A["30"],
+  statusRomLoaded: A["31"],
+  statusMapLoaded: (bank: number, map: number) => `${A["32"]} ${bank}.${map}`,
+  /** 読み込みにかかった時間（ミリ秒）。ini の %s に秒を入れる。 */
+  statusLoadTime: (ms: number) => fmt(A["110"], (ms / 1000).toFixed(3)),
+  statusMapCell: (x: number, y: number, block: string) => `X: ${hex(x, 2)} Y: ${hex(y, 2)}        ${A["33"]} ${block}`,
+  statusBlock: (block: number) => `${A["33"]} ${hex(block, 4)}`,
   statusPaletteBlock: (block: number, offset: number | null) =>
-    `ブロック: ${hex(block, 2)} オフセット: ${offset === null ? "------" : hex(offset, 6)}`,
-  statusMovementPalette: (value: number, name: string) => `ブロック移動：: ${hex(value, 2)} ${name}`,
-  noEvents: "イベントはありません.",
+    `${A["33"]} ${hex(block, 2)} ${A["34"]} ${offset === null ? "------" : hex(offset, 6)}`,
+  statusMovementPalette: (value: number, name: string) => `${A["35"]} ${hex(value, 2)} ${name}`,
   loading: "読み込み中…",
   notImplemented: (name: string) => `未実装: ${name}`,
-  error: (message: string) => `エラー: ${message}`,
+  error: (message: string) => `${A["02"]}: ${message}`,
   unsupportedFile: "対応していないファイルです（.gba かフォルダを選んでください）",
   exported: (written: number, removed: number) =>
     written + removed === 0 ? "出力するものはありません" : `出力しました（書き込み ${written} 件、削除 ${removed} 件）`,
@@ -199,189 +203,74 @@ export const ja = {
   dropHint: "ROM（.gba）か CFRU-JP のフォルダをここにドラッグ＆ドロップしてください",
 
   // [Allgemein] ダイアログ
-  question: "質問",
-  information: "情報",
-  errorTitle: "エラー",
+  question: A["00"],
+  information: A["01"],
+  errorTitle: A["02"],
+  /** 70「変更を保存しますか？」の読み替え。 */
   saveChanges: "変更を出力しますか？",
-  openMapTitle: "マップを指定して開く",
-  openMapPrompt: "マップの番号を指定してください ( 例 : 3.0 ）",
-  invalidInput: "それは無効な入力です！正しい値を入力して下さい！",
-  mapNotFound: "指定したマップは存在しません！",
-  blockWidthTitle: "ブロックの幅の変更",
-  blockWidthPrompt: "新しい幅を入力してください。",
-  opacityPrompt: "移動エリアの設定のマップの透明度を設定して下さい( 範囲: 0.0 〜 1.0 )",
-  recentMaxPrompt: "「ファイル」の下に表示する、最近開いたファイルをいくつリストアップしますか?",
-  ok: "OK",
+  openMapTitle: A["42"],
+  openMapPrompt: A["43"],
+  invalidInput: A["44"],
+  mapNotFound: A["100"],
+  blockWidthTitle: A["45"],
+  blockWidthPrompt: A["46"],
+  opacityPrompt: M["12170"],
+  recentMaxPrompt: M["12161"],
+  ok: ini.EndnutzerForm["13"],
+  /** Delphi の入力ダイアログのボタン（ini に無い）。 */
   cancel: "Cancel",
   /** メッセージボックスのボタン（Windows 標準の日本語表記）。 */
   yes: "はい(Y)",
   no: "いいえ(N)",
-  cancelJa: "キャンセル",
+  cancelJa: ini.EndnutzerForm["12"],
   /** Delphi の StrToInt の例外（AdvanceMap では英語のまま。題名はアプリ名）。 */
   invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
   /** ROM でないファイルを開いたとき（AdvanceMap の AdvanceMapError(12) の文言）。 */
   unknownRomType: "AdvanceMapError(12): Unknown Rom Type! This Rom cannot be edited with Advancemap.",
 
   // [Allgemein] マップ一覧
-  rootHeader: "ヘッダー",
-  rootIni: "iniファイル",
-  rootMapFiles: "マップファイル",
-  noName: "名称なし",
-  tilesetGroup: (n: number) => `Tileset ${n}`,
+  rootHeader: A["60"],
+  rootIni: A["61"],
+  rootMapFiles: A["62"],
+  noName: A["63"],
+  tilesetGroup: (n: number) => `${A["14"]} ${n}`,
   mapItem: (name: string, suffix: string, bank: number, map: number) =>
     suffix ? `${name} ${suffix} (${bank}.${map})` : `${name} (${bank}.${map})`,
   modifiedMark: " *",
 
   // [RomInfos]
-  romInfoName: "ゲーム名:",
-  romInfoType: "ROMタイプ:",
-  romInfoLanguage: "言語:",
-  romInfoVersion: "ROMバージョン:",
+  romInfoName: ini.RomInfos["10"],
+  romInfoType: ini.RomInfos["11"],
+  romInfoLanguage: ini.RomInfos["12"],
+  romInfoVersion: ini.RomInfos["13"],
 
   // マップタブ
   /** スタンプの窓の題名（AdvanceMap でも日本語化されていない）。 */
   grosserBlock: "Grosser Block",
-  borderBlocks: "境界ブロック:",
+  borderBlocks: ini.Header["940"],
   selectedBlock: (block: number) => `選択中: ${hex(block, 3)}`,
   selectedStamp: (w: number, h: number) => `選択中: ${w}×${h}`,
 
   // [Events] [EventMenge] ほか（ja.event.ts）
   event: jaEvent,
 
-  // [WildePokemon]
-  wildAreas: ["草むら", "水上", "岩砕き/木", "釣り"],
-  wildType: "タイプ:",
-  wildRate: "出現確率:",
-  wildLevel: "最小/最大 Lv",
-  wildSpecies: "Pokemon:",
-  wildSlot: (n: number) => `Pokemon${n}:`,
-  /** 種族のコンボの 0 番。 */
-  wildChooseSpecies: "選択してください",
-  noWild: "このマップには野生ポケモンが存在しません",
-
-  // [Header]
-  headerName: "名前:",
-  headerShowName: "ワープ時の設定,タイプ",
-  headerOptions: "マップオプション:",
-  headerMusic: "音楽:",
-  headerMusicNo: "音楽No.:",
-  headerWeather: "天候:",
-  headerMapType: "マップタイプ:",
-  headerBattle: "戦闘背景色の指定(最優先) :",
-  headerCave: "マップの明るさ:",
-  headerTilesets: "使用するタイルセット:",
-  headerTileset1: "タイルセット１:",
-  headerTileset2: "タイルセット２:",
-  headerSize: "マップの大きさ:",
-  headerWidth: "マップの横幅:",
-  headerHeight: "マップの高さ:",
-  headerScripts: "マップスクリプト",
-  headerScriptNo: "スクリプトNo:",
-  headerScriptType: "スクリプトタイプ:",
-  headerScriptOffset: "スクリプトオフセット:",
-  readOnlyNote: "（表示のみ。編集は次の作業で対応します）",
-
+  // 場所の設定タブの選択肢（値の先頭に番号が無いので「00-値」の形にする）
   // [NameAnzeigen]
-  nameDisplay: [
-    "00-表示しない（ダッシュ不可）",
-    "01-表示しない（ダッシュ不可,穴抜け可）",
-    "02-表示しない（ダッシュ可）",
-    "03-表示しない（ダッシュ可,穴抜け可）",
-    "04-表示（ダッシュ不可）",
-    "05-表示（ダッシュ不可,穴抜け可）",
-    "06-表示 (ダッシュ可）",
-    "07-表示（ダッシュ不可,穴抜け可）",
-  ],
+  nameDisplay: numberedList(ini.NameAnzeigen),
   // [Kampftyp]
-  battleTypes: [
-    "00-指定なし",
-    "01-ジム戦",
-    "02-ロケット団戦",
-    "03-通信対人戦？",
-    "04-四天王１戦",
-    "05-四天王２戦",
-    "06-四天王３戦",
-    "07-四天王４戦",
-    "08-チャンピオン戦",
-  ],
+  battleTypes: numberedList(ini.Kampftyp),
   // [Hoehle]
-  caveTypes: ["00-普通", "01-周りが見えない/フラッシュ可", "02-周りが見えない/フラッシュ不可"],
-  // [Typ]
-  mapTypes: [
-    "00-指定なし",
-    "01-タウン(空を飛ぶ可)",
-    "02-シティ(空を飛ぶ可)",
-    "03-道路(空を飛ぶ可)",
-    "04-洞穴(マップ切替時演出)",
-    "05-水中(戦闘背景-水中-,戦闘時演出変更)",
-    "06-道路?(空を飛ぶ可)",
-    "07-道路?",
-    "08-屋内(戦闘背景-屋内-)",
-    "09-秘密基地",
-  ],
+  caveTypes: numberedList(ini.Hoehle),
+  // [Typ]（06・07 は改訂版に無いので旧版の文言）
+  mapTypes: numberedList(ini.Typ, { 0x06: "06-道路?(空を飛ぶ可)", 0x07: "07-道路?" }),
   // [Wetter]
-  weathers: [
-    "00-無し",
-    "01-雲",
-    "02-ノーマル",
-    "03-雨",
-    "04-雪片（※最初だけ）",
-    "05-雷雨",
-    "06-霧",
-    "07-雪（※火山灰）",
-    "08-砂嵐",
-    "09-霧(※斜流)",
-    "0A-薄い霧",
-    "0B-少し闇",
-    "0C-日本晴れ（※FRフリーズ)",
-    "0D-雷雨 タイプ2",
-    "0E-水中",
-    "0F-無し",
-  ],
+  weathers: numberedList(ini.Wetter),
   // [MapScripts]
-  mapScriptTypes: {
-    0: "スクリプト未設定",
-    1: '"マップタイルのセット"スクリプト',
-    2: "フラグ条件達成時、マップ切替時に読込,作動",
-    3: "マップ切替時に読込/画面切替では効果なし",
-    4: "Validates values, loads handler to 0x03000F28",
-    5: "マップ切替時に読込/画面切替でも効果あり",
-    7: "マップ切替時に読込/画面切替でも効果あり",
-  } as Readonly<Record<number, string>>,
-  unknownChoice: (value: number) => `${hex(value, 2)} ???`,
+  mapScriptTypes: hexRecord(ini.MapScripts) as Readonly<Record<number, string>>,
+  unknownChoice,
 
   // [GehDaten] 移動許可の説明（無いものは ???）
-  movementNames: {
-    0x00: "移動可能エリアを繋ぐ働き",
-    0x01: "移動不可エリア",
-    0x04: "移動可能エリア(通常波乗り)",
-    0x05: "移動不可エリア",
-    0x0c: "移動可能エリア2(通常)",
-    0x0d: "Solid, Height 2",
-    0x10: "主人公をマップの手前に表示(=14と同じレイヤー)",
-    0x11: "Solid, Height 3",
-    0x14: "移動可能エリア3",
-    0x15: "Solid, Height 4",
-    0x18: "Passable, Height 5",
-    0x19: "Solid, Height 5",
-    0x1c: "Passable, Height 6",
-    0x1d: "Solid, Height 6",
-    0x20: "Passable, Height 7",
-    0x21: "Solid, Height 7",
-    0x24: "Passable, Height 8",
-    0x25: "Solid, Height 8",
-    0x28: "Passable, Height 9",
-    0x29: "Solid, Height 9",
-    0x2c: "Passable, Height 10",
-    0x2d: "Solid, Height 10",
-    0x30: "Passable, Height 11",
-    0x31: "Solid, Height 11",
-    0x34: "Passable, Height 12",
-    0x35: "Solid, Height 12",
-    0x38: "Passable, Height 13",
-    0x39: "Solid, Height 13",
-    0x3c: "直前のレイヤーと同じ働き",
-  } as Readonly<Record<number, string>>,
+  movementNames: hexRecord(ini.GehDaten) as Readonly<Record<number, string>>,
   movementUnknown: "???",
 
   // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
@@ -393,6 +282,20 @@ export const ja = {
 /** 16 進（大文字、桁そろえ）。 */
 export function hex(value: number, digits: number): string {
   return value.toString(16).toUpperCase().padStart(digits, "0");
+}
+
+/** 選択肢に名前が無いときの表示（「0A ???」）。 */
+function unknownChoice(value: number): string {
+  return `${hex(value, 2)} ???`;
+}
+
+/**
+ * 節の 00〜最大の番号を「00-値」の形で並べる。
+ * 改訂版に無い番号は `fallback`（旧版の文言）、それも無ければ「0A ???」。
+ */
+function numberedList(section: Readonly<Record<string, string>>, fallback: Readonly<Record<number, string>> = {}): string[] {
+  const max = Math.max(...Object.keys(section).filter((k) => /^[0-9A-F]{2}$/i.test(k)).map((k) => parseInt(k, 16)));
+  return hexList(section, max + 1).map((v, i) => (v === undefined ? (fallback[i] ?? unknownChoice(i)) : numbered(i, v)));
 }
 
 /** 文言の型。 */

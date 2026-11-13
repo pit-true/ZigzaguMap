@@ -46,7 +46,7 @@ export class BlockAdjustWindow {
     this.tileset2 = r2.input;
     const form = document.createElement("div");
     form.className = "adjust-form";
-    form.append(r1.root, r2.root, label(t.adjustHint, 8, 48));
+    form.append(r1.root, r2.root, label(t.adjustHint, 8, 48), label(t.adjustTo, 136, 48));
     for (let i = 0; i < ROWS; i++) {
       const from = edit(`adj.from.${i}`, 8, 64 + i * 24, 121);
       from.value = String(i);

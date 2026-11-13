@@ -254,7 +254,7 @@ export class App implements ActionTarget {
       state.emit("session");
       state.emit("map");
       await this.setTitle(null);
-      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(formatDuration(session.loadMs)));
+      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
 
       const last = state.settings.data.last;
       const target =
@@ -580,14 +580,4 @@ function toolbarLabel(id: string): string {
     "help.about": ja.toolbar.about,
   };
   return map[id] ?? id;
-}
-
-/** 読込時間の表記（00:00:01.601）。 */
-function formatDuration(ms: number): string {
-  const total = Math.round(ms);
-  const h = Math.floor(total / 3_600_000);
-  const m = Math.floor(total / 60_000) % 60;
-  const s = Math.floor(total / 1000) % 60;
-  const pad = (n: number, d = 2): string => String(n).padStart(d, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(total % 1000, 3)}`;
 }
