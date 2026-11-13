@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import type { EditorState } from "./EditorState";
+import type { ImageKind } from "./ImageExport";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
 import type { SettingsData } from "./Settings";
 
@@ -18,6 +19,7 @@ export interface ActionTarget {
   askPaletteWidth(): Promise<void>;
   askOpacity(): Promise<void>;
   askRecentMax(): Promise<void>;
+  saveImage(kind: ImageKind): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
@@ -77,6 +79,9 @@ export class Actions {
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("image.map", () => target.saveImage("map"));
+    h.set("image.mapEvent", () => target.saveImage("mapEvent"));
+    h.set("image.palette", () => target.saveImage("palette"));
   }
 
   /** 実装済みか。 */

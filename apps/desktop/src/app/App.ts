@@ -24,6 +24,7 @@ import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
 import { FileDialogs } from "./FileDialogs";
+import { ImageExport, type ImageKind } from "./ImageExport";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
@@ -422,6 +423,12 @@ export class App implements ActionTarget {
     if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
     if (n < 1 || n > 9) return void (await showError(ja.invalidInput));
     this.changeSetting({ recentMax: n, recent: this.state.settings.data.recent.slice(0, n) });
+  }
+
+  /** ツール > 画像の保存（3 種）。 */
+  async saveImage(kind: ImageKind): Promise<void> {
+    const path = await new ImageExport(this.state, this.files).save(kind);
+    if (path) this.state.setStatus(ja.imageSaved(path));
   }
 
   // ---- 内部 ----

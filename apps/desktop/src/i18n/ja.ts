@@ -112,6 +112,13 @@ export const ja = {
   aboutApp: "ZigzaguMapについて",
   eula: "エンドユーザー規約",
 
+  // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）
+  saveAsTitle: "名前を付けて保存",
+  dibFilter: "Device Intependent Bitmap (*.DIB)",
+  allFiles: "All files (*.*)",
+  allFilesGerman: "Alle Dateien (*.*)",
+  imageSaved: (path: string) => `画像を保存しました: ${path}`,
+
   // [Toolbar]
   toolbar: {
     open: "ROMを開く",
