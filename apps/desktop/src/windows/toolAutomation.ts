@@ -6,6 +6,7 @@ import { click, findField, getField, listFields, setField, useAmNames } from "..
 import type { FileDialogs } from "../app/FileDialogs";
 import type { ToolClient } from "./ToolClient";
 import { errorText } from "../util/errors";
+import { num, settle, str } from "../app/automation/registry";
 
 /** 別ウィンドウが自動操作に見せるもの。 */
 export interface ToolAutomationTarget {
@@ -140,20 +141,4 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
     }
   }
-}
-
-function settle(ms = 50): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function str(req: Record<string, unknown>, key: string): string {
-  const v = req[key];
-  if (typeof v !== "string") throw new Error(`${key} は文字列で指定してください`);
-  return v;
-}
-
-function num(req: Record<string, unknown>, key: string): number {
-  const v = req[key];
-  if (typeof v !== "number") throw new Error(`${key} は数で指定してください`);
-  return v;
 }
