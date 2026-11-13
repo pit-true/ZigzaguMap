@@ -23,6 +23,11 @@ export interface Command<A extends JsonObject = JsonObject> {
   do(context: EditorContext): void;
   /** 実行前の状態に戻す。 */
   undo(context: EditorContext): void;
+  /**
+   * 実行済みの `next` を自分にまとめる（ドラッグ中の連続配置を 1 回の操作にするため）。
+   * まとめられたら true。まとめた後は、自分の undo で `next` の分も戻ること。
+   */
+  merge?(next: Command): boolean;
 }
 
 /** コマンドを JSON にしたもの（操作列の 1 行）。 */
