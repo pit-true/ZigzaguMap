@@ -201,7 +201,7 @@ AdvanceMap 1.92 に実際に書かせて確かめた形式です。ZigzaguMap �
 
 ### 別ウィンドウと編集中の状態
 
-- 別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）は Tauri の本物のウィンドウで、ワールドマップエディターと同じく中身は同じ `index.html` から、ウィンドウのラベルを見て組み立てます。エディタのコードは開いたときに初めて読み込み、閉じると WebView ごと破棄します。メインの起動では読み込みません（メイン側の窓口 `windows/ToolWindowHost.ts` も初めて開くときに読み込みます）。
+- 別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）は Tauri の本物のウィンドウで、ワールドマップエディターと同じく中身は別ウィンドウ用の入口 `tool.html`（`src/tool.ts`。メインの画面のコードは読み込まない）から、ウィンドウのラベルを見て組み立てます。エディタのコードは開いたときに初めて読み込み、閉じると WebView ごと破棄します。メインの起動では読み込みません（メイン側の窓口 `windows/ToolWindowHost.ts` も初めて開くときに読み込みます）。
 - 編集中の状態（CommandBus とタイルセット）はメインウィンドウだけが持ちます。別ウィンドウはイベント `tool-request` で操作（コマンドの JSON）を送り、メインがそれを CommandBus で実行します。アンドゥ・リドゥはメインと同じ履歴に入り、どのウィンドウでも Ctrl+Z / Ctrl+Y（Ctrl+S は出力）で戻せます。
 - タイルセットが変わると（どのウィンドウの操作でも、アンドゥでも）、メインは開いている別ウィンドウへイベント `tool-message` でタイルセットの写しを送り直します。選んでいるパレットと一時適用した色も、メインが持ってウィンドウどうしで共有します。
 - マップを切り替えると、別ウィンドウはそのマップのタイルセットに追従します。ROM を開き直したときとマップを閉じたときは閉じます。
@@ -338,6 +338,20 @@ scripts\build.cmd check    # cargo check だけ
 ```
 
 出力先を変えたいときは、環境変数 `CARGO_TARGET_DIR` を設定してから実行します（exe は `<CARGO_TARGET_DIR>\release\zigzagumap.exe` にできます）。
+
+### メモリの計測
+
+待機時メモリ（目標 150MB 以下、WebView2 込み）は `scripts\measure-memory.ps1` で測ります。exe を `--automation` と一時フォルダの `--profile` で起動し（画面外・非アクティブ。通常の設定には触れない）、起動直後／ROM を開いた後（3.0）／マップを 10 枚切り替えた後／ブロックエディタを開いた後／閉じた後の 5 場面で、それぞれ 10 秒待ってから測ります。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Out result.json]
+```
+
+- exe とその子孫（WebView2 のブラウザ・レンダラー・GPU・ユーティリティ・crashpad）を、種類ごとに「専用ワーキングセット」「プライベート（コミット）」「ワーキングセット」で出します。目標は **専用ワーキングセットの合計** で判定します（タスクマネージャーの「メモリ」の列と同じ値。ワーキングセットは共有ページを二重に数えるので合計に向かない）。メインの JavaScript のヒープ（`state` の `jsHeap`）、入口が応答するまでの時間、マップ切り替えの時間も出します。
+- `-Baseline -Exe <webview-baseline.exe> -BrowserArgs "<引数>"` で、WebView2 の空のウィンドウだけの値（下限）を同じ方法で測ります（`tools\webview-baseline` を `CARGO_TARGET_DIR` を設定してから `build.cmd` でビルド）。
+- `-BrowserArgs` を付けると、WebView2 に引数を足して試せます（環境変数 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`）。
+
+WebView2 には、計測で効果のあった引数だけを付けています（`src-tauri/src/lib.rs` の `BROWSER_ARGS`）: `--disable-gpu`（GPU プロセスの約 50MB が無くなる。Canvas 2D と合成はソフトウェアで行い、描画とマップ切り替えの速さは変わらない）、`--enable-features=NetworkServiceInProcess2`（ネットワークのプロセスをまとめる。約 5MB）。
 
 コードの置き場所（`apps/desktop/src`）:
 
