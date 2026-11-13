@@ -24,7 +24,6 @@ import { installMakeButtons } from "../ui/newmap/MakeButtons";
 import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
-import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
 import { FileDialogs, writeFile } from "./FileDialogs";
 import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
@@ -197,7 +196,8 @@ export class App implements ActionTarget {
     const args = await invoke<StartupArgs>("startup_args");
     this.automation = args.automation !== null;
     this.profileDir = args.profile;
-    if (args.automation) await startAutomation(this);
+    // 自動操作の入口のコードは、自動操作で起動したときだけ読み込む（通常の起動では読まない）。
+    if (args.automation) await (await import("./Automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     if (args.rom) await this.openSession(args.rom, args.project);
   }
