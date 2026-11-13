@@ -75,9 +75,9 @@ fn startup_args(args: State<'_, StartupArgs>) -> StartupArgs {
     args.inner().clone()
 }
 
-/// 自動操作で起動したときの WebView2 の引数（画面外・非アクティブでも描画を止めない）。
+/// 自動操作で起動したときの WebView2 の引数（画面外・非アクティブでも描画を止めない。音は出さない）。
 pub(crate) const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
-     --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows";
+     --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows --mute-audio";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

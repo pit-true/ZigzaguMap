@@ -200,6 +200,12 @@ export { SetWildRateCommand, type SetWildRateArgs } from "./command/commands/wil
 export { SetWildSlotCommand, type SetWildSlotArgs } from "./command/commands/wild/SetWildSlotCommand.js";
 export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/wild/SetWildAreasCommand.js";
 export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
+export { CreateWorkMapCommand, type CreateWorkMapArgs } from "./command/commands/project/CreateWorkMapCommand.js";
+export { OpenMapFileCommand, type OpenMapFileArgs } from "./command/commands/project/OpenMapFileCommand.js";
+export { InsertMapCommand, type InsertMapArgs } from "./command/commands/project/InsertMapCommand.js";
+export { ReplaceMapCommand, type ReplaceMapArgs } from "./command/commands/project/ReplaceMapCommand.js";
+export { WORK_MAP_BANK, isWorkMapId, type WorkMapInfo } from "./model/WorkMap.js";
+export * from "./amfile/index.js";
 export { SetBlockCommand, type SetBlockArgs } from "./command/commands/tileset/SetBlockCommand.js";
 export { SetBlockCountCommand, type SetBlockCountArgs } from "./command/commands/tileset/SetBlockCountCommand.js";
 export { SetBlockDataCommand, type SetBlockDataArgs } from "./command/commands/tileset/SetBlockDataCommand.js";

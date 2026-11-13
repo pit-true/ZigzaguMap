@@ -3,7 +3,7 @@ import { ja } from "../i18n/ja";
 import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
 import { FR_TILESET_GROUPS, FR_TILESET_PLAIN_GROUP, tilesetGroupOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
-import type { MapListSource } from "./Settings";
+import type { MapFileEntry, MapListSource } from "./Settings";
 
 /** マップ一覧の 1 項目。`mapId` があればマップ、`children` があればグループ。 */
 export interface TreeNode {
@@ -11,6 +11,8 @@ export interface TreeNode {
   readonly key: string;
   readonly label: string;
   readonly mapId?: MapId;
+  /** 「マップファイル」の項目なら `.map` のパス。 */
+  readonly filePath?: string;
   readonly children?: readonly TreeNode[];
 }
 
@@ -28,13 +30,15 @@ export const HEADER_ROOT_KEY = "h";
  * マップ一覧を作る。根は AdvanceMap と同じく「ヘッダー」「iniファイル」「マップファイル」の 3 つ。
  * 「ヘッダー」の下は並べ替えの種類でグループを作る。
  * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」だけ、「INIの表示」なら「iniファイル」だけを出す。
+ * 「マップファイル」の下は、保存・読み込みした `.map`（AdvanceMap の MapDateien.ini と同じく、登録した順）。
  */
-export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both"): TreeNode[] {
+export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both", mapFiles: readonly MapFileEntry[] = []): TreeNode[] {
   const header: TreeNode = { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) };
   if (source === "header") return [header];
   const ini: TreeNode = { key: "i", label: ja.rootIni, children: iniGroups(catalog) };
   if (source === "ini") return [ini];
-  return [header, ini, { key: "f", label: ja.rootMapFiles, children: [] }];
+  const files = mapFiles.map((f, i): TreeNode => ({ key: `f/${i}`, label: f.name, filePath: f.path }));
+  return [header, ini, { key: "f", label: ja.rootMapFiles, children: files }];
 }
 
 function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
@@ -133,6 +137,11 @@ function group(key: string, label: string, list: readonly MapInfo[], suffix: (m:
       mapId: m.id,
     })),
   };
+}
+
+/** 「ヘッダー」の下に出るマップの項目の文字列（新規マップの名前・作成したマップの保存のファイル名の初期値に使う）。 */
+export function mapLabel(m: MapInfo, sortMode: number): string {
+  return ja.mapItem(m.name ?? ja.noName, sortMode === SORT_BY_NAME_AND_TILESET ? suffixOf(m) : "", m.id.bank, m.id.map);
 }
 
 /** 「マップとタイルセットで並び替え」の補足（建物/施設、ジム など。通常のマップは無し）。 */
