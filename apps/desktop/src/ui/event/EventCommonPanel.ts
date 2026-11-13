@@ -41,7 +41,8 @@ export class EventCommonPanel {
     const usable = kind !== "fly" && count > 0;
     this.numberBox.setRange(0, Math.max(0, count - 1));
     this.numberBox.set(usable ? index : 0);
-    this.numberBox.setEnabled(usable);
+    // AdvanceMap と同じく、選べる番号が 1 つしか無いとき（個数 1）は番号を灰色にする（削除は押せる）
+    this.numberBox.setEnabled(usable && count > 1);
     this.removeButton.disabled = !usable;
   }
 }
