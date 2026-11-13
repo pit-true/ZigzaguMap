@@ -17,6 +17,7 @@ import {
   ResizeMapCommand,
   SetBlockCommand,
   SetBlockCountCommand,
+  SetBlockDataCommand,
   SetBorderCommand,
   SetConnectionCommand,
   SetEventCountsCommand,
@@ -451,6 +452,12 @@ describe("ブロックとパレットの編集コマンド", () => {
     }, tilesets);
     await roundTrip(open, () => new SetBlockCountCommand({ tileset: SECONDARY.pointer, secondary: true, count: 90 }), (p) =>
       expect(p.editorContext().tileset(SECONDARY).blockCount).toBe(90), tilesets);
+    await roundTrip(open, () => new SetBlockDataCommand({ tileset: SECONDARY.pointer, secondary: true, blocks: Array.from({ length: 16 }, (_, i) => i), attributes: [0x20000084, 1] }), (p) => {
+      const ts = p.editorContext().tileset(SECONDARY);
+      expect(ts.blockCount).toBe(2);
+      expect([...ts.blocks]).toEqual(Array.from({ length: 16 }, (_, i) => i));
+      expect([...ts.attributes]).toEqual([0x20000084, 1]);
+    }, tilesets);
     await roundTrip(open, () => new RemapBlockPalettesCommand({ ...t, mapping: [3, ...Array.from({ length: 14 }, (_, i) => i + 1)] }), (p) =>
       expect(p.editorContext().tileset(PRIMARY).blocks[8]).toBe(0x3001), tilesets);
   });
@@ -487,6 +494,8 @@ describe("ブロックとパレットの編集コマンド", () => {
     expectCode(new SetBlockCommand({ ...t, block: 0, tiles: [1, 2] }), EditErrorCode.InvalidRawBytes);
     expectCode(new SetPaletteColorsCommand({ ...t, palette: 0, colors: [0x8000] }), EditErrorCode.ValueOutOfRange);
     expectCode(new SetBlockCountCommand({ tileset: SECONDARY.pointer, secondary: true, count: 385 }), EditErrorCode.ValueOutOfRange);
+    expectCode(new SetBlockDataCommand({ ...t, blocks: [1, 2], attributes: [0] }), EditErrorCode.InvalidRawBytes);
+    expectCode(new SetBlockDataCommand({ ...t, blocks: [], attributes: [] }), EditErrorCode.ValueOutOfRange);
     expectCode(new SetTilesCommand({ ...t, start: 639, data: encodeBase64(new Uint8Array(64)) }), EditErrorCode.TileIndexOutOfRange);
   });
 });
@@ -494,7 +503,7 @@ describe("ブロックとパレットの編集コマンド", () => {
 describe("登録と再生", () => {
   it("全コマンドが登録され、JSON の操作列を再生できる", async () => {
     const registry = createDefaultRegistry();
-    for (const name of ["addEvent", "setEventCounts", "setHeaderFields", "setMapName", "resizeMap", "addMapScriptCondition", "setConnection", "setWildAreas", "createMap", "setBlock", "setPaletteColors"]) {
+    for (const name of ["addEvent", "setEventCounts", "setHeaderFields", "setMapName", "resizeMap", "addMapScriptCondition", "setConnection", "setWildAreas", "createMap", "setBlock", "setBlockData", "setPaletteColors"]) {
       expect(registry.names()).toContain(name);
     }
     const ops = [

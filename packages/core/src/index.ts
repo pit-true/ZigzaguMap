@@ -196,6 +196,7 @@ export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/w
 export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
 export { SetBlockCommand, type SetBlockArgs } from "./command/commands/tileset/SetBlockCommand.js";
 export { SetBlockCountCommand, type SetBlockCountArgs } from "./command/commands/tileset/SetBlockCountCommand.js";
+export { SetBlockDataCommand, type SetBlockDataArgs } from "./command/commands/tileset/SetBlockDataCommand.js";
 export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/commands/tileset/SetPaletteColorsCommand.js";
 export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
 export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";
