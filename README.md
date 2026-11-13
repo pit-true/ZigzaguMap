@@ -510,7 +510,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 | `scriptEditorStub` | `ZZM_CMP_STUB` | スクリプトエディタの代わりの exe（省略可） |
 | `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
 | `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
-| `keepRuns` | | 残す結果の数（既定 5。これより古い結果は summary に削除候補として書く。自動では消さない） |
+| `keepRuns` | | 残す結果の数（既定 5。実行の最後に、これより古い結果フォルダを消す。消せなかったものは summary に書く） |
 | `langOld` | `ZZM_CMP_LANG_OLD` | AdvanceMap 本体の言語ファイル（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`） |
 | `langNew` | `ZZM_CMP_LANG_NEW` | ZigzaguMap の文言の基準（既定は `apps/desktop/src/i18n/source/Japanese.ini`） |
 
@@ -523,6 +523,7 @@ python tests/compare/run.py                         # 全シナリオ
 python tests/compare/run.py --scenario S04 S08      # 名前の先頭で選ぶ
 python tests/compare/run.py --only-zigzagu          # ZigzaguMap だけ動かし、AdvanceMap は前回の結果と比べる
 python tests/compare/run.py --list-ops              # 抽象操作 → 実操作の対応表
+python tests/compare/run.py --rejudge <結果フォルダ>  # アプリを動かさず、いまの判定とシナリオの理由書きで判定し直す（手順を変えていないシナリオだけ）
 python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナリオを issue にする（--dry-run で本文だけ表示）
 ```
 
@@ -570,7 +571,22 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 - `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
 - `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
 
-判定は「合格」（比べたものがすべて同じ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）です。
+判定は「合格」（比べたものがすべて同じか、シナリオに理由を書いた仕様上の違いだけ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）、「保留」（要判断の結論待ちの違いがある）です。
+
+### 仕様上の違いと保留
+
+SPEC やこれまでの判断で決めた違いは、黙って外さず、シナリオのステップに理由を書きます。summary.md の「仕様上の違いとして除外したステップ・欄」「保留（要判断）」に一覧で出ます。
+
+| 書き方 | 意味 |
+|---|---|
+| `"expectedDifference": "理由"` | このステップが違っても「仕様上の違い」（失敗に数えない） |
+| `"expectedDifference": {"field:X": "理由"}` | compareFields の欄ごと。`menu.state` のような辞書の欄は `{"menu.state": {"ファイル/ROMの保存": "理由", "設定/言語/*": "理由"}}` と項目ごと（ワイルドカード可。理由の無い項目が違えば失敗） |
+| `"expectedDifference": {"title": "理由"}` | expectDialog で、題名（アプリ名など）だけの違いを許す。本文とボタンは比べる |
+| `"pending": "要判断 #番号: 理由"` | 違っても「保留」。項目ごとなら `{"pending": "…"}` を値に書く |
+| `"only": "zigzagu"`（または `"advancemap"`）と `expectedDifference` | 片方のアプリだけで行う手順。ZigzaguMap だけの compareFields は `expected`（AdvanceMap の調査記録の値）と比べる（素の BPRJ で開けないワールドマップエディターなど） |
+| `compare` の `maxDiffRatio` と `expectedDifference` | 違う画素の割合がこれ以下なら「仕様上の違い」（マップ＆イベント画像の約 3% など） |
+
+上の一覧に無い食い違いを仕様上の違いにしたいときは、issue にラベル「要判断」を付けて両者の挙動を書き、そのステップを `pending` にします。
 
 ## ライセンス
 

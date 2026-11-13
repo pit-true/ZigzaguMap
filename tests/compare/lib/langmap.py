@@ -11,6 +11,8 @@ from __future__ import annotations
 import pathlib
 import re
 
+from .normalize import norm_text
+
 _NOTE = re.compile(r"[(（]※?AM\d+(?:\.\d+)*(?:未使用|使用不可)[)）]")
 _ACCEL = re.compile(r"\(&.\)|&(?=.)")
 
@@ -44,12 +46,52 @@ def parse_ini(path: pathlib.Path, encoding: str) -> dict[str, str]:
     return out
 
 
+# 改訂版でキーが変わった文言（旧キー → 新キー）。フォームの題名は、改訂版で各節の `Title` に移った。
+ALIASES = {
+    "NewMapForm.21": "NewMapForm.Title",
+    "MapEinfuegenForm.15": "MapEinfuegenForm.Title",
+    "PalettenForm.Titel": "PalettenForm.Title",
+    "WorldMapEditor.Titel": "WorldMapEditor.Title",
+}
+
+
+# 旧版では複数のキーの文言をつないで作り、改訂版では 1 つのキーの書式（%d）にした文言。{キー} は旧版の文言、%d は値
+COMPOSED = [
+    ("{AnbindungsForm.13680} %d{AnbindungsForm.13681}", "AnbindungsForm.13680"),
+    ("{Header.9333} %d {Header.9334} %d", "Header.9333"),
+    ("{MapEinfuegenForm.54} %d.%d {MapEinfuegenForm.55}", "MapEinfuegenForm.54"),
+]
+
+
 class LangMap:
     """旧文言 → 新文言の読み替え。"""
 
     def __init__(self, old: dict[str, str], new: dict[str, str]):
         self.old = old
         self.new = {k: strip_note(v) for k, v in new.items()}
+        for o, n in ALIASES.items():
+            if n in self.new:
+                self.new[o] = self.new[n]
+        # 同じ旧文言が複数のキーで使われていても、ZigzaguMap 側の文言と組で一致するキーがあれば同じ文言とみなす（pair_ok）
+        self.pairs: dict[str, set[str]] = {}
+        for k, v in old.items():
+            if k in self.new:
+                self.pairs.setdefault(menu_norm(v).strip(), set()).add(menu_norm(self.new[k]).strip())
+            # 一覧の節（[Bewegung]・[Wetter]・[MapScripts] など）: 旧版は「2=02歩き回る」「00=00-無し」「03=マップ切替時…」、
+            # 改訂版は番号を付けない文言で、画面にはどちらも「番号-文言」か「番号 文言」の形で出す
+            sec, _, num = k.rpartition(".")
+            if num.isdigit() or (len(num) == 2 and all(c in "0123456789ABCDEFabcdef" for c in num)):
+                cands = ([f"{int(num, 10):02X}"] if num.isdigit() else []) + [f"{int(num, 16):02X}"] if len(num) <= 2 else []
+                cands = [c for c in cands if c] or [num]
+                # 旧版の値の頭の番号と合う読み方（[Bewegung] は 10 進のキー、[Wetter] などは 16 進 2 桁のキー）
+                hx = next((c for c in cands if v.upper().startswith(c)), cands[-1])
+                n = self.new.get(f"{sec}.{hx}", self.new.get(k))
+                if n is None:
+                    continue
+                olds = {v} | {f"{hx}{sep}{v}" for sep in ("-", " ")}
+                for o in olds:
+                    for sep in ("-", " "):
+                        self.pairs.setdefault(menu_norm(o).strip(), set()).add(f"{hx}{sep}{n}".strip())
         self.changed = {k for k in old if k in self.new and old[k] != self.new[k]}
         table: dict[str, set[str]] = {}
         for k in self.changed:
@@ -92,6 +134,45 @@ class LangMap:
             if (section is None or k.startswith(section + ".")) and menu_norm(v) == t:
                 return k
         return None
+
+    _FMT = re.compile(r"%[ds]")
+
+    def _templates(self):
+        """「%d」「%s」を含む文言の組（旧の正規表現, 新の書式）。値を入れて組み立てた文字列（「コネクションNo 3を削除しますか？」）用。"""
+        if not hasattr(self, "_tpl"):
+            self._tpl = []
+            for k, o in self.old.items():
+                n = self.new.get(k)
+                if n is None or not self._FMT.search(o) or len(self._FMT.findall(o)) != len(self._FMT.findall(n)):
+                    continue
+                parts = self._FMT.split(o.strip())
+                rx = "(.*?)".join(re.escape(x) for x in parts)
+                self._tpl.append((re.compile(f"^{rx}$"), n.strip()))
+            for fmt, nk in COMPOSED:
+                try:
+                    o = re.sub(r"\{([^}]+)\}", lambda m: self.old[m.group(1)].strip(), fmt)
+                except KeyError:
+                    continue
+                if nk in self.new:
+                    rx = "(.*?)".join(re.escape(x) for x in o.split("%d"))
+                    self._tpl.append((re.compile(f"^{rx}$"), self.new[nk].strip()))
+        return self._tpl
+
+    def pair_ok(self, old_text, new_text) -> bool:
+        """旧文言 old_text と新文言 new_text が、同じキーの旧・新の組になっているか（文脈で読み替えが決まらない文言用）。
+        「%d」などに値を入れて組み立てた文言は、同じ値を新しい書式へ入れたものと比べる。"""
+        if not isinstance(old_text, str) or not isinstance(new_text, str):
+            return False
+        if menu_norm(new_text).strip() in self.pairs.get(menu_norm(old_text).strip(), ()):
+            return True
+        o, n = old_text.strip(), new_text.strip()
+        for rx, fmt in self._templates():
+            m = rx.match(o)
+            if m:
+                vals = iter(m.groups())
+                if norm_text(self._FMT.sub(lambda _: next(vals), fmt)) == norm_text(n):
+                    return True
+        return False
 
     # ------------------------------------------------------------------ 読み替え
     def translate(self, value):
