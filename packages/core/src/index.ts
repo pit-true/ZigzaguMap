@@ -39,6 +39,21 @@ export type { ConnectionHeader, MapConnection } from "./connection/types.js";
 export { ConnectionCodec, ConnectionHeaderCodec, connectionCodec, connectionHeaderCodec } from "./connection/ConnectionCodec.js";
 export { ConnectionReader } from "./connection/ConnectionReader.js";
 
+// マップスクリプト
+export * from "./mapscript/layout.js";
+export type { MapScriptEntry, MapScriptTable, MapScriptTableEntry } from "./mapscript/types.js";
+export {
+  MapScriptCodec,
+  MapScriptHeadCodec,
+  MapScriptTableEntryCodec,
+  emptyTableTail,
+  mapScriptCodec,
+  mapScriptHeadCodec,
+  mapScriptTableEntryCodec,
+  type MapScriptHead,
+} from "./mapscript/MapScriptCodec.js";
+export { MapScriptReader, type RawMapScripts } from "./mapscript/MapScriptReader.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
