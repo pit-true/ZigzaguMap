@@ -376,6 +376,8 @@ export class App implements ActionTarget {
   /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
   private onCommand(e: CommandEvent): void {
     if (e.command && changesMapList(e.command)) void this.afterMapListChange();
+    // 名前表を書き換えたら（取り消し・やり直しも）、AdvanceMap と同じく一覧の名前も変える
+    else if (e.command && commandNames(e.command).includes(SET_MAP_NAME)) void this.refreshMapList();
     if (this.onTilesetCommand(e)) return;
     const args = e.command?.args as { bank?: unknown; map?: unknown } | undefined;
     if (typeof args?.bank !== "number" || typeof args.map !== "number") return;
@@ -634,6 +636,15 @@ export class App implements ActionTarget {
 }
 
 /** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）か。まとめたものは中を見る。 */
+const SET_MAP_NAME = "setMapName";
+
+/** コマンドとその中のコマンド（まとめたもの）の名前。 */
+function commandNames(command: Command): string[] {
+  const inner = command.args["commands"];
+  const names = Array.isArray(inner) ? inner.map((c) => String((c as { name?: unknown } | null)?.name ?? "")) : [];
+  return [command.name, ...names];
+}
+
 function changesMapList(command: Command): boolean {
   const names = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
   if (names.has(command.name)) return true;
