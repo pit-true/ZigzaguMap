@@ -15,7 +15,7 @@ export const TILESETS_DIR = `${MAPS_DIR}/tilesets`;
 export const TILESET_INFO_FILE = "tileset.json";
 /** タイルセットの画像ファイル名。 */
 export const TILESET_IMAGE_FILE = "tiles.png";
-/** タウンマップ（mapsegionmap.json）のパス。 */
+/** タウンマップ（maps/regionmap.json）のパス。 */
 export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 
 /** マップの JSON のパス（maps/BB/MM.json。2 桁にそろえる）。 */
