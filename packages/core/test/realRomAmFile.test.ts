@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -20,6 +20,8 @@ const romPath = process.env.ZIGZAGU_TEST_ROM;
  * `export_3_0.map/.evt` のように `export_<バンク>_<マップ>` の名前で置く（ROM の中身を含むのでリポジトリには入れない）。
  */
 const amDir = process.env.ZIGZAGU_TEST_AM_EXPORT;
+/** 指定すると、書いた .map / .evt をこのフォルダの `amfile\` に残す（AdvanceMap で開いて確かめる用）。 */
+const keepDir = process.env.ZIGZAGU_KEEP_OUTPUT;
 
 const MAPS: MapId[] = [
   { bank: 3, map: 0 },
@@ -37,6 +39,11 @@ describe.skipIf(!romPath)("実 ROM の .map / .evt", () => {
     for (const [i, id] of MAPS.entries()) {
       const doc = await project.load(id);
       const files = toAmMapFiles(doc, (p) => ctx.tilesetIndex(p));
+      if (keepDir) {
+        mkdirSync(join(keepDir, "amfile"), { recursive: true });
+        writeFileSync(join(keepDir, "amfile", `zz_${id.bank}_${id.map}.map`), files.map);
+        writeFileSync(join(keepDir, "amfile", `zz_${id.bank}_${id.map}.evt`), files.events);
+      }
       expect(files.map.length).toBe(20 + (doc.border.cells.length + doc.grid.cells.length) * 2);
       bus.execute(new OpenMapFileCommand({ map: i, name: `${id.bank}.${id.map}`, data: encodeBase64(files.map), events: encodeBase64(files.events), templateBank: id.bank, templateMap: id.map }));
       const back = project.loaded({ bank: WORK_MAP_BANK, map: i })!;
