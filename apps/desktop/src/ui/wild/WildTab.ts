@@ -124,7 +124,12 @@ export class WildTab {
     const hasData = !!this.wild?.areas.some((a) => a.slots.length > 0);
     this.frame.hidden = !map || !hasData;
     this.sorry.hidden = !map || hasData;
-    if (!map || !hasData) return;
+    if (!map || !hasData) {
+      // AdvanceMap と同じく、データの無いマップではタイプを選んでいない状態にする
+      this.type.selectedIndex = -1;
+      this.shownMap = "";
+      return;
+    }
     const key = `${map.id.bank}.${map.id.map}`;
     if (key !== this.shownMap) {
       this.shownMap = key;
@@ -139,8 +144,11 @@ export class WildTab {
     this.save.disabled = !area;
     for (const el of this.areaParts) el.hidden = !area;
     const count = area ? (WILD_SLOT_COUNTS[this.type.selectedIndex] ?? area.slots.length) : 0;
-    if (!area) this.rate.value = "";
-    else this.showRate(area.rate, true);
+    if (!area) {
+      // AdvanceMap と同じく、データの無いタイプでは確率の欄と百分率を空にする
+      this.rate.value = "";
+      this.percent.textContent = "";
+    } else this.showRate(area.rate, true);
     const maxSpecies = Math.max(FR_SPECIES_COUNT - 1, ...(area?.slots.map((s) => s.species) ?? []));
     const template = area ? this.speciesOptions.options(maxSpecies + 1) : null;
     this.rows.forEach((row, i) => {
