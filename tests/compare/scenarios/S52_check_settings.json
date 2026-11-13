@@ -11,22 +11,22 @@
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "最後に選択したものを覚える"
+      "key": [
+        "Menue.12",
+        "Menue.128"
       ]
     },
     {
       "op": "compareFields",
       "fields": [
-        "menu.state:設定/最後に選択したものを覚える"
+        "menu.state:Menue.12/Menue.128"
       ]
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "最後に選択したものを覚える"
+      "key": [
+        "Menue.12",
+        "Menue.128"
       ]
     }
   ]

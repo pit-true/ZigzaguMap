@@ -20,9 +20,9 @@
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "オブジェクトの表示"
+      "key": [
+        "Menue.12",
+        "Menue.123"
       ]
     },
     {
@@ -37,14 +37,14 @@
     {
       "op": "compareFields",
       "fields": [
-        "menu.state:設定/オブジェクトの表示"
+        "menu.state:Menue.12/Menue.123"
       ]
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "オブジェクトの表示"
+      "key": [
+        "Menue.12",
+        "Menue.123"
       ]
     },
     {

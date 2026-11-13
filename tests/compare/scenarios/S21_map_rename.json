@@ -33,7 +33,7 @@
     {
       "op": "clickButton",
       "screen": "main",
-      "button": "Cmd_NameSpeichern"
+      "button": "Cmd_NameAendern"
     },
     {
       "op": "compareFields",
@@ -42,5 +42,6 @@
         "field:Cbo_Name"
       ]
     }
-  ]
+  ],
+  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Cmd_NameSpeichern→Cmd_NameAendern）"
 }

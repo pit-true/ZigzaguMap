@@ -1,0 +1,946 @@
+{
+ "block-adjust": {
+  "Cmd_Anpassen": [
+   "adj.save"
+  ],
+  "Edit1": [
+   "adj.from.0"
+  ],
+  "Edit11": [
+   "adj.from.5"
+  ],
+  "Edit13": [
+   "adj.from.6"
+  ],
+  "Edit15": [
+   "adj.from.7"
+  ],
+  "Edit17": [
+   "adj.from.8"
+  ],
+  "Edit19": [
+   "adj.from.9"
+  ],
+  "Edit21": [
+   "adj.from.10"
+  ],
+  "Edit23": [
+   "adj.from.11"
+  ],
+  "Edit25": [
+   "adj.from.12"
+  ],
+  "Edit27": [
+   "adj.from.13"
+  ],
+  "Edit29": [
+   "adj.from.14"
+  ],
+  "Edit3": [
+   "adj.from.1"
+  ],
+  "Edit5": [
+   "adj.from.2"
+  ],
+  "Edit7": [
+   "adj.from.3"
+  ],
+  "Edit9": [
+   "adj.from.4"
+  ],
+  "Rdo_Tileset1": [
+   "adj.tileset1"
+  ],
+  "Rdo_Tileset2": [
+   "adj.tileset2"
+  ],
+  "Txt_Zu0": [
+   "adj.to.0"
+  ],
+  "Txt_Zu1": [
+   "adj.to.1"
+  ],
+  "Txt_Zu10": [
+   "adj.to.10"
+  ],
+  "Txt_Zu11": [
+   "adj.to.11"
+  ],
+  "Txt_Zu12": [
+   "adj.to.12"
+  ],
+  "Txt_Zu13": [
+   "adj.to.13"
+  ],
+  "Txt_Zu14": [
+   "adj.to.14"
+  ],
+  "Txt_Zu2": [
+   "adj.to.2"
+  ],
+  "Txt_Zu3": [
+   "adj.to.3"
+  ],
+  "Txt_Zu4": [
+   "adj.to.4"
+  ],
+  "Txt_Zu5": [
+   "adj.to.5"
+  ],
+  "Txt_Zu6": [
+   "adj.to.6"
+  ],
+  "Txt_Zu7": [
+   "adj.to.7"
+  ],
+  "Txt_Zu8": [
+   "adj.to.8"
+  ],
+  "Txt_Zu9": [
+   "adj.to.9"
+  ]
+ },
+ "block-editor": {
+  "BlockBox": [
+   "be.block"
+  ],
+  "BlockPaletteBox": [
+   "be.blocks"
+  ],
+  "Cbo_Aufgaben": [
+   "be.behavior"
+  ],
+  "Cbo_Hintergrund": [
+   "be.background"
+  ],
+  "Cbo_Paletten": [
+   "be.palette"
+  ],
+  "Cmd_Speichern": [
+   "be.save"
+  ],
+  "Lbl_Block": [
+   "be.blockLabel"
+  ],
+  "Lbl_Offset": [
+   "be.offsetLabel"
+  ],
+  "Lbl_Tile": [
+   "be.tileLabel"
+  ],
+  "Tile": [
+   "be.tile"
+  ],
+  "TilesetBox": [
+   "be.tiles"
+  ],
+  "Txt_Aufgaben": [
+   "be.attr0"
+  ],
+  "Txt_Aufgaben2": [
+   "be.attr1"
+  ],
+  "Txt_Hinterdrund": [
+   "be.attr3"
+  ],
+  "Txt_Hinterdrund2": [
+   "be.attr2"
+  ],
+  "XFlip": [
+   "be.xflip"
+  ],
+  "YFlip": [
+   "be.yflip"
+  ]
+ },
+ "main": {
+  "Bar_Heufigkeit": [
+   "wild.rateBar"
+  ],
+  "Btn_Abbrechen": [
+   "newMap.cancel"
+  ],
+  "Btn_Erstellen": [
+   "newMap.create"
+  ],
+  "Cbo_AnsprechEbene": [
+   "event.sign.elevation"
+  ],
+  "Cbo_BewTyp": [
+   "event.person.movement"
+  ],
+  "Cbo_ErsetzenBank": [
+   "mapInsert.replaceBank"
+  ],
+  "Cbo_EventTypen": [
+   "event.kind"
+  ],
+  "Cbo_Hoehle": [
+   "header.cave"
+  ],
+  "Cbo_ItemID": [
+   "event.sign.item"
+  ],
+  "Cbo_KampfTyp": [
+   "header.battleType"
+  ],
+  "Cbo_MapNr": [
+   "mapInsert.replaceMap"
+  ],
+  "Cbo_MapScriptTyp": [
+   "header.scriptType"
+  ],
+  "Cbo_Musik": [
+   "header.music"
+  ],
+  "Cbo_Name": [
+   "header.name"
+  ],
+  "Cbo_NameAnzeigen": [
+   "header.showName"
+  ],
+  "Cbo_NeuBank": [
+   "mapInsert.countBank"
+  ],
+  "Cbo_Pokemon1": [
+   "wild.species.1"
+  ],
+  "Cbo_Pokemon10": [
+   "wild.species.10"
+  ],
+  "Cbo_Pokemon11": [
+   "wild.species.11"
+  ],
+  "Cbo_Pokemon12": [
+   "wild.species.12"
+  ],
+  "Cbo_Pokemon2": [
+   "wild.species.2"
+  ],
+  "Cbo_Pokemon3": [
+   "wild.species.3"
+  ],
+  "Cbo_Pokemon4": [
+   "wild.species.4"
+  ],
+  "Cbo_Pokemon5": [
+   "wild.species.5"
+  ],
+  "Cbo_Pokemon6": [
+   "wild.species.6"
+  ],
+  "Cbo_Pokemon7": [
+   "wild.species.7"
+  ],
+  "Cbo_Pokemon8": [
+   "wild.species.8"
+  ],
+  "Cbo_Pokemon9": [
+   "wild.species.9"
+  ],
+  "Cbo_Richtung": [
+   "conn.direction"
+  ],
+  "Cbo_SignpostTyp": [
+   "event.sign.type"
+  ],
+  "Cbo_Tileset1": [
+   "newMap.tileset1"
+  ],
+  "Cbo_Tileset2": [
+   "newMap.tileset2"
+  ],
+  "Cbo_Typ": [
+   "wild.type",
+   "header.mapType"
+  ],
+  "Cbo_VorhandenBank": [
+   "mapInsert.dummyBank"
+  ],
+  "Cbo_Wetter": [
+   "header.weather"
+  ],
+  "Chk_ShowSprite": [
+   "event.cursor"
+  ],
+  "Chk_Trainer": [
+   "event.person.trainer"
+  ],
+  "Cmd_Ab": [
+   "conn.dive"
+  ],
+  "Cmd_Abbrechen": [
+   "bankHeader.cancel"
+  ],
+  "Cmd_Aendern": [
+   "event.manager.apply"
+  ],
+  "Cmd_AnbEntfernen": [
+   "conn.remove"
+  ],
+  "Cmd_AnbHinzufugen": [
+   "conn.add"
+  ],
+  "Cmd_AnbSpeichern": [
+   "conn.save"
+  ],
+  "Cmd_Auf": [
+   "conn.emerge"
+  ],
+  "Cmd_Einfuegen": [
+   "mapInsert.dummyImport"
+  ],
+  "Cmd_Ersetzen": [
+   "mapInsert.replace"
+  ],
+  "Cmd_Erstellen_und_Einfuegen": [
+   "mapInsert.countApply"
+  ],
+  "Cmd_Erweitern": [
+   "wild.addType"
+  ],
+  "Cmd_EventLoeschen": [
+   "event.remove"
+  ],
+  "Cmd_Go": [
+   "event.warp.go"
+  ],
+  "Cmd_Links1": [
+   "conn.left1"
+  ],
+  "Cmd_Links2": [
+   "conn.left2"
+  ],
+  "Cmd_Links3": [
+   "conn.left3"
+  ],
+  "Cmd_MakeBank": [
+   "map.makeBank"
+  ],
+  "Cmd_MakeMap": [
+   "map.makeMap"
+  ],
+  "Cmd_MapBankHeader": [
+   "mapInsert.bankHeader"
+  ],
+  "Cmd_MapDaten_Speichern": [
+   "pro.saveFooter"
+  ],
+  "Cmd_MapEinstellungen_Speichern": [
+   "pro.saveHeader"
+  ],
+  "Cmd_MapScriptEntfernen": [
+   "header.removeScript"
+  ],
+  "Cmd_MapScriptHinzufuegen": [
+   "header.addScript"
+  ],
+  "Cmd_MapScriptSpeichern": [
+   "header.saveScripts"
+  ],
+  "Cmd_NameAendern": [
+   "header.saveName"
+  ],
+  "Cmd_NeueBank": [
+   "bankHeader.newBank"
+  ],
+  "Cmd_NeueNamen": [
+   "header.createNames"
+  ],
+  "Cmd_Oben1": [
+   "conn.up1"
+  ],
+  "Cmd_Oben2": [
+   "conn.up2"
+  ],
+  "Cmd_Oben3": [
+   "conn.up3"
+  ],
+  "Cmd_Open": [
+   "event.person.openScript",
+   "event.sign.openScript",
+   "event.trap.openScript"
+  ],
+  "Cmd_OpenMapScript": [
+   "header.openScript"
+  ],
+  "Cmd_Rechts1": [
+   "conn.right1"
+  ],
+  "Cmd_Rechts2": [
+   "conn.right2"
+  ],
+  "Cmd_Rechts3": [
+   "conn.right3"
+  ],
+  "Cmd_Resize": [
+   "header.resize"
+  ],
+  "Cmd_Speichern": [
+   "wild.save"
+  ],
+  "Cmd_TilesetAendern": [
+   "header.changeTilesets"
+  ],
+  "Cmd_TilesetDaten_Speichern": [
+   "pro.saveTilesets"
+  ],
+  "Cmd_Uebernehmen": [
+   "bankHeader.apply"
+  ],
+  "Cmd_Unten1": [
+   "conn.down1"
+  ],
+  "Cmd_Unten2": [
+   "conn.down2"
+  ],
+  "Cmd_Unten3": [
+   "conn.down3"
+  ],
+  "Cmd_WildePokesErstellen": [
+   "wild.create"
+  ],
+  "Fld_Footer": [
+   "pro.footer"
+  ],
+  "Fld_Header": [
+   "pro.header"
+  ],
+  "Fld_T1": [
+   "pro.tilesetData1"
+  ],
+  "Fld_T2": [
+   "pro.tilesetData2"
+  ],
+  "Lbl_AnzMaps": [
+   "mapInsert.dummyRemaining"
+  ],
+  "Lbl_Heufigkeit": [
+   "wild.percent"
+  ],
+  "PeopNum": [
+   "event.manager.persons"
+  ],
+  "RandBox": [
+   "pro.borderImage"
+  ],
+  "ScriptNum": [
+   "event.manager.traps"
+  ],
+  "ScrollBox7": [
+   "event.panel"
+  ],
+  "SignNum": [
+   "event.manager.signs"
+  ],
+  "Spin_AnbNr": [
+   "conn.number"
+  ],
+  "Spin_Bild": [
+   "event.person.graphics"
+  ],
+  "Spin_Map": [
+   "event.warp.map",
+   "event.fly.map"
+  ],
+  "Spin_MapBank": [
+   "event.warp.bank",
+   "event.fly.bank"
+  ],
+  "Spin_MapScriptNr": [
+   "header.scriptNo"
+  ],
+  "Spin_Nr": [
+   "event.number"
+  ],
+  "Spin_WarpTo": [
+   "event.warp.warpId"
+  ],
+  "Txt_AnbindungOffset": [
+   "pro.connectionOffset"
+  ],
+  "Txt_AnzBank": [
+   "bankHeader.reservedBanks"
+  ],
+  "Txt_AnzMap": [
+   "bankHeader.reservedMaps"
+  ],
+  "Txt_AnzNeueNamen": [
+   "header.newNameCount"
+  ],
+  "Txt_AnzNeuerMaps": [
+   "mapInsert.count"
+  ],
+  "Txt_Anzahl": [
+   "event.sign.amount"
+  ],
+  "Txt_BankNr": [
+   "pro.bankNo"
+  ],
+  "Txt_Bewegung": [
+   "event.person.range"
+  ],
+  "Txt_Breite": [
+   "pro.width",
+   "newMap.width"
+  ],
+  "Txt_EventOffset": [
+   "pro.eventOffset"
+  ],
+  "Txt_HeaderTile1": [
+   "header.tileset1"
+  ],
+  "Txt_HeaderTile2": [
+   "header.tileset2"
+  ],
+  "Txt_Heufigkeit": [
+   "wild.rate"
+  ],
+  "Txt_HiddenID": [
+   "event.sign.hiddenId"
+  ],
+  "Txt_Hohe": [
+   "pro.height",
+   "newMap.height"
+  ],
+  "Txt_Level1P1": [
+   "wild.min.1"
+  ],
+  "Txt_Level1P10": [
+   "wild.min.10"
+  ],
+  "Txt_Level1P11": [
+   "wild.min.11"
+  ],
+  "Txt_Level1P12": [
+   "wild.min.12"
+  ],
+  "Txt_Level1P2": [
+   "wild.min.2"
+  ],
+  "Txt_Level1P3": [
+   "wild.min.3"
+  ],
+  "Txt_Level1P4": [
+   "wild.min.4"
+  ],
+  "Txt_Level1P5": [
+   "wild.min.5"
+  ],
+  "Txt_Level1P6": [
+   "wild.min.6"
+  ],
+  "Txt_Level1P7": [
+   "wild.min.7"
+  ],
+  "Txt_Level1P8": [
+   "wild.min.8"
+  ],
+  "Txt_Level1P9": [
+   "wild.min.9"
+  ],
+  "Txt_Level2P1": [
+   "wild.max.1"
+  ],
+  "Txt_Level2P10": [
+   "wild.max.10"
+  ],
+  "Txt_Level2P11": [
+   "wild.max.11"
+  ],
+  "Txt_Level2P12": [
+   "wild.max.12"
+  ],
+  "Txt_Level2P2": [
+   "wild.max.2"
+  ],
+  "Txt_Level2P3": [
+   "wild.max.3"
+  ],
+  "Txt_Level2P4": [
+   "wild.max.4"
+  ],
+  "Txt_Level2P5": [
+   "wild.max.5"
+  ],
+  "Txt_Level2P6": [
+   "wild.max.6"
+  ],
+  "Txt_Level2P7": [
+   "wild.max.7"
+  ],
+  "Txt_Level2P8": [
+   "wild.max.8"
+  ],
+  "Txt_Level2P9": [
+   "wild.max.9"
+  ],
+  "Txt_MapBank": [
+   "pro.bankOffset",
+   "conn.bank"
+  ],
+  "Txt_MapBankHeader": [
+   "pro.bankHeader"
+  ],
+  "Txt_MapBreite": [
+   "header.width"
+  ],
+  "Txt_MapHeader": [
+   "pro.headerOffset"
+  ],
+  "Txt_MapHoehe": [
+   "header.height"
+  ],
+  "Txt_MapNr": [
+   "pro.mapNo",
+   "conn.map"
+  ],
+  "Txt_MapOffset": [
+   "pro.mapOffset"
+  ],
+  "Txt_MapPos": [
+   "pro.blocksOffset"
+  ],
+  "Txt_MapScriptFlag": [
+   "header.flag"
+  ],
+  "Txt_MapScriptOffset": [
+   "header.scriptOffset"
+  ],
+  "Txt_MapScriptOffset2": [
+   "header.flagOffset"
+  ],
+  "Txt_MapScriptValue": [
+   "header.flagValue"
+  ],
+  "Txt_MapScriptsOffset": [
+   "pro.scriptsOffset"
+  ],
+  "Txt_Musik": [
+   "header.musicNo"
+  ],
+  "Txt_Name": [
+   "newMap.name"
+  ],
+  "Txt_NeuerName": [
+   "header.newName"
+  ],
+  "Txt_NrStatus": [
+   "event.person.flag"
+  ],
+  "Txt_Nullen": [
+   "conn.unknown"
+  ],
+  "Txt_PosX": [
+   "event.person.x",
+   "event.sign.x",
+   "event.warp.x",
+   "event.trap.x",
+   "event.fly.x"
+  ],
+  "Txt_PosY": [
+   "event.person.y",
+   "event.sign.y",
+   "event.warp.y",
+   "event.trap.y",
+   "event.fly.y"
+  ],
+  "Txt_Rand": [
+   "pro.border"
+  ],
+  "Txt_RandBreite": [
+   "pro.borderWidth"
+  ],
+  "Txt_RandHoehe": [
+   "pro.borderHeight"
+  ],
+  "Txt_RandPos": [
+   "pro.borderOffset"
+  ],
+  "Txt_Script": [
+   "event.person.script",
+   "event.sign.script",
+   "event.trap.script"
+  ],
+  "Txt_Sichtweite": [
+   "event.person.sight"
+  ],
+  "Txt_Tileset1": [
+   "pro.tileset1Offset"
+  ],
+  "Txt_Tileset1Nr": [
+   "pro.tileset1No"
+  ],
+  "Txt_Tileset2": [
+   "pro.tileset2Offset"
+  ],
+  "Txt_Tileset2Nr": [
+   "pro.tileset2No"
+  ],
+  "Txt_Unbekannt": [
+   "event.warp.elevation",
+   "event.fly.unknown"
+  ],
+  "Txt_Unbekannt1": [
+   "event.person.unknown1",
+   "event.trap.flagValue"
+  ],
+  "Txt_Unbekannt2": [
+   "event.person.unknown2",
+   "event.sign.unknown1",
+   "event.trap.unknown1"
+  ],
+  "Txt_Unbekannt3": [
+   "event.person.elevation",
+   "event.sign.unknown2",
+   "event.trap.unknown2"
+  ],
+  "Txt_Unbekannt4": [
+   "event.person.unknown3"
+  ],
+  "Txt_Unbekannt5": [
+   "event.person.unknown4"
+  ],
+  "Txt_Unbekannt6": [
+   "event.person.unknown5"
+  ],
+  "Txt_Unbekannt7": [
+   "event.person.unknown6"
+  ],
+  "Txt_VarNummer": [
+   "event.trap.variable"
+  ],
+  "Txt_VarWert": [
+   "event.trap.value"
+  ],
+  "Txt_Verschiebung": [
+   "conn.offset"
+  ],
+  "WarpNum": [
+   "event.manager.warps"
+  ]
+ },
+ "palette-editor": {
+  "Cbo_Palette": [
+   "pal.palette"
+  ],
+  "Cmd_HexToRGB": [
+   "pal.hexToRgb"
+  ],
+  "Cmd_PickColor": [
+   "pal.pick"
+  ],
+  "Cmd_Speichern": [
+   "pal.apply"
+  ],
+  "Lbl_Blau": [
+   "pal.blueValue"
+  ],
+  "Lbl_Farbe": [
+   "pal.preview"
+  ],
+  "Lbl_Farbe0": [
+   "pal.color.0"
+  ],
+  "Lbl_Farbe1": [
+   "pal.color.1"
+  ],
+  "Lbl_Farbe10": [
+   "pal.color.10"
+  ],
+  "Lbl_Farbe11": [
+   "pal.color.11"
+  ],
+  "Lbl_Farbe12": [
+   "pal.color.12"
+  ],
+  "Lbl_Farbe13": [
+   "pal.color.13"
+  ],
+  "Lbl_Farbe14": [
+   "pal.color.14"
+  ],
+  "Lbl_Farbe15": [
+   "pal.color.15"
+  ],
+  "Lbl_Farbe2": [
+   "pal.color.2"
+  ],
+  "Lbl_Farbe3": [
+   "pal.color.3"
+  ],
+  "Lbl_Farbe4": [
+   "pal.color.4"
+  ],
+  "Lbl_Farbe5": [
+   "pal.color.5"
+  ],
+  "Lbl_Farbe6": [
+   "pal.color.6"
+  ],
+  "Lbl_Farbe7": [
+   "pal.color.7"
+  ],
+  "Lbl_Farbe8": [
+   "pal.color.8"
+  ],
+  "Lbl_Farbe9": [
+   "pal.color.9"
+  ],
+  "Lbl_Gruen": [
+   "pal.greenValue"
+  ],
+  "Lbl_Rot": [
+   "pal.redValue"
+  ],
+  "Scl_Blau": [
+   "pal.blue"
+  ],
+  "Scl_Gruen": [
+   "pal.green"
+  ],
+  "Scl_Rot": [
+   "pal.red"
+  ],
+  "Txt_GBC": [
+   "pal.hex"
+  ]
+ },
+ "world-map": {
+  "Cbo_Anzahl": [
+   "Cbo_Anzahl"
+  ],
+  "Cbo_Wert2_NamenListe": [
+   "Cbo_Wert2_NamenListe"
+  ],
+  "Cbo_Wert_NamenListe": [
+   "Cbo_Wert_NamenListe"
+  ],
+  "Chk_BlauPos": [
+   "Chk_BlauPos"
+  ],
+  "Chk_Farbueberlagerung": [
+   "Chk_Farbueberlagerung"
+  ],
+  "Chk_ReadFlugFlags": [
+   "Chk_ReadFlugFlags"
+  ],
+  "Cmd_FlagRoutine": [
+   "Cmd_FlagRoutine"
+  ],
+  "Cmd_GotoFlugPos": [
+   "Cmd_GotoFlugPos"
+  ],
+  "Cmd_MapSpeichern": [
+   "Cmd_MapSpeichern"
+  ],
+  "Cmd_Name2Speichern": [
+   "Cmd_Name2Speichern"
+  ],
+  "Cmd_NameSpeichern": [
+   "Cmd_NameSpeichern"
+  ],
+  "Cmd_NameWeltkartenNrZuordnen": [
+   "Cmd_NameWeltkartenNrZuordnen"
+  ],
+  "Cmd_RePaint": [
+   "Cmd_RePaint"
+  ],
+  "Cmd_SaveFlugShowFlag": [
+   "Cmd_SaveFlugShowFlag"
+  ],
+  "Cmd_SaveFlugShowFlag2": [
+   "Cmd_SaveFlugShowFlag2"
+  ],
+  "Lbl_By": [
+   "Lbl_By"
+  ],
+  "Lbl_PosX": [
+   "Lbl_PosX"
+  ],
+  "Lbl_PosY": [
+   "Lbl_PosY"
+  ],
+  "Txt_Breite": [
+   "Txt_Breite"
+  ],
+  "Txt_Breite2": [
+   "Txt_Breite2"
+  ],
+  "Txt_FlugPosWerte": [
+   "Txt_FlugPosWerte"
+  ],
+  "Txt_FlugShowFlag": [
+   "Txt_FlugShowFlag"
+  ],
+  "Txt_FlugShowFlag2": [
+   "Txt_FlugShowFlag2"
+  ],
+  "Txt_FlugWert": [
+   "Txt_FlugWert"
+  ],
+  "Txt_Hoehe": [
+   "Txt_Hoehe"
+  ],
+  "Txt_Hoehe2": [
+   "Txt_Hoehe2"
+  ],
+  "Txt_Name": [
+   "Txt_Name"
+  ],
+  "Txt_Name2": [
+   "Txt_Name2"
+  ],
+  "Txt_Offset": [
+   "Txt_Offset"
+  ],
+  "Txt_Offset2": [
+   "Txt_Offset2"
+  ],
+  "Txt_PosX": [
+   "Txt_PosX"
+  ],
+  "Txt_PosX2": [
+   "Txt_PosX2"
+  ],
+  "Txt_PosY": [
+   "Txt_PosY"
+  ],
+  "Txt_PosY2": [
+   "Txt_PosY2"
+  ],
+  "Txt_Wert": [
+   "Txt_Wert"
+  ],
+  "Txt_Wert2": [
+   "Txt_Wert2"
+  ],
+  "Txt_WorldMap1Bis": [
+   "Txt_WorldMap1Bis"
+  ],
+  "WorldmapBox": [
+   "WorldmapBox"
+  ]
+ },
+ "_screens": {
+  "main: map タブ": 160,
+  "main: movement タブ": 0,
+  "main: event タブ": 0,
+  "main: イベント person": 0,
+  "main: イベント sign": 0,
+  "main: イベント warp": 0,
+  "main: イベント trap": 0,
+  "main: イベント fly": 0,
+  "main: 出現ポケモンタブ": 0,
+  "main: 場所の設定（高度な表示）": 0,
+  "main: 場所の設定（通常の表示）": 0,
+  "main: コネクションマネージャー": 23,
+  "main: 新規マップ": 7,
+  "main: マップの追加/挿入": 10,
+  "main: マップバンクヘッダーの管理": 5,
+  "block-editor: ブロックエディタ": 17,
+  "palette-editor: palette-editor": 28,
+  "block-adjust: block-adjust": 33,
+  "world-map: ワールドマップエディター": 38
+ }
+}

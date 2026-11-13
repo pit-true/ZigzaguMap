@@ -13,6 +13,19 @@ export interface MapTreeHost {
   openMapFile?(path: string, name: string): void;
 }
 
+/** 一覧の項目の情報（自動操作の `tree.list`）。 */
+export interface TreeItemInfo {
+  readonly key: string;
+  readonly text: string;
+  readonly depth: number;
+  readonly hasChildren: boolean;
+  readonly expanded: boolean;
+  readonly selected: boolean;
+  readonly opened: boolean;
+  readonly dirty: boolean;
+  readonly mapId: MapId | null;
+}
+
 /** 描いた行。 */
 interface Row {
   readonly node: TreeNode;
@@ -97,6 +110,41 @@ export class MapTree {
   /** 未出力の印を付け直す。 */
   refreshMarks(): void {
     for (const row of this.rows.values()) if (row.node.mapId) this.decorate(row);
+  }
+
+  /** 全項目（子の行をまだ作っていない項目も含む。自動操作の `tree.list` 用）。文字列は画面と同じく未出力の印を含む。 */
+  items(): TreeItemInfo[] {
+    const out: TreeItemInfo[] = [];
+    const walk = (nodes: readonly TreeNode[], depth: number): void => {
+      for (const n of nodes) {
+        const dirty = n.mapId ? this.host.isDirty(n.mapId) : false;
+        out.push({
+          key: n.key,
+          text: n.label + (dirty ? ja.modifiedMark : ""),
+          depth,
+          hasChildren: n.children !== undefined && n.children.length > 0,
+          expanded: this.expanded.has(n.key),
+          selected: n.key === this.selectedKey,
+          opened: !!(n.mapId && this.openedId && sameId(n.mapId, this.openedId)),
+          dirty,
+          mapId: n.mapId ?? null,
+        });
+        if (n.children) walk(n.children, depth + 1);
+      }
+    };
+    walk(this.roots, 0);
+    return out;
+  }
+
+  /** 項目の行（親を開いて行を作る）。無ければ null。自動操作がマウスの出来事を送るのに使う。 */
+  rowElement(key: string): HTMLElement | null {
+    const path = findKeyPath(this.roots, key);
+    if (!path) return null;
+    for (const node of path.slice(0, -1)) {
+      const row = this.rows.get(node.key);
+      if (row && !this.expanded.has(node.key)) this.expand(row);
+    }
+    return this.rows.get(key)?.element ?? null;
   }
 
   private build(node: TreeNode, depth: number): HTMLElement {
@@ -256,6 +304,15 @@ export class MapTree {
 
 function sameId(a: MapId, b: MapId): boolean {
   return a.bank === b.bank && a.map === b.map;
+}
+
+function findKeyPath(nodes: readonly TreeNode[], key: string): TreeNode[] | null {
+  for (const n of nodes) {
+    if (n.key === key) return [n];
+    const sub = findKeyPath(n.children ?? [], key);
+    if (sub) return [n, ...sub];
+  }
+  return null;
 }
 
 function findPath(node: TreeNode, id: MapId): TreeNode[] | null {

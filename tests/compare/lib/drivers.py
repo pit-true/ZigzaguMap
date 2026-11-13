@@ -159,6 +159,11 @@ class AdvanceMapDriver(Driver):
     def stop(self):
         if self.am:
             try:
+                # 止めた音の回数（鳴るはずだった回数）を残す
+                self.sound = self.am.sound_counts()
+            except Exception:  # noqa: BLE001
+                self.sound = None
+            try:
                 self.am.shutdown()
             finally:
                 self.am = None
@@ -308,8 +313,16 @@ class AdvanceMapDriver(Driver):
     def op_dragEvent(self, step):
         self._drag_cells("EventBox", _xy(step["from"]), _xy(step["to"]))
 
+    def _menu_path(self, keys):
+        """言語ファイルのキーの列 → AdvanceMap（旧言語ファイル）のメニューの文言の列。"""
+        lang = self.cfg.lang()
+        if not lang:
+            raise RuntimeError("言語ファイルが読めないので、メニューのキーを文言にできません（langOld / langNew）")
+        from .langmap import menu_norm
+        return [menu_norm(lang.old_text(k)) for k in keys]
+
     def op_menu(self, step):
-        self.am.menu(*step["path"])
+        self.am.menu(*(self._menu_path(step["key"]) if "key" in step else step["path"]))
         time.sleep(float(step.get("wait", 0.5)))
         self.am.idle()
 
@@ -350,10 +363,14 @@ class AdvanceMapDriver(Driver):
             if h == self.am.main or not self._is_dialog(h):
                 continue
             info = self.am.dialog_info(h)
+            if self.amlib.cls_of(h) != "#32770" and not info.get("title"):
+                continue  # 題名の無い VCL の補助の窓（利用者には見えない）は数えない
             if self.amlib.cls_of(h) != "#32770":
                 info["texts"] = [c.text for c in self.am.flat(h) if c.text and c.cls in ("TLabel", "TStaticText", "Static")]
                 info["buttons"] = [c.text for c in self.am.flat(h) if c.cls in ("TButton", "TBitBtn", "Button") and c.visible]
             info.pop("hwnd", None)
+            # #32770 は Windows 標準のメッセージボックス・ファイルのダイアログ、それ以外は VCL のフォーム（窓）
+            info["cls"] = "#32770" if self.amlib.cls_of(h) == "#32770" else "form"
             out.append(info)
         return out
 
@@ -460,7 +477,10 @@ class AdvanceMapDriver(Driver):
                 key = "/".join(am._norm(p) for p in it["path"])
                 out[key] = ("灰" if it["grayed"] else "") + ("✓" if it["checked"] else "")
             if ":" in fid:
-                return out.get(fid.split(":", 1)[1], "(項目なし)")
+                want = fid.split(":", 1)[1]
+                if want.startswith("Menue."):
+                    want = "/".join(am._norm(p) for p in self._menu_path(want.split("/")))
+                return out.get(want, "(項目なし)")
             return out
         if fid == "romInfo":
             return [d.get("text", "") for d in am.vcl_dump() if d.get("parent") == "GroupBox1" and d.get("cls") == "TLabel"]
@@ -494,30 +514,30 @@ class ZigzaguDriver(Driver):
         "selectMap": "cmd selectMap {bank, map}",
         "selectTab": "cmd tab {name}",
         "sortTree": "cmd action sort.N",
-        "selectBlock": "cmd selectBlock {block}（パレットのクリックは無いので選択の値を直接変える＝代用）",
-        "pickPaletteStamp": "cmd selectBlock {blocks, width}（パレットの番号から計算＝代用）",
-        "paintBlock": "cmd command paintBlocks（選択中のブロックを置く＝代用）",
-        "dragPaint": "cmd command paintBlocks（ドラッグで通るマスを計算して 1 回で置く＝代用）",
-        "pickBlock": "cmd cells で読んで selectBlock（代用）",
-        "pickStamp": "cmd cells で読んで selectBlock {blocks, width}（代用）",
-        "paintBorder": "cmd command paintBorder（代用）",
-        "pickBorder": "cmd cells の border を読んで selectBlock（代用）",
-        "hover": None,
-        "selectMovement": "ドライバー側で値を覚える（移動許可の選択を変える命令が無い＝代用）",
-        "paintMovement": "cmd command paintMovement（代用）",
-        "dragMovement": "cmd command paintMovement（通るマスを計算＝代用）",
-        "pickMovement": "cmd cells で読んで値を覚える（代用）",
-        "menu": "cmd action {id}（メニューの文言 → アクション ID の対応表 zigzagu_menu.json）",
-        "setField": None,
-        "clickButton": None,
-        "clickEvent": None,
-        "dragEvent": None,
-        "answerDialog": None,
+        "selectBlock": "cmd mouse（palette を左クリック。8 個/行）",
+        "pickPaletteStamp": "cmd mouse（palette を Ctrl＋右ドラッグ）",
+        "paintBlock": "cmd mouse（map を左クリック）",
+        "dragPaint": "cmd mouse（map を左ドラッグ。steps 回に分けて動かす）",
+        "pickBlock": "cmd mouse（map を右クリック）",
+        "pickStamp": "cmd mouse（map を Ctrl＋右ドラッグ）",
+        "paintBorder": "cmd mouse（border を左クリック）",
+        "pickBorder": "cmd mouse（border を右クリック）",
+        "hover": "cmd mouse（hover）",
+        "selectMovement": "cmd selectMovement（移動許可のパレットを左クリック）",
+        "paintMovement": "cmd mouse（movement を左クリック）",
+        "dragMovement": "cmd mouse（movement を左ドラッグ）",
+        "pickMovement": "cmd mouse（movement を右クリック）",
+        "menu": "cmd menu.run {path}（言語ファイルのキー → 新しい文言の階層。合わなければ zigzagu_menu.json の ID）",
+        "setField": "cmd setField {id: field:<部品名>}（別ウィンドウは window）",
+        "clickButton": "cmd click {id: field:<部品名>}",
+        "clickEvent": "cmd mouse（event を左クリック）",
+        "dragEvent": "cmd mouse（event を左ドラッグ）",
+        "answerDialog": "cmd dialog {press}（OK/はい/いいえ/キャンセルは ok/yes/no/cancel）",
         "export": "cmd export {dir}",
         "wait": "待つ",
-        "snapshot": "cmd canvasPng {tab}（blocks は map タブの Canvas）",
-        "compareFields": "cmd state（status.left / title.map / map.size / tab）",
-        "expectDialog": None,
+        "snapshot": "cmd canvasPng {target}（blocks は map。palette / border / movementPalette も）",
+        "compareFields": "cmd state・status・title・tree.list・menu.list・romInfo・getField・dialogs",
+        "expectDialog": "cmd dialogs（メインと別ウィンドウ）と windows",
     }
 
     def __init__(self, cfg, out_dir, rom: pathlib.Path):
@@ -605,29 +625,83 @@ class ZigzaguDriver(Driver):
             raise RuntimeError("マップが開かれていません")
         return m
 
-    def _cells(self):
-        return self.call({"cmd": "cells"})
+    def _mouse(self, target, action, cell, **kw):
+        req = {"cmd": "mouse", "target": target, "action": action, "cell": [int(cell[0]), int(cell[1])]}
+        req.update({k: v for k, v in kw.items() if v is not None})
+        return self.call(req)
 
-    def _paint(self, cells_xy):
-        """選択中のブロック（スタンプ）を、各マスを左上にして置く。"""
-        st = self._state()
-        m, sel = st["map"], st["selection"]
-        if not m:
-            raise RuntimeError("マップが開かれていません")
-        w, h, blocks = sel["width"], sel["height"], sel["blocks"]
-        cells = {}
-        for (x, y) in cells_xy:
-            for dy in range(h):
-                for dx in range(w):
-                    cx, cy = x + dx, y + dy
-                    if 0 <= cx < m["width"] and 0 <= cy < m["height"]:
-                        cells[(cx, cy)] = blocks[dy * w + dx]
-        self.call({"cmd": "command", "name": "paintBlocks",
-                   "args": {"bank": m["bank"], "map": m["map"],
-                            "cells": [{"x": x, "y": y, "block": b} for (x, y), b in cells.items()]}})
+    def _drag(self, target, step, button="left", ctrl=False):
+        a, b = _xy(step["from"]), _xy(step["to"])
+        return self._mouse(target, "drag", a, to=[b[0], b[1]], button=button, ctrl=ctrl or None,
+                           steps=int(step.get("steps", 8)))
 
-    def _emu(self, note):
-        return StepResult("emulated", note)
+    @staticmethod
+    def _window_of(screen):
+        """シナリオの screen（AdvanceMap のウィンドウの題名）→ ZigzaguMap のウィンドウのラベル（メインなら None）。"""
+        if not screen or screen == "main":
+            return None
+        for key, label in (("ブロックエディタ", "block-editor"), ("パレットエディタ", "palette-editor"), ("一括", "block-adjust"),
+                           ("ワールドマップ", "world-map")):
+            if key in screen:
+                return label
+        return None  # コネクションマネージャー・新規マップなどはメインの中のダイアログ
+
+    def _field_req(self, screen, name):
+        win = self._window_of(screen)
+        req = {"id": name if win == "world-map" else f"field:{name}"}
+        if win:
+            req["window"] = win
+        return req
+
+    def _windows(self):
+        try:
+            return [w["label"] for w in self.call({"cmd": "windows"}) if w.get("ready")]
+        except Exception:  # noqa: BLE001
+            return ["main"]
+
+    def _all_dialogs(self):
+        """開いているダイアログ（メインと別ウィンドウ）と、メイン以外のウィンドウ。AdvanceMap の dialogs() と同じ形にする。"""
+        out = []
+        for w in self._windows():
+            req = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
+            try:
+                ds = self.call(req)["dialogs"]
+            except Exception:  # noqa: BLE001
+                ds = []
+            for d in ds:
+                out.append({"title": d.get("title", ""), "texts": [d["text"]] if d.get("text") else [],
+                            "buttons": list(d.get("buttons", [])), "cls": "app" if d.get("kind") == "app" else "native"})
+        for w in self.call({"cmd": "windows"}):
+            if w["label"] != "main" and w.get("visible"):
+                out.append({"title": w.get("title", ""), "texts": [], "buttons": [], "cls": "window"})
+        return out
+
+    BUTTON_ROLES = {"ok": "ok", "はい": "yes", "yes": "yes", "いいえ": "no", "no": "no", "キャンセル": "cancel", "cancel": "cancel"}
+
+    def _press_dialog(self, button):
+        role = self.BUTTON_ROLES.get(button.replace("&", "").split("(")[0].strip().lower())
+        for w in self._windows():
+            base = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
+            if not self.call(base)["dialogs"]:
+                continue
+            req = {"cmd": "dialog", "press": role or button}
+            if w != "main":
+                req["window"] = w
+            try:
+                return self.call(req)
+            except AppError:
+                if not role:
+                    raise
+                req["press"] = button  # 役割で押せなければ文字列で
+                return self.call(req)
+        raise RuntimeError("ダイアログが開いていません")
+
+    def _menu_path(self, keys):
+        lang = self.cfg.lang()
+        if not lang:
+            return None
+        from .langmap import menu_norm
+        return [menu_norm(lang.new_text(k)) for k in keys]
 
     # ------------------------------------------------------------------ ops
     def op_openRom(self, step):
@@ -643,115 +717,100 @@ class ZigzaguDriver(Driver):
         self.call({"cmd": "action", "id": f"sort.{int(step['mode'])}"})
 
     def op_selectBlock(self, step):
-        self.call({"cmd": "selectBlock", "block": int(step["block"])})
-        return self._emu("パレットのクリックの代わりに selectBlock")
+        b = int(step["block"])
+        self._mouse("palette", "click", (b % 8, b // 8))
 
     def op_pickPaletteStamp(self, step):
-        (x0, y0), (x1, y1) = _xy(step["from"]), _xy(step["to"])
-        xa, xb, ya, yb = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
-        blocks = [y * 8 + x for y in range(ya, yb + 1) for x in range(xa, xb + 1)]
-        self.call({"cmd": "selectBlock", "blocks": blocks, "width": xb - xa + 1})
-        return self._emu("パレットの Ctrl＋右ドラッグの代わりに selectBlock")
+        self._drag("palette", step, button="right", ctrl=True)
 
     def op_paintBlock(self, step):
-        self._paint([(int(step["x"]), int(step["y"]))])
-        return self._emu("左クリックの代わりに paintBlocks")
+        self._mouse("map", "click", (step["x"], step["y"]))
 
     def op_dragPaint(self, step):
-        st = self._state()
-        sel = st["selection"]
-        cells = drag_cells(_xy(step["from"]), _xy(step["to"]), int(step.get("steps", 8)))
-        if sel["width"] * sel["height"] > 1:
-            cells = cells[:1]  # スタンプはドラッグしても 1 回だけ置く（README）
-        self._paint(cells)
-        return self._emu("左ドラッグの代わりに、通るマスを paintBlocks")
+        self._drag("map", step)
 
     def op_pickBlock(self, step):
-        c = self._cells()
-        v = c["cells"][int(step["y"]) * c["width"] + int(step["x"])]
-        self.call({"cmd": "selectBlock", "block": v & 0x3FF})
-        return self._emu("右クリックの代わりに cells → selectBlock")
+        self._mouse("map", "rightClick", (step["x"], step["y"]))
 
     def op_pickStamp(self, step):
-        c = self._cells()
-        (x0, y0), (x1, y1) = _xy(step["from"]), _xy(step["to"])
-        xa, xb, ya, yb = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
-        blocks = [c["cells"][y * c["width"] + x] & 0x3FF for y in range(ya, yb + 1) for x in range(xa, xb + 1)]
-        self.call({"cmd": "selectBlock", "blocks": blocks, "width": xb - xa + 1})
-        return self._emu("Ctrl＋右ドラッグの代わりに cells → selectBlock")
+        self._drag("map", step, button="right", ctrl=True)
 
     def op_paintBorder(self, step):
-        st = self._state()
-        m, sel = st["map"], st["selection"]
-        self.call({"cmd": "command", "name": "paintBorder",
-                   "args": {"bank": m["bank"], "map": m["map"],
-                            "cells": [{"x": int(step["x"]), "y": int(step["y"]), "block": sel["blocks"][0]}]}})
-        return self._emu("境界ブロックのクリックの代わりに paintBorder")
+        self._mouse("border", "click", (step["x"], step["y"]))
 
     def op_pickBorder(self, step):
-        c = self._cells()
-        v = c["border"][int(step["y"]) * 2 + int(step["x"])]
-        self.call({"cmd": "selectBlock", "block": v & 0x3FF})
-        return self._emu("境界ブロックの右クリックの代わりに cells → selectBlock")
+        self._mouse("border", "rightClick", (step["x"], step["y"]))
+
+    def op_hover(self, step):
+        self._mouse(step.get("target", "map"), "hover", (step["x"], step["y"]))
 
     def op_selectMovement(self, step):
-        self.movement = int(step["value"])
-        return self._emu("移動許可の選択はドライバー側で覚える")
-
-    def _paint_movement(self, cells_xy):
-        m = self._map()
-        self.call({"cmd": "command", "name": "paintMovement",
-                   "args": {"bank": m["bank"], "map": m["map"],
-                            "cells": [{"x": x, "y": y, "movement": self.movement} for x, y in cells_xy]}})
+        self.call({"cmd": "selectMovement", "value": int(step["value"])})
 
     def op_paintMovement(self, step):
-        self._paint_movement([(int(step["x"]), int(step["y"]))])
-        return self._emu("左クリックの代わりに paintMovement")
+        self._mouse("movement", "click", (step["x"], step["y"]))
 
     def op_dragMovement(self, step):
-        self._paint_movement(drag_cells(_xy(step["from"]), _xy(step["to"]), int(step.get("steps", 8))))
-        return self._emu("左ドラッグの代わりに、通るマスを paintMovement")
+        self._drag("movement", step)
 
     def op_pickMovement(self, step):
-        c = self._cells()
-        self.movement = c["cells"][int(step["y"]) * c["width"] + int(step["x"])] >> 10
-        return self._emu("右クリックの代わりに cells で読んだ値を覚える")
+        self._mouse("movement", "rightClick", (step["x"], step["y"]))
+
+    def op_clickEvent(self, step):
+        self._mouse("event", "click", (step["x"], step["y"]))
+
+    def op_dragEvent(self, step):
+        self._drag("event", step)
 
     def op_menu(self, step):
-        key = " > ".join(step["path"])
-        ent = self.menu_map.get(key)
-        if ent is None:
-            raise Unsupported(f"メニュー {key} の対応がありません（zigzagu_menu.json）")
-        if isinstance(ent, dict):
-            if ent.get("dialog"):
-                raise Unsupported(f"メニュー {key} はダイアログを開くが、自動操作の入口からダイアログを扱えない")
-            ent = ent["id"]
-        self.call({"cmd": "action", "id": ent})
+        keys = step.get("key")
+        path = self._menu_path(keys) if keys else step.get("path")
+        ent = self.menu_map.get(" > ".join(keys or step.get("path", [])))
+        try:
+            if not path:
+                raise AppError("階層が分かりません")
+            self.call({"cmd": "menu.run", "path": path})
+        except AppError as e:
+            if ent is None or "無効な項目" in str(e):
+                raise
+            # 文言が言語ファイルと違う項目は、アクション ID の対応表（zigzagu_menu.json）で実行する
+            self.call({"cmd": "menu.run", "id": ent["id"] if isinstance(ent, dict) else ent})
         time.sleep(float(step.get("wait", 0.3)))
+
+    def op_setField(self, step):
+        self.call({"cmd": "setField", "value": step["value"], **self._field_req(step.get("screen"), step["field"])})
+
+    def op_clickButton(self, step):
+        self.call({"cmd": "click", **self._field_req(step.get("screen"), step["button"])})
+
+    def op_answerDialog(self, step):
+        self._press_dialog(step["button"])
+        time.sleep(0.2)
+
+    def op_expectDialog(self, step):
+        time.sleep(float(step.get("wait", 0.3)))
+        return {"dialogs": self._all_dialogs()}
 
     def op_export(self, step):
         d = self.out / "export"
         d.mkdir(parents=True, exist_ok=True)
         return {"export": self.call({"cmd": "export", "dir": str(d)})}
 
+    SNAP_TARGETS = {"map": "map", "movement": "movement", "event": "event", "blocks": "map", "palette": "palette",
+                    "border": "border", "movementPalette": "movementPalette"}
+
     def op_snapshot(self, step):
         target = step.get("target", "map")
-        tab = {"map": None, "movement": None, "event": None, "blocks": "map"}.get(target, "?")
-        if tab == "?":
-            raise Unsupported(f"画像 {target} を取る命令がありません（canvasPng は map / movement / event だけ）")
-        req = {"cmd": "canvasPng"}
-        if tab:
-            req["tab"] = tab
-        elif target in ("movement", "event"):
-            req["tab"] = target
-        r = self.call(req)
+        if target not in self.SNAP_TARGETS:
+            raise Unsupported(f"画像 {target} を取る命令がありません")
+        r = self.call({"cmd": "canvasPng", "target": self.SNAP_TARGETS[target]})
         name = step["name"]
         p = self.out / f"{name}.zigzagu.png"
         p.write_bytes(base64.b64decode(r["png"]))
         base = None
         if (step.get("compare") or {}).get("mode") == "overlayCells":
             base = self.out / f"{name}.zigzagu.base.png"
-            base.write_bytes(base64.b64decode(self.call({"cmd": "canvasPng", "tab": "map"})["png"]))
+            base.write_bytes(base64.b64decode(self.call({"cmd": "canvasPng", "target": "map"})["png"]))
         w = self.out / f"{name}.zigzagu.window.png"
         try:
             s = self.call({"cmd": "screenshot"})
@@ -763,17 +822,57 @@ class ZigzaguDriver(Driver):
             obs["base"] = str(base)
         return obs
 
+    def _menu_state(self):
+        from .langmap import menu_norm
+        out = {}
+        for it in self.call({"cmd": "menu.list"}):
+            key = "/".join(menu_norm(p) for p in it["path"])
+            out[key] = ("" if it["enabled"] else "灰") + ("✓" if it["checked"] else "")
+        return out
+
     def field(self, fid, st):
         if fid == "status.left":
-            return st["status"]["left"]
+            return self.call({"cmd": "status"})["left"]
         if fid == "title.map":
-            t = st["title"]
+            t = self.call({"cmd": "title"})["window"]
             return t.split(" - ", 1)[1] if " - " in t else ""
         if fid == "map.size":
             m = st["map"]
             return f"{m['width']}x{m['height']}" if m else ""
         if fid == "tab":
             return st["tab"]
+        if fid.startswith("tree."):
+            items = self.call({"cmd": "tree.list"})
+            if fid == "tree.roots":
+                return [i["text"] for i in items if i["depth"] == 0]
+            if fid == "tree.count":
+                return len(items)
+            if fid == "tree.first60":
+                return [f"{i['depth']}:{i['text']}" for i in items[:60]]
+        if fid.startswith("menu.state"):
+            out = self._menu_state()
+            if ":" in fid:
+                want = fid.split(":", 1)[1]
+                if want.startswith("Menue."):
+                    want = "/".join(self._menu_path(want.split("/")) or [])
+                return out.get(want, "(項目なし)")
+            return out
+        if fid == "romInfo":
+            return [r["value"] for r in self.call({"cmd": "romInfo"})]
+        if fid == "dialogs":
+            return self._all_dialogs()
+        if fid.startswith("field:"):
+            name = fid.split(":", 1)[1]
+            last = None
+            for w in self._windows():
+                req = {"cmd": "getField", "id": fid if w != "world-map" else name}
+                if w != "main":
+                    req["window"] = w
+                try:
+                    return self.call(req)["value"]
+                except AppError as e:
+                    last = e
+            raise Unsupported(f"欄 {name} に当たる部品がありません（{last}）")
         raise Unsupported(f"欄 {fid} を読む命令がありません")
 
     def op_compareFields(self, step):
@@ -784,6 +883,8 @@ class ZigzaguDriver(Driver):
                 vals[f] = {"value": self.field(f, st)}
             except Unsupported as e:
                 vals[f] = {"unsupported": str(e)}
+            except AppError as e:
+                vals[f] = {"unsupported": f"ZigzaguMap がエラーを返した: {e}"}
         return {"fields": vals}
 
 

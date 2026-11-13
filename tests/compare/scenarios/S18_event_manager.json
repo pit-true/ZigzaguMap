@@ -21,7 +21,7 @@
     {
       "op": "setField",
       "screen": "main",
-      "field": "Txt_Anzahl",
+      "field": "PeopNum",
       "value": 5
     },
     {
@@ -40,8 +40,9 @@
     {
       "op": "compareFields",
       "fields": [
-        "field:Txt_Anzahl"
+        "field:PeopNum"
       ]
     }
-  ]
+  ],
+  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Txt_Anzahl→PeopNum）"
 }

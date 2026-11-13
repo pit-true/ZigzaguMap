@@ -21,19 +21,19 @@
     {
       "op": "setField",
       "screen": "main",
-      "field": "Txt_Breite",
+      "field": "Txt_MapBreite",
       "value": 16
     },
     {
       "op": "setField",
       "screen": "main",
-      "field": "Txt_Hohe",
+      "field": "Txt_MapHoehe",
       "value": 16
     },
     {
       "op": "clickButton",
       "screen": "main",
-      "button": "Cmd_Aendern"
+      "button": "Cmd_Resize"
     },
     {
       "op": "selectTab",
@@ -50,5 +50,6 @@
         "map.size"
       ]
     }
-  ]
+  ],
+  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Txt_Breite→Txt_MapBreite、Txt_Hohe→Txt_MapHoehe、Cmd_Aendern→Cmd_Resize）"
 }

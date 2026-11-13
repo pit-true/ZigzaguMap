@@ -62,6 +62,8 @@ def run_app(driver_cls, cfg, scn, out_dir: pathlib.Path, log) -> dict:
         except OSError:
             pass
     res = {"app": drv.name, "steps": steps, "started": started}
+    if getattr(drv, "sound", None) is not None:
+        res["mutedSounds"] = drv.sound
     (out_dir / "steps.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     return res
 
@@ -75,8 +77,9 @@ def _rel(p, root):
         return str(p)
 
 
-def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: pathlib.Path) -> dict:
-    """ステップごとに両者を突き合わせる。"""
+def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: pathlib.Path, lang=None) -> dict:
+    """ステップごとに両者を突き合わせる。`lang`（LangMap）があれば、AdvanceMap 側の文字列を新しい文言へ読み替えてから比べる。"""
+    tr = lang.translate if lang else (lambda v: v)
     steps = scn["steps"]
     rows, taints = [], {}  # taints: scope -> 理由
     counts = {PASS: 0, FAIL: 0, UNSUP: 0, ERROR: 0}
@@ -207,9 +210,12 @@ def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: path
                     fr.update(result=UNSUP, detail=f"前の手順が未対応のため比べない（{why}）", advancemap=av["value"], zigzagu=zv["value"])
                     any_unsup = True
                 else:
-                    na, nz = norm_value(av["value"]), norm_value(zv["value"])
+                    at = tr(av["value"])
+                    na, nz = norm_value(at), norm_value(zv["value"])
                     same = na == nz
                     fr.update(result=PASS if same else FAIL, advancemap=av["value"], zigzagu=zv["value"])
+                    if at != av["value"]:
+                        fr["advancemapTranslated"] = at
                     if not same and isinstance(na, dict) and isinstance(nz, dict):
                         keys = sorted(set(na) | set(nz))
                         fr["diffKeys"] = [k for k in keys if na.get(k) != nz.get(k)][:40]
@@ -225,11 +231,9 @@ def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: path
             rows.append(row)
             continue
         if st["op"] == "expectDialog":
-            # ZigzaguMap 側は今は未対応（上で処理済み）。ここに来るのは両方が読めたとき
-            ad, zd = a["obs"].get("dialogs", []), z["obs"].get("dialogs", [])
-            same = norm_value(ad) == norm_value(zd)
-            row.update(result=PASS if same else FAIL, advancemap=ad, zigzagu=zd,
-                       detail="一致" if same else "ダイアログが違う")
+            ad, zd = tr(a["obs"].get("dialogs", [])), z["obs"].get("dialogs", [])
+            same, why = compare_dialogs(ad, zd, st)
+            row.update(result=PASS if same else FAIL, advancemap=ad, zigzagu=zd, detail="一致" if same else why)
             counts[PASS if same else FAIL] += 1
             rows.append(row)
             continue
@@ -243,6 +247,36 @@ def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: path
     else:
         verdict = PASS
     return {"verdict": verdict, "rows": rows, "counts": counts}
+
+
+def _dialog_key(d: dict, full: bool) -> dict:
+    from .langmap import menu_norm
+    k = {"title": norm_value(d.get("title", ""))}
+    if full:
+        k["texts"] = norm_value(d.get("texts", []))
+        k["buttons"] = [norm_value(menu_norm(b)) for b in d.get("buttons", [])]
+    return k
+
+
+def compare_dialogs(ad: list, zd: list, step: dict) -> tuple[bool, str]:
+    """開いているダイアログを比べる。AdvanceMap のメッセージボックス（#32770）と ZigzaguMap のダイアログは題名・本文・ボタン、
+    AdvanceMap の VCL のフォームや ZigzaguMap の別ウィンドウは題名だけ。present（有無）と text（部分一致）も見る。"""
+    want = step.get("present")
+    if want is not None and bool(ad) != bool(want):
+        return True, "AdvanceMap 側が期待と違う（比べない）"
+    if bool(ad) != bool(zd):
+        return False, f"ダイアログの有無が違う（AdvanceMap {len(ad)} 件、ZigzaguMap {len(zd)} 件）"
+    if len(ad) != len(zd):
+        return False, f"ダイアログの数が違う（AdvanceMap {len(ad)} 件、ZigzaguMap {len(zd)} 件）"
+    for i, (a, z) in enumerate(zip(ad, zd)):
+        full = a.get("cls") == "#32770" and z.get("cls") in ("app", "native")
+        ka, kz = _dialog_key(a, full), _dialog_key(z, full)
+        if ka != kz:
+            return False, f"{i + 1} 件目が違う（AdvanceMap {ka}、ZigzaguMap {kz}）"
+    text = step.get("text")
+    if text and not any(text in " ".join([z.get("title", "")] + z.get("texts", [])) for z in zd):
+        return False, f"ZigzaguMap のダイアログに「{text}」がない"
+    return True, "一致"
 
 
 def run_scenario(cfg, scn: dict, run_dir: pathlib.Path, only_zz: bool, log) -> dict:
@@ -275,7 +309,7 @@ def run_scenario(cfg, scn: dict, run_dir: pathlib.Path, only_zz: bool, log) -> d
             (cache / "meta.json").write_text(json.dumps({"hash": h}), encoding="utf-8")
     log("  ZigzaguMap を実行")
     zz = run_app(ZigzaguDriver, cfg, scn, sdir / "zigzagu", log)
-    cmp = compare(scn, am, zz, sdir, run_dir)
+    cmp = compare(scn, am, zz, sdir, run_dir, cfg.lang())
     result = {"name": scn["name"], "title": scn.get("title", ""), "source": scn.get("source", ""),
               "issues": scn.get("issues", []), "hash": h, "verdict": cmp["verdict"], "counts": cmp["counts"],
               "rows": cmp["rows"], "seconds": round(time.time() - t0, 1), "amFromCache": only_zz}

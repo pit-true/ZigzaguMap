@@ -1,7 +1,8 @@
-# 既定の再生デバイスの音声セッションごとの音量のピークを、決めた時間のあいだ読み続け、最大値を JSON で出す。
+﻿# 既定の再生デバイスの音声セッションごとの音量のピークを、決めた時間のあいだ読み続け、最大値を JSON で出す。
 # 効果音が鳴ったか（どのプロセスが鳴らしたか）を確かめるためのもので、音の設定は何も変えない（読むだけ）。
-#   powershell -NoProfile -ExecutionPolicy Bypass -File audio_peaks.ps1 -Seconds 30 [-Out peaks.json]
-param([double]$Seconds = 10, [int]$IntervalMs = 20, [string]$Out = "")
+#   powershell -NoProfile -ExecutionPolicy Bypass -File audio_peaks.ps1 -Seconds 30 [-Out peaks.json] [-StopFile <パス>]
+#   -StopFile を付けると、そのファイルができた時点で止める（-Seconds は上限。比較テストの全シナリオの間など）。
+param([double]$Seconds = 10, [int]$IntervalMs = 20, [string]$Out = "", [string]$StopFile = "")
 
 Add-Type -Language CSharp -TypeDefinition @"
 using System;
@@ -51,7 +52,7 @@ namespace ZzmAudio {
   [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator {}
 
   public static class Meter {
-    public static Dictionary<string, double> Watch(double seconds, int intervalMs) {
+    public static Dictionary<string, double> Watch(double seconds, int intervalMs, string stopFile) {
       var result = new Dictionary<string, double>();
       var en = (IMMDeviceEnumerator)new MMDeviceEnumerator();
       IMMDevice dev;
@@ -61,7 +62,7 @@ namespace ZzmAudio {
       dev.Activate(ref iid, 23, IntPtr.Zero, out o);
       var mgr = (IAudioSessionManager2)o;
       var end = DateTime.Now.AddSeconds(seconds);
-      while (DateTime.Now < end) {
+      while (DateTime.Now < end && !(stopFile.Length > 0 && System.IO.File.Exists(stopFile))) {
         IAudioSessionEnumerator e;
         mgr.GetSessionEnumerator(out e);
         int n; e.GetCount(out n);
@@ -83,7 +84,7 @@ namespace ZzmAudio {
 }
 "@
 
-$r = [ZzmAudio.Meter]::Watch($Seconds, $IntervalMs)
+$r = [ZzmAudio.Meter]::Watch($Seconds, $IntervalMs, $StopFile)
 $json = ($r.GetEnumerator() | ForEach-Object { '"{0}": {1}' -f $_.Key, $_.Value.ToString([Globalization.CultureInfo]::InvariantCulture) }) -join ", "
 $json = "{" + $json + "}"
 if ($Out) { [IO.File]::WriteAllText($Out, $json) } else { $json }
