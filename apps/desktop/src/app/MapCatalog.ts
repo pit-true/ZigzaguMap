@@ -55,7 +55,8 @@ export class MapCatalog {
     const raw: { id: MapId; region: number; primary: number; secondary: number }[] = [];
     for (const id of project.mapIds()) {
       try {
-        if (project.inBase(id) && !project.hasJson(id)) {
+        // 読み込み済みのマップは編集中の値（差し替え・名前の変更）を使う。
+        if (project.inBase(id) && !project.hasJson(id) && !project.loaded(id)) {
           const header = mapHeaderCodec.decode(rom.slice(project.base.bankTable.headerOffset(id), MAP_HEADER_SIZE));
           const footer = mapFooterCodec.decode(rom.slice(header.layout - ROM_BASE, MAP_LAYOUT_SIZE));
           raw.push({ id, region: header.regionMapSectionId, primary: footer.primaryTileset, secondary: footer.secondaryTileset });
