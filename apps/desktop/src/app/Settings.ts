@@ -36,6 +36,8 @@ export interface SettingsData {
   recentMax: number;
   recentShowPath: boolean;
   last: LastSelection | null;
+  /** 高度なヘッダーを表示。 */
+  advancedHeader: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -56,6 +58,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   recentMax: 5,
   recentShowPath: false,
   last: null,
+  advancedHeader: true,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

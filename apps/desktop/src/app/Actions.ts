@@ -31,6 +31,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.toolbar": "showToolbar",
   "opt.rememberLast": "rememberLast",
   "recent.showPath": "recentShowPath",
+  "opt.advancedHeader": "advancedHeader",
 };
 
 /**
@@ -40,7 +41,6 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
 const FIXED_CHECKS = new Set([
   "view.hideEventPanel",
   "opt.autoSearch",
-  "opt.advancedHeader",
   "opt.backupOnOpen",
   "opt.romShortcut",
   "lang.11",

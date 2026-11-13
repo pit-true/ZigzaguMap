@@ -11,8 +11,8 @@ import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
+import { HeaderTab } from "../ui/header/HeaderTab";
 import { EventTab } from "../ui/tabs/EventTab";
-import { HeaderTab } from "../ui/tabs/HeaderTab";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
 import { WildTab } from "../ui/tabs/WildTab";
@@ -286,8 +286,14 @@ export class App implements ActionTarget {
     const id = { bank: args.bank, map: args.map };
     const current = this.state.map;
     if (current && current.id.bank === id.bank && current.id.map === id.map) {
-      this.state.mapImage?.update();
-      this.state.emit("cells");
+      const doc = current.doc;
+      // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
+      if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
+        void this.openMap(id);
+      } else {
+        this.state.mapImage?.update();
+        this.state.emit("cells");
+      }
     }
     this.pendingDirty.set(`${id.bank}.${id.map}`, id);
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
