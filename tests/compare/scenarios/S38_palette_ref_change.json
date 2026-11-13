@@ -2,29 +2,20 @@
   "name": "S38_palette_ref_change",
   "title": "ブロックのパレット参照先の一括変更",
   "source": "S38",
-  "issues": [
-    82
-  ],
+  "issues": [82],
+  "note": "タイルセット 1 のパレット 0 を 3 に変える",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "palette",
-      "target": "palette"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["パレット", "ブロックのパレット参照先の一括変更"], "zigzagu": "palette.remap"},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Rdo_Tileset1", "field:Rdo_Tileset2", "field:Edit1", "field:Txt_Zu0", "field:Txt_Zu1"]},
+    {"op": "setField", "screen": "TBlockdatenAnpassenForm", "field": "Txt_Zu0", "value": 3},
+    {"op": "clickButton", "screen": "TBlockdatenAnpassenForm", "button": "Cmd_Anpassen"},
+    {"op": "snapshot", "name": "blocks_after_remap", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "snapshot", "name": "map_after_remap", "target": "map"},
+    {"op": "snapshot", "name": "palette", "target": "palette"}
   ]
 }

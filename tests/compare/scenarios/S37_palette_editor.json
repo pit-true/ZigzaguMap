@@ -2,31 +2,27 @@
   "name": "S37_palette_editor",
   "title": "パレットエディタ",
   "source": "S37",
-  "issues": [
-    79,
-    80
-  ],
+  "issues": [79, 80],
+  "note": "色 9 を選び、15bit 値 001F（赤）から RGB にして一時適用、パレット 1 へ切り替え（ブロックエディタも追従）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Palette"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["パレット", "パレットエディタの表示"], "zigzagu": "palette.editor"},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Cbo_Palette", "field:Txt_GBC", "field:Lbl_Rot", "field:Lbl_Gruen", "field:Lbl_Blau", "field:Scl_Rot", "field:Scl_Gruen", "field:Scl_Blau"]},
+    {"op": "clickComp", "screen": "TPalettenForm", "comp": "Lbl_Farbe9", "x": 6, "y": 5, "button": "left"},
+    {"op": "compareFields", "fields": ["field:Cbo_Palette", "field:Txt_GBC", "field:Lbl_Rot", "field:Lbl_Gruen", "field:Lbl_Blau", "field:Scl_Rot", "field:Scl_Gruen", "field:Scl_Blau"]},
+    {"op": "setField", "screen": "TPalettenForm", "field": "Txt_GBC", "value": "001F"},
+    {"op": "clickButton", "screen": "TPalettenForm", "button": "Cmd_HexToRGB"},
+    {"op": "compareFields", "fields": ["field:Cbo_Palette", "field:Txt_GBC", "field:Lbl_Rot", "field:Lbl_Gruen", "field:Lbl_Blau", "field:Scl_Rot", "field:Scl_Gruen", "field:Scl_Blau"]},
+    {"op": "clickButton", "screen": "TPalettenForm", "button": "Cmd_Speichern"},
+    {"op": "snapshot", "name": "tiles_after_apply", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "setField", "screen": "TPalettenForm", "field": "Cbo_Palette", "value": 1},
+    {"op": "compareFields", "fields": ["field:Cbo_Palette", "field:Txt_GBC", "field:Lbl_Rot", "field:Lbl_Gruen", "field:Lbl_Blau", "field:Scl_Rot", "field:Scl_Gruen", "field:Scl_Blau", "field:Cbo_Paletten"]},
+    {"op": "setField", "screen": "TPalettenForm", "field": "Txt_GBC", "value": "ZZZZ"},
+    {"op": "clickButton", "screen": "TPalettenForm", "button": "Cmd_HexToRGB"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"}
   ]
 }

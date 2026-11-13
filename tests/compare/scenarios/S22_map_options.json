@@ -1,44 +1,29 @@
 {
   "name": "S22_map_options",
-  "title": "マップオプションの変更",
+  "title": "マップオプション（音楽・天候・タイプ・戦闘背景・明るさ・名前表示）",
   "source": "S22",
-  "issues": [
-    60
-  ],
+  "issues": [60],
+  "note": "変更は別のマップへ移って戻っても残る（AdvanceMap はメモリ上のヘッダー、ZigzaguMap は編集中の状態）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_Musik",
-      "value": "0111"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_Wetter",
-      "value": 3
-    },
-    {
-      "op": "export"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_Musik",
-        "field:Cbo_Wetter"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "setField", "screen": "main", "field": "Txt_Musik", "value": "0111"},
+    {"op": "compareFields", "fields": ["field:Txt_Musik", "field:Cbo_Musik"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_Musik", "value": 5},
+    {"op": "compareFields", "fields": ["field:Txt_Musik", "field:Cbo_Musik"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_Wetter", "value": 3},
+    {"op": "setField", "screen": "main", "field": "Cbo_Typ", "value": 2},
+    {"op": "setField", "screen": "main", "field": "Cbo_KampfTyp", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Cbo_Hoehle", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Cbo_NameAnzeigen", "value": 1},
+    {"op": "selectMap", "bank": 3, "map": 0, "savePrompt": "はい", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るとき、ZigzaguMap は確認を出さない。AdvanceMap は「変更を保存しますか?」を出すので「はい」（ROM へ保存）で答える（ZigzaguMap は変更を持ったまま切り替える）"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_Musik", "field:Cbo_Musik", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Cbo_Hoehle", "field:Cbo_NameAnzeigen"]},
+    {"op": "export"},
+    {"op": "compareFields", "fields": ["field:Txt_Musik", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Cbo_Hoehle", "field:Cbo_NameAnzeigen"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
   ]
 }

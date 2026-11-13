@@ -1,34 +1,36 @@
 {
   "name": "S54_dummy_data",
-  "title": "ダミーデータ系",
+  "title": "ダミーデータ系とバックアップ",
   "source": "S54",
-  "issues": [
-    103
-  ],
+  "issues": [103],
+  "note": "ZigzaguMap は ROM へ書かないので、ダミーデータへ移す 4 項目は不要の案内（仕様上の違い）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.137",
-        "Menue.1370"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "キャンセル"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.137", "Menue.1370"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "Cancel", "only": "advancemap", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "OK", "only": "zigzagu", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.13", "Menue.137", "Menue.1371"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "Cancel", "only": "advancemap", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "OK", "only": "zigzagu", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "OK", "only": "advancemap", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）（AdvanceMap は取り消しの案内が続く）"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.13", "Menue.137", "Menue.1372"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "Cancel", "only": "advancemap", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "OK", "only": "zigzagu", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.13", "Menue.137", "Menue.1373"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "Cancel", "only": "advancemap", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "answerDialog", "button": "OK", "only": "zigzagu", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.11", "Menue.116"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、この機能は不要です、と案内する（ダミーデータ系・バックアップ・ルーチンの変更）。バックアップの作成は「出力先を指定して出力」に読み替える"},
+    {"op": "answerFile", "path": null, "only": "zigzagu", "expectedDifference": "ZigzaguMap は出力先のフォルダを選ぶ（取り消す）"},
+    {"op": "answerDialog", "button": "OK", "only": "advancemap", "expectedDifference": "AdvanceMap はバックアップを作った案内"}
   ]
 }

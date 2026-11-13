@@ -1,29 +1,20 @@
 {
   "name": "S36_block_count",
-  "title": "ブロックデータとブロック量",
+  "title": "ブロック量の追加/変更",
   "source": "S36",
-  "issues": [
-    78
-  ],
+  "issues": [78],
+  "note": "Cancel で「中止しました」、そのまま OK（現在の数）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["ブロック", "ブロック量の追加/変更"], "zigzagu": "blocks.amount"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "Cancel"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["ブロック", "ブロック量の追加/変更"], "zigzagu": "blocks.amount"},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "expectDialog", "present": true}
   ]
 }

@@ -1,60 +1,37 @@
 {
   "name": "S27_connections_edit",
-  "title": "コネクションの追加・削除・保存",
+  "title": "コネクションの追加・削除・編集・保存",
   "source": "S27",
-  "issues": [
-    66
-  ],
+  "issues": [66],
+  "note": "追加（3 番）→削除で「いいえ」→「はい」。1 番を左・調整 5・1.1 にして保存。保存後もコネクションマネージャーは開いたまま",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.136"
-      ]
-    },
-    {
-      "op": "clickButton",
-      "screen": "マップの移動",
-      "button": "Cmd_AnbHinzufugen"
-    },
-    {
-      "op": "clickButton",
-      "screen": "マップの移動",
-      "button": "Cmd_AnbEntfernen"
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "いいえ"
-    },
-    {
-      "op": "setField",
-      "screen": "マップの移動",
-      "field": "Txt_Verschiebung",
-      "value": 5
-    },
-    {
-      "op": "clickButton",
-      "screen": "マップの移動",
-      "button": "Cmd_AnbSpeichern"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_Verschiebung"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.136"]},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_AnbHinzufugen"},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen"]},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_AnbEntfernen"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "いいえ"},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen"]},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_AnbEntfernen"},
+    {"op": "answerDialog", "button": "はい"},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen"]},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Spin_AnbNr", "value": 1},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Cbo_Richtung", "value": 3},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen"]},
+    {"op": "compareFields", "fields": ["enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"], "expectedDifference": "AdvanceMap の不具合とみなして再現しない（ユーザー判断）: コネクションの方向を変えた直後の矢印ボタンの状態（README「AdvanceMap と違うところ」。ZigzaguMap は下書きの表の方向から決める）"},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Txt_Verschiebung", "value": 5},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Txt_MapBank", "value": 1},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Txt_MapNr", "value": 1},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_AnbSpeichern"},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "selectMap", "bank": 3, "map": 39},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Txt_Verschiebung", "value": "abc"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"}
   ]
 }

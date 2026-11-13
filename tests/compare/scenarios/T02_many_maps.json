@@ -2,209 +2,43 @@
   "name": "T02_many_maps",
   "title": "いろいろなマップの表示（ブロック・移動許可・イベント位置）",
   "source": "S03, S08, S12",
-  "issues": [
-    29,
-    41,
-    45
-  ],
+  "issues": [29, 41, 45],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "snapshot",
-      "name": "map_3_19",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_3_19",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_3_19",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 4
-    },
-    {
-      "op": "snapshot",
-      "name": "map_3_4",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_3_4",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_3_4",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "selectMap",
-      "bank": 1,
-      "map": 0
-    },
-    {
-      "op": "snapshot",
-      "name": "map_1_0",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_1_0",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_1_0",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 50
-    },
-    {
-      "op": "snapshot",
-      "name": "map_3_50",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_3_50",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_3_50",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "selectMap",
-      "bank": 5,
-      "map": 1
-    },
-    {
-      "op": "snapshot",
-      "name": "map_5_1",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_5_1",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_5_1",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "snapshot", "name": "map_3_19", "target": "map"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_3_19", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_3_19", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "selectMap", "bank": 3, "map": 4},
+    {"op": "snapshot", "name": "map_3_4", "target": "map"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_3_4", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_3_4", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "selectMap", "bank": 1, "map": 0},
+    {"op": "snapshot", "name": "map_1_0", "target": "map"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_1_0", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_1_0", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "selectMap", "bank": 3, "map": 50},
+    {"op": "snapshot", "name": "map_3_50", "target": "map", "expectedDifference": "ユーザー判断（#115）: 1×1 のマップ（3.50、3.51）を AdvanceMap が黒く表示するのは AdvanceMap の不具合とみなし再現しない。ZigzaguMap はブロックを描く"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_3_50", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}, "expectedDifference": "ユーザー判断（#115）: 1×1 のマップ（3.50、3.51）を AdvanceMap が黒く表示するのは AdvanceMap の不具合とみなし再現しない。ZigzaguMap はブロックを描く"},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_3_50", "target": "event", "compare": {"mode": "overlayCells"}, "expectedDifference": "ユーザー判断（#115）: 1×1 のマップ（3.50、3.51）を AdvanceMap が黒く表示するのは AdvanceMap の不具合とみなし再現しない。ZigzaguMap はブロックを描く"},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "selectMap", "bank": 5, "map": 1},
+    {"op": "snapshot", "name": "map_5_1", "target": "map"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_5_1", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_5_1", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "selectTab", "tab": "map"}
   ]
 }

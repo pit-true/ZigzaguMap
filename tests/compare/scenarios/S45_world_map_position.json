@@ -1,29 +1,20 @@
 {
   "name": "S45_world_map_position",
-  "title": "ワールドマップの位置と名前",
+  "title": "ワールドマップの位置の選択と名前・座標",
   "source": "S45",
-  "issues": [
-    90,
-    91
-  ],
+  "issues": [90, 91],
+  "note": "ZigzaguMap 単独（S44 と同じ理由）。(8,6) をクリックすると 16ばん どうろ、地名一覧の 5 番でクチバシティ",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.138"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_PosX",
-        "field:Txt_PosY",
-        "field:Txt_Name"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.138"]},
+    {"op": "clickComp", "screen": "TWeltkarteForm", "comp": "WorldmapBox", "x": 100, "y": 84, "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる"},
+    {"op": "compareFields", "fields": ["field:Lbl_PosX", "field:Lbl_PosY", "field:Txt_Wert", "field:Cbo_Wert_NamenListe", "field:Txt_Name", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Offset", "field:Txt_FlugWert"], "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる", "expected": {"field:Lbl_PosX": "8", "field:Lbl_PosY": "6", "field:Txt_Name": "16ばん どうろ", "field:Txt_Wert": "74", "field:Txt_Offset": "$3B5B27", "field:Txt_PosX": "7", "field:Txt_PosY": "6", "field:Txt_FlugWert": "032200", "field:Cbo_Wert_NamenListe": "16ばん どうろ"}},
+    {"op": "setField", "screen": "TWeltkarteForm", "field": "Cbo_Wert_NamenListe", "value": 5, "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる"},
+    {"op": "compareFields", "fields": ["field:Txt_Wert", "field:Txt_Name"], "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる", "expected": {"field:Txt_Wert": "5D", "field:Txt_Name": "クチバシティ"}},
+    {"op": "setField", "screen": "TWeltkarteForm", "field": "Txt_PosX", "value": 5, "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる"},
+    {"op": "clickButton", "screen": "TWeltkarteForm", "button": "Cmd_NameSpeichern", "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる"},
+    {"op": "expectDialog", "present": true, "text": "ワールドマップ", "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる"},
+    {"op": "compareFields", "fields": ["field:Txt_PosX"], "only": "zigzagu", "expectedDifference": "SPEC: 素の BPRJ では AdvanceMap のワールドマップエディターが開けない（エラーが続けて出て窓が出ない）。ZigzaguMap 単独で確かめ、値は AdvanceMap の調査記録（inventory/09_world_map_editor.md、窓を強制表示して読んだ値）と比べる", "expected": {"field:Txt_PosX": "5"}}
   ]
 }

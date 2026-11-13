@@ -1,48 +1,25 @@
 {
   "name": "S25_advanced_header_edit",
-  "title": "高度なヘッダーの編集",
+  "title": "高度なヘッダーの編集と保存",
   "source": "S25",
-  "issues": [
-    64
-  ],
+  "issues": [64],
+  "note": "高度な表示（既定）。Txt_Breite に 2 → フッターが連動し保存が有効 → 保存で幅 2 に。タイルセット番号と境界の欄の連動",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.129"
-      ]
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_MapBreite",
-      "value": 2
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_MapHeader"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.129"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern"]},
+    {"op": "setField", "screen": "main", "field": "Txt_Breite", "value": 2},
+    {"op": "compareFields", "fields": ["field:Fld_Footer", "field:Txt_Breite", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern"]},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_MapDaten_Speichern"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["map.size", "field:Fld_Footer", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern"]},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "map_width_2", "target": "map"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "setField", "screen": "main", "field": "Txt_Tileset1Nr", "value": 1},
+    {"op": "compareFields", "fields": ["field:Txt_Tileset1", "field:Fld_Footer", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern"]},
+    {"op": "setField", "screen": "main", "field": "Txt_Rand", "value": "1C001D0014001500"},
+    {"op": "snapshot", "name": "border_after_rand", "target": "comp", "screen": "main", "comp": "RandBox"}
   ]
 }

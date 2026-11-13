@@ -531,7 +531,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 
 ### シナリオ
 
-`tests/compare/scenarios/*.json` に 1 本ずつ書きます。`name`、`title`、`issues`（関連する issue 番号）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
+`tests/compare/scenarios/*.json` に 1 本ずつ書きます（1 ステップ 1 行）。`name`、`title`、`issues`（関連する issue 番号）、`note`（省略可）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
 
 ```json
 {"op": "selectMap", "bank": 3, "map": 0}

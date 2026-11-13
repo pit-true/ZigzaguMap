@@ -2,37 +2,24 @@
   "name": "S50_palette_width",
   "title": "マップブロックの横幅",
   "source": "S50",
-  "issues": [
-    97
-  ],
+  "issues": [97],
+  "note": "4 → 16 → abc（エラー）→ 8",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.122"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "Cancel"
-    },
-    {
-      "op": "snapshot",
-      "name": "palette",
-      "target": "palette"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.12", "Menue.122"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK", "input": "4"},
+    {"op": "snapshot", "name": "palette_w4", "target": "palette"},
+    {"op": "menu", "key": ["Menue.12", "Menue.122"]},
+    {"op": "answerDialog", "button": "OK", "input": "16"},
+    {"op": "snapshot", "name": "palette_w16", "target": "palette"},
+    {"op": "menu", "key": ["Menue.12", "Menue.122"]},
+    {"op": "answerDialog", "button": "OK", "input": "abc"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.12", "Menue.122"]},
+    {"op": "answerDialog", "button": "OK", "input": "8"},
+    {"op": "snapshot", "name": "palette_w8", "target": "palette"}
   ]
 }

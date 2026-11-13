@@ -1,46 +1,28 @@
 {
   "name": "S09_movement_opacity",
-  "title": "移動許可の透明度",
+  "title": "移動エリアの透明度",
   "source": "S09",
-  "issues": [
-    43
-  ],
+  "issues": [43],
+  "note": "abc と 2 はエラー、0.7 で反映、Cancel では変わらない",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.1217"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "OK"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_opacity",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "menu", "key": ["Menue.12", "Menue.1217"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK", "input": "abc"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.12", "Menue.1217"]},
+    {"op": "answerDialog", "button": "OK", "input": "2"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.12", "Menue.1217"]},
+    {"op": "answerDialog", "button": "OK", "input": "0.7"},
+    {"op": "expectDialog", "present": false},
+    {"op": "snapshot", "name": "movement_opacity_07", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "menu", "key": ["Menue.12", "Menue.1217"]},
+    {"op": "answerDialog", "button": "Cancel"},
+    {"op": "snapshot", "name": "movement_opacity_cancel", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}}
   ]
 }

@@ -1,35 +1,38 @@
 {
   "name": "S32_block_editor_open",
-  "title": "ブロックエディタを開く",
+  "title": "ブロックエディタを開く（4 マップ）",
   "source": "S32",
-  "issues": [
-    73
-  ],
+  "issues": [73],
+  "note": "題名（タイルセット番号入り）、開いた直後の欄、ブロック一覧とタイル一覧の画像",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "dialogs"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten", "field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "snapshot", "name": "blocks_3_0", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "snapshot", "name": "tiles_3_0", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "selectMap", "bank": 4, "map": 1},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten", "field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "snapshot", "name": "blocks_4_1", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "snapshot", "name": "tiles_4_1", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "selectMap", "bank": 1, "map": 1},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten", "field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "snapshot", "name": "blocks_1_1", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "snapshot", "name": "tiles_1_1", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "selectMap", "bank": 3, "map": 37},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten", "field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "snapshot", "name": "blocks_3_37", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "snapshot", "name": "tiles_3_37", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"}
   ]
 }

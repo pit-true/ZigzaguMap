@@ -1,43 +1,15 @@
 {
   "name": "S51_tree_display",
-  "title": "マップの表示設定",
+  "title": "マップの表示設定（INI の表示・マップヘッダー）",
   "source": "S51",
-  "issues": [
-    99
-  ],
+  "issues": [99],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.127",
-        "Menue.1271"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "tree.roots",
-        "tree.count"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.127",
-        "Menue.1270"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "tree.roots",
-        "tree.count"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "menu", "key": ["Menue.12", "Menue.127", "Menue.1271"]},
+    {"op": "compareFields", "fields": ["tree.roots", "tree.count", "tree.first60", "menu.state:Menue.12/Menue.127/Menue.1271", "menu.state:Menue.12/Menue.127/Menue.1270"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.127", "Menue.1270"]},
+    {"op": "compareFields", "fields": ["tree.roots", "tree.count", "tree.first60", "menu.state:Menue.12/Menue.127/Menue.1271", "menu.state:Menue.12/Menue.127/Menue.1270"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.127", "Menue.1270"]},
+    {"op": "compareFields", "fields": ["tree.roots", "tree.count"]}
   ]
 }

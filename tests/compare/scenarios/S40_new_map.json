@@ -2,60 +2,43 @@
   "name": "S40_new_map",
   "title": "新規マップの作成",
   "source": "S40",
-  "issues": [
-    84,
-    87
-  ],
+  "issues": [84, 87],
+  "note": "初期値、タイルセット未選択の「すべて記入してください」、幅 abc、大きすぎ、12x10 で作成して描く、キャンセル",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.11",
-        "Menue.114",
-        "Menue.1140"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "setField",
-      "screen": "新規マップ",
-      "field": "Txt_Name",
-      "value": "TESTMAP"
-    },
-    {
-      "op": "setField",
-      "screen": "新規マップ",
-      "field": "Txt_Breite",
-      "value": 12
-    },
-    {
-      "op": "setField",
-      "screen": "新規マップ",
-      "field": "Txt_Hohe",
-      "value": 10
-    },
-    {
-      "op": "clickButton",
-      "screen": "新規マップ",
-      "button": "Btn_Erstellen"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "title.map",
-        "map.size"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1140"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Txt_Name", "field:Txt_Breite", "field:Txt_Hohe", "field:Cbo_Tileset1", "field:Cbo_Tileset2"]},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Name", "value": "TESTMAP"},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Breite", "value": 12},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Hohe", "value": 10},
+    {"op": "clickButton", "screen": "TMapForm", "button": "Btn_Erstellen"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "TMapForm", "field": "Cbo_Tileset1", "value": 0},
+    {"op": "setField", "screen": "TMapForm", "field": "Cbo_Tileset2", "value": 1},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Breite", "value": "abc"},
+    {"op": "clickButton", "screen": "TMapForm", "button": "Btn_Erstellen"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Breite", "value": 200},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Hohe", "value": 40},
+    {"op": "clickButton", "screen": "TMapForm", "button": "Btn_Erstellen"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Breite", "value": 12},
+    {"op": "setField", "screen": "TMapForm", "field": "Txt_Hohe", "value": 10},
+    {"op": "clickButton", "screen": "TMapForm", "button": "Btn_Erstellen"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["title.map", "map.size"]},
+    {"op": "snapshot", "name": "new_map", "target": "map"},
+    {"op": "selectBlock", "block": 9},
+    {"op": "paintBlock", "x": 3, "y": 3},
+    {"op": "snapshot", "name": "new_map_painted", "target": "map"},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1140"]},
+    {"op": "clickButton", "screen": "TMapForm", "button": "Btn_Abbrechen"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["map.size"]}
   ]
 }

@@ -2,102 +2,22 @@
   "name": "S08_movement_edit",
   "title": "移動許可の編集",
   "source": "S08",
-  "issues": [
-    32,
-    41,
-    42
-  ],
+  "issues": [32, 41, 42],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_before",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "selectMovement",
-      "value": 1
-    },
-    {
-      "op": "dragMovement",
-      "from": [
-        2,
-        6
-      ],
-      "to": [
-        9,
-        9
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "after_drag",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "pickMovement",
-      "x": 5,
-      "y": 3
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "status.left"
-      ]
-    },
-    {
-      "op": "paintMovement",
-      "x": 10,
-      "y": 10
-    },
-    {
-      "op": "snapshot",
-      "name": "after_pick_paint",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    },
-    {
-      "op": "hover",
-      "x": 10,
-      "y": 10,
-      "target": "movement"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "status.left"
-      ]
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "snapshot",
-      "name": "blocks_unchanged",
-      "target": "map"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "snapshot", "name": "movement_before", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "selectMovement", "value": 1},
+    {"op": "dragMovement", "from": [2, 6], "to": [9, 9]},
+    {"op": "snapshot", "name": "after_drag", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "pickMovement", "x": 5, "y": 3},
+    {"op": "compareFields", "fields": ["status.left"]},
+    {"op": "paintMovement", "x": 10, "y": 10},
+    {"op": "snapshot", "name": "after_pick_paint", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}},
+    {"op": "hover", "x": 10, "y": 10, "target": "movement"},
+    {"op": "compareFields", "fields": ["status.left"]},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "blocks_unchanged", "target": "map"}
   ]
 }

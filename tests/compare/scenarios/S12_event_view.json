@@ -2,160 +2,39 @@
   "name": "S12_event_view",
   "title": "イベントの表示と種別ごとの UI",
   "source": "S12",
-  "issues": [
-    45,
-    46,
-    48,
-    54
-  ],
+  "issues": [45, 46, 48, 54],
+  "note": "フライトポジションはイベント番号が無効（常に 0）なので番号を変えない",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_3_0",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 0
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX",
-        "field:Txt_Script"
-      ]
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 1
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX",
-        "field:Txt_Script"
-      ]
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 2
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX",
-        "field:Txt_Script"
-      ]
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 3
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX",
-        "field:Txt_Script"
-      ]
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 4
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX",
-        "field:Txt_Script"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 50
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "snapshot",
-      "name": "event_3_50",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "event_3_0", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:PeopNum", "field:SignNum", "field:WarpNum", "field:ScriptNum"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Spin_Bild", "field:Txt_Unbekannt1", "field:Txt_Unbekannt2", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt3", "field:Cbo_BewTyp", "field:Txt_Bewegung", "field:Txt_Unbekannt4", "field:Chk_Trainer", "field:Txt_Unbekannt5", "field:Txt_Sichtweite", "field:Txt_Script", "field:Txt_NrStatus", "field:Txt_Unbekannt6", "field:Txt_Unbekannt7"]},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 2},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Spin_Bild", "field:Txt_Unbekannt1", "field:Txt_Unbekannt2", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt3", "field:Cbo_BewTyp", "field:Txt_Bewegung", "field:Txt_Unbekannt4", "field:Chk_Trainer", "field:Txt_Unbekannt5", "field:Txt_Sichtweite", "field:Txt_Script", "field:Txt_NrStatus", "field:Txt_Unbekannt6", "field:Txt_Unbekannt7"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Cbo_AnsprechEbene", "field:Cbo_SignpostTyp", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 4},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Cbo_AnsprechEbene", "field:Cbo_SignpostTyp", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 2},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt", "field:Spin_WarpTo", "field:Spin_MapBank", "field:Spin_Map"]},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 2},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt", "field:Spin_WarpTo", "field:Spin_MapBank", "field:Spin_Map"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 3},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt1", "field:Txt_VarNummer", "field:Txt_VarWert", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 2},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt1", "field:Txt_VarNummer", "field:Txt_VarWert", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 4},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt", "field:Spin_MapBank", "field:Spin_Map"]},
+    {"op": "selectMap", "bank": 1, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:PeopNum", "field:SignNum", "field:WarpNum", "field:ScriptNum"]},
+    {"op": "snapshot", "name": "event_1_0", "target": "event", "compare": {"mode": "overlayCells"}}
   ]
 }

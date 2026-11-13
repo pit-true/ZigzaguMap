@@ -2,58 +2,15 @@
   "name": "S13_show_objects",
   "title": "オブジェクトの表示",
   "source": "S13",
-  "issues": [
-    47
-  ],
+  "issues": [47],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.123"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "objects_on",
-      "target": "event",
-      "compare": {
-        "mode": "tolerance",
-        "tolerance": 24
-      }
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "menu.state:Menue.12/Menue.123"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.123"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "objects_off",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "menu", "key": ["Menue.12", "Menue.123"]},
+    {"op": "snapshot", "name": "objects_on", "target": "event", "compare": {"mode": "tolerance", "tolerance": 24}},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.123"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.123"]},
+    {"op": "snapshot", "name": "objects_off", "target": "event", "compare": {"mode": "overlayCells"}}
   ]
 }

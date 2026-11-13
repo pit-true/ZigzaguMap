@@ -1,53 +1,40 @@
 {
   "name": "S24_tileset_change",
-  "title": "タイルセットの変更",
+  "title": "タイルセットの変更（通常表示）",
   "source": "S24",
-  "issues": [
-    62
-  ],
+  "issues": [62],
+  "note": "通常表示の Txt_HeaderTile1/2 と「タイルセットの変更」。合わない組（5・9）、合う組（0・3）、元（0・1）、abc は整数エラー",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_Tileset1Nr",
-      "value": 5
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_Tileset2Nr",
-      "value": 9
-    },
-    {
-      "op": "clickButton",
-      "screen": "main",
-      "button": "Cmd_TilesetDaten_Speichern"
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "snapshot",
-      "name": "tileset_5_9",
-      "target": "map"
-    },
-    {
-      "op": "snapshot",
-      "name": "palette_5_9",
-      "target": "palette"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile1", "value": 5},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile2", "value": 9},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_TilesetAendern"},
+    {"op": "expectDialog", "present": false},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "tileset_5_9", "target": "map", "pending": "要判断 #164: 合わないタイルセットの組（5・9）で、AdvanceMap はブロック表の外のデータもブロックとして描く"},
+    {"op": "snapshot", "name": "palette_5_9", "target": "palette", "pending": "要判断 #164: 合わないタイルセットの組（5・9）で、AdvanceMap はブロック表の外のデータもブロックとして描く"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile1", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile2", "value": 3},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_TilesetAendern"},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "tileset_0_3", "target": "map"},
+    {"op": "snapshot", "name": "palette_0_3", "target": "palette"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_HeaderTile1", "field:Txt_HeaderTile2"]},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile1", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile2", "value": 1},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_TilesetAendern"},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "tileset_0_1", "target": "map"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "setField", "screen": "main", "field": "Txt_HeaderTile1", "value": "abc"},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_TilesetAendern"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
   ]
 }

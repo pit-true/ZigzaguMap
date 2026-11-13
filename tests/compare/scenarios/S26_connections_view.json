@@ -1,45 +1,24 @@
 {
   "name": "S26_connections_view",
-  "title": "コネクションマネージャー",
+  "title": "コネクションマネージャーの表示と矢印での移動",
   "source": "S26",
-  "issues": [
-    65,
-    67
-  ],
+  "issues": [65, 67],
+  "note": "3.0（上 3.19・下 3.39）。番号 2 へ切り替え、▼ で 3.39、▲ で戻る。開いたまま一覧から 3.19 を開くと 3.19 のコネクションになる",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.136"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "setField",
-      "screen": "マップの移動",
-      "field": "Spin_AnbNr",
-      "value": 1
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_MapBank",
-        "field:Txt_MapNr",
-        "field:Cbo_Richtung",
-        "field:Txt_Verschiebung"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.136"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "setField", "screen": "TAnbindungenForm", "field": "Spin_AnbNr", "value": 2},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_Unten1"},
+    {"op": "compareFields", "fields": ["title.map", "status.left", "field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "clickButton", "screen": "TAnbindungenForm", "button": "Cmd_Oben1"},
+    {"op": "compareFields", "fields": ["title.map", "field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "compareFields", "fields": ["field:Spin_AnbNr", "field:Cbo_Richtung", "field:Txt_Verschiebung", "field:Txt_MapBank", "field:Txt_MapNr", "field:Txt_Nullen", "enabled:Cmd_Oben1", "enabled:Cmd_Unten1", "enabled:Cmd_Links1", "enabled:Cmd_Rechts1", "enabled:Cmd_Oben2", "enabled:Cmd_Unten2", "enabled:Cmd_Auf", "enabled:Cmd_Ab"]},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "expectDialog", "present": false}
   ]
 }
