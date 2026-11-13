@@ -3,10 +3,33 @@
 
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::automation::Automation;
+use crate::offscreen;
+use crate::profile::Profile;
 use crate::{StartupArgs, AUTOMATION_BROWSER_ARGS};
+
+/// メインと道具のウィンドウに共通の設定（WebView2 のデータの置き場所と追加の引数、自動操作なら画面外で作る準備）。
+/// WebView2 は同じユーザーデータのフォルダを使うウィンドウどうしで同じ引数でないと作れないので、ここにまとめる。
+/// 自動操作のときは見えない状態で作り、作ったあと `offscreen::park_and_show` で画面外に出す。
+pub(crate) fn prepare<'a, R: Runtime, M: Manager<R>>(
+    mut builder: WebviewWindowBuilder<'a, R, M>,
+    args: &StartupArgs,
+    profile: &Profile,
+) -> WebviewWindowBuilder<'a, R, M> {
+    if let Some(dir) = profile.webview_dir() {
+        builder = builder.data_directory(dir);
+    }
+    if args.offscreen() {
+        builder = builder
+            .visible(false)
+            .focused(false)
+            .skip_taskbar(true)
+            .additional_browser_args(AUTOMATION_BROWSER_ARGS);
+    }
+    builder
+}
 
 /// 道具のウィンドウを開く。同じラベルのウィンドウがあれば前に出すだけ。
 /// メインウィンドウを親にする（メインより手前に出て、メインを閉じると一緒に閉じる）。大きさは固定。
@@ -16,21 +39,26 @@ use crate::{StartupArgs, AUTOMATION_BROWSER_ARGS};
 pub async fn open_tool_window(
     app: AppHandle,
     args: State<'_, StartupArgs>,
+    profile: State<'_, Profile>,
     label: String,
     title: String,
     width: f64,
     height: f64,
 ) -> Result<(), String> {
-    let automation = args.automation.is_some();
+    let offscreen = args.offscreen();
     if let Some(window) = app.get_webview_window(&label) {
-        let _ = window.show();
-        if !automation {
-            let _ = window.set_focus();
+        if offscreen {
+            offscreen::park_and_show(&window);
+        } else {
+            let _ = window.show();
+            if args.automation.is_none() {
+                let _ = window.set_focus();
+            }
         }
         return Ok(());
     }
     let main = app.get_webview_window("main").ok_or("メインウィンドウがありません")?;
-    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
+    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
         .title(title)
         .inner_size(width, height)
         .resizable(false)
@@ -38,19 +66,14 @@ pub async fn open_tool_window(
         .minimizable(false)
         .parent(&main)
         .map_err(|e| e.to_string())?;
-    if automation && !cfg!(debug_assertions) {
-        builder = builder
-            .position(-12000.0, -12000.0)
-            .focused(false)
-            .additional_browser_args(AUTOMATION_BROWSER_ARGS);
+    let builder = prepare(builder, &args, &profile);
+    let window = if offscreen {
+        let window = builder.build().map_err(|e| e.to_string())?;
+        offscreen::park_and_show(&window);
+        window
     } else {
-        builder = builder.center();
-    }
-    let window = builder.build().map_err(|e| e.to_string())?;
-    if automation && !cfg!(debug_assertions) {
-        // 作るときの位置が画面外だと既定の位置（画面の中）に置かれることがあるので、作ったあとにもう一度画面外へ出す。
-        let _ = window.set_position(tauri::PhysicalPosition::new(-12000, -12000));
-    }
+        builder.center().build().map_err(|e| e.to_string())?
+    };
     // 閉じたら自動操作の受け付けを外し（開き直したときに画面の準備を待つため）、メインへ知らせる。
     let state = app.state::<Arc<Automation>>().inner().clone();
     let handle = app.clone();

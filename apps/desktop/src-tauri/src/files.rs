@@ -2,6 +2,8 @@
 
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager, WebviewWindow};
+
+use crate::profile::Profile;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
 
 use crate::project_fs::display_path;
@@ -84,11 +86,11 @@ pub fn is_dir(path: String) -> bool {
     std::path::Path::new(&path).is_dir()
 }
 
-/// 個人設定を読む。無ければ空文字。
+/// 個人設定を読む。無ければ空文字。置き場所はプロファイルで決まる（`--profile`、自動操作なら一時フォルダ）。
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> String {
-    app.path()
-        .app_data_dir()
+    app.state::<Profile>()
+        .settings_dir(&app)
         .ok()
         .and_then(|dir| std::fs::read_to_string(dir.join(SETTINGS_FILE)).ok())
         .unwrap_or_default()
@@ -97,7 +99,7 @@ pub fn load_settings(app: AppHandle) -> String {
 /// 個人設定を書く。
 #[tauri::command]
 pub fn save_settings(app: AppHandle, text: String) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = app.state::<Profile>().settings_dir(&app)?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let tmp = dir.join("settings.json.tmp");
     std::fs::write(&tmp, text.as_bytes()).map_err(|e| e.to_string())?;
