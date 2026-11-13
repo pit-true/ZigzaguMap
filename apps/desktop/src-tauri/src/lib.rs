@@ -3,8 +3,10 @@
 mod automation;
 mod capture;
 mod files;
+mod pick;
 mod project_fs;
 mod system;
+mod tool_windows;
 
 use std::sync::Arc;
 
@@ -23,11 +25,11 @@ const DEV_AUTOMATION_PORT: u16 = 17890;
 #[serde(rename_all = "camelCase")]
 pub struct StartupArgs {
     /// 起動時に開く ROM。
-    rom: Option<String>,
+    pub(crate) rom: Option<String>,
     /// 起動時に開くプロジェクトフォルダ（ROM と組で使う）。
-    project: Option<String>,
+    pub(crate) project: Option<String>,
     /// 自動操作のポート。
-    automation: Option<u16>,
+    pub(crate) automation: Option<u16>,
 }
 
 impl StartupArgs {
@@ -57,7 +59,7 @@ fn startup_args(args: State<'_, StartupArgs>) -> StartupArgs {
 }
 
 /// 自動操作で起動したときの WebView2 の引数（画面外・非アクティブでも描画を止めない）。
-const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
+pub(crate) const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
      --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,6 +91,13 @@ pub fn run() {
                 builder = builder.visible(false);
             }
             let window = builder.build()?;
+            // メインを閉じたら、別ウィンドウ（ブロックエディタなど）が残っていても終了する。
+            let handle = app.handle().clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::Destroyed = event {
+                    handle.exit(0);
+                }
+            });
             if let Some(p) = placement {
                 files::apply_window_placement(&window, &p);
                 let _ = window.show();
@@ -125,6 +134,10 @@ pub fn run() {
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
+            tool_windows::open_tool_window,
+            tool_windows::close_tool_window,
+            pick::cursor_color,
+            pick::window_pixel,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");

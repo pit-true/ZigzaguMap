@@ -1,7 +1,7 @@
 //! 自動操作の入口（テスト用）。開発ビルドか `--automation <ポート>` を付けたときだけ、
 //! 127.0.0.1 で HTTP の POST（本文は JSON）を受け付ける。通常の起動では待ち受けない。
 //!
-//! - `{"cmd":"screenshot"}` と `{"cmd":"exit"}` は Rust 側で処理する。
+//! - `{"cmd":"screenshot"}`（`window` で別ウィンドウも指定できる）、`{"cmd":"windows"}`、`{"cmd":"exit"}` は Rust 側で処理する。
 //! - それ以外は画面（TypeScript）へ `automation-request` で渡し、`automation_reply` の返事を返す。
 
 use std::collections::HashMap;
@@ -88,12 +88,14 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
     let cmd = request.get("cmd").and_then(Value::as_str).unwrap_or("");
     match cmd {
         "screenshot" => {
-            let reply = match screenshot(app) {
+            let label = request.get("window").and_then(Value::as_str).unwrap_or("main");
+            let reply = match screenshot(app, label) {
                 Ok(v) => json!({"ok": true, "result": v}),
                 Err(e) => json!({"ok": false, "error": e}),
             };
             respond(&mut stream, &reply.to_string())
         }
+        "windows" => respond(&mut stream, &json!({"ok": true, "result": windows(app)}).to_string()),
         "exit" => {
             respond(&mut stream, &json!({"ok": true}).to_string())?;
             app.exit(0);
@@ -120,8 +122,30 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
     }
 }
 
-fn screenshot(app: &AppHandle) -> Result<Value, String> {
-    let window = app.get_webview_window("main").ok_or("ウィンドウがありません")?;
+/// 開いているウィンドウの一覧（ラベル、題名、位置、大きさ、表示中か）。
+fn windows(app: &AppHandle) -> Value {
+    let mut list: Vec<Value> = app
+        .webview_windows()
+        .into_iter()
+        .map(|(label, w)| {
+            let pos = w.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
+            let size = w.inner_size().map(|s| (s.width, s.height)).unwrap_or((0, 0));
+            json!({
+                "label": label,
+                "title": w.title().unwrap_or_default(),
+                "x": pos.0, "y": pos.1,
+                "width": size.0, "height": size.1,
+                "visible": w.is_visible().unwrap_or(false),
+                "focused": w.is_focused().unwrap_or(false),
+            })
+        })
+        .collect();
+    list.sort_by(|a, b| a["label"].as_str().cmp(&b["label"].as_str()));
+    Value::Array(list)
+}
+
+fn screenshot(app: &AppHandle, label: &str) -> Result<Value, String> {
+    let window = app.get_webview_window(label).ok_or("ウィンドウがありません")?;
     #[cfg(windows)]
     let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
     #[cfg(not(windows))]
