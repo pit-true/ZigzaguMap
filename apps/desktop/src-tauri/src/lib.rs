@@ -108,6 +108,7 @@ pub fn run() {
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
+            automation::automation_capture,
             script_editor::launch_script_editor,
         ])
         .run(tauri::generate_context!())
