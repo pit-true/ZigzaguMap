@@ -1,0 +1,124 @@
+/* ワールドマップエディター（AdvanceMap の TWeltkarteForm と同じ座標に部品を置く）。 */
+#app.wm-form {
+  display: block;
+  position: relative;
+  width: 683px;
+  height: 361px;
+  background: var(--face);
+}
+
+.wm-form .wm-box,
+.wm-form .wm-group,
+.wm-form .wm-label,
+.wm-form .wm-edit,
+.wm-form .wm-button,
+.wm-form .wm-check,
+.wm-form .wm-combo,
+.wm-form .wm-worldmap {
+  position: absolute;
+}
+
+.wm-worldmap {
+  width: 240px;
+  height: 160px;
+  background: #000;
+  cursor: grab;
+  image-rendering: pixelated;
+}
+
+.wm-group::before {
+  content: "";
+  position: absolute;
+  inset: 6px 0 0 0;
+  border: 1px solid #dcdcdc;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.wm-legend {
+  position: absolute;
+  left: 7px;
+  top: 0;
+  padding: 0 2px;
+  background: var(--face);
+  line-height: 13px;
+}
+
+.wm-label {
+  line-height: 13px;
+  white-space: nowrap;
+}
+
+.wm-heading {
+  font-weight: bold;
+}
+
+.wm-link {
+  color: #0000ff;
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+.wm-edit {
+  height: 19px;
+  padding: 0 3px;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+  color: var(--text);
+  outline: none;
+}
+
+.wm-edit:focus {
+  border-color: var(--select);
+}
+
+.wm-edit:disabled,
+.wm-edit[readonly] {
+  background: var(--face);
+  color: var(--gray-text);
+}
+
+.wm-edit[readonly] {
+  color: var(--text);
+}
+
+.wm-combo {
+  height: 21px;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+}
+
+.wm-button {
+  height: 25px;
+  border: 1px solid #adadad;
+  background: #e1e1e1;
+  color: var(--text);
+  padding: 0;
+}
+
+.wm-button:hover:not(:disabled) {
+  background: #e5f1fb;
+  border-color: #0078d7;
+}
+
+.wm-button:active:not(:disabled) {
+  background: #cce4f7;
+  border-color: #005499;
+}
+
+.wm-button:disabled {
+  color: #a0a0a0;
+  background: #f4f4f4;
+  border-color: #d0d0d0;
+}
+
+.wm-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 17px;
+}
+
+.wm-check input {
+  margin: 0;
+}

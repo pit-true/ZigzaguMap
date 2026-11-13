@@ -1,0 +1,14 @@
+import { WORLD_MAP_WINDOW } from "./protocol";
+
+/**
+ * 道具のウィンドウ（メイン以外）の中身を組み立てる入口。main.ts がウィンドウのラベルで呼び分ける。
+ * いまはワールドマップエディターだけ。
+ */
+export async function startToolWindow(label: string, root: HTMLElement): Promise<void> {
+  if (label === WORLD_MAP_WINDOW) {
+    const { WorldMapWindow } = await import("./WorldMapWindow");
+    await new WorldMapWindow(root).start();
+    return;
+  }
+  root.textContent = `知らないウィンドウです: ${label}`;
+}
