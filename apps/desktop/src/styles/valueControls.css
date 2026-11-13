@@ -1,0 +1,109 @@
+/* 入力部品（ui/form/valueControls.ts）。AdvanceMap の部品の大きさ（高さ 19、ボタン 25）に合わせる。 */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 24px;
+  white-space: nowrap;
+}
+
+.form-label {
+  flex: none;
+  overflow: hidden;
+}
+
+.form-caption {
+  min-height: 16px;
+  align-items: flex-end;
+}
+
+.hex-input,
+.spin-edit input {
+  height: 19px;
+  padding: 0 2px;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+
+.hex-input:disabled,
+.spin-edit.disabled input {
+  background: var(--face);
+  color: var(--gray-text);
+  border-color: #c0c0c0;
+}
+
+.spin-edit {
+  display: inline-flex;
+  height: 19px;
+  flex: none;
+}
+
+.spin-edit input {
+  flex: 1;
+  width: 0;
+}
+
+.spin-edit input[readonly] {
+  background: var(--window);
+}
+
+.spin-arrows {
+  display: flex;
+  flex-direction: column;
+  width: 15px;
+  flex: none;
+}
+
+.spin-arrows button {
+  flex: 1;
+  height: 50%;
+  padding: 0;
+  margin: 0;
+  font-size: 6px;
+  line-height: 6px;
+  border: 1px solid #adadad;
+  background: #e1e1e1;
+  color: #000;
+}
+
+.spin-arrows button:disabled {
+  color: #a0a0a0;
+}
+
+select.combo {
+  height: 21px;
+  flex: none;
+}
+
+.check-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.check-box input {
+  margin: 0;
+  width: 13px;
+  height: 13px;
+}
+
+.push-button {
+  height: 25px;
+  border: 1px solid #adadad;
+  background: #e1e1e1;
+  border-radius: 0;
+}
+
+.push-button:hover:not(:disabled) {
+  background: var(--hot);
+  border-color: #0078d7;
+}
+
+.push-button:disabled {
+  color: #a0a0a0;
+  background: #f0f0f0;
+  border-color: #dcdcdc;
+}

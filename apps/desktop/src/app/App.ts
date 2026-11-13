@@ -16,7 +16,7 @@ import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
-import { EventTab } from "../ui/tabs/EventTab";
+import { EventTab } from "../ui/event/EventTab";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
 import { WildTab } from "../ui/wild/WildTab";
@@ -99,7 +99,7 @@ export class App implements ActionTarget {
     this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
     const movementTab = new MovementTab(state);
-    const eventTab = new EventTab(state);
+    const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
       [

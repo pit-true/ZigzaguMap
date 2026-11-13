@@ -2,6 +2,7 @@ import { requireSupportedGame, type GameInfo } from "../game/GameInfo.js";
 import type { GameOffsets } from "../game/offsets.js";
 import { GridStore } from "../command/GridStore.js";
 import { DocumentStore, mapKey, tilesetKey } from "../command/DocumentStore.js";
+import { FlyTable, cloneFlyPositions } from "../fly/FlyTable.js";
 import type { DocumentContext } from "../command/DocumentContext.js";
 import { TilesetTable } from "../map/TilesetTable.js";
 import { TILESET_HEADER_SIZE } from "../map/constants.js";
@@ -70,6 +71,8 @@ export class CfruProject {
   readonly base: RomMapSource;
   /** ベース ROM のタイルセット表（AdvanceMap のタイルセット番号）。 */
   readonly tilesetTable: TilesetTable;
+  /** ベース ROM のフライトポジションの表（読めなければ null）。編集中の値は editorContext().flyPositions。 */
+  readonly flyTable: FlyTable | null;
   private manifestValue: ProjectManifest | null;
   private readonly jsonMaps: Set<string>;
   private readonly tilesetSources: Map<string, TilesetEntry>;
@@ -107,6 +110,8 @@ export class CfruProject {
       baseBankCounts: () => this.existingBankCounts(),
       tilesetExists: (pointer) => this.tilesetExists(pointer),
     });
+    this.flyTable = readFlyTable(rom, this.game.offsets);
+    if (this.flyTable) this.store.flyPositions.push(...cloneFlyPositions(this.flyTable.entries));
   }
 
   /** ベース ROM のバイト列とプロジェクトフォルダを開く。対応していない ROM や不正な project.json なら例外。 */
@@ -428,4 +433,13 @@ function compareKeys(a: string, b: string): number {
   const x = parseKey(a);
   const y = parseKey(b);
   return x.bank - y.bank || x.map - y.map;
+}
+
+/** フライトポジションの表を読む（表が壊れていても、マップの編集は続けられるよう null にする）。 */
+function readFlyTable(rom: Rom, offsets: GameOffsets): FlyTable | null {
+  try {
+    return FlyTable.read(rom, offsets);
+  } catch {
+    return null;
+  }
 }
