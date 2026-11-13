@@ -494,6 +494,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 
 - AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
+- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。スクリプトエディタは両方とも `scriptEditorStub`（区切りは空白）にします。
 
 ### 準備
 
@@ -538,6 +539,10 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 {"op": "snapshot", "name": "after_drag", "target": "map"}
 {"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
 ```
+
+- 別の窓の部品は `screen` に AdvanceMap のフォームのクラス名（`TBlockEditorForm`・`TPalettenForm`・`TBlockdatenAnpassenForm`・`TWeltkarteForm`・`TAnbindungenForm`・`TMapForm`・`TMapEinfuegenForm`・`TMapBankHeaderForm`・`TCreateWildePokemonForm`）で書きます。AdvanceMap では窓をクラス名で探し、ZigzaguMap では別ウィンドウかメインの中のダイアログへ送ります（`lib/screens.py`）。
+- 欄は `field:<部品名>`（値）と `enabled:<部品名>`（押せる・入力できるか）。AdvanceMap に同じ名前の部品が複数あるとき（イベントの各フレームの `Txt_PosX`、野生と場所の設定の `Cbo_Typ` など）は、表示中のもの、その中でフォームが直接持つものを使います。表示していないタブのページの部品は、そのページへ切り替えて読み書きし、元のページへ戻します。
+- コンボの選択は位置（番号）で書きます。入力ダイアログは `answerDialog` の `input`、× は `button: "close"`、ファイルを選ぶダイアログは `answerFile`（結果フォルダの中の名前。`null` で取り消し）。別の窓のメニューは `menu` に `screen` と AdvanceMap の文言の `path`、ZigzaguMap のアクション ID の `zigzagu` を書きます。部品の中のクリックは `clickComp`、部品の画像は `snapshot` の `target: "comp"`、両アプリが書いた画像ファイルは `compareFile` で比べます。
 
 操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap のクリックやドラッグは自動操作の入口の `mouse`（画面と同じ処理を通る）、入力欄とボタンは `setField` / `click` の `field:<AdvanceMap の部品名>`、ダイアログは `dialogs` / `dialog` で行います。
 
