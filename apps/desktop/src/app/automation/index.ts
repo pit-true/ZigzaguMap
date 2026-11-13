@@ -11,6 +11,7 @@ import { mouseCommands } from "./mouse";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
+import { viewCommands } from "./view";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -30,6 +31,7 @@ const registry = new CommandRegistry([
   imageCommands,
   statusCommands,
   eventCommands,
+  viewCommands,
   { commands: () => registry.names() },
 ]);
 

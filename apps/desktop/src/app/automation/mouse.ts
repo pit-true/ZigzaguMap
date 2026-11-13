@@ -24,7 +24,7 @@ interface Target {
   readonly cell: { readonly w: number; readonly h: number };
 }
 
-const SELECTORS: Readonly<Record<string, string>> = {
+export const MOUSE_TARGETS: Readonly<Record<string, string>> = {
   map: ".map-tab-view .map-stage",
   movement: ".movement-tab-view .map-stage",
   event: ".event-tab-view .map-stage",
@@ -37,8 +37,8 @@ const SELECTORS: Readonly<Record<string, string>> = {
 function resolveTarget(app: App, req: AutomationRequest): Target {
   if (typeof req["id"] === "string") return { element: findField(req["id"]), cell: { w: 1, h: 1 } };
   const name = str(req, "target");
-  const selector = SELECTORS[name];
-  if (!selector) throw new Error(`target は ${Object.keys(SELECTORS).join(" / ")} のどれかです: ${name}`);
+  const selector = MOUSE_TARGETS[name];
+  if (!selector) throw new Error(`target は ${Object.keys(MOUSE_TARGETS).join(" / ")} のどれかです: ${name}`);
   const element = document.querySelector<HTMLElement>(selector);
   if (!element) throw new Error(`部品が見つかりません: ${name}`);
   const s = app.state.settings.data;

@@ -194,7 +194,7 @@ export class App implements ActionTarget {
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
-      if (p.type === "drop" && p.paths.length > 0) void this.openDropped(p.paths[0]!);
+      if (p.type === "drop") void this.drop(p.paths);
     });
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
@@ -234,7 +234,10 @@ export class App implements ActionTarget {
     if (rom) await this.openSession(rom, folder);
   }
 
-  private async openDropped(path: string): Promise<void> {
+  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダならプロジェクト、.gba なら ROM。 */
+  async drop(paths: readonly string[]): Promise<void> {
+    const path = paths[0];
+    if (path === undefined) return;
     if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
     else if (path.toLowerCase().endsWith(".gba")) await this.openSession(path, null);
     else this.state.setStatus(ja.unsupportedFile, undefined, true);
@@ -513,6 +516,11 @@ export class App implements ActionTarget {
   }
 
   // ---- 設定 ----
+
+  /** 左の欄の幅を変える（分割バーを動かしたときと同じ。決まった幅を返す）。 */
+  setLeftWidth(width: number): number {
+    return this.splitter.setWidth(width);
+  }
 
   setSort(mode: number): void {
     this.state.settings.update({ sortMode: mode });

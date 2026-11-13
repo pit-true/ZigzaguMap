@@ -7,6 +7,7 @@ import type { FileDialogs } from "../app/FileDialogs";
 import type { ToolClient } from "./ToolClient";
 import { errorText } from "../util/errors";
 import { num, settle, str } from "../app/automation/registry";
+import { describeScroll, scrollBy, scrollContainerOf } from "../app/automation/scroll";
 
 /** 別ウィンドウが自動操作に見せるもの。 */
 export interface ToolAutomationTarget {
@@ -127,6 +128,11 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
     case "snapshot":
       // メインから届いている写し（出力を読み直した結果と比べる用）。
       return { snapshot: client.snapshot, ui: client.ui };
+    case "scroll":
+      // ブロック一覧などのスクロール（スクロールバーを動かしたときと同じ）。`id` の部品の枠を動かす
+      return scrollBy(scrollContainerOf(findField(str(req, "id"))), req);
+    case "view.scroll":
+      return describeScroll(scrollContainerOf(findField(str(req, "id"))));
     case "close":
       // 返事を送ってから閉じる。
       setTimeout(() => void getCurrentWindow().close(), 300);

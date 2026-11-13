@@ -118,6 +118,10 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
       await settle(WORLD_MAP_SETTLE_MS);
       return null;
     }
+    case "close":
+      // × を押したときと同じく閉じる（返事を送ってから）。
+      setTimeout(() => void getCurrentWebviewWindow().close(), 300);
+      return null;
     case "dialogs":
       // 開いているダイアログ（メインの `dialogs` と同じ形）
       return { dialogs: openDialogs.map((d) => ({ kind: "app", title: d.title, text: d.text, buttons: d.buttons })) };
