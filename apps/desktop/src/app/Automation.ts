@@ -218,7 +218,14 @@ function describe(app: App): unknown {
     profile: app.profileDir,
     title: document.title,
     timings: timings.toJson(),
+    jsHeap: jsHeap(),
   };
+}
+
+/** JavaScript のヒープの使用量（MB。WebView2 の performance.memory。メモリの計測用）。 */
+function jsHeap(): { used: number; total: number } | null {
+  const m = (performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
+  return m ? { used: Math.round(m.usedJSHeapSize / 10485.76) / 100, total: Math.round(m.totalJSHeapSize / 10485.76) / 100 } : null;
 }
 
 function requireSession(app: App): NonNullable<App["state"]["session"]> {
