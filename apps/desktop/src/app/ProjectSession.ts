@@ -40,7 +40,7 @@ export class ProjectSession {
     /** 開くのにかかった時間（ミリ秒）。 */
     readonly loadMs: number,
   ) {
-    this.bus = new CommandBus(project.gridStore());
+    this.bus = new CommandBus(project.editorContext());
   }
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
