@@ -11,6 +11,7 @@ import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
+import type { ConnectionManager } from "../ui/connection/ConnectionManager";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { EventTab } from "../ui/tabs/EventTab";
 import { MapTab } from "../ui/tabs/MapTab";
@@ -53,6 +54,7 @@ export class App implements ActionTarget {
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
   private closing = false;
+  private connections: ConnectionManager | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -263,6 +265,15 @@ export class App implements ActionTarget {
 
   async openPreviousMap(): Promise<void> {
     if (this.state.previousMap) await this.openMap(this.state.previousMap);
+  }
+
+  /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */
+  async openConnections(): Promise<void> {
+    if (!this.connections) {
+      const { ConnectionManager } = await import("../ui/connection/ConnectionManager");
+      this.connections = new ConnectionManager(this.state, (id) => this.openMap(id));
+    }
+    this.connections.show();
   }
 
   // ---- 編集 ----

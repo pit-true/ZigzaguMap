@@ -18,6 +18,7 @@ export interface ActionTarget {
   askPaletteWidth(): Promise<void>;
   askOpacity(): Promise<void>;
   askRecentMax(): Promise<void>;
+  openConnections(): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
@@ -75,6 +76,7 @@ export class Actions {
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("tools.connections", () => target.openConnections());
   }
 
   /** 実装済みか。 */
