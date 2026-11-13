@@ -10,7 +10,8 @@ const BLOCK_RGBA_BYTES = BLOCK_PIXELS * BLOCK_PIXELS * 4;
 /**
  * 主・副タイルセットの組から、ブロック（16×16）を RGBA に描くクラス。
  * 描いたブロックはキャッシュする。AdvanceMap と同じく、下層は色 0 もそのタイルのパレットの色 0 で塗り、
- * 上層だけ色 0 を透明にして重ねる。
+ * 上層は「そのパレットの色 0 と同じ色」の画素を透明にして重ねる（AdvanceMap は色番号ではなく色で抜くため、
+ * 色 0 と同じ色を持つ色番号も透けて見える）。
  */
 export class BlockRenderer {
   /** 16 本 × 16 色の RGBA パレット（0〜6 は主、7〜15 は副から取る）。 */
@@ -68,7 +69,7 @@ export class BlockRenderer {
 
   /**
    * タイル指定（番号 10 ビット、左右反転、上下反転、パレット 4 ビット）を 1 枚描く。
-   * `opaque` なら色 0 もそのパレットの色 0 で塗る（下層）。
+   * `opaque` なら色 0 もそのパレットの色 0 で塗る（下層）。そうでなければ色 0 と同じ色の画素を抜く（上層）。
    */
   private drawTile(out: Uint8ClampedArray, entry: number, ox: number, oy: number, opaque: boolean): void {
     const tile = entry & 0x3ff;
@@ -84,7 +85,7 @@ export class BlockRenderer {
       for (let px = 0; px < 8; px++) {
         const byte = tiles[start + py * 4 + (px >> 1)]!;
         const index = px & 1 ? byte >> 4 : byte & 0xf;
-        if (index === 0 && !opaque) continue;
+        if (!opaque && (index === 0 || this.sameAsColor0(pal, index))) continue;
         const dx = ox + (hflip ? 7 - px : px);
         const dy = oy + (vflip ? 7 - py : py);
         const p = (pal * 16 + index) * 4;
@@ -95,5 +96,13 @@ export class BlockRenderer {
         out[o + 3] = 255;
       }
     }
+  }
+
+  /** パレット `pal` の色 `index` が、そのパレットの色 0 と同じ色か。 */
+  private sameAsColor0(pal: number, index: number): boolean {
+    const a = (pal * 16 + index) * 4;
+    const z = pal * 16 * 4;
+    const c = this.paletteRgba;
+    return c[a] === c[z] && c[a + 1] === c[z + 1] && c[a + 2] === c[z + 2];
   }
 }
