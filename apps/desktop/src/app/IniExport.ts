@@ -51,7 +51,7 @@ class IniWriter {
   }
 }
 
-/** 1 行ずつ CRLF を付ける。AdvanceMap と同じく、全角の空白は半角に、中黒（0xAF）は半角の「･」にする。 */
+/** 1 行ずつ CRLF を付ける（名前の空白と中黒は、一覧の項目を作るときに AdvanceMap と同じ半角にしてある）。 */
 function lines(list: readonly string[]): string {
-  return list.map((l) => `${l.replace(/　/g, " ").replace(/・/g, "･")}\r\n`).join("");
+  return list.map((l) => `${l}\r\n`).join("");
 }

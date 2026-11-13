@@ -73,7 +73,7 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
       const byRegion = new Map<number, MapInfo[]>();
       for (const m of maps) push(byRegion, m.region, m);
       const out = catalog.regionNames.map(([region, name]) =>
-        group(`h/r${region}`, name, byRegion.get(region) ?? [], (m) => (withSuffix ? suffixOf(m) : "")),
+        group(`h/r${region}`, listText(name), byRegion.get(region) ?? [], (m) => (withSuffix ? suffixOf(m) : "")),
       );
       // 名前表の範囲外の地名番号のマップは最後にまとめる。
       const known = new Set(catalog.regionNames.map(([r]) => r));
@@ -129,7 +129,7 @@ function group(key: string, label: string, list: readonly MapInfo[], suffix: (m:
     label,
     children: sorted.map((m) => ({
       key: `${key}/${m.id.bank}.${m.id.map}`,
-      label: ja.mapItem(m.name ?? ja.noName, suffix(m), m.id.bank, m.id.map),
+      label: ja.mapItem(m.name === null ? ja.noName : listText(m.name), suffix(m), m.id.bank, m.id.map),
       mapId: m.id,
     })),
   };
@@ -138,6 +138,14 @@ function group(key: string, label: string, list: readonly MapInfo[], suffix: (m:
 /** 「マップとタイルセットで並び替え」の補足（建物/施設、ジム など。通常のマップは無し）。 */
 function suffixOf(m: MapInfo): string {
   return tilesetSuffixOf(m.secondaryNumber);
+}
+
+/**
+ * 一覧（と題名）に出すマップ名。AdvanceMap は名前表の空白を半角の空白、中黒を半角の「･」で出すので合わせる
+ * （「19ばん すいどう」「サント･アンヌごう」）。
+ */
+export function listText(name: string): string {
+  return name.replace(/　/g, " ").replace(/・/g, "･");
 }
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
