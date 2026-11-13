@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   BvdFile,
   DataError,
+  EditError,
+  colorFromBgr555,
+  colorFromChannels,
+  colorFromRgb8,
   decodeTileImage,
   encodeIndexedPng,
   encodeTilesDib,
+  formatColorHex,
+  parseColorHex,
   tilesToPixels,
 } from "../src/index.js";
 
@@ -102,5 +108,36 @@ describe("タイルセットの画像（DIB と PNG）", () => {
     const png = encodeIndexedPng({ width: 4, height: 8, pixels: new Uint8Array(32), palette: new Uint8Array(48) }, 4);
     expect(() => decodeTileImage(png, COLORS)).toThrow(DataError);
     expect(() => decodeTileImage(new Uint8Array(100), COLORS)).toThrow(DataError);
+  });
+});
+
+describe("パレットエディタの色", () => {
+  it("15 ビットの値と赤・緑・青（AdvanceMap の例: 47F7 → 23/31/17）", () => {
+    expect(colorFromBgr555(0x47f7)).toEqual({ red: 23, green: 31, blue: 17, value: 0x47f7 });
+    expect(colorFromChannels(31, 10, 5).value).toBe(0x155f);
+    expect(formatColorHex(0x155f)).toBe("155F");
+    expect(formatColorHex(0x1f)).toBe("001F");
+  });
+
+  it("15bit to RGB: 16 進として読み、最上位ビットは無視、16 進でなければ '$ZZZZ' の整数エラー", () => {
+    expect(parseColorHex("7FFF")).toEqual({ red: 31, green: 31, blue: 31, value: 0x7fff });
+    expect(parseColorHex("8000").value).toBe(0);
+    expect(parseColorHex("001f").red).toBe(31);
+    try {
+      parseColorHex("ZZZZ");
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(EditError);
+      expect((e as EditError).params["text"]).toBe("$ZZZZ");
+    }
+  });
+
+  it("スポイト: 拾った画面の色（8 ビット）を 15 ビットにしてスライダーの値にする", () => {
+    // 画面の (255, 128, 7) → 赤 31、緑 16、青 0。
+    const picked = colorFromRgb8(255, 128, 7);
+    expect([picked.red, picked.green, picked.blue]).toEqual([31, 16, 0]);
+    expect(picked.value).toBe(0x021f);
+    // 8 倍した値（AdvanceMap の右の数字）から拾い直すと同じ値。
+    expect(colorFromRgb8(184, 248, 136).value).toBe(0x47f7);
   });
 });

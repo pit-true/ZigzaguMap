@@ -131,6 +131,7 @@ export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, palett
 export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
 export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
+export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, parseColorHex, type ColorValue } from "./tileset/ColorValue.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
