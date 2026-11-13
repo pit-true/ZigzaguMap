@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   CfruProject,
   CommandBus,
@@ -15,6 +14,7 @@ import {
   type SaveResult,
   type TilesetRef,
 } from "@zigzagumap/core";
+import { readFile } from "./FileDialogs";
 import { MapCatalog } from "./MapCatalog";
 import { TauriProjectFs } from "./TauriProjectFs";
 import { TilesetView } from "./TilesetView";
@@ -60,7 +60,7 @@ export class ProjectSession {
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
   static async open(romPath: string, projectDir: string | null): Promise<ProjectSession> {
     const start = performance.now();
-    const bytes = new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path: romPath }));
+    const bytes = await readFile(romPath);
     // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
     let supported = false;
     try {

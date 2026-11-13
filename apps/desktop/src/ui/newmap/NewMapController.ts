@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   CommandGroup,
   CreateMapCommand,
@@ -15,7 +14,7 @@ import {
   type MapId,
 } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
-import { fileExists, fileNameOf, folderOf, writeFile, type FileDialogs } from "../../app/FileDialogs";
+import { fileExists, fileNameOf, folderOf, readFile as readBytes, writeFile, type FileDialogs } from "../../app/FileDialogs";
 import { mapLabel } from "../../app/MapTreeModel";
 import type { ProjectSession } from "../../app/ProjectSession";
 import type { MapFileEntry } from "../../app/Settings";
@@ -277,9 +276,6 @@ export class NewMapController {
 }
 
 /** ファイルを読む（ROM を読むのと同じ Rust のコマンド）。 */
-async function readBytes(path: string): Promise<Uint8Array> {
-  return new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path }));
-}
 
 /** 拡張子を除いたファイル名。 */
 function baseName(path: string): string {

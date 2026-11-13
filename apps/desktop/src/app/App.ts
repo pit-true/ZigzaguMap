@@ -25,7 +25,7 @@ import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { FileDialogs, writeFile } from "./FileDialogs";
+import { FileDialogs, fileNameOf as fileName, writeFile } from "./FileDialogs";
 import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SystemSettings } from "./SystemSettings";
@@ -654,9 +654,6 @@ function parseInteger(text: string): number | null {
   return /^\s*[+-]?\d+\s*$/.test(text) ? Number(text) : null;
 }
 
-function fileName(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
 
 function toolbarLabel(id: string): string {
   const map: Record<string, string> = {

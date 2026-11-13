@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   BvdFile,
   PaletteFile,
@@ -7,7 +6,7 @@ import {
   encodeBase64,
   encodeTilesDib,
 } from "@zigzagumap/core";
-import { FileDialogs, folderOf, writeFile, type FileFilter } from "../../app/FileDialogs";
+import { FileDialogs, folderOf, readFile as readBytes, writeFile, type FileFilter } from "../../app/FileDialogs";
 import { ja } from "../../i18n/ja";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
 import { inputDialog } from "../../ui/InputDialog";
@@ -230,7 +229,4 @@ function filter(name: string, extension: string): FileFilter {
   return { name, extensions: [extension] };
 }
 
-async function readBytes(path: string): Promise<Uint8Array> {
-  return new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path }));
-}
 
