@@ -54,6 +54,12 @@ export {
 } from "./mapscript/MapScriptCodec.js";
 export { MapScriptReader, type RawMapScripts } from "./mapscript/MapScriptReader.js";
 
+// 野生
+export * from "./wild/layout.js";
+export type { WildArea, WildEncounters, WildHeader, WildInfo, WildSlot } from "./wild/types.js";
+export { WildHeaderCodec, WildInfoCodec, WildSlotCodec, wildHeaderCodec, wildInfoCodec, wildSlotCodec } from "./wild/WildCodec.js";
+export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
+
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer } from "./render/BlockRenderer.js";
