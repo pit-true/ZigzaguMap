@@ -10,7 +10,7 @@ async function main(): Promise<void> {
   // 道具のウィンドウは tool.html（tool.ts）から開く。ここに来るのは古い作り方で開いたときだけ。
   const label = getCurrentWebviewWindow().label;
   if (label !== "main") {
-    const { startToolWindow } = await import("./windows/world-map/startToolWindow");
+    const { startToolWindow } = await import("./windows/startToolWindow");
     await startToolWindow(label, root);
     return;
   }
