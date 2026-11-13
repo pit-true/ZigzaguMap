@@ -75,10 +75,11 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
       const out = catalog.regionNames.map(([region, name]) =>
         group(`h/r${region}`, listText(name), byRegion.get(region) ?? [], (m) => (withSuffix ? suffixOf(m) : "")),
       );
-      // 名前表の範囲外の地名番号のマップは最後にまとめる。
+      // 名前表の範囲外の地名番号のマップは最後の名前の無いグループにまとめる。
+      // AdvanceMap はこのグループを中身が無くても出す（「タイルセットのグループで並び替え」の最後の空のグループと同じ）。
       const known = new Set(catalog.regionNames.map(([r]) => r));
       const rest = maps.filter((m) => !known.has(m.region));
-      if (rest.length > 0) out.push(group("h/r?", ja.noName, rest, (m) => (withSuffix ? suffixOf(m) : "")));
+      out.push(group("h/r?", "", rest, (m) => (withSuffix ? suffixOf(m) : "")));
       return out;
     }
   }
