@@ -163,7 +163,7 @@ PC に手を入れる最後の 3 つは、自動操作の入口を付けて起�
 
 ## ワールドマップエディター
 
-ツール > ワールドマップエディター（Ctrl+W、ツールバーの緑のアイコン）で、タウンマップ（空を飛ぶの地図）を別ウィンドウで開きます。初めて開いたときにベース ROM と `mapsegionmap.json` を読みます。画面の構成は AdvanceMap 1.92 の TWeltkarteForm と同じです（AdvanceMap は素の BPRJ では開けず、地図も黒いままですが、ZigzaguMap では地図の絵と全ての表を読めます）。
+ツール > ワールドマップエディター（Ctrl+W、ツールバーの緑のアイコン）で、タウンマップ（空を飛ぶの地図）を別ウィンドウで開きます。初めて開いたときにベース ROM と `maps\regionmap.json` を読みます。画面の構成は AdvanceMap 1.92 の TWeltkarteForm と同じです（AdvanceMap は素の BPRJ では開けず、地図も黒いままですが、ZigzaguMap では地図の絵と全ての表を読めます）。
 
 | 部分 | 動作 |
 |---|---|
@@ -180,9 +180,9 @@ PC に手を入れる最後の 3 つは、自動操作の入口を付けて起�
 
 AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定です。確定した操作はメインの履歴に積まれ、エディターの中でも Ctrl+Z / Ctrl+Y（入力欄の外）で取り消し・やり直し、Ctrl+S で出力できます。
 
-### mapsegionmap.json
+### maps\regionmap.json
 
-タウンマップの変更は `mapsegionmap.json` に書きます。ベース ROM と違う表だけを、項目ごとの読める形（base64 ではない）で書き、全部ベース ROM と同じに戻ったらファイルを消します。字下げは 2 空白、改行は CRLF です。
+タウンマップの変更は `maps\regionmap.json` に書きます。ベース ROM と違う表だけを、項目ごとの読める形（base64 ではない）で書き、全部ベース ROM と同じに戻ったらファイルを消します。字下げは 2 空白、改行は CRLF です。
 
 | キー | 中身 | ROM の表（BPRJ。括弧は表を指すポインタの位置） |
 |---|---|---|
@@ -201,7 +201,7 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 - 書き出し先は `maps\BB\MM.json`（バンク・マップは 2 桁。ND の `scripts/map_project.py` と BochiBochiEditor 改造版と同じ形式）。
 - 書くのは、ベース ROM と内容が違い、既存のファイルとも違うマップだけです。ベース ROM と同じに戻ったマップは、JSON があれば消します。
 - 何か書くときに `maps\project.json` が無ければ作ります。
-- タウンマップの変更は `mapsegionmap.json` に書きます（上の「ワールドマップエディター」）。
+- タウンマップの変更は `maps\regionmap.json` に書きます（上の「ワールドマップエディター」）。
 - ベース ROM には書き込みません。
 
 ## 構成
