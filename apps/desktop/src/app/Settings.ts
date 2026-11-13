@@ -23,6 +23,12 @@ export interface WindowPlacement {
   readonly maximized: boolean;
 }
 
+/** マップ一覧の「マップファイル」に出す `.map`（AdvanceMap の Ini\MapDateien.ini と同じく、名前とパス）。 */
+export interface MapFileEntry {
+  readonly name: string;
+  readonly path: string;
+}
+
 /** マップ一覧に出す根（設定 > マップの表示設定。両方 = 既定）。 */
 export type MapListSource = "both" | "header" | "ini";
 
@@ -72,6 +78,10 @@ export interface SettingsData {
   imageDir: string | null;
   /** ウィンドウの位置と大きさ。 */
   window: WindowPlacement | null;
+  /** 保存・読み込みした `.map`（マップ一覧の「マップファイル」）。 */
+  mapFiles: MapFileEntry[];
+  /** `.map` を保存・読み込みしたフォルダ（次のダイアログの初期フォルダ）。 */
+  mapFileDir: string | null;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -104,6 +114,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   scriptSpaceSeparator: false,
   imageDir: null,
   window: null,
+  mapFiles: [],
+  mapFileDir: null,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

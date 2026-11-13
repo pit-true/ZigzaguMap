@@ -9,6 +9,8 @@ export interface MapTreeHost {
   openMap(id: MapId): void;
   /** 未出力か。 */
   isDirty(id: MapId): boolean;
+  /** 「マップファイル」の項目を開く（ダブルクリックか Enter）。 */
+  openMapFile?(path: string, name: string): void;
 }
 
 /** 描いた行。 */
@@ -106,13 +108,18 @@ export class MapTree {
     const { node, element } = row;
     const label = element.lastElementChild as HTMLElement;
     const icon = element.firstElementChild as HTMLElement;
-    if (node.mapId) {
+    if (node.filePath !== undefined) {
+      label.textContent = node.label;
+      element.dataset["autoId"] = `tree.mapFile.${node.key.slice(2)}`;
+      icon.className = "tree-icon icon-map";
+    } else if (node.mapId) {
       label.textContent = node.label + (this.host.isDirty(node.mapId) ? ja.modifiedMark : "");
       const opened = this.openedId && sameId(this.openedId, node.mapId);
       icon.className = "tree-icon " + (opened ? "icon-map-open" : "icon-map");
     } else {
       label.textContent = node.label;
       icon.className = "tree-icon " + (this.expanded.has(node.key) ? "icon-folder-open" : "icon-folder");
+      if (row.depth === 0) element.dataset["autoId"] = `tree.root.${node.key}`;
     }
     element.classList.toggle("selected", node.key === this.selectedKey);
   }
@@ -143,6 +150,7 @@ export class MapTree {
 
   private activate(row: Row): void {
     if (row.node.mapId) this.host.openMap(row.node.mapId);
+    else if (row.node.filePath !== undefined) this.host.openMapFile?.(row.node.filePath, row.node.label);
     else if (row.node.children) this.toggle(row);
   }
 
@@ -169,6 +177,9 @@ export class MapTree {
   }
 
   private onKey(e: KeyboardEvent): void {
+    // 行に直接送られたキー（自動操作の key 命令）は、その行を選んでから扱う。
+    const target = this.rowOf(e.target);
+    if (target && target.node.key !== this.selectedKey) this.select(target.node.key);
     const visible = this.visibleRows();
     const index = visible.findIndex((r) => r.node.key === this.selectedKey);
     const row = visible[index];

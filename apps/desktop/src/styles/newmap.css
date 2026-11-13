@@ -1,0 +1,50 @@
+/* 新規マップの作成・マップの追加/挿入・マップバンクヘッダーのダイアログと、マップタブの作成ボタン。 */
+.new-map-dialog .dialog-body,
+.map-insert-dialog .dialog-body,
+.bank-header-dialog .dialog-body {
+  padding: 0;
+}
+
+.map-insert {
+  overflow: hidden;
+}
+
+.map-insert .am-label.bold,
+.bank-header .am-label.bold {
+  font-weight: bold;
+}
+
+.map-insert .am-label.large {
+  font-size: 16px;
+  line-height: 18px;
+}
+
+/* マップバンクヘッダーの一覧（縦スクロール）。 */
+.bank-header-list {
+  position: absolute;
+  left: 0;
+  top: 33px;
+  width: 477px;
+  height: 309px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+
+.bank-header-rows {
+  position: relative;
+}
+
+.bank-header-new {
+  position: relative;
+  display: block;
+  margin: 4px 0 6px 12px;
+}
+
+/* マップタブの「新規マップ作成」「マップバンクの作成」（AdvanceMap の Cmd_MakeMap / Cmd_MakeBank）。 */
+.map-tab {
+  position: relative;
+}
+
+.map-make-button {
+  z-index: 5;
+}

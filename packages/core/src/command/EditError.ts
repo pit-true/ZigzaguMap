@@ -29,6 +29,8 @@ export const EditErrorCode = {
   MapSlotNotAppend: "mapSlotNotAppend",
   /** 新しいバンクは最後のバンクの次にだけ作れる。引数: bank, expected。 */
   BankSkip: "bankSkip",
+  /** AdvanceMap の `.map` / `.evt` として読めない。引数: reason。 */
+  InvalidMapFile: "invalidMapFile",
   /** タイルセットが読めない（`AdvanceMapError(1): Try to read at pos 0!`）。引数: pointer。 */
   InvalidTileset: "invalidTileset",
   /** 地名番号にマップ名が無い。引数: regionId。 */
