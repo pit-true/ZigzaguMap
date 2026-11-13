@@ -11,6 +11,7 @@ import { mouseCommands } from "./mouse";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
+import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
 interface AutomationEvent {
@@ -47,7 +48,7 @@ export async function startAutomation(app: App): Promise<void> {
         await nextFrame();
         return { ok: true, result: result ?? null };
       })
-      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+      .catch((e: unknown) => ({ ok: false, error: errorText(e) }))
       .then((reply) => invoke("automation_reply", { id, body: JSON.stringify(reply) }));
   });
   await invoke("automation_ready");

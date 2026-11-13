@@ -25,6 +25,7 @@ import { startToolWindowAutomation } from "./toolWindowAutomation";
 import { TownMapNoPanel } from "./TownMapNoPanel";
 import { WorldMapCanvas } from "./WorldMapCanvas";
 import { WorldMapClient } from "./WorldMapClient";
+import { errorText } from "../../util/errors";
 
 /**
  * ワールドマップエディターのウィンドウ（AdvanceMap の TWeltkarteForm）。
@@ -124,7 +125,7 @@ export class WorldMapWindow {
       this.applyState(init, false);
       this.selectCurrent();
     } catch (e) {
-      this.loadError = e instanceof Error ? e.message : String(e);
+      this.loadError = errorText(e);
       await showError(this.loadError, jaWorldMap.error);
     }
   }
@@ -289,7 +290,7 @@ export class WorldMapWindow {
     try {
       await this.client.openMap(fly[0]!, fly[1]!);
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e), jaWorldMap.error);
+      await showError(errorText(e), jaWorldMap.error);
     }
   }
 
@@ -301,7 +302,7 @@ export class WorldMapWindow {
       this.showSelection();
       this.draw();
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e), jaWorldMap.error);
+      await showError(errorText(e), jaWorldMap.error);
     }
   }
 
@@ -323,7 +324,7 @@ export class WorldMapWindow {
     try {
       await this.client.command(record);
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e), jaWorldMap.error);
+      await showError(errorText(e), jaWorldMap.error);
     }
   }
 
@@ -332,7 +333,7 @@ export class WorldMapWindow {
       await showError(jaWorldMap.invalidInteger(String(e.params["text"])), jaWorldMap.appTitle);
     } else if (e instanceof EditError && e.code === EditErrorCode.InvalidRawBytes) {
       await showError(jaWorldMap.invalidInteger(""), jaWorldMap.appTitle);
-    } else await showError(e instanceof Error ? e.message : String(e), jaWorldMap.error);
+    } else await showError(errorText(e), jaWorldMap.error);
   }
 
   /** Ctrl+Z / Ctrl+Y はメインの履歴、Ctrl+S はメインの「出力」。入力欄の中の Ctrl+Z は文字の取り消しに残す。 */
@@ -342,7 +343,7 @@ export class WorldMapWindow {
     const inText = e.target instanceof HTMLInputElement && e.target.type === "text";
     if (key === "s") {
       e.preventDefault();
-      void this.client.exportMaps().catch((err: unknown) => showError(err instanceof Error ? err.message : String(err), jaWorldMap.error));
+      void this.client.exportMaps().catch((err: unknown) => showError(errorText(err), jaWorldMap.error));
     } else if (!inText && (key === "z" || key === "y")) {
       e.preventDefault();
       void (key === "z" ? this.client.undo() : this.client.redo());

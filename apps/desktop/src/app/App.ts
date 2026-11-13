@@ -39,6 +39,7 @@ import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
+import { errorText } from "../util/errors";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -646,10 +647,6 @@ function commandNames(command: Command): string[] {
 
 function changesMapList(command: Command): boolean {
   return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
-}
-
-function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }
 
 /** Delphi の StrToInt と同じく、前後の空白を除いた 10 進の整数だけを受け付ける。 */

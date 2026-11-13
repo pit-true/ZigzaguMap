@@ -4,6 +4,7 @@ import type { ImageKind } from "./ImageExport";
 import type { SystemSettings } from "./SystemSettings";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
 import type { SettingsData } from "./Settings";
+import { errorText } from "../util/errors";
 
 /** アクションが呼ぶ App の操作。 */
 export interface ActionTarget {
@@ -122,7 +123,7 @@ export class Actions {
     }
     Promise.resolve()
       .then(handler)
-      .catch((e: unknown) => this.state.setStatus(ja.error(e instanceof Error ? e.message : String(e)), undefined, true));
+      .catch((e: unknown) => this.state.setStatus(ja.error(errorText(e)), undefined, true));
   }
 
   /** 押せる条件を満たすか。 */

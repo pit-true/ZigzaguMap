@@ -3,6 +3,7 @@ import { messageBox } from "../ui/MessageBox";
 import { ja } from "../i18n/ja";
 import type { ToolKind } from "./protocol";
 import { ToolClient } from "./ToolClient";
+import { errorText } from "../util/errors";
 
 /**
  * ブロックエディタ・パレットエディタ・ブロックパレット一括変更のウィンドウの入口（main.ts → startToolWindow から呼ばれる）。
@@ -15,7 +16,7 @@ export async function startBlockTool(kind: ToolKind, root: HTMLElement): Promise
   try {
     client = await ToolClient.connect(kind);
   } catch (e) {
-    await messageBox(ja.errorTitle, e instanceof Error ? e.message : String(e), "error");
+    await messageBox(ja.errorTitle, errorText(e), "error");
     return;
   }
   installKeys(client);

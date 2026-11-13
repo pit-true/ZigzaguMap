@@ -15,6 +15,7 @@ import {
   type ToolUiState,
 } from "./protocol";
 import { tilesetRefsOf } from "./tilesetRefs";
+import { errorText } from "../util/errors";
 
 /**
  * メインウィンドウ側の、別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の窓口。
@@ -98,7 +99,7 @@ export class ToolWindowHost {
     try {
       result = await this.handle(req);
     } catch (e) {
-      await this.send(req.from, { type: "reply", id: req.id, ok: false, error: e instanceof Error ? e.message : String(e) });
+      await this.send(req.from, { type: "reply", id: req.id, ok: false, error: errorText(e) });
       return;
     }
     await this.send(req.from, { type: "reply", id: req.id, ok: true, result });

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { openDialogs } from "../../ui/Dialog";
+import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
 interface AutomationEvent {
@@ -37,7 +38,7 @@ export async function startToolWindowAutomation(handler: ToolWindowAutomation): 
         await nextFrame();
         return { ok: true, result: result ?? null };
       })
-      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+      .catch((e: unknown) => ({ ok: false, error: errorText(e) }))
       .then((reply) => invoke("automation_reply", { id, body: JSON.stringify(reply) }));
   });
   await invoke("automation_ready");

@@ -1,6 +1,7 @@
 import { EditError, EditErrorCode, formatHex } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
+import { errorText } from "../../util/errors";
 
 /**
  * 入力の読み取りと、AdvanceMap と同じ文言のエラー表示。
@@ -41,7 +42,7 @@ export async function showEditError(e: unknown): Promise<void> {
     const m = editErrorMessage(e);
     await messageBox(m.title, m.text, m.title === ja.information ? "info" : "error");
   } else {
-    await messageBox(ja.errorTitle, e instanceof Error ? e.message : String(e), "error");
+    await messageBox(ja.errorTitle, errorText(e), "error");
   }
 }
 

@@ -1,8 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   BvdFile,
-  DataError,
-  EditError,
   PaletteFile,
   TILE_BYTES,
   decodeTileImage,
@@ -17,6 +15,7 @@ import { showError, showInfo } from "../../ui/MessageBox";
 import type { ToolClient } from "../ToolClient";
 import type { TilesetModel } from "../TilesetModel";
 import type { TilesetData } from "../protocol";
+import { errorText } from "../../util/errors";
 
 /** 入出力が使う、ウィンドウの今の状態。 */
 export interface TilesetIoHost {
@@ -235,7 +234,3 @@ async function readBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path }));
 }
 
-function errorText(e: unknown): string {
-  if (e instanceof DataError || e instanceof EditError || e instanceof Error) return e.message;
-  return String(e);
-}

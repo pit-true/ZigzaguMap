@@ -1,5 +1,6 @@
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { EditError, EditErrorCode, MAPSEC_FIRST, MAPSEC_NAMED_COUNT, type MapId } from "@zigzagumap/core";
+import { errorText } from "../../util/errors";
 import { jaWorldMap } from "../../i18n/ja.worldMap";
 import type { ProjectSession } from "../../app/ProjectSession";
 import {
@@ -56,7 +57,7 @@ export class WorldMapHost {
     try {
       reply = { id: envelope.id, ok: true, result: (await this.run(envelope.request)) ?? null };
     } catch (e) {
-      reply = { id: envelope.id, ok: false, error: errorText(e) };
+      reply = { id: envelope.id, ok: false, error: replyErrorText(e) };
     }
     await emitTo(WORLD_MAP_WINDOW, WorldMapEvents.reply, reply).catch(() => undefined);
   }
@@ -90,7 +91,7 @@ export class WorldMapHost {
     try {
       region = await session.openRegionMap();
     } catch (e) {
-      throw new Error(jaWorldMap.loadFailed(e instanceof Error ? e.message : String(e)));
+      throw new Error(jaWorldMap.loadFailed(errorText(e)));
     }
     if (!this.unsubscribeBus) {
       // 操作のたびに状態を送る（表は数 KB なので全部送る）。
@@ -122,7 +123,7 @@ export class WorldMapHost {
 }
 
 /** エラーを文言にする（EditError は種類ごとの文言）。 */
-function errorText(e: unknown): string {
+function replyErrorText(e: unknown): string {
   if (e instanceof EditError) {
     const p = e.params;
     switch (e.code) {
@@ -138,5 +139,5 @@ function errorText(e: unknown): string {
         return jaWorldMap.cannotSaveTopPosition;
     }
   }
-  return e instanceof Error ? e.message : String(e);
+  return errorText(e);
 }

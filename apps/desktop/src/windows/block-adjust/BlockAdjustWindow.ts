@@ -7,6 +7,7 @@ import { readInteger } from "../../ui/form/integerInput";
 import { showError } from "../../ui/MessageBox";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
+import { errorText } from "../../util/errors";
 
 /** 行の数（パレット 0〜14）。 */
 const ROWS = 15;
@@ -85,7 +86,7 @@ export class BlockAdjustWindow {
     try {
       await this.client.execute("remapBlockPalettes", { tileset: data.pointer, secondary, mapping });
     } catch (e) {
-      await showError(e instanceof Error ? e.message : String(e));
+      await showError(errorText(e));
       return;
     }
     // 自動操作の返事が先に届くよう、少し待ってから閉じる。

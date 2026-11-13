@@ -5,6 +5,7 @@ import { installNativeDialogs, listDialogs, operateDialog, queuePath } from "../
 import { click, findField, getField, listFields, setField, useAmNames } from "../app/automation/ui";
 import type { FileDialogs } from "../app/FileDialogs";
 import type { ToolClient } from "./ToolClient";
+import { errorText } from "../util/errors";
 
 /** 別ウィンドウが自動操作に見せるもの。 */
 export interface ToolAutomationTarget {
@@ -46,7 +47,7 @@ export async function installToolAutomation(client: ToolClient, target: ToolAuto
         await settle();
         reply = { ok: true, result: result ?? null };
       } catch (e) {
-        reply = { ok: false, error: e instanceof Error ? e.message : String(e) };
+        reply = { ok: false, error: errorText(e) };
       }
       await invoke("automation_reply", { id, body: JSON.stringify(reply) });
     })();
