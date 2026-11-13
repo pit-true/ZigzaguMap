@@ -30,6 +30,9 @@ async function main(): Promise<void> {
     case "block-editor":
       (await import("./windows/block-editor/BlockEditorWindow")).BlockEditorWindow.start(root, client);
       break;
+    case "palette-editor":
+      (await import("./windows/palette-editor/PaletteEditorWindow")).PaletteEditorWindow.start(root, client);
+      break;
   }
 }
 
