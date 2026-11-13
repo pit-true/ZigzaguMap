@@ -1,6 +1,6 @@
 import type { WarpEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
-import { pushButton } from "../../form/controls";
+import { pushButton } from "../../form/valueControls";
 import { ListKindPanel, type PanelHost } from "./KindPanel";
 
 const LABEL = 96;

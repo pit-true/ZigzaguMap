@@ -1,6 +1,6 @@
 import type { PersonEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
-import { formLabel, pushButton } from "../../form/controls";
+import { formLabel, pushButton } from "../../form/valueControls";
 import { ListKindPanel, withByte, withScriptOffset, type PanelHost } from "./KindPanel";
 
 /** ラベルの幅（入力欄は x=96 から）。 */

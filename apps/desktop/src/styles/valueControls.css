@@ -1,4 +1,4 @@
-/* 入力部品（ui/form/controls.ts）。AdvanceMap の部品の大きさ（高さ 19、ボタン 25）に合わせる。 */
+/* 入力部品（ui/form/valueControls.ts）。AdvanceMap の部品の大きさ（高さ 19、ボタン 25）に合わせる。 */
 .form-row {
   display: flex;
   align-items: center;

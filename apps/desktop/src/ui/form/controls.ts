@@ -1,277 +1,142 @@
-import { EditError, EditErrorCode, parseHexInput, parseIntInput } from "@zigzagumap/core";
-import "../../styles/controls.css";
-import { hex } from "../../i18n/ja";
-
 /**
- * AdvanceMap の入力部品（TEdit の 16 進欄、TSpinEdit、TComboBox、TCheckBox）の再現。
- * どれも入力のたびに値を知らせる（AdvanceMap の OnChange と同じく確定ボタンは無い）。
- * 実際の入力要素には `data-auto` に部品の ID を付ける（自動操作の入口から読み書き・クリックするため）。
+ * AdvanceMap（Delphi）のフォームを座標どおりに並べるための部品。
+ * 位置と大きさは AdvanceMap の部品一覧（inventory）の値をそのまま渡す。
+ * 自動操作から読み書きできるよう、操作できる部品には `data-auto-id` を付ける。
  */
 
-/** 値を出す部品。 */
-export interface ValueControl {
-  readonly element: HTMLElement;
-  /** 値を表示する（入力中の欄は書き換えない）。null は空欄・選択なし。 */
-  set(value: number | null): void;
-  /** 有効・無効（灰色）。 */
-  setEnabled(enabled: boolean): void;
+/** 部品を親の中の決まった位置に置く。 */
+export function place<T extends HTMLElement>(el: T, x: number, y: number, width?: number, height?: number): T {
+  el.classList.add("am-abs");
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  if (width !== undefined) el.style.width = `${width}px`;
+  if (height !== undefined) el.style.height = `${height}px`;
+  return el;
 }
 
-/** 読めない入力のとき（EditError の文字列）。 */
-export type InputErrorHandler = (error: EditError) => void;
-
-/** 16 進欄の作り方。 */
-export interface HexInputOptions {
-  readonly id: string;
-  /** 表示の桁数。 */
-  readonly digits: number;
-  /** 欄の幅（px）。 */
-  readonly width: number;
-  /** 表示の前に付ける文字（スクリプトのオフセットは `$`）。 */
-  readonly prefix?: string;
-  /** 入力できる文字数（AdvanceMap のフライトポジションの欄だけ 4）。 */
-  readonly maxLength?: number;
-  readonly onValue: (value: number) => void;
-  readonly onError: InputErrorHandler;
+/** 自動操作の ID を付ける。 */
+export function autoId<T extends HTMLElement>(el: T, id: string): T {
+  el.dataset["autoId"] = id;
+  return el;
 }
 
-/** 16 進の入力欄（`$` を前に付けて整数として読む。空欄は 0）。 */
-export class HexInput implements ValueControl {
-  readonly element: HTMLInputElement;
-
-  constructor(private readonly options: HexInputOptions) {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "hex-input";
-    input.spellcheck = false;
-    input.style.width = `${options.width}px`;
-    input.dataset["auto"] = options.id;
-    if (options.maxLength) input.maxLength = options.maxLength;
-    input.addEventListener("input", () => this.commit());
-    this.element = input;
-  }
-
-  set(value: number | null): void {
-    if (document.activeElement === this.element) return;
-    this.element.value = value === null ? "" : (this.options.prefix ?? "") + hex(value >>> 0, this.options.digits);
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.element.disabled = !enabled;
-  }
-
-  private commit(): void {
-    let value: number;
-    try {
-      value = parseHexInput(this.element.value);
-    } catch (e) {
-      if (e instanceof EditError) return this.options.onError(e);
-      throw e;
-    }
-    this.options.onValue(value);
-  }
+/** 座標で部品を並べる面（TScrollBox・タブの中身）。 */
+export function panel(className: string, width: number, height: number): HTMLElement {
+  const div = document.createElement("div");
+  div.className = `am-panel ${className}`;
+  div.style.width = `${width}px`;
+  div.style.height = `${height}px`;
+  return div;
 }
 
-/** スピン付きの 10 進欄の作り方。 */
-export interface SpinEditOptions {
-  readonly id: string;
-  readonly min: number;
-  readonly max: number;
-  /** 欄の幅（ボタンを含む、px）。 */
-  readonly width?: number;
-  /** 表示だけ（人 No. など）。 */
-  readonly readOnly?: boolean;
-  readonly onValue?: (value: number) => void;
-  readonly onError?: InputErrorHandler;
+/** 見出しつきの枠（TGroupBox）。子は枠の左上からの座標で置く。 */
+export function group(title: string, x: number, y: number, width: number, height: number): HTMLElement {
+  const box = place(document.createElement("div"), x, y, width, height);
+  box.classList.add("am-group");
+  const caption = document.createElement("span");
+  caption.className = "am-group-title";
+  caption.textContent = title;
+  box.append(caption);
+  return box;
 }
 
-/**
- * TSpinEdit（10 進、上下のボタンつき）。範囲外の値は範囲の端に丸める（AdvanceMap は 300 を 255 として扱う）。
- * 数字以外のキーは受け付けない。空欄のあいだは値を変えない。
- */
-export class SpinEdit implements ValueControl {
-  readonly element: HTMLElement;
-  readonly input: HTMLInputElement;
-  private readonly buttons: HTMLButtonElement[];
-  private value = 0;
-  private min: number;
-  private max: number;
-
-  constructor(private readonly options: SpinEditOptions) {
-    this.min = options.min;
-    this.max = options.max;
-    this.element = document.createElement("span");
-    this.element.className = "spin-edit";
-    this.element.style.width = `${options.width ?? 49}px`;
-    this.input = document.createElement("input");
-    this.input.type = "text";
-    this.input.spellcheck = false;
-    this.input.dataset["auto"] = options.id;
-    this.input.readOnly = options.readOnly === true;
-    const up = spinButton("▲", () => this.step(1));
-    const down = spinButton("▼", () => this.step(-1));
-    this.buttons = [up, down];
-    const arrows = document.createElement("span");
-    arrows.className = "spin-arrows";
-    arrows.append(up, down);
-    this.element.append(this.input, arrows);
-    this.input.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        e.preventDefault();
-        this.step(e.key === "ArrowUp" ? 1 : -1);
-      } else if (e.key.length === 1 && !/[0-9-]/.test(e.key) && !e.ctrlKey) {
-        e.preventDefault();
-      }
-    });
-    this.input.addEventListener("input", () => this.commit());
-    this.input.addEventListener("blur", () => {
-      this.input.value = String(this.value);
-    });
-  }
-
-  /** 範囲を変える（イベント番号は種別の個数で変わる）。 */
-  setRange(min: number, max: number): void {
-    this.min = min;
-    this.max = Math.max(min, max);
-  }
-
-  set(value: number | null): void {
-    this.value = value ?? 0;
-    if (document.activeElement === this.input) return;
-    this.input.value = String(this.value);
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.input.disabled = !enabled;
-    for (const b of this.buttons) b.disabled = !enabled;
-    this.element.classList.toggle("disabled", !enabled);
-  }
-
-  private step(delta: number): void {
-    if (this.input.disabled || this.options.readOnly) return;
-    const next = Math.min(this.max, Math.max(this.min, this.value + delta));
-    if (next === this.value) return;
-    this.value = next;
-    this.input.value = String(next);
-    this.options.onValue?.(next);
-  }
-
-  private commit(): void {
-    const text = this.input.value;
-    if (text.trim() === "" || this.options.readOnly) return;
-    let n: number;
-    try {
-      n = parseIntInput(text);
-    } catch (e) {
-      if (e instanceof EditError && this.options.onError) return this.options.onError(e);
-      if (e instanceof EditError) return;
-      throw e;
-    }
-    this.value = Math.min(this.max, Math.max(this.min, n));
-    this.options.onValue?.(this.value);
-  }
+/** ラベル（TLabel）。 */
+export function label(text: string, x: number, y: number, width?: number): HTMLElement {
+  const span = place(document.createElement("span"), x, y, width);
+  span.classList.add("am-label");
+  span.textContent = text;
+  return span;
 }
 
-function spinButton(text: string, onClick: () => void): HTMLButtonElement {
-  const b = document.createElement("button");
+/** 1 行の入力欄（TEdit）。 */
+export function edit(id: string, x: number, y: number, width: number, height = 19): HTMLInputElement {
+  const input = autoId(place(document.createElement("input"), x, y, width, height), id);
+  input.type = "text";
+  input.spellcheck = false;
+  input.classList.add("am-edit");
+  return input;
+}
+
+/** 複数行の 16 進欄（TMemo。横スクロールだけ）。 */
+export function memo(id: string, x: number, y: number, width: number, height: number): HTMLTextAreaElement {
+  const area = autoId(place(document.createElement("textarea"), x, y, width, height), id);
+  area.wrap = "off";
+  area.spellcheck = false;
+  area.classList.add("am-memo");
+  return area;
+}
+
+/** ボタン（TButton）。 */
+export function button(id: string, caption: string, x: number, y: number, width: number, height: number, onClick: () => void): HTMLButtonElement {
+  const b = autoId(place(document.createElement("button"), x, y, width, height), id);
   b.type = "button";
-  b.tabIndex = -1;
-  b.textContent = text;
-  b.addEventListener("pointerdown", (e) => e.preventDefault());
+  b.classList.add("am-button");
+  b.textContent = caption;
   b.addEventListener("click", onClick);
   return b;
 }
 
-/** コンボボックス（選んだ添字を知らせる）。 */
-export class ComboBox implements ValueControl {
-  readonly element: HTMLSelectElement;
-
-  constructor(id: string, options: readonly string[], width: number, onIndex: (index: number) => void) {
-    this.element = document.createElement("select");
-    this.element.className = "combo";
-    this.element.style.width = `${width}px`;
-    this.element.dataset["auto"] = id;
-    this.setOptions(options);
-    this.element.addEventListener("change", () => {
-      if (this.element.selectedIndex >= 0) onIndex(this.element.selectedIndex);
-    });
-  }
-
-  /** 選択肢を入れ替える。 */
-  setOptions(options: readonly string[]): void {
-    const fragment = document.createDocumentFragment();
-    for (const o of options) fragment.append(new Option(o));
-    this.element.replaceChildren(fragment);
-  }
-
-  set(index: number | null): void {
-    const i = index === null || index < 0 || index >= this.element.options.length ? -1 : index;
-    if (this.element.selectedIndex !== i) this.element.selectedIndex = i;
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.element.disabled = !enabled;
-  }
+/** 選ぶだけのコンボ（TComboBox の csDropDownList）。 */
+export function combo(id: string, options: readonly string[], x: number, y: number, width: number): HTMLSelectElement {
+  const select = autoId(place(document.createElement("select"), x, y, width, 19), id);
+  select.classList.add("am-combo");
+  setOptions(select, options);
+  return select;
 }
 
-/** チェックボックス（ラベルつきでも、ラベル無しでも使う）。 */
-export class CheckBox implements ValueControl {
-  readonly element: HTMLLabelElement;
-  readonly input: HTMLInputElement;
+/** コンボの選択肢を入れ替える。 */
+export function setOptions(select: HTMLSelectElement, options: readonly string[]): void {
+  const fragment = document.createDocumentFragment();
+  for (const o of options) fragment.append(new Option(o));
+  select.replaceChildren(fragment);
+}
 
-  constructor(id: string, label: string, onChange: (checked: boolean) => void) {
-    this.element = document.createElement("label");
-    this.element.className = "check-box";
-    this.input = document.createElement("input");
-    this.input.type = "checkbox";
-    this.input.dataset["auto"] = id;
-    this.input.addEventListener("change", () => onChange(this.input.checked));
-    this.element.append(this.input);
-    if (label) this.element.append(label);
+/** コンボの選択（範囲外なら空にする。AdvanceMap で一覧に無い値を選んだときと同じ）。 */
+export function selectIndex(select: HTMLSelectElement, index: number): void {
+  select.selectedIndex = index >= 0 && index < select.options.length ? index : -1;
+}
+
+/** チェックボックス（TCheckBox）。 */
+export function check(id: string, caption: string, x: number, y: number, width: number): { root: HTMLElement; input: HTMLInputElement } {
+  const root = place(document.createElement("label"), x, y, width, 17);
+  root.classList.add("am-check");
+  const input = autoId(document.createElement("input"), id);
+  input.type = "checkbox";
+  root.append(input, caption);
+  return { root, input };
+}
+
+/** 上下ボタンつきの数値欄（TSpinEdit）。`onStep` は上下（+1 / -1）を押したとき。 */
+export function spin(id: string, x: number, y: number, width: number, onStep: (delta: number) => void): { root: HTMLElement; input: HTMLInputElement } {
+  const root = place(document.createElement("div"), x, y, width, 19);
+  root.classList.add("am-spin");
+  const input = autoId(document.createElement("input"), id);
+  input.type = "text";
+  input.spellcheck = false;
+  const arrows = document.createElement("div");
+  arrows.className = "am-spin-arrows";
+  const up = autoId(document.createElement("button"), `${id}.up`);
+  const down = autoId(document.createElement("button"), `${id}.down`);
+  for (const [b, d] of [
+    [up, 1],
+    [down, -1],
+  ] as const) {
+    b.type = "button";
+    b.tabIndex = -1;
+    b.addEventListener("click", () => onStep(d));
+    arrows.append(b);
   }
-
-  set(value: number | null): void {
-    this.input.checked = (value ?? 0) !== 0;
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.input.disabled = !enabled;
-  }
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      onStep(e.key === "ArrowUp" ? 1 : -1);
+    }
+  });
+  root.append(input, arrows);
+  return { root, input };
 }
 
-/** ボタン。 */
-export function pushButton(id: string, text: string, onClick: () => void, className = ""): HTMLButtonElement {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = `push-button ${className}`.trim();
-  b.textContent = text;
-  b.dataset["auto"] = id;
-  b.addEventListener("click", onClick);
-  return b;
-}
-
-/** ラベルと部品を 1 行に並べる（ラベルの幅は `labelWidth`）。 */
-export function formRow(label: string, labelWidth: number, ...controls: (ValueControl | HTMLElement)[]): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "form-row";
-  const name = document.createElement("span");
-  name.className = "form-label";
-  name.style.width = `${labelWidth}px`;
-  name.textContent = label;
-  row.append(name, ...controls.map((c) => ("set" in c ? c.element : c)));
-  return row;
-}
-
-/** ラベルだけの行（下にコンボを置く項目の見出し）。 */
-export function formLabel(text: string): HTMLElement {
-  const p = document.createElement("div");
-  p.className = "form-row form-caption";
-  p.textContent = text;
-  return p;
-}
-
-/** 入力エラーの文言（読めない整数は Delphi の例外メッセージのまま）。 */
-export function invalidIntegerText(error: EditError, format: (text: string) => string): string {
-  if (error.code === EditErrorCode.InvalidInteger) return format(String(error.params["text"] ?? ""));
-  return error.message;
+/** 部品の有効・無効をまとめて切り替える。 */
+export function setEnabled(enabled: boolean, ...els: (HTMLInputElement | HTMLButtonElement | HTMLSelectElement | HTMLTextAreaElement)[]): void {
+  for (const el of els) el.disabled = !enabled;
 }

@@ -76,6 +76,28 @@ pub fn fs_write_text(root: State<'_, ProjectRoot>, path: String, text: String) -
     std::fs::rename(&tmp, &full).map_err(|e| format!("{path}: {e}"))
 }
 
+/// バイナリファイルを書く（tiles.png など）。パスはヘッダー `path`（URL エンコード）、中身は本文のバイト列。
+/// 一時ファイルに書いてから置き換える。
+#[tauri::command]
+pub fn fs_write_bytes(root: State<'_, ProjectRoot>, request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let path = request
+        .headers()
+        .get("path")
+        .and_then(|v| v.to_str().ok())
+        .map(crate::system::percent_decode)
+        .ok_or("path がありません")?;
+    let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
+        return Err("本文がバイト列ではありません".into());
+    };
+    let full = root.resolve(&path)?;
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("{path}: {e}"))?;
+    }
+    let tmp = full.with_extension("tmp");
+    std::fs::write(&tmp, data).map_err(|e| format!("{path}: {e}"))?;
+    std::fs::rename(&tmp, &full).map_err(|e| format!("{path}: {e}"))
+}
+
 /// バイナリファイルを読む（JSON にせず生のバイト列で返す）。
 #[tauri::command]
 pub fn fs_read_bytes(root: State<'_, ProjectRoot>, path: String) -> Result<Response, String> {

@@ -1,5 +1,5 @@
 import { ja } from "../../i18n/ja";
-import { CheckBox, ComboBox, SpinEdit, formRow, pushButton } from "../form/controls";
+import { CheckBox, ComboBox, SpinEdit, formRow, pushButton } from "../form/valueControls";
 import { KIND_ORDER, type UiKind } from "./eventModel";
 
 /** 共通部の操作の受け手。 */

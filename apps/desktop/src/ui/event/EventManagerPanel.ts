@@ -1,5 +1,5 @@
 import { ja } from "../../i18n/ja";
-import { SpinEdit, formRow, pushButton } from "../form/controls";
+import { SpinEdit, formRow, pushButton } from "../form/valueControls";
 
 /** 人・看板・ワープ・スクリプトの個数。 */
 export interface EventCounts {

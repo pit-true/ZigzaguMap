@@ -1,5 +1,5 @@
 import { SetEventFieldsCommand, type MapId } from "@zigzagumap/core";
-import { CheckBox, ComboBox, HexInput, SpinEdit, formRow, type ValueControl } from "../../form/controls";
+import { CheckBox, ComboBox, HexInput, SpinEdit, formRow, type ValueControl } from "../../form/valueControls";
 import type { EventEditor } from "../EventEditor";
 
 /** 項目名 → 書く値（core のコマンドの fields）。 */

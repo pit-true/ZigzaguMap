@@ -103,7 +103,7 @@ export class EventTab {
     this.manager = new EventManagerPanel((counts) => this.setCounts(counts));
     const side = document.createElement("div");
     side.className = "event-side";
-    side.dataset["auto"] = "event.panel";
+    side.dataset["autoId"] = "event.panel";
     side.append(this.common.element, ...Object.values(this.panels).map((p) => p.element), this.sorry, this.manager.element);
     this.element.append(area, side);
 

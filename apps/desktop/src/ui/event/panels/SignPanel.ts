@@ -1,6 +1,6 @@
 import type { SignEvent } from "@zigzagumap/core";
 import { hex, ja } from "../../../i18n/ja";
-import { formLabel, pushButton, type ComboBox } from "../../form/controls";
+import { formLabel, pushButton, type ComboBox } from "../../form/valueControls";
 import { ListKindPanel, withByte, withScriptOffset, type FieldPatch, type PanelHost } from "./KindPanel";
 import { wrap } from "./PersonPanel";
 

@@ -1,7 +1,7 @@
 import { EditError, type Command, type CommandBus } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
-import { invalidIntegerText } from "../form/controls";
+import { invalidIntegerText } from "../form/valueControls";
 import { showError } from "../MessageBox";
 
 /**
