@@ -9,3 +9,8 @@ target/
 .vite/
 coverage/
 apps/desktop/src-tauri/gen/schemas/
+
+# 比較テスト（tests/compare）
+tests/compare/local.config.json
+__pycache__/
+.venv/

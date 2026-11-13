@@ -1,0 +1,115 @@
+{
+  "name": "T01_tabs_status",
+  "title": "タブの切り替えとステータスバー",
+  "source": "S03, S12, S29, S20（表示だけ）",
+  "issues": [
+    32,
+    33
+  ],
+  "steps": [
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "movement"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "movement_3_0",
+      "target": "movement",
+      "compare": {
+        "mode": "cellMean",
+        "tolerance": 12
+      }
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "event_3_0",
+      "target": "event",
+      "compare": {
+        "mode": "overlayCells"
+      }
+    },
+    {
+      "op": "snapshot",
+      "name": "event_3_0_blocks",
+      "target": "blocks"
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "selectTab",
+      "tab": "map"
+    },
+    {
+      "op": "hover",
+      "x": 5,
+      "y": 5,
+      "target": "map"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "name": "S29_wild_view",
+  "title": "野生の表示",
+  "source": "S29",
+  "issues": [
+    69
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 19
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Typ",
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1",
+        "field:Cbo_Pokemon1"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 37
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Typ",
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1",
+        "field:Cbo_Pokemon1"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 1,
+      "map": 1
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Typ",
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1",
+        "field:Cbo_Pokemon1"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Typ",
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1",
+        "field:Cbo_Pokemon1"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 4,
+      "map": 1
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Typ",
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1",
+        "field:Cbo_Pokemon1"
+      ]
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+import { jaConnection, jaHeader } from "./ja.header";
+import { jaWild } from "./ja.wild";
+
 /**
  * 画面の文言（日本語）。文言はすべてここに集める。
  * AdvanceMap 1.92 日本語化パックの Japanese.ini の表記をそのまま使う（「ROMの保存」系は「出力」に読み替える）。
@@ -402,6 +405,11 @@ export const ja = {
     0x3c: "直前のレイヤーと同じ働き",
   } as Readonly<Record<number, string>>,
   movementUnknown: "???",
+
+  // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
+  header: jaHeader,
+  conn: jaConnection,
+  wild: jaWild,
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */

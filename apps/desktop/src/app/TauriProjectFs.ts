@@ -26,6 +26,11 @@ export class TauriProjectFs implements ProjectFs {
     return invoke("fs_write_text", { path, text });
   }
 
+  /** バイナリファイルを書く（タイルセットの tiles.png など）。 */
+  async writeBytes(path: string, bytes: Uint8Array): Promise<void> {
+    await invoke("fs_write_bytes", bytes, { headers: { path: encodeURIComponent(path) } });
+  }
+
   async readBytes(path: string): Promise<Uint8Array> {
     return new Uint8Array(await invoke<ArrayBuffer>("fs_read_bytes", { path }));
   }

@@ -1,0 +1,50 @@
+{
+  "name": "S19_event_input_error",
+  "title": "イベントの入力エラー",
+  "source": "S19",
+  "issues": [
+    57
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_PosX",
+      "value": "zz"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "OK"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Script",
+      "value": "$GGGGGG"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "OK"
+    }
+  ]
+}

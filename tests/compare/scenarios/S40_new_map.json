@@ -1,0 +1,61 @@
+{
+  "name": "S40_new_map",
+  "title": "新規マップの作成",
+  "source": "S40",
+  "issues": [
+    84,
+    87
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ファイル",
+        "マップ",
+        "新規マップの作成"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "setField",
+      "screen": "新規マップ",
+      "field": "Txt_Name",
+      "value": "TESTMAP"
+    },
+    {
+      "op": "setField",
+      "screen": "新規マップ",
+      "field": "Txt_Breite",
+      "value": 12
+    },
+    {
+      "op": "setField",
+      "screen": "新規マップ",
+      "field": "Txt_Hohe",
+      "value": 10
+    },
+    {
+      "op": "clickButton",
+      "screen": "新規マップ",
+      "button": "Btn_Erstellen"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "title.map",
+        "map.size"
+      ]
+    }
+  ]
+}

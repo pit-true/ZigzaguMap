@@ -1,0 +1,44 @@
+{
+  "name": "S34_block_attributes",
+  "title": "ブロックの属性",
+  "source": "S34",
+  "issues": [
+    75
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "setField",
+      "screen": "ブロックエディタ",
+      "field": "Cbo_Aufgaben",
+      "value": "61"
+    },
+    {
+      "op": "setField",
+      "screen": "ブロックエディタ",
+      "field": "Cbo_Hintergrund",
+      "value": "01"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_Aufgaben",
+        "field:Txt_Hinterdrund"
+      ]
+    }
+  ]
+}

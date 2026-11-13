@@ -1,0 +1,29 @@
+{
+  "name": "S53_image_save",
+  "title": "画像保存",
+  "source": "S53",
+  "issues": [
+    102
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "マップ画像の保存"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}
