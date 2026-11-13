@@ -1,0 +1,58 @@
+{
+  "name": "S10_combobox_toolbar",
+  "title": "コンボボックス表示とツールバー非表示",
+  "source": "S10",
+  "issues": [
+    98
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "コンボボックス"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state:設定/コンボボックス"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "コンボボックス"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "ツールバーの表示"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state:設定/ツールバーの表示"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "ツールバーの表示"
+      ]
+    }
+  ]
+}

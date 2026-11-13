@@ -1,0 +1,46 @@
+{
+  "name": "S09_movement_opacity",
+  "title": "移動許可の透明度",
+  "source": "S09",
+  "issues": [
+    43
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "movement"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "移動エリアの設定の透明度"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "OK"
+    },
+    {
+      "op": "snapshot",
+      "name": "movement_opacity",
+      "target": "movement",
+      "compare": {
+        "mode": "cellMean",
+        "tolerance": 12
+      }
+    }
+  ]
+}

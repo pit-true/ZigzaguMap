@@ -13,12 +13,13 @@ import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
+import type { ConnectionManager } from "../ui/connection/ConnectionManager";
+import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
-import { EventTab } from "../ui/tabs/EventTab";
-import { HeaderTab } from "../ui/tabs/HeaderTab";
+import { EventTab } from "../ui/event/EventTab";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
-import { WildTab } from "../ui/tabs/WildTab";
+import { WildTab } from "../ui/wild/WildTab";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
@@ -76,6 +77,7 @@ export class App implements ActionTarget {
     openMap: (id) => this.openMap(id),
     exportMaps: () => this.exportMaps(false),
   });
+  private connections: ConnectionManager | null = null;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
 
@@ -106,7 +108,7 @@ export class App implements ActionTarget {
     this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
     const movementTab = new MovementTab(state);
-    const eventTab = new EventTab(state);
+    const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
       [
@@ -310,6 +312,15 @@ export class App implements ActionTarget {
     if (this.state.previousMap) await this.openMap(this.state.previousMap);
   }
 
+  /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */
+  async openConnections(): Promise<void> {
+    if (!this.connections) {
+      const { ConnectionManager } = await import("../ui/connection/ConnectionManager");
+      this.connections = new ConnectionManager(this.state, (id) => this.openMap(id));
+    }
+    this.connections.show();
+  }
+
   // ---- 編集 ----
 
   /** 元に戻す。 */
@@ -331,8 +342,14 @@ export class App implements ActionTarget {
     const id = { bank: args.bank, map: args.map };
     const current = this.state.map;
     if (current && current.id.bank === id.bank && current.id.map === id.map) {
-      this.state.mapImage?.update();
-      this.state.emit("cells");
+      const doc = current.doc;
+      // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
+      if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
+        void this.openMap(id);
+      } else {
+        this.state.mapImage?.update();
+        this.state.emit("cells");
+      }
     }
     this.pendingDirty.set(`${id.bank}.${id.map}`, id);
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);

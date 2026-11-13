@@ -1,3 +1,4 @@
+import type { FlyPosition } from "../fly/types.js";
 import type { BlockGrid } from "../map/BlockGrid.js";
 import type { MapId } from "../map/types.js";
 import type { MapDocument } from "../model/MapDocument.js";
@@ -34,6 +35,8 @@ export interface DocumentContext extends EditorContext {
   addMap(doc: MapDocument): void;
   /** addMap で加えたマップを除く（取り消し用）。 */
   removeMap(id: MapId): void;
+  /** 編集中のフライトポジションの表（ROM の表の写し。maps\ の形式には置き場所が無く、出力しない）。 */
+  readonly flyPositions: FlyPosition[];
 }
 
 /** EditorContext が DocumentContext か。 */

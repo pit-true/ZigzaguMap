@@ -19,6 +19,14 @@ export interface GameOffsets {
   readonly tilesetHeaderTable: number;
   /** 表のタイルセットの数。 */
   readonly tilesetCount: number;
+  /** フライトポジション（空を飛ぶの行き先、8 バイト）の表へのポインタが置かれている位置（AdvanceMap の FlugposHeader）。 */
+  readonly flyTablePointer: number;
+  /** フライトポジションの表の件数。 */
+  readonly flyTableCount: number;
+  /** 道具の表へのポインタが置かれている位置（AdvanceMap の ItemHeader2）。 */
+  readonly itemTablePointer: number;
+  /** 道具の数（0 番を含む。AdvanceMap の AnzItems + 1）。 */
+  readonly itemCount: number;
 }
 
 /** ファイアレッド日本語版（BPRJ）。 */
@@ -31,6 +39,10 @@ export const BPRJ_OFFSETS: GameOffsets = {
   overworldPaletteTablePointer: 0x5ed98,
   tilesetHeaderTable: 0x298b44,
   tilesetCount: 68,
+  flyTablePointer: 0xc0e44,
+  flyTableCount: 20,
+  itemTablePointer: 0x1c8,
+  itemCount: 375,
 };
 
 /** ゲームコードからオフセット定義を引く表。 */

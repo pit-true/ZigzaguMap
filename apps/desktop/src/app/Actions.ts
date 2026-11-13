@@ -21,6 +21,7 @@ export interface ActionTarget {
   askPaletteWidth(): Promise<void>;
   askOpacity(): Promise<void>;
   askRecentMax(): Promise<void>;
+  openConnections(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
   createIniFromHeader(): Promise<void>;
   openWorldMap(): Promise<void>;
@@ -94,6 +95,7 @@ export class Actions {
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
     h.set("tools.worldMap", () => target.openWorldMap());
+    h.set("tools.connections", () => target.openConnections());
     h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
     h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));
     h.set("display.createIni", () => target.createIniFromHeader());

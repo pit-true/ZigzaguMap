@@ -1,0 +1,59 @@
+{
+  "name": "S30_wild_edit",
+  "title": "野生の編集と保存",
+  "source": "S30",
+  "issues": [
+    70,
+    71
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 19
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Heufigkeit",
+      "value": 30
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Level1P1",
+      "value": 7
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_Speichern"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_Typ",
+      "value": 1
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_Typ",
+      "value": 0
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_Heufigkeit",
+        "field:Txt_Level1P1"
+      ]
+    }
+  ]
+}

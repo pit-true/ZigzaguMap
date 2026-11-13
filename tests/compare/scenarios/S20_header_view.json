@@ -1,0 +1,118 @@
+{
+  "name": "S20_header_view",
+  "title": "ヘッダータブ（通常・高度）",
+  "source": "S20",
+  "issues": [
+    58,
+    60,
+    63
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Name",
+        "field:Txt_Musik",
+        "field:Cbo_Wetter",
+        "field:Cbo_NameAnzeigen",
+        "field:Txt_Tileset1Nr",
+        "field:Txt_Tileset2Nr"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 4,
+      "map": 1
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Name",
+        "field:Txt_Musik",
+        "field:Cbo_Wetter",
+        "field:Cbo_NameAnzeigen",
+        "field:Txt_Tileset1Nr",
+        "field:Txt_Tileset2Nr"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 1,
+      "map": 1
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Name",
+        "field:Txt_Musik",
+        "field:Cbo_Wetter",
+        "field:Cbo_NameAnzeigen",
+        "field:Txt_Tileset1Nr",
+        "field:Txt_Tileset2Nr"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 37
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Name",
+        "field:Txt_Musik",
+        "field:Cbo_Wetter",
+        "field:Cbo_NameAnzeigen",
+        "field:Txt_Tileset1Nr",
+        "field:Txt_Tileset2Nr"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "高度なヘッダーを表示"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_MapHeader",
+        "field:Txt_MapBreite",
+        "field:Txt_MapHoehe",
+        "field:Txt_EventOffset"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "高度なヘッダーを表示"
+      ]
+    }
+  ]
+}

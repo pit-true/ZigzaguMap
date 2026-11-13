@@ -64,6 +64,22 @@ pub fn automation_ready(window: WebviewWindow, state: State<'_, Arc<Automation>>
     }
 }
 
+/// ウィンドウのクライアント領域の一部（物理ピクセル）を PNG にする（自動操作の `ui.shot` 用。画面側が部品の位置を渡す）。
+#[tauri::command]
+pub async fn automation_capture(app: AppHandle, x: i32, y: i32, width: i32, height: i32) -> Result<Value, String> {
+    let window = app.get_webview_window("main").ok_or("ウィンドウがありません")?;
+    #[cfg(windows)]
+    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
+    #[cfg(not(windows))]
+    let hwnd = {
+        let _ = &window;
+        std::ptr::null_mut()
+    };
+    let (w, h, rgba) = capture::capture_client_rect(hwnd, x, y, width, height)?;
+    let png = capture::encode_png(w, h, &rgba);
+    Ok(json!({"width": w, "height": h, "png": capture::base64(&png)}))
+}
+
 /// 画面からの返事。`body` は JSON の文字列。
 #[tauri::command]
 pub fn automation_reply(state: State<'_, Arc<Automation>>, id: u64, body: String) {

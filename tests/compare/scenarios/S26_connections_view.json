@@ -1,0 +1,45 @@
+{
+  "name": "S26_connections_view",
+  "title": "コネクションマネージャー",
+  "source": "S26",
+  "issues": [
+    65,
+    67
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "マップの移動"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "setField",
+      "screen": "マップの移動",
+      "field": "Spin_AnbNr",
+      "value": 1
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_MapBank",
+        "field:Txt_MapNr",
+        "field:Cbo_Richtung",
+        "field:Txt_Verschiebung"
+      ]
+    }
+  ]
+}

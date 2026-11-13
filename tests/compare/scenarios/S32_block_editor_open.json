@@ -1,0 +1,35 @@
+{
+  "name": "S32_block_editor_open",
+  "title": "ブロックエディタを開く",
+  "source": "S32",
+  "issues": [
+    73
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "dialogs"
+      ]
+    }
+  ]
+}

@@ -43,6 +43,14 @@ mod win {
         pub fn PrintWindow(hwnd: Handle, hdc: Handle, flags: u32) -> i32;
         pub fn GetDC(hwnd: Handle) -> Handle;
         pub fn ReleaseDC(hwnd: Handle, hdc: Handle) -> i32;
+        pub fn ClientToScreen(hwnd: Handle, point: *mut Point) -> i32;
+    }
+
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct Point {
+        pub x: i32,
+        pub y: i32,
     }
 
     #[link(name = "gdi32")]
@@ -137,6 +145,46 @@ pub fn capture_window(hwnd: *mut std::ffi::c_void) -> Result<(u32, u32, Vec<u8>)
         }
         Ok((cw as u32, ch as u32, rgba))
     }
+}
+
+/// ウィンドウのクライアント領域の矩形（物理ピクセル）を切り出す（パネルだけの画像用）。
+#[cfg(windows)]
+pub fn capture_client_rect(hwnd: *mut std::ffi::c_void, x: i32, y: i32, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
+    use std::ffi::c_void;
+    use win::*;
+    let (fw, fh, rgba) = capture_window(hwnd)?;
+    // capture_window は影を除いた枠（無ければウィンドウ全体）の左上から始まる。
+    let (ox, oy) = unsafe {
+        let mut outer = Rect::default();
+        GetWindowRect(hwnd, &mut outer);
+        let mut visible = Rect::default();
+        let has_frame = DwmGetWindowAttribute(
+            hwnd,
+            DWMWA_EXTENDED_FRAME_BOUNDS,
+            &mut visible as *mut Rect as *mut c_void,
+            std::mem::size_of::<Rect>() as u32,
+        ) == 0;
+        let origin = if has_frame { (visible.left, visible.top) } else { (outer.left, outer.top) };
+        let mut client = Point::default();
+        ClientToScreen(hwnd, &mut client);
+        (client.x - origin.0, client.y - origin.1)
+    };
+    let (fw, fh) = (fw as i32, fh as i32);
+    let left = (ox + x).clamp(0, fw);
+    let top = (oy + y).clamp(0, fh);
+    let cw = w.clamp(1, (fw - left).max(1));
+    let ch = h.clamp(1, (fh - top).max(1));
+    let mut out = Vec::with_capacity((cw * ch * 4) as usize);
+    for row in top..top + ch {
+        let start = ((row * fw + left) * 4) as usize;
+        out.extend_from_slice(&rgba[start..start + (cw * 4) as usize]);
+    }
+    Ok((cw as u32, ch as u32, out))
+}
+
+#[cfg(not(windows))]
+pub fn capture_client_rect(_hwnd: *mut std::ffi::c_void, _x: i32, _y: i32, _w: i32, _h: i32) -> Result<(u32, u32, Vec<u8>), String> {
+    Err("この OS ではウィンドウの画像を取れません".into())
 }
 
 #[cfg(not(windows))]

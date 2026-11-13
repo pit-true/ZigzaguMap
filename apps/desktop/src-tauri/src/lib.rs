@@ -4,6 +4,7 @@ mod automation;
 mod capture;
 mod files;
 mod project_fs;
+mod script_editor;
 mod system;
 mod windows;
 
@@ -112,6 +113,7 @@ pub fn run() {
             system::write_file,
             system::file_exists,
             system::exe_path,
+            system::launch_program,
             system::desktop_dir,
             system::create_shortcut,
             system::register_context_menu,
@@ -119,6 +121,7 @@ pub fn run() {
             project_fs::project_set_root,
             project_fs::fs_read_text,
             project_fs::fs_write_text,
+            project_fs::fs_write_bytes,
             project_fs::fs_read_bytes,
             project_fs::fs_exists,
             project_fs::fs_remove,
@@ -127,6 +130,8 @@ pub fn run() {
             automation::automation_reply,
             automation::automation_ready,
             windows::open_tool_window,
+            automation::automation_capture,
+            script_editor::launch_script_editor,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");

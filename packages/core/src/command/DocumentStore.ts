@@ -1,3 +1,4 @@
+import type { FlyPosition } from "../fly/types.js";
 import type { BlockGrid } from "../map/BlockGrid.js";
 import type { MapId } from "../map/types.js";
 import type { MapDocument } from "../model/MapDocument.js";
@@ -35,6 +36,8 @@ export class DocumentStore implements DocumentContext {
   readonly removedMaps = new Set<string>();
   /** このセッションで変えたマップ名。 */
   readonly mapNameEdits = new Map<number, Uint8Array>();
+  /** 編集中のフライトポジションの表（CfruProject が ROM の表を写す。maps\ には出力しない）。 */
+  readonly flyPositions: FlyPosition[] = [];
   /** 読み込んだマップが持っていた名前（地名番号ごとに最初のもの）。 */
   private readonly loadedNames = new Map<number, Uint8Array>();
   readonly textCodec: TextCodec;

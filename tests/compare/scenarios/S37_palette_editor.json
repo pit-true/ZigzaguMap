@@ -1,0 +1,32 @@
+{
+  "name": "S37_palette_editor",
+  "title": "パレットエディタ",
+  "source": "S37",
+  "issues": [
+    79,
+    80
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_Palette"
+      ]
+    }
+  ]
+}

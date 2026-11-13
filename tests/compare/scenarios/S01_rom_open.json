@@ -1,0 +1,44 @@
+{
+  "name": "S01_rom_open",
+  "title": "起動と ROM の読み込み",
+  "source": "S01",
+  "issues": [
+    21,
+    23,
+    25,
+    34
+  ],
+  "steps": [
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tab"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state"
+      ]
+    },
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "tree.roots",
+        "tree.first60",
+        "romInfo"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state"
+      ]
+    }
+  ]
+}

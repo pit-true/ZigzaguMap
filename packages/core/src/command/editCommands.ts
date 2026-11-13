@@ -8,6 +8,7 @@ import { RemoveEventCommand } from "./commands/event/RemoveEventCommand.js";
 import { SetEventCountsCommand } from "./commands/event/SetEventCountsCommand.js";
 import { SetEventFieldsCommand } from "./commands/event/SetEventFieldsCommand.js";
 import { SetItemBallCommand } from "./commands/event/SetItemBallCommand.js";
+import { SetFlyPositionCommand } from "./commands/fly/SetFlyPositionCommand.js";
 import { SetHeaderFieldsCommand } from "./commands/header/SetHeaderFieldsCommand.js";
 import { SetMapNameCommand } from "./commands/header/SetMapNameCommand.js";
 import { SetRawHeaderCommand } from "./commands/header/SetRawHeaderCommand.js";
@@ -43,6 +44,8 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetEventFieldsCommand,
   SetEventCountsCommand,
   SetItemBallCommand,
+  // フライトポジション（出力しない）
+  SetFlyPositionCommand,
   // ヘッダー
   SetHeaderFieldsCommand,
   SetRawHeaderCommand,

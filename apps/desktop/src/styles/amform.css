@@ -1,0 +1,170 @@
+/* 座標で並べるフォーム（場所の設定タブ・出現ポケモンタブ・コネクションマネージャー）。Windows 標準の部品に寄せる。 */
+.am-panel {
+  position: relative;
+  flex: none;
+}
+
+.am-abs {
+  position: absolute;
+  margin: 0;
+}
+
+.am-group {
+  border: 1px solid #dcdcdc;
+  border-radius: 2px;
+}
+
+.am-group-title {
+  position: absolute;
+  left: 6px;
+  top: -7px;
+  padding: 0 2px;
+  background: var(--face);
+  line-height: 13px;
+  white-space: nowrap;
+}
+
+.am-label {
+  white-space: nowrap;
+  line-height: 13px;
+}
+
+.am-edit,
+.am-memo,
+.am-spin input {
+  padding: 0 3px;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+  color: var(--text);
+  font: inherit;
+}
+
+.am-edit:disabled,
+.am-memo:disabled,
+.am-spin input:disabled {
+  background: var(--face);
+  color: var(--gray-text);
+  border-color: #cccccc;
+}
+
+.am-edit[readonly] {
+  background: var(--window);
+}
+
+.am-memo {
+  resize: none;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  white-space: pre;
+  line-height: 15px;
+  padding-top: 2px;
+}
+
+.am-button {
+  padding: 0;
+  border: 1px solid #adadad;
+  background: #e1e1e1;
+  color: var(--text);
+}
+
+.am-button:hover:not(:disabled) {
+  border-color: #0078d7;
+  background: #e5f1fb;
+}
+
+.am-button:disabled {
+  color: #a0a0a0;
+  border-color: #d0d0d0;
+  background: #f4f4f4;
+}
+
+.am-combo {
+  height: 21px;
+  padding: 0 0 0 2px;
+  font: inherit;
+}
+
+.am-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.am-check input {
+  margin: 0;
+}
+
+.am-spin {
+  display: flex;
+}
+
+.am-spin input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.am-spin-arrows {
+  width: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.am-spin-arrows button {
+  flex: 1;
+  padding: 0;
+  border: 1px solid #adadad;
+  background: #e1e1e1 no-repeat center;
+  background-size: 7px 4px;
+}
+
+.am-spin-arrows button:first-child {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 4h7L3.5 0z'/%3E%3C/svg%3E");
+}
+
+.am-spin-arrows button:last-child {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 0h7L3.5 4z'/%3E%3C/svg%3E");
+}
+
+.am-spin-arrows button:disabled {
+  opacity: 0.4;
+}
+
+/* タブの中身をスクロールさせる枠（TScrollBox）。 */
+.tab-page.am-scroll {
+  overflow: auto;
+  display: block;
+  padding: 0;
+}
+
+.am-bevel {
+  border-top: 1px solid var(--shadow);
+  border-left: 1px solid var(--shadow);
+  border-right: 1px solid var(--highlight);
+  border-bottom: 1px solid var(--highlight);
+}
+
+.am-disabled-label {
+  color: var(--gray-text);
+}
+
+.am-border-image {
+  image-rendering: pixelated;
+}
+
+/* ダイアログの中を座標で並べるもの（余白は部品の座標に含める）。 */
+.wild-add-dialog .dialog-body,
+.connection-dialog .dialog-body {
+  padding: 0;
+}
+
+.conn-arrow {
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* トラックバー（TTrackBar）。 */
+.am-trackbar {
+  accent-color: #0078d7;
+}

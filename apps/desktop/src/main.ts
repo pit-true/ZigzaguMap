@@ -8,6 +8,7 @@ import "./styles/forms.css";
 import "./styles/statusbar.css";
 import "./styles/dialog.css";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import "./styles/amform.css";
 import { App } from "./app/App";
 import { Settings } from "./app/Settings";
 import { timings } from "./app/timings";

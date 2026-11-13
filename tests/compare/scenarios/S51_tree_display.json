@@ -1,0 +1,43 @@
+{
+  "name": "S51_tree_display",
+  "title": "マップの表示設定",
+  "source": "S51",
+  "issues": [
+    99
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "マップの表示設定",
+        "INIの表示"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "tree.roots",
+        "tree.count"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "マップの表示設定",
+        "マップヘッダー"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "tree.roots",
+        "tree.count"
+      ]
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+import { jaEvent } from "./ja.event";
+import { jaConnection, jaHeader } from "./ja.header";
+import { jaWild } from "./ja.wild";
+
 /**
  * 画面の文言（日本語）。文言はすべてここに集める。
  * AdvanceMap 1.92 日本語化パックの Japanese.ini の表記をそのまま使う（「ROMの保存」系は「出力」に読み替える）。
@@ -177,10 +181,6 @@ export const ja = {
   statusPaletteBlock: (block: number, offset: number | null) =>
     `ブロック: ${hex(block, 2)} オフセット: ${offset === null ? "------" : hex(offset, 6)}`,
   statusMovementPalette: (value: number, name: string) => `ブロック移動：: ${hex(value, 2)} ${name}`,
-  statusEventCell: (x: number, y: number, event: string) => `X: ${hex(x, 2)} Y: ${hex(y, 2)}　　${event}`,
-  eventKindNames: { person: "人", warp: "ワープ", trap: "スクリプト", sign: "看板" } as Readonly<Record<string, string>>,
-  noteOk: "ノート:特に異常無し",
-  noteOutside: "ノート:マップの外にイベントがあります。",
   noEvents: "イベントはありません.",
   loading: "読み込み中…",
   notImplemented: (name: string) => `未実装: ${name}`,
@@ -245,27 +245,8 @@ export const ja = {
   selectedBlock: (block: number) => `選択中: ${hex(block, 3)}`,
   selectedStamp: (w: number, h: number) => `選択中: ${w}×${h}`,
 
-  // [Events]
-  eventTypes: ["人", "ワープ", "スクリプト", "看板"],
-  eventNumber: "イベント番号:",
-  eventPosition: "座標(X/Y) :",
-  eventFields: {
-    person: {
-      localId: "人 No.:",
-      graphicsId: "画像 No.:",
-      elevation: "属性:",
-      movementType: "アクション:",
-      movementRange: "移動範囲(YX) :",
-      trainerType: "トレーナー:",
-      trainerRange: "視界範囲:",
-      script: "オフセット:",
-      flag: "人 ID:",
-    },
-    warp: { elevation: "属性:", warpId: "ワープNo.:", bank: "バンク番号:", map: "マップ番号:" },
-    trap: { elevation: "属性:", variable: "フラグ No.:", value: "フラグの値:", script: "オフセット:" },
-    sign: { elevation: "属性:", kind: "イベントタイプ:", script: "オフセット:", item: "アイテムID:", hiddenId: "隠しID:", amount: "個数:" },
-  },
-  noEventsInMap: "このマップにはイベントが存在しません",
+  // [Events] [EventMenge] ほか（ja.event.ts）
+  event: jaEvent,
 
   // [WildePokemon]
   wildAreas: ["草むら", "水上", "岩砕き/木", "釣り"],
@@ -402,6 +383,11 @@ export const ja = {
     0x3c: "直前のレイヤーと同じ働き",
   } as Readonly<Record<number, string>>,
   movementUnknown: "???",
+
+  // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
+  header: jaHeader,
+  conn: jaConnection,
+  wild: jaWild,
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */
