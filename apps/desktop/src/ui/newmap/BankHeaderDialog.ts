@@ -1,6 +1,6 @@
 import "../../styles/newmap.css";
 import { jaNewMap } from "../../i18n/ja.newMap";
-import { createDialog } from "../Dialog";
+import { createDialog, handleDialogKeys, pressable } from "../Dialog";
 import { button, edit, label, panel } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
 
@@ -91,20 +91,15 @@ export function openBankHeaderDialog(rows: readonly BankRow[]): Promise<BankHead
       button("bankHeader.apply", t.bankApply, 252, 419, 177, 33, apply),
     );
     frame.body.append(body);
-    frame.box.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape") finish(null);
-    });
+    handleDialogKeys(frame, () => finish(null));
     frame.register({
       title: t.bankTitle,
       text: "",
-      buttons: [t.newBank, t.bankCancel, t.bankApply],
-      press: (b) => {
-        if (b === t.newBank) newBank.click();
-        else if (b === t.bankCancel) finish(null);
-        else if (b === t.bankApply) apply();
-        else throw new Error(`ボタンがありません: ${b}`);
-      },
+      ...pressable([
+        { label: t.newBank, run: () => newBank.click() },
+        { label: t.bankCancel, run: () => finish(null) },
+        { label: t.bankApply, run: () => apply() },
+      ]),
     });
     remainders[0]?.focus();
     remainders[0]?.select();

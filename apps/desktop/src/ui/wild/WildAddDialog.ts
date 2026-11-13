@@ -2,7 +2,7 @@ import { SetWildAreasCommand, toOffset, type MapId } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import type { ProjectSession } from "../../app/ProjectSession";
 import { ja } from "../../i18n/ja";
-import { createDialog } from "../Dialog";
+import { createDialog, handleDialogKeys, pressable } from "../Dialog";
 import { messageBox } from "../MessageBox";
 import { commit } from "../form/commit";
 import { button, check, label, panel } from "../form/controls";
@@ -60,19 +60,14 @@ export function openWildAddDialog(state: EditorState, session: ProjectSession, i
       button("wildAdd.ok", w.ok, 152, 160, 121, 33, () => void ok()),
     );
     frame.body.append(body);
-    frame.box.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape") finish(null);
-    });
+    handleDialogKeys(frame, () => finish(null));
     frame.register({
       title: w.dialogTitle,
       text: w.dialogHead,
-      buttons: [w.cancel, w.ok],
-      press: (b) => {
-        if (b === w.ok) void ok();
-        else if (b === w.cancel) finish(null);
-        else throw new Error(`ボタンがありません: ${b}`);
-      },
+      ...pressable([
+        { label: w.cancel, run: () => finish(null) },
+        { label: w.ok, run: () => void ok() },
+      ]),
     });
   });
 }

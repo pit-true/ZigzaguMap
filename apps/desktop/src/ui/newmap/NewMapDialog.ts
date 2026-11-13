@@ -1,7 +1,7 @@
 import { parseIntInput } from "@zigzagumap/core";
 import "../../styles/newmap.css";
 import { jaNewMap } from "../../i18n/ja.newMap";
-import { createDialog } from "../Dialog";
+import { createDialog, handleDialogKeys, pressable } from "../Dialog";
 import { button, combo, edit, label, panel, selectIndex } from "../form/controls";
 import { showNewMapError } from "./newMapErrors";
 
@@ -90,20 +90,16 @@ export function openNewMapDialog(options: NewMapDialogOptions): Promise<boolean>
       button("newMap.cancel", t.cancel, 120, 176, 97, 33, () => finish(false)),
     );
     frame.body.append(body);
-    frame.box.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape") finish(false);
-      else if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) void create();
+    handleDialogKeys(frame, () => finish(false), (e) => {
+      if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) void create();
     });
     frame.register({
       title: t.dialogTitle,
       text: "",
-      buttons: [t.create, t.cancel],
-      press: (b) => {
-        if (b === t.create) void create();
-        else if (b === t.cancel) finish(false);
-        else throw new Error(`ボタンがありません: ${b}`);
-      },
+      ...pressable([
+        { label: t.create, run: () => void create() },
+        { label: t.cancel, run: () => finish(false) },
+      ]),
     });
     name.focus();
     name.select();

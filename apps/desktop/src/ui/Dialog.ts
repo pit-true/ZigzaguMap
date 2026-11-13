@@ -102,6 +102,40 @@ export function createDialog(options: DialogOptions): DialogFrame {
   };
 }
 
+/** 自動操作から押せるボタン 1 つ（`label` か `aliases` の文字列で押す）。 */
+export interface PressableButton {
+  readonly label: string;
+  readonly aliases?: readonly string[];
+  readonly run: () => void;
+}
+
+/**
+ * ボタンの表から、`DialogFrame.register` に渡す `buttons` と `press` を作る。
+ * 表に無い文字列を押そうとしたら Error（どのダイアログでも同じ文言）。
+ */
+export function pressable(defs: readonly PressableButton[]): { buttons: string[]; press: (button: string) => void } {
+  return {
+    buttons: defs.map((d) => d.label),
+    press: (button) => {
+      const def = defs.find((d) => d.label === button || d.aliases?.includes(button));
+      if (!def) throw new Error(`ボタンがありません: ${button}`);
+      def.run();
+    },
+  };
+}
+
+/**
+ * ダイアログの中のキー操作を受ける（メインのショートカットへ届かないよう止めてから `handler` を呼ぶ）。
+ * Esc で `onEscape` を呼ぶ。ほかのキーは `handler` へ渡す。
+ */
+export function handleDialogKeys(frame: DialogFrame, onEscape: (() => void) | null, handler?: (e: KeyboardEvent) => void): void {
+  frame.box.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape" && onEscape) onEscape();
+    else handler?.(e);
+  });
+}
+
 /** ボタンを作る。 */
 export function dialogButton(text: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement("button");
