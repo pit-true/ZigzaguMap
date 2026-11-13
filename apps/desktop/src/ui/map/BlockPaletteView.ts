@@ -6,8 +6,8 @@ import { drawGrid, type Cell } from "./MapView";
 
 /** ブロックパレットが使う窓口。 */
 export interface BlockPaletteHost {
-  /** ブロックを選んだ（1 つか、Ctrl＋右ドラッグの矩形）。 */
-  select(selection: BlockSelection): void;
+  /** ブロックを選んだ（1 つか、Ctrl＋右ドラッグの矩形。矩形なら `stamp` が true）。 */
+  select(selection: BlockSelection, stamp: boolean): void;
   /** マウスの下のブロック（無ければ null）。 */
   hover(block: number | null, offset: number | null): void;
 }
@@ -142,7 +142,7 @@ export class BlockPaletteView {
   private pick(cell: Cell): void {
     const block = this.tiles?.blockAt(cell.x, cell.y, this.width);
     if (block === null || block === undefined) return;
-    this.host.select({ width: 1, height: 1, blocks: [block] });
+    this.host.select({ width: 1, height: 1, blocks: [block] }, false);
   }
 
   private selectRect(r: { x: number; y: number; w: number; h: number }): void {
@@ -151,7 +151,7 @@ export class BlockPaletteView {
     for (let y = r.y; y < r.y + r.h; y++) {
       for (let x = r.x; x < r.x + r.w; x++) blocks.push(this.tiles.blockAt(x, y, this.width) ?? 0);
     }
-    this.host.select({ width: r.w, height: r.h, blocks });
+    this.host.select({ width: r.w, height: r.h, blocks }, true);
   }
 
   /** 選択の枠を描く。`dragging` を渡すとドラッグ中の矩形を描く。 */

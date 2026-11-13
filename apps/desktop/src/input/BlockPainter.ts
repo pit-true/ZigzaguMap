@@ -87,7 +87,7 @@ export class BlockPainter {
     const h = Math.abs(a.y - b.y) + 1;
     const blocks: number[] = [];
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) blocks.push(map.doc.grid.getBlock(x, y));
-    this.state.select({ width: w, height: h, blocks });
+    this.state.selectStamp({ width: w, height: h, blocks });
     this.onPicked();
   }
 

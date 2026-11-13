@@ -14,6 +14,18 @@ export interface LastSelection {
   readonly tab: string;
 }
 
+/** ウィンドウの位置と大きさ（物理ピクセル）。 */
+export interface WindowPlacement {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly maximized: boolean;
+}
+
+/** マップ一覧に出す根（設定 > マップの表示設定。両方 = 既定）。 */
+export type MapListSource = "both" | "header" | "ini";
+
 /** 個人設定（AppData の settings.json）。項目名は保存形式なので変えないこと。 */
 export interface SettingsData {
   grid: boolean;
@@ -36,8 +48,30 @@ export interface SettingsData {
   recentMax: number;
   recentShowPath: boolean;
   last: LastSelection | null;
+  /** オブジェクトの表示（人を OW 画像で描く）。 */
+  showObjects: boolean;
+  /** イベントパネルの非表示（AdvanceMap でも見た目の変化は無い。設定として持つだけ）。 */
+  hideEventPanel: boolean;
+  /** コンボボックス（左の一覧の代わりにコンボ 2 つを出す）。 */
+  comboBox: boolean;
+  /** マップ一覧の根。 */
+  mapListSource: MapListSource;
+  /** 自動的にオフセットを検索する（ROM へ書かないので設定として持つだけ）。 */
+  autoSearch: boolean;
   /** 高度なヘッダーを表示。 */
   advancedHeader: boolean;
+  /** 最後に開いた ROM のショートカットを作る（exe と同じフォルダ）。 */
+  romShortcut: boolean;
+  /** エクスプローラーの右クリックに登録したか。 */
+  contextMenu: boolean;
+  /** スクリプトエディターの exe（未設定なら null）。 */
+  scriptEditor: string | null;
+  /** スクリプトエディターに渡すとき、ROM の名前とオフセットを空白で区切る（false なら「:」）。 */
+  scriptSpaceSeparator: boolean;
+  /** 画像を保存したフォルダ（次の保存ダイアログの初期フォルダ）。 */
+  imageDir: string | null;
+  /** ウィンドウの位置と大きさ。 */
+  window: WindowPlacement | null;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -58,7 +92,18 @@ export const DEFAULT_SETTINGS: SettingsData = {
   recentMax: 5,
   recentShowPath: false,
   last: null,
+  showObjects: false,
+  hideEventPanel: true,
+  comboBox: false,
+  mapListSource: "both",
+  autoSearch: true,
   advancedHeader: true,
+  romShortcut: false,
+  contextMenu: false,
+  scriptEditor: null,
+  scriptSpaceSeparator: false,
+  imageDir: null,
+  window: null,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

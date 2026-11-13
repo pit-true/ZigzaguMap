@@ -2,7 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   CfruProject,
   CommandBus,
+  OverworldSprites,
+  Rom,
+  SpeciesNameTable,
   createDefaultRegistry,
+  detectGame,
   type CommandRegistry,
   type MapDocument,
   type MapId,
@@ -19,6 +23,9 @@ export interface OpenMap {
   readonly tiles: TilesetView;
 }
 
+/** 対応していない ROM（ゲームコードが BPRJ でない、小さすぎる）。 */
+export class UnknownRomError extends Error {}
+
 /** 同時に持っておくタイルセットの組の数（メモリを抑えるため古いものから捨てる）。 */
 const TILESET_CACHE_SIZE = 8;
 
@@ -31,6 +38,8 @@ export class ProjectSession {
   readonly registry: CommandRegistry = createDefaultRegistry();
   private readonly tilesets = new Map<string, TilesetView>();
   private readonly opened = new Map<string, MapId>();
+  private species: SpeciesNameTable | null | undefined;
+  private sprites: OverworldSprites | null | undefined;
 
   private constructor(
     readonly romPath: string,
@@ -47,6 +56,14 @@ export class ProjectSession {
   static async open(romPath: string, projectDir: string | null): Promise<ProjectSession> {
     const start = performance.now();
     const bytes = new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path: romPath }));
+    // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
+    let supported = false;
+    try {
+      supported = detectGame(new Rom(bytes)).offsets !== null;
+    } catch {
+      supported = false;
+    }
+    if (!supported) throw new UnknownRomError(romPath);
     const fs = new TauriProjectFs();
     await fs.setRoot(projectDir);
     const project = await CfruProject.open(bytes, fs);
@@ -76,6 +93,31 @@ export class ProjectSession {
     return { id, doc, tiles };
   }
 
+  /** 種族名表（初めて使うときに読む。読めなければ null）。 */
+  get speciesNames(): SpeciesNameTable | null {
+    if (this.species === undefined) {
+      try {
+        this.species = SpeciesNameTable.read(this.project.rom, this.project.game.offsets.speciesNameTablePointer);
+      } catch {
+        this.species = null;
+      }
+    }
+    return this.species;
+  }
+
+  /** OW の画像（初めて使うときに読む。読めなければ null）。 */
+  get overworldSprites(): OverworldSprites | null {
+    if (this.sprites === undefined) {
+      const o = this.project.game.offsets;
+      try {
+        this.sprites = OverworldSprites.read(this.project.rom, o.overworldGraphicsTablePointer, o.overworldPaletteTablePointer);
+      } catch {
+        this.sprites = null;
+      }
+    }
+    return this.sprites;
+  }
+
   /** そのマップが読み込み済みか。 */
   isLoaded(id: MapId): boolean {
     return this.project.loaded(id) !== undefined;
@@ -99,6 +141,11 @@ export class ProjectSession {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
     return this.project.save();
+  }
+
+  /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */
+  async reattach(): Promise<void> {
+    await this.fs.setRoot(this.fs.root);
   }
 
   /** 閉じる（Rust 側のフォルダの許可も外す）。 */

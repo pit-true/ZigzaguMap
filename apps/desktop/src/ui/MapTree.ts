@@ -51,6 +51,8 @@ export class MapTree {
   show(roots: readonly TreeNode[]): void {
     this.roots = roots;
     this.rows.clear();
+    // 根が 1 つだけ（マップの表示設定で片方だけ）のときは開いておく。
+    if (roots.length === 1) this.expanded.add(roots[0]!.key);
     const fragment = document.createDocumentFragment();
     for (const node of roots) fragment.append(this.build(node, 0));
     this.element.replaceChildren(fragment);

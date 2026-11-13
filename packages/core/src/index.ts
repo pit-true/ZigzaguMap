@@ -79,6 +79,10 @@ export { TextCodec } from "./name/TextCodec.js";
 export { CharmapTable, type CharmapEntry } from "./name/CharmapTable.js";
 export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
+export { SPECIES_COUNT, SPECIES_NAME_BYTES, SpeciesNameTable } from "./name/SpeciesNameTable.js";
+
+// OW（人のスプライト）
+export { OverworldSprites, type OverworldGraphicsInfo } from "./sprite/OverworldSprites.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

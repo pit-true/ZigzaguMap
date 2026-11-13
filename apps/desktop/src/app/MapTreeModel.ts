@@ -3,6 +3,7 @@ import { ja } from "../i18n/ja";
 import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
 import { FR_TILESET_GROUPS, FR_TILESET_PLAIN_GROUP, tilesetGroupOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
+import type { MapListSource } from "./Settings";
 
 /** マップ一覧の 1 項目。`mapId` があればマップ、`children` があればグループ。 */
 export interface TreeNode {
@@ -26,13 +27,14 @@ export const HEADER_ROOT_KEY = "h";
 /**
  * マップ一覧を作る。根は AdvanceMap と同じく「ヘッダー」「iniファイル」「マップファイル」の 3 つ。
  * 「ヘッダー」の下は並べ替えの種類でグループを作る。
+ * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」だけ、「INIの表示」なら「iniファイル」だけを出す。
  */
-export function buildMapTree(catalog: MapCatalog, sortMode: number): TreeNode[] {
-  return [
-    { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) },
-    { key: "i", label: ja.rootIni, children: iniGroups(catalog) },
-    { key: "f", label: ja.rootMapFiles, children: [] },
-  ];
+export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both"): TreeNode[] {
+  const header: TreeNode = { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) };
+  if (source === "header") return [header];
+  const ini: TreeNode = { key: "i", label: ja.rootIni, children: iniGroups(catalog) };
+  if (source === "ini") return [ini];
+  return [header, ini, { key: "f", label: ja.rootMapFiles, children: [] }];
 }
 
 function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
@@ -80,6 +82,31 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
       return out;
     }
   }
+}
+
+/**
+ * コンボボックス表示のグループ（AdvanceMap と同じく ini のグループ名。ini に無いマップは最後の「名称なし」にまとめる）。
+ * 各マップの文字列はヘッダーのマップ名。
+ */
+export function comboGroups(catalog: MapCatalog): TreeNode[] {
+  const listed = new Set<string>();
+  const out = FR_INI_GROUPS.flatMap(([name, ids], i): TreeNode[] => {
+    const children = ids.flatMap((text): TreeNode[] => {
+      const info = catalog.get(parseId(text));
+      if (!info) return [];
+      listed.add(text);
+      return [{ key: `c/${i}/${text}`, label: ja.mapItem(info.name ?? ja.noName, "", info.id.bank, info.id.map), mapId: info.id }];
+    });
+    return children.length > 0 ? [{ key: `c/${i}`, label: name, children }] : [];
+  });
+  const rest = catalog.maps.filter((m) => !listed.has(`${m.id.bank}.${m.id.map}`));
+  if (rest.length > 0) out.push(group("c/rest", ja.noName, rest, () => ""));
+  return out;
+}
+
+function parseId(text: string): MapId {
+  const [bank, map] = text.split(".").map(Number) as [number, number];
+  return { bank, map };
 }
 
 function iniGroups(catalog: MapCatalog): TreeNode[] {

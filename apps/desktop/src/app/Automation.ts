@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { openDialogs } from "../ui/Dialog";
 import type { App } from "./App";
 import { click, findField, getField, setField } from "./AutomationUi";
 import { TAB_ORDER, type TabId } from "./EditorState";
@@ -91,7 +92,8 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
     }
     case "action":
       app.actions.run(str(req, "id"));
-      return null;
+      await settle();
+      return { status: state.status, dialogs: describeDialogs() };
     case "key": {
       // キー操作をまねる（メニューの見た目の確認用）。押して離すまでを送る。
       const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
@@ -122,9 +124,72 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
     case "state":
       app.checkDirty(true);
       return describe(app);
+    case "dialog": {
+      // 開いているダイアログ（画面内のもの）を読む。`input` で入力欄に入れ、`press` でボタンを押す。
+      const top = openDialogs[openDialogs.length - 1];
+      if (!top) {
+        if (req["press"] !== undefined || req["input"] !== undefined) throw new Error("ダイアログが開いていません");
+        return { dialogs: [] };
+      }
+      if (typeof req["input"] === "string") {
+        if (!top.setInput) throw new Error("入力欄がありません");
+        top.setInput(req["input"]);
+      }
+      if (typeof req["press"] === "string") {
+        const before = describeDialogs();
+        if (req["press"] === "close") top.close();
+        else top.press(req["press"]);
+        await settle();
+        return { pressed: req["press"], before, dialogs: describeDialogs() };
+      }
+      return { dialogs: describeDialogs() };
+    }
+    case "queuePath":
+      // 次に出るファイル・フォルダのダイアログで選ぶパス（null はキャンセル）。ダイアログは出さない。
+      app.files.queue(typeof req["path"] === "string" ? req["path"] : null);
+      return null;
+    case "pointer": {
+      // 部品の上のマウス操作をまねる。x, y は部品の左上からの表示上のピクセル。
+      const el = document.querySelector<HTMLElement>(POINTER_TARGETS[str(req, "target")] ?? "");
+      if (!el) throw new Error(`部品が見つかりません: ${String(req["target"])}`);
+      const r = el.getBoundingClientRect();
+      const type = str(req, "type");
+      const init: PointerEventInit = {
+        clientX: r.left + int(req, "x"),
+        clientY: r.top + int(req, "y"),
+        button: type === "move" ? -1 : typeof req["button"] === "number" ? req["button"] : 0,
+        buttons: typeof req["button"] === "number" && req["button"] === 2 ? 2 : 1,
+        ctrlKey: req["ctrl"] === true,
+        shiftKey: req["shift"] === true,
+        pointerId: 1,
+        pointerType: "mouse",
+        bubbles: true,
+        cancelable: true,
+      };
+      el.dispatchEvent(new PointerEvent(`pointer${type}`, init));
+      await settle();
+      return { status: state.status };
+    }
     default:
       throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
   }
+}
+
+/** 自動操作の pointer 命令で使える部品。 */
+const POINTER_TARGETS: Readonly<Record<string, string>> = {
+  map: ".map-tab-view .map-stage",
+  movement: ".movement-tab-view .map-stage",
+  event: ".event-tab-view .map-stage",
+  palette: ".block-palette .palette-stage",
+};
+
+function describeDialogs(): unknown[] {
+  return openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons, input: d.input?.() ?? null }));
+}
+
+/** 押したあとの処理（次のダイアログを出すなど）が進むのを少し待つ。 */
+function settle(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 50));
 }
 
 function describe(app: App): unknown {
@@ -144,6 +209,8 @@ function describe(app: App): unknown {
     canRedo: session?.bus.canRedo ?? false,
     history: session?.bus.history().length ?? 0,
     status: s.status,
+    dialogs: describeDialogs(),
+    settings: s.settings.data,
     title: document.title,
     timings: timings.toJson(),
   };
