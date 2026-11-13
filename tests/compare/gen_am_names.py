@@ -119,7 +119,7 @@ def main() -> int:
         shutil.rmtree(profile, ignore_errors=True)
     result = {w: dict(sorted(t.items())) for w, t in sorted(out.items())}
     result["_screens"] = screens
-    pathlib.Path(a.out).write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    pathlib.Path(a.out).write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"{a.out}: " + ", ".join(f"{w} {len(t)} 件" for w, t in out.items()))
     return 0
 
