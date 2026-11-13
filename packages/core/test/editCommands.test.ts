@@ -68,6 +68,13 @@ describe("入力の読み取り（AdvanceMap の欄と同じ規則）", () => {
       expect((e as EditError).code).toBe(EditErrorCode.InvalidInteger);
       expect((e as EditError).params).toEqual({ text: "$ZZ" });
     }
+    // `$` で始まる入力は `$` を重ねない（AdvanceMap と同じ「'$GGGGGG' is not a valid integer value.」）
+    expect(parseHexInput("$16F884")).toBe(0x16f884);
+    try {
+      parseHexInput("$GGGGGG");
+    } catch (e) {
+      expect((e as EditError).params).toEqual({ text: "$GGGGGG" });
+    }
   });
 
   it("10 進欄: Delphi の StrToInt と同じく空白・符号・$・0x を受け付ける", () => {
