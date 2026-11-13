@@ -16,42 +16,42 @@
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "コンボボックス"
+      "key": [
+        "Menue.12",
+        "Menue.121"
       ]
     },
     {
       "op": "compareFields",
       "fields": [
-        "menu.state:設定/コンボボックス"
+        "menu.state:Menue.12/Menue.121"
       ]
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "コンボボックス"
+      "key": [
+        "Menue.12",
+        "Menue.121"
       ]
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "ツールバーの表示"
+      "key": [
+        "Menue.12",
+        "Menue.1211"
       ]
     },
     {
       "op": "compareFields",
       "fields": [
-        "menu.state:設定/ツールバーの表示"
+        "menu.state:Menue.12/Menue.1211"
       ]
     },
     {
       "op": "menu",
-      "path": [
-        "設定",
-        "ツールバーの表示"
+      "key": [
+        "Menue.12",
+        "Menue.1211"
       ]
     }
   ]

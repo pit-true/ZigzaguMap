@@ -29,7 +29,7 @@ OPS: dict[str, dict] = {
     "dragMovement": dict(args={"from": "[x,y]", "to": "[x,y]", "steps": "int=8"}, taints=["all"], desc="移動エリアを左ドラッグ"),
     "pickMovement": dict(args={"x": "int", "y": "int"}, taints=["all"], desc="移動エリアを右クリック"),
     # --- メニュー・入力欄・ボタン・ダイアログ
-    "menu": dict(args={"path": "[str]"}, taints=["all"], desc="メインメニューの項目を実行"),
+    "menu": dict(args={"key": "[言語ファイルのキー Menue.N]"}, taints=["all"], desc="メインメニューの項目を実行"),
     "setField": dict(args={"screen": "str", "field": "str", "value": "str|int"}, taints=["all"], desc="入力欄・コンボの値を変える"),
     "clickButton": dict(args={"screen": "str", "button": "str"}, taints=["all"], desc="ボタンを押す"),
     "clickEvent": dict(args={"x": "int", "y": "int"}, taints=["all"], desc="イベントタブのマップをクリック"),
@@ -54,7 +54,7 @@ FIELDS: dict[str, dict] = {
     "tree.roots": dict(scope="tree", desc="マップ一覧の根の項目名"),
     "tree.count": dict(scope="tree", desc="マップ一覧の項目数"),
     "tree.first60": dict(scope="tree", desc="マップ一覧の先頭 60 件（文字列と深さ）"),
-    "menu.state": dict(scope="all", desc="メニュー全項目の灰色・チェック（menu.state:<階層> で 1 項目）"),
+    "menu.state": dict(scope="all", desc="メニュー全項目の灰色・チェック（menu.state:Menue.12/Menue.120 のようにキーの階層で 1 項目）"),
     "romInfo": dict(scope="all", desc="左下の ROM 情報 4 行"),
     "dialogs": dict(scope="dialog", desc="開いているダイアログ"),
 }
