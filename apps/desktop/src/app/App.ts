@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { CommandEvent, MapId } from "@zigzagumap/core";
+import { isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
@@ -20,6 +20,8 @@ import { EventTab } from "../ui/event/EventTab";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
 import { WildTab } from "../ui/wild/WildTab";
+import { installMakeButtons } from "../ui/newmap/MakeButtons";
+import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
@@ -78,6 +80,8 @@ export class App implements ActionTarget {
     exportMaps: () => this.exportMaps(false),
   });
   private connections: ConnectionManager | null = null;
+  /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
+  readonly newMaps: NewMapController;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
 
@@ -89,6 +93,18 @@ export class App implements ActionTarget {
     this.state = state;
     this.system = new SystemSettings(state, this.files, () => this.automation);
     this.actions = new Actions(state, this);
+    this.newMaps = new NewMapController({
+      state,
+      files: this.files,
+      openMap: (id) => this.openMap(id),
+      refreshMapList: () => this.refreshMapList(),
+      notNeeded: () => this.system.notNeeded(),
+    });
+    this.actions.register("map.new", () => this.newMaps.newMap());
+    this.actions.register("map.openCreated", () => this.newMaps.openFile());
+    this.actions.register("map.saveCreatedAs", () => this.newMaps.saveAs());
+    this.actions.register("map.insert", () => this.newMaps.insert());
+    this.actions.register("dummy.manage", () => this.newMaps.bankHeader());
     this.menu = new MenuBar({
       items: () => buildMenu(this.recentItems()),
       isEnabled: (item) => this.actions.isEnabled(item),
@@ -102,11 +118,16 @@ export class App implements ActionTarget {
       setSort: (mode) => this.setSort(mode),
       sortMode: () => state.settings.data.sortMode,
     });
-    this.tree = new MapTree({ openMap: (id) => void this.openMap(id), isDirty: (id) => state.isDirty(id) });
+    this.tree = new MapTree({
+      openMap: (id) => void this.openMap(id),
+      isDirty: (id) => state.isDirty(id),
+      openMapFile: (path, name) => void this.newMaps.openEntry(path, name),
+    });
     this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
     this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
+    installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
     const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
@@ -281,6 +302,14 @@ export class App implements ActionTarget {
       state.map = map;
       state.mapImage = new MapImage(map.doc.grid, map.tiles);
       state.emit("map");
+      if (isWorkMapId(id)) {
+        // 作業用のマップ（新規作成・.map）は一覧に無い。AdvanceMap と同じく一覧の選択とステータスバーは変えず、
+        // 題名は .map から開いたときだけ「ZigzaguMap - <拡張子を除いたパス>」にする。
+        const path = session.project.workMapInfo(id)?.path;
+        if (path) await this.setRawTitle(`${ja.appTitle} - ${path.replace(/\.[^.\\/]*$/, "")}`);
+        timings.lastMapSwitchMs = performance.now() - start;
+        return;
+      }
       this.tree.setOpened(id);
       this.combo.setOpened(id);
       timings.mark("mapShown");
@@ -337,6 +366,7 @@ export class App implements ActionTarget {
 
   /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
   private onCommand(e: CommandEvent): void {
+    if (e.command && changesMapList(e.command)) void this.afterMapListChange();
     const args = e.command?.args as { bank?: unknown; map?: unknown } | undefined;
     if (typeof args?.bank !== "number" || typeof args.map !== "number") return;
     const id = { bank: args.bank, map: args.map };
@@ -373,6 +403,37 @@ export class App implements ActionTarget {
     }
     this.pendingDirty.clear();
     this.state.emit("dirty");
+  }
+
+  /** マップ一覧を作り直す（マップを加えた・取り消した・差し替えたとき、マップファイルを登録したとき）。 */
+  async refreshMapList(): Promise<void> {
+    const session = this.state.session;
+    if (!session) return;
+    await session.refreshCatalog();
+    if (this.state.session !== session) return;
+    this.rebuildTree();
+    const current = this.state.map;
+    if (current && !isWorkMapId(current.id)) {
+      this.tree.setOpened(current.id);
+      this.combo.setOpened(current.id);
+    }
+    this.checkDirty(true);
+  }
+
+  /** マップの追加・作業用のマップの作成を取り消したら、表示中のマップが無くなっていれば前のマップへ戻る。一覧も作り直す。 */
+  private async afterMapListChange(): Promise<void> {
+    const session = this.state.session;
+    const current = this.state.map;
+    if (session && current && session.project.loaded(current.id) !== current.doc) {
+      const back = this.state.previousMap;
+      if (back && session.project.loaded(back)) await this.openMap(back);
+      else {
+        this.state.map = null;
+        this.state.mapImage = null;
+        this.state.emit("map");
+      }
+    }
+    await this.refreshMapList();
   }
 
   // ---- 出力 ----
@@ -500,7 +561,8 @@ export class App implements ActionTarget {
   private rebuildTree(): void {
     const session = this.state.session;
     if (!session) return;
-    this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode, this.state.settings.data.mapListSource));
+    const s = this.state.settings.data;
+    this.tree.show(buildMapTree(session.catalog, s.sortMode, s.mapListSource, s.mapFiles));
     if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
   }
 
@@ -520,7 +582,10 @@ export class App implements ActionTarget {
 
   private async setTitle(mapName: string | null): Promise<void> {
     const map = this.state.map;
-    const title = mapName && map ? ja.windowTitle(mapName, map.id.bank, map.id.map) : ja.appTitle;
+    await this.setRawTitle(mapName && map ? ja.windowTitle(mapName, map.id.bank, map.id.map) : ja.appTitle);
+  }
+
+  private async setRawTitle(title: string): Promise<void> {
     document.title = title;
     await getCurrentWindow()
       .setTitle(title)
@@ -530,6 +595,14 @@ export class App implements ActionTarget {
   showError(e: unknown): void {
     this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
+}
+
+/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）か。まとめたものは中を見る。 */
+function changesMapList(command: Command): boolean {
+  const names = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
+  if (names.has(command.name)) return true;
+  const inner = command.args["commands"];
+  return Array.isArray(inner) && inner.some((c) => typeof c === "object" && c !== null && names.has(String((c as { name?: unknown }).name)));
 }
 
 function errorText(e: unknown): string {
