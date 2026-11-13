@@ -12,6 +12,7 @@ import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
+import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
 import { EventTab } from "../ui/tabs/EventTab";
 import { HeaderTab } from "../ui/tabs/HeaderTab";
 import { MapTab } from "../ui/tabs/MapTab";
@@ -50,6 +51,7 @@ export class App implements ActionTarget {
   private readonly statusBar = new StatusBar();
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
+  readonly grosserBlock: GrosserBlockWindow;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -80,6 +82,7 @@ export class App implements ActionTarget {
     });
     this.tree = new MapTree({ openMap: (id) => void this.openMap(id), isDirty: (id) => state.isDirty(id) });
 
+    this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
     const movementTab = new MovementTab(state);
     const eventTab = new EventTab(state);

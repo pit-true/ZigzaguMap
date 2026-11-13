@@ -206,6 +206,8 @@ export const ja = {
   romInfoVersion: "ROMバージョン:",
 
   // マップタブ
+  /** スタンプの窓の題名（AdvanceMap でも日本語化されていない）。 */
+  grosserBlock: "Grosser Block",
   borderBlocks: "境界ブロック:",
   selectedBlock: (block: number) => `選択中: ${hex(block, 3)}`,
   selectedStamp: (w: number, h: number) => `選択中: ${w}×${h}`,

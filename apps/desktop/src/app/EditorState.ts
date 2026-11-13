@@ -29,11 +29,23 @@ export interface StatusText {
  * - map: 表示するマップが変わった
  * - cells: 表示中のマップの配置・ボーダーが変わった（操作・アンドゥ）
  * - tab / selection / movement / view: タブ、選択中のブロック、選択中の移動許可、表示設定
+ * - stamp: Ctrl＋右ドラッグで矩形を選んだ（Grosser Block ウィンドウを出す）
  * - dirty: 未出力の印が変わった
  * - status: ステータスバー
  * - recent: 最近開いたもの
  */
-export type StateTopic = "session" | "map" | "cells" | "tab" | "selection" | "movement" | "view" | "dirty" | "status" | "recent";
+export type StateTopic =
+  | "session"
+  | "map"
+  | "cells"
+  | "tab"
+  | "selection"
+  | "stamp"
+  | "movement"
+  | "view"
+  | "dirty"
+  | "status"
+  | "recent";
 
 type Listener = () => void;
 
@@ -92,6 +104,12 @@ export class EditorState {
   select(selection: BlockSelection): void {
     this.selection = selection;
     this.emit("selection");
+  }
+
+  /** Ctrl＋右ドラッグで選んだ矩形（スタンプ）を選ぶ。 */
+  selectStamp(selection: BlockSelection): void {
+    this.select(selection);
+    this.emit("stamp");
   }
 
   /** 選択中のブロックを 1 つにする。 */

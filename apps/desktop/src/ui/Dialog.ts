@@ -121,6 +121,8 @@ function makeDraggable(box: HTMLElement, bar: HTMLElement, centered: boolean): v
     bar.setPointerCapture(e.pointerId);
     const move = (m: PointerEvent): void => {
       if (centered) box.style.position = "fixed";
+      box.style.right = "";
+      box.style.bottom = "";
       box.style.left = `${Math.max(0, m.clientX - dx)}px`;
       box.style.top = `${Math.max(0, m.clientY - dy)}px`;
     };

@@ -133,3 +133,26 @@
   min-width: 75px;
   height: 25px;
 }
+
+/* Grosser Block（題名の帯を細くした小さな窓）。 */
+.grosser-block .dialog-title {
+  height: 20px;
+  font-size: 11px;
+}
+
+.grosser-block .dialog-close {
+  width: 24px;
+  height: 20px;
+}
+
+.grosser-block .dialog-body {
+  padding: 2px 4px 4px;
+  min-width: 96px;
+}
+
+.grosser-block canvas {
+  display: block;
+  border: 3px solid #000;
+  border-top-width: 0;
+  border-left-width: 0;
+}
