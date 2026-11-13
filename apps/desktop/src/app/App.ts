@@ -16,7 +16,7 @@ import { HeaderTab } from "../ui/header/HeaderTab";
 import { EventTab } from "../ui/tabs/EventTab";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
-import { WildTab } from "../ui/tabs/WildTab";
+import { WildTab } from "../ui/wild/WildTab";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
