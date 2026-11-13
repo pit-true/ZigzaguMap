@@ -46,6 +46,8 @@ interface StartupArgs {
   readonly rom: string | null;
   readonly project: string | null;
   readonly automation: number | null;
+  /** 個人設定と WebView2 のデータの置き場所（`--profile`、自動操作なら一時フォルダ。通常の場所なら null）。 */
+  readonly profile: string | null;
 }
 
 /** 未出力の印を確かめるまでの待ち時間（ドラッグ中に何度も調べないため）。 */
@@ -85,6 +87,8 @@ export class App implements ActionTarget {
   readonly newMaps: NewMapController;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
+  /** 個人設定の置き場所（通常の場所なら null）。 */
+  profileDir: string | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -192,6 +196,7 @@ export class App implements ActionTarget {
     });
     const args = await invoke<StartupArgs>("startup_args");
     this.automation = args.automation !== null;
+    this.profileDir = args.profile;
     if (args.automation) await startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     if (args.rom) await this.openSession(args.rom, args.project);

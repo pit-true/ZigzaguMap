@@ -3,7 +3,9 @@
 mod automation;
 mod capture;
 mod files;
+mod offscreen;
 mod pick;
+mod profile;
 mod project_fs;
 mod system;
 mod windows;
@@ -14,13 +16,14 @@ use serde::Serialize;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use automation::Automation;
+use profile::Profile;
 use project_fs::ProjectRoot;
 
 /// 開発ビルドで自動操作を待ち受けるポート。
 #[cfg(debug_assertions)]
 const DEV_AUTOMATION_PORT: u16 = 17890;
 
-/// 起動引数（`zigzagumap.exe [--automation <ポート>] [--project <フォルダ>] [ROM]`）。
+/// 起動引数（`zigzagumap.exe [--automation <ポート>] [--profile <フォルダ>] [--project <フォルダ>] [ROM]`）。
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartupArgs {
@@ -30,6 +33,11 @@ pub struct StartupArgs {
     project: Option<String>,
     /// 自動操作のポート。
     automation: Option<u16>,
+    /// 個人設定と WebView2 のデータの置き場所（`--profile`）。
+    profile: Option<String>,
+    /// `--automation` を付けて起動したか（開発ビルドの既定のポートは含まない）。
+    #[serde(skip)]
+    automation_requested: bool,
 }
 
 impl StartupArgs {
@@ -38,8 +46,12 @@ impl StartupArgs {
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--automation" => out.automation = args.next().and_then(|p| p.parse().ok()),
+                "--automation" => {
+                    out.automation_requested = true;
+                    out.automation = args.next().and_then(|p| p.parse().ok());
+                }
                 "--project" => out.project = args.next(),
+                "--profile" => out.profile = args.next(),
                 _ if arg.starts_with("--") => {}
                 _ => out.rom = Some(arg),
             }
@@ -49,6 +61,11 @@ impl StartupArgs {
             out.automation = Some(DEV_AUTOMATION_PORT);
         }
         out
+    }
+
+    /// 自動操作のため、画面外・非アクティブで出すか（開発ビルドは画面に出す）。
+    pub(crate) fn offscreen(&self) -> bool {
+        self.automation.is_some() && !cfg!(debug_assertions)
     }
 }
 
@@ -64,40 +81,37 @@ pub(crate) const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,m
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let args = StartupArgs::parse();
+    let mut args = StartupArgs::parse();
+    let profile = Profile::resolve(args.profile.as_deref(), args.automation_requested);
+    // 画面には実際に使う置き場所を渡す（一時フォルダを含む。通常の場所なら None）。
+    args.profile = profile.dir().map(|d| d.to_string_lossy().into_owned());
     let automation = Arc::new(Automation::new(args.automation));
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(args)
+        .manage(profile)
         .manage(automation)
         .manage(ProjectRoot::default())
         .setup(|app| {
             let args = app.state::<StartupArgs>().inner().clone();
-            let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            let profile = app.state::<Profile>().inner().clone();
+            let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("ZigzaguMap")
                 .inner_size(1019.0, 704.0)
                 .min_inner_size(640.0, 400.0);
-            // 自動操作のときは、ユーザーの操作を奪わないよう画面外に出し、アクティブにしない。
-            if args.automation.is_some() && !cfg!(debug_assertions) {
-                builder = builder
-                    .position(-12000.0, -12000.0)
-                    .focused(false)
-                    .additional_browser_args(AUTOMATION_BROWSER_ARGS);
+            let builder = windows::prepare(builder, &args, &profile);
+            if args.offscreen() {
+                let window = builder.build()?;
+                offscreen::park_and_show(&window);
             } else {
-                builder = builder.center();
-            }
-            let placement = if args.automation.is_none() { files::saved_window_placement(app.handle()) } else { None };
-            if placement.is_some() {
-                builder = builder.visible(false);
-            }
-            let window = builder.build()?;
-            if args.automation.is_some() && !cfg!(debug_assertions) {
-                // 作るときの位置が画面外だと既定の位置に置かれることがあるので、作ったあとにもう一度画面外へ出す。
-                let _ = window.set_position(tauri::PhysicalPosition::new(-12000, -12000));
-            }
-            if let Some(p) = placement {
-                files::apply_window_placement(&window, &p);
-                let _ = window.show();
+                // 位置を覚えていれば、見えない状態で作って当ててから出す（自動操作のときは覚えた位置を使わない）。
+                let placement = if args.automation.is_none() { files::saved_window_placement(app.handle()) } else { None };
+                let builder = if placement.is_some() { builder.visible(false) } else { builder.center() };
+                let window = builder.build()?;
+                if let Some(p) = placement {
+                    files::apply_window_placement(&window, &p);
+                    let _ = window.show();
+                }
             }
             automation::start(app.handle().clone(), app.state::<Arc<Automation>>().inner().clone());
             Ok(())
@@ -139,6 +153,11 @@ pub fn run() {
             pick::window_pixel,
             automation::automation_capture,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");
+    app.run(|handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            handle.state::<Profile>().cleanup();
+        }
+    });
 }

@@ -556,7 +556,12 @@ class ZigzaguDriver(Driver):
         if not exe.exists():
             raise SystemExit(f"ZigzaguMap の exe がありません: {exe}（scripts\\build.cmd でビルドしてください）")
         self.port = self._free_port()
-        self.proc = subprocess.Popen([str(exe), "--automation", str(self.port)],
+        # 個人設定と WebView2 のデータは実行ごとの専用フォルダに置く（通常の利用者の設定には触れない）。
+        # WebView2 のデータは実行の間は使い回し（起動を速くするため）、設定はシナリオごとに初期値から始める。
+        self.profile = profile_dir(self.out)
+        self.profile.mkdir(parents=True, exist_ok=True)
+        (self.profile / "settings.json").unlink(missing_ok=True)
+        self.proc = subprocess.Popen([str(exe), "--automation", str(self.port), "--profile", str(self.profile)],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         t0 = time.time()
         last = None
@@ -780,6 +785,11 @@ class ZigzaguDriver(Driver):
             except Unsupported as e:
                 vals[f] = {"unsupported": str(e)}
         return {"fields": vals}
+
+
+def profile_dir(out_dir: pathlib.Path) -> pathlib.Path:
+    """ZigzaguMap のプロファイル（--profile）の置き場所。結果フォルダ（<日時>/<シナリオ>/zigzagu）の 2 つ上に作る。"""
+    return out_dir.parent.parent / "_zigzagu-profile"
 
 
 class AppError(Exception):
