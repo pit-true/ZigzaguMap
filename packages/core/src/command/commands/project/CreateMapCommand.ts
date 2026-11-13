@@ -113,7 +113,7 @@ export class CreateMapCommand implements Command<CreateMapArgs> {
 }
 
 /** 置ける番号か確かめる（既存のバンクの末尾か、新しいバンクのマップ 0）。 */
-function checkSlot(ctx: DocumentContext, bank: number, map: number): void {
+export function checkSlot(ctx: DocumentContext, bank: number, map: number): void {
   if (ctx.hasMap({ bank, map })) throw new EditError(EditErrorCode.MapExists, { bank, map });
   const counts = ctx.bankCounts();
   if (!Number.isInteger(bank) || bank < 0 || bank > counts.length || bank >= MAX_BANKS) {

@@ -25,6 +25,10 @@ import {
 import { RemoveMapScriptCommand } from "./commands/mapscript/RemoveMapScriptCommand.js";
 import { SetMapScriptCommand } from "./commands/mapscript/SetMapScriptCommand.js";
 import { CreateMapCommand } from "./commands/project/CreateMapCommand.js";
+import { CreateWorkMapCommand } from "./commands/project/CreateWorkMapCommand.js";
+import { InsertMapCommand } from "./commands/project/InsertMapCommand.js";
+import { OpenMapFileCommand } from "./commands/project/OpenMapFileCommand.js";
+import { ReplaceMapCommand } from "./commands/project/ReplaceMapCommand.js";
 import { RemapBlockPalettesCommand } from "./commands/tileset/RemapBlockPalettesCommand.js";
 import { SetBlockCommand } from "./commands/tileset/SetBlockCommand.js";
 import { SetBlockCountCommand } from "./commands/tileset/SetBlockCountCommand.js";
@@ -70,8 +74,12 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetWildRateCommand,
   SetWildSlotCommand,
   SetWildAreasCommand,
-  // 新規マップ・バンク
+  // 新規マップ・バンク、作業用のマップ（新規作成・.map）、マップの追加/挿入
   CreateMapCommand,
+  CreateWorkMapCommand,
+  OpenMapFileCommand,
+  InsertMapCommand,
+  ReplaceMapCommand,
   // タイルセット
   SetBlockCommand,
   SetBlockCountCommand,

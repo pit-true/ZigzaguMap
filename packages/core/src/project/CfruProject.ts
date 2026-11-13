@@ -8,6 +8,7 @@ import { TilesetTable } from "../map/TilesetTable.js";
 import { TILESET_HEADER_SIZE } from "../map/constants.js";
 import type { MapId, Tileset } from "../map/types.js";
 import type { ItemBall, MapDocument } from "../model/MapDocument.js";
+import { isWorkMapId } from "../model/WorkMap.js";
 import { RomMapSource } from "../model/RomMapSource.js";
 import { TextCodec } from "../name/TextCodec.js";
 import { Rom, ROM_BASE } from "../rom/Rom.js";
@@ -109,6 +110,8 @@ export class CfruProject {
       mapExists: (id) => this.base.has(id) || (this.jsonMaps.has(mapKey(id)) && !this.store.removedMaps.has(mapKey(id))),
       baseBankCounts: () => this.existingBankCounts(),
       tilesetExists: (pointer) => this.tilesetExists(pointer),
+      tilesetPointer: (index) => this.tilesetTable.pointerOf(index),
+      tilesetIndex: (pointer) => this.tilesetTable.indexOf(pointer),
     });
     this.flyTable = readFlyTable(rom, this.game.offsets);
     if (this.flyTable) this.store.flyPositions.push(...cloneFlyPositions(this.flyTable.entries));
@@ -155,11 +158,11 @@ export class CfruProject {
     return this.store.bankCounts();
   }
 
-  /** ベース ROM・maps\ の JSON・追加したマップの全番号（バンク・マップの順）。 */
+  /** ベース ROM・maps\ の JSON・追加したマップの全番号（バンク・マップの順。作業用のマップは含まない）。 */
   mapIds(): MapId[] {
     const keys = new Set<string>([...this.jsonMaps].filter((k) => !this.store.removedMaps.has(k)));
     for (const id of this.base.bankTable.ids()) keys.add(mapKey(id));
-    for (const k of this.store.documents.keys()) keys.add(k);
+    for (const [k, doc] of this.store.documents) if (!isWorkMapId(doc.id)) keys.add(k);
     return [...keys].map(parseKey).sort((a, b) => a.bank - b.bank || a.map - b.map);
   }
 
@@ -212,8 +215,14 @@ export class CfruProject {
     this.store.addMap(doc);
   }
 
-  /** 読み込み・書き出しの時点から変わったか（未出力の印用）。 */
+  /** 作業用のマップの名前とパス（作業用のマップでなければ null）。 */
+  workMapInfo(id: MapId): { readonly name: string; readonly path: string | null } | null {
+    return this.store.workMapInfo(id);
+  }
+
+  /** 読み込み・書き出しの時点から変わったか（未出力の印用。作業用のマップは出力しないので常に false）。 */
   isModified(id: MapId): boolean {
+    if (isWorkMapId(id)) return false;
     const doc = this.store.find(id);
     if (!doc) return this.store.removedMaps.has(mapKey(id)) && this.jsonMaps.has(mapKey(id));
     return this.snapshots.get(mapKey(id)) !== toJson(doc);
@@ -221,7 +230,7 @@ export class CfruProject {
 
   /** 保存していない変更があるか（マップ・タイルセット・マップ名・追加の取り消し）。 */
   hasUnsavedChanges(): boolean {
-    for (const doc of this.store.documents.values()) if (this.isModified(doc.id)) return true;
+    for (const doc of this.store.documents.values()) if (!isWorkMapId(doc.id) && this.isModified(doc.id)) return true;
     for (const t of this.store.tilesets.values()) if (this.tilesetSnapshots.get(tilesetKey(t.ref)) !== t.toJson()) return true;
     for (const k of this.store.removedMaps) if (this.jsonMaps.has(k)) return true;
     return false;
@@ -295,7 +304,7 @@ export class CfruProject {
 
     const writes: Write[] = [];
     const removals: string[] = [];
-    const ordered = [...this.store.documents.entries()].sort(([a], [b]) => compareKeys(a, b));
+    const ordered = [...this.store.documents.entries()].filter(([, d]) => !isWorkMapId(d.id)).sort(([a], [b]) => compareKeys(a, b));
     for (const [k, doc] of ordered) {
       const path = mapSourcePath(doc.id);
       const json = toJson(doc);
@@ -324,7 +333,7 @@ export class CfruProject {
       }
     }
 
-    const items = [...this.store.documents.values()].flatMap((d) => d.itemBalls);
+    const items = [...this.store.documents.values()].filter((d) => !isWorkMapId(d.id)).flatMap((d) => d.itemBalls);
     const hiddenExists = await this.fs.exists(HIDDEN_ITEM_PATH);
     const hiddenOld = hiddenExists ? await this.fs.readText(HIDDEN_ITEM_PATH) : "";
     const hiddenNew = buildHiddenItemSource(hiddenOld, items, this.fileItemBalls);
@@ -343,6 +352,7 @@ export class CfruProject {
     for (const path of removals) await this.fs.remove(path);
 
     for (const [k, doc] of this.store.documents) {
+      if (isWorkMapId(doc.id)) continue;
       const path = mapSourcePath(doc.id);
       if (writes.some((w) => w.path === path)) this.jsonMaps.add(k);
       if (removals.includes(path)) this.jsonMaps.delete(k);
@@ -361,7 +371,7 @@ export class CfruProject {
     }
     this.fileItemBalls.clear();
     for (const [k, doc] of this.store.documents) {
-      if (this.jsonMaps.has(k)) for (const item of doc.itemBalls) this.fileItemBalls.set(item.id, { ...item });
+      if (!isWorkMapId(doc.id) && this.jsonMaps.has(k)) for (const item of doc.itemBalls) this.fileItemBalls.set(item.id, { ...item });
     }
     return { written: writes.map((w) => w.path), removed: removals };
   }

@@ -2,6 +2,7 @@ import type { FlyPosition } from "../fly/types.js";
 import type { BlockGrid } from "../map/BlockGrid.js";
 import type { MapId } from "../map/types.js";
 import type { MapDocument } from "../model/MapDocument.js";
+import type { WorkMapInfo } from "../model/WorkMap.js";
 import type { TextCodec } from "../name/TextCodec.js";
 import type { TilesetDocument, TilesetRef } from "../tileset/TilesetDocument.js";
 import type { EditorContext } from "./Command.js";
@@ -35,6 +36,20 @@ export interface DocumentContext extends EditorContext {
   addMap(doc: MapDocument): void;
   /** addMap で加えたマップを除く（取り消し用）。 */
   removeMap(id: MapId): void;
+  /** AdvanceMap のタイルセット番号（0〜67）のポインタ値。表に無ければ null。 */
+  tilesetPointer(index: number): number | null;
+  /** AdvanceMap のタイルセット番号。表に無ければ null。 */
+  tilesetIndex(pointer: number): number | null;
+  /** 作業用のマップ（バンク -1。新規作成・.map から開いたもの）を加える。同じ番号があれば Error。 */
+  putWorkMap(doc: MapDocument, info: WorkMapInfo): void;
+  /** 作業用のマップを除く（取り消し用）。 */
+  removeWorkMap(id: MapId): void;
+  /** 作業用のマップの名前とパス。作業用のマップでなければ null。 */
+  workMapInfo(id: MapId): WorkMapInfo | null;
+  /** 作業用のマップの名前とパスを変える（.map に保存したとき）。 */
+  setWorkMapInfo(id: MapId, info: WorkMapInfo): void;
+  /** 次に作る作業用のマップの番号。 */
+  nextWorkMapNumber(): number;
   /** 編集中のフライトポジションの表（ROM の表の写し。maps\ の形式には置き場所が無く、出力しない）。 */
   readonly flyPositions: FlyPosition[];
 }
