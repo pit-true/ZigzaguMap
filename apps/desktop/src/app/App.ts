@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { CommandEvent, MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
+import { messageBox, showError } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
 import { MapTree } from "../ui/MapTree";
 import { MenuBar } from "../ui/MenuBar";
@@ -22,7 +23,7 @@ import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
 import { buildMapTree } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import { ProjectSession } from "./ProjectSession";
+import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
@@ -179,15 +180,27 @@ export class App implements ActionTarget {
     if (s) await this.openSession(s.romPath, s.projectDir, true);
   }
 
-  /** ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。 */
+  /**
+   * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
+   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
+   */
   async openSession(rom: string, project: string | null, keepMap = false): Promise<void> {
     if (!(await this.confirmDiscard())) return;
     const state = this.state;
     const reopen = keepMap ? state.map?.id ?? null : null;
+    const previous = state.session;
     state.setStatus(ja.loading);
+    let session: ProjectSession;
     try {
-      await state.session?.close();
-      const session = await ProjectSession.open(rom, project);
+      session = await ProjectSession.open(rom, project);
+    } catch (e) {
+      await previous?.reattach().catch(() => undefined);
+      state.setStatus(previous ? ja.statusRomLoaded : ja.statusOpenRom);
+      if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
+      else await showError(errorText(e));
+      return;
+    }
+    try {
       timings.mark("sessionOpened");
       this.unsubscribeBus?.();
       state.session = session;
@@ -243,21 +256,18 @@ export class App implements ActionTarget {
     }
   }
 
+  /** ツール > マップを指定して開く（Ctrl+M）。初期値は今のマップ。 */
   async openMapByNumber(): Promise<void> {
     const session = this.state.session;
     if (!session) return;
-    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, "");
+    const current = this.state.map ? `${this.state.map.id.bank}.${this.state.map.id.map}` : "";
+    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, current);
     if (text === null) return;
     const m = /^\s*(\d+)\s*\.\s*(\d+)\s*$/.exec(text);
-    if (!m) {
-      this.state.setStatus(ja.invalidInput, undefined, true);
-      return;
-    }
+    // AdvanceMap は形の違う入力に、いつも空文字の StrToInt の例外を出す。
+    if (!m) return void (await showError(ja.invalidInteger(""), ja.appTitle));
     const id = { bank: Number(m[1]), map: Number(m[2]) };
-    if (!session.catalog.has(id)) {
-      this.state.setStatus(ja.mapNotFound, undefined, true);
-      return;
-    }
+    if (!session.catalog.has(id)) return void (await showError(ja.mapNotFound));
     await this.openMap(id);
   }
 
@@ -341,7 +351,7 @@ export class App implements ActionTarget {
   private async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
     if (!session || session.modifiedMaps().length === 0) return true;
-    const answer = await invoke<string>("ask_yes_no_cancel", { title: ja.question, message: ja.saveChanges });
+    const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
     return true;
@@ -368,27 +378,32 @@ export class App implements ActionTarget {
     this.state.emit("recent");
   }
 
+  /** 設定 > マップブロックの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
   async askPaletteWidth(): Promise<void> {
     const text = await inputDialog(ja.blockWidthTitle, ja.blockWidthPrompt, String(this.state.settings.data.paletteWidth));
     if (text === null) return;
-    const n = Number(text);
-    if (!Number.isInteger(n) || n < 1 || n > 64) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = parseInteger(text);
+    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
+    if (n < 1 || n > 64) return void (await showError(ja.invalidInput));
     this.changeSetting({ paletteWidth: n });
   }
 
+  /** 設定 > 移動エリアの設定の透明度。 */
   async askOpacity(): Promise<void> {
     const text = await inputDialog(ja.movementOpacity, ja.opacityPrompt, String(this.state.settings.data.movementOpacity));
     if (text === null) return;
-    const n = Number(text.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0 || n > 1) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = Number(text.trim().replace(",", "."));
+    if (text.trim() === "" || !Number.isFinite(n) || n < 0 || n > 1) return void (await showError(ja.invalidInput));
     this.changeSetting({ movementOpacity: n });
   }
 
+  /** 設定 > 最近開いたファイルの設定 > 最近開いたファイルリストの最大数の変更。 */
   async askRecentMax(): Promise<void> {
     const text = await inputDialog(ja.recentMax, ja.recentMaxPrompt, String(this.state.settings.data.recentMax));
     if (text === null) return;
-    const n = Number(text);
-    if (!Number.isInteger(n) || n < 1 || n > 9) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = parseInteger(text);
+    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
+    if (n < 1 || n > 9) return void (await showError(ja.invalidInput));
     this.changeSetting({ recentMax: n, recent: this.state.settings.data.recent.slice(0, n) });
   }
 
@@ -421,8 +436,17 @@ export class App implements ActionTarget {
   }
 
   showError(e: unknown): void {
-    this.state.setStatus(ja.error(e instanceof Error ? e.message : String(e)), undefined, true);
+    this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
+}
+
+function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** Delphi の StrToInt と同じく、前後の空白を除いた 10 進の整数だけを受け付ける。 */
+function parseInteger(text: string): number | null {
+  return /^\s*[+-]?\d+\s*$/.test(text) ? Number(text) : null;
 }
 
 function fileName(path: string): string {

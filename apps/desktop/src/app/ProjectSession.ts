@@ -2,7 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   CfruProject,
   CommandBus,
+  Rom,
   createDefaultRegistry,
+  detectGame,
   type CommandRegistry,
   type MapDocument,
   type MapId,
@@ -18,6 +20,9 @@ export interface OpenMap {
   readonly doc: MapDocument;
   readonly tiles: TilesetView;
 }
+
+/** 対応していない ROM（ゲームコードが BPRJ でない、小さすぎる）。 */
+export class UnknownRomError extends Error {}
 
 /** 同時に持っておくタイルセットの組の数（メモリを抑えるため古いものから捨てる）。 */
 const TILESET_CACHE_SIZE = 8;
@@ -47,6 +52,14 @@ export class ProjectSession {
   static async open(romPath: string, projectDir: string | null): Promise<ProjectSession> {
     const start = performance.now();
     const bytes = new Uint8Array(await invoke<ArrayBuffer>("read_rom", { path: romPath }));
+    // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
+    let supported = false;
+    try {
+      supported = detectGame(new Rom(bytes)).offsets !== null;
+    } catch {
+      supported = false;
+    }
+    if (!supported) throw new UnknownRomError(romPath);
     const fs = new TauriProjectFs();
     await fs.setRoot(projectDir);
     const project = await CfruProject.open(bytes, fs);
@@ -99,6 +112,11 @@ export class ProjectSession {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
     return this.project.save();
+  }
+
+  /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */
+  async reattach(): Promise<void> {
+    await this.fs.setRoot(this.fs.root);
   }
 
   /** 閉じる（Rust 側のフォルダの許可も外す）。 */
