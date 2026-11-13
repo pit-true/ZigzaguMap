@@ -3,7 +3,6 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   TOOL_MESSAGE_EVENT,
   TOOL_REQUEST_EVENT,
-  type AutomationReply,
   type ToolKind,
   type ToolMessage,
   type ToolRequest,
@@ -21,8 +20,6 @@ type RequestBody = ToolRequest extends infer R ? (R extends ToolRequest ? Omit<R
 export class ToolClient {
   snapshot: ToolSnapshot = { version: 0, map: null, primary: null, secondary: null };
   ui: ToolUiState = { palette: 0, preview: {} };
-  /** 自動操作の要求を処理する関数（ウィンドウが設定する）。 */
-  automationHandler: ((request: Record<string, unknown>) => Promise<unknown>) | null = null;
   private nextId = 1;
   private readonly pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private readonly snapshotListeners = new Set<() => void>();
@@ -98,23 +95,7 @@ export class ToolClient {
         this.ui = message.ui;
         for (const l of this.uiListeners) l();
         return;
-      case "automation":
-        void this.runAutomation(message.requestId, message.request);
-        return;
     }
-  }
-
-  private async runAutomation(requestId: number, request: Record<string, unknown>): Promise<void> {
-    let reply: AutomationReply;
-    try {
-      if (!this.automationHandler) throw new Error("このウィンドウは自動操作を受け付けません");
-      const result = await this.automationHandler(request);
-      await nextFrame();
-      reply = { ok: true, result: result ?? null };
-    } catch (e) {
-      reply = { ok: false, error: e instanceof Error ? e.message : String(e) };
-    }
-    await this.request({ op: "automationReply", requestId, reply }).catch(() => undefined);
   }
 }
 

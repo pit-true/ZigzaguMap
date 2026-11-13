@@ -47,11 +47,6 @@ function nextFrame(): Promise<void> {
 }
 
 async function handle(app: App, req: Record<string, unknown>): Promise<unknown> {
-  // 別ウィンドウ（ブロックエディタなど）宛ての要求は、そのウィンドウへ渡す。
-  if (typeof req["window"] === "string" && req["window"] !== "main") {
-    const { ToolWindowHost } = await import("../windows/ToolWindowHost");
-    return (await ToolWindowHost.get(app)).automation(req["window"], req);
-  }
   const state = app.state;
   switch (req["cmd"]) {
     case "open":

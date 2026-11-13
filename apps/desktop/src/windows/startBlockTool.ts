@@ -1,22 +1,15 @@
-import "./styles/base.css";
-import "./styles/menu.css";
-import "./styles/dialog.css";
-import "./styles/amform.css";
-import "./styles/tool.css";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { messageBox } from "./ui/MessageBox";
-import { ja } from "./i18n/ja";
-import type { ToolKind } from "./windows/protocol";
-import { ToolClient } from "./windows/ToolClient";
+import "../styles/tool.css";
+import { messageBox } from "../ui/MessageBox";
+import { ja } from "../i18n/ja";
+import type { ToolKind } from "./protocol";
+import { ToolClient } from "./ToolClient";
 
 /**
- * 別ウィンドウ（tool.html）の入口。ウィンドウのラベルで中身を選び、その部分のコードだけを読み込む。
- * 状態はメインウィンドウが持つので、ここでは接続して写しを受け取るだけ。
+ * ブロックエディタ・パレットエディタ・ブロックパレット一括変更のウィンドウの入口（main.ts → startToolWindow から呼ばれる）。
+ * ウィンドウのラベルで中身を選び、その部分のコードだけを読み込む。状態はメインウィンドウが持つので、ここでは接続して写しを受け取るだけ。
  */
-async function main(): Promise<void> {
-  const root = document.getElementById("app");
-  if (!root) return;
-  const kind = getCurrentWebviewWindow().label as ToolKind;
+export async function startBlockTool(kind: ToolKind, root: HTMLElement): Promise<void> {
+  root.classList.add("tool-app");
   document.addEventListener("contextmenu", (e) => e.preventDefault());
   let client: ToolClient;
   try {
@@ -28,13 +21,13 @@ async function main(): Promise<void> {
   installKeys(client);
   switch (kind) {
     case "block-editor":
-      (await import("./windows/block-editor/BlockEditorWindow")).BlockEditorWindow.start(root, client);
+      (await import("./block-editor/BlockEditorWindow")).BlockEditorWindow.start(root, client);
       break;
     case "palette-editor":
-      (await import("./windows/palette-editor/PaletteEditorWindow")).PaletteEditorWindow.start(root, client);
+      (await import("./palette-editor/PaletteEditorWindow")).PaletteEditorWindow.start(root, client);
       break;
     case "block-adjust":
-      (await import("./windows/block-adjust/BlockAdjustWindow")).BlockAdjustWindow.start(root, client);
+      (await import("./block-adjust/BlockAdjustWindow")).BlockAdjustWindow.start(root, client);
       break;
   }
 }
@@ -54,4 +47,3 @@ function installKeys(client: ToolClient): void {
   });
 }
 
-void main();

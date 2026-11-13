@@ -95,7 +95,7 @@ export class BlockEditorWindow {
       this.model = new TilesetModel(client.snapshot, client.ui);
       this.renderTiles();
     });
-    installToolAutomation(client, { files: this.io.files, actions, describe: () => this.describe() });
+    void installToolAutomation(client, { files: this.io.files, actions, describe: () => this.describe() });
     this.onSnapshot();
   }
 

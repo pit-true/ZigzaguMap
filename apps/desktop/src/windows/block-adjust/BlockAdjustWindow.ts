@@ -59,7 +59,7 @@ export class BlockAdjustWindow {
     form.append(button("adj.save", t.adjustSave, 8, 432, 249, 25, () => void this.save()));
     root.classList.add("block-adjust");
     root.append(form);
-    installToolAutomation(client, {
+    void installToolAutomation(client, {
       files: new FileDialogs(),
       actions: {},
       describe: () => ({ secondary: this.tileset2.checked, mapping: this.to.map((e) => e.value) }),
@@ -90,6 +90,7 @@ export class BlockAdjustWindow {
       await showError(e instanceof Error ? e.message : String(e));
       return;
     }
-    await getCurrentWindow().close();
+    // 自動操作の返事が先に届くよう、少し待ってから閉じる。
+    setTimeout(() => void getCurrentWindow().close(), 300);
   }
 }

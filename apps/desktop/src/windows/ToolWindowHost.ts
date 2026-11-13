@@ -8,7 +8,6 @@ import {
   TOOL_MESSAGE_EVENT,
   TOOL_REQUEST_EVENT,
   TOOL_WINDOW_SIZES,
-  type AutomationReply,
   type TilesetData,
   type ToolKind,
   type ToolMessage,
@@ -17,9 +16,6 @@ import {
   type ToolUiState,
 } from "./protocol";
 import { tilesetRefsOf } from "./tilesetRefs";
-
-/** 別ウィンドウからの自動操作の返事を待つ時間。 */
-const AUTOMATION_TIMEOUT = 110_000;
 
 /**
  * メインウィンドウ側の、別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の窓口。
@@ -49,8 +45,6 @@ export class ToolWindowHost {
   private tilesetKey = "";
   private unsubscribeBus: (() => void) | null = null;
   private broadcastQueued = false;
-  private nextAutomation = 1;
-  private readonly automationWaits = new Map<number, { kind: ToolKind; resolve: (reply: AutomationReply) => void }>();
 
   private constructor(private readonly app: App) {}
 
@@ -76,7 +70,7 @@ export class ToolWindowHost {
     const title = kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : t.adjustTitle;
     this.opened.add(kind);
     try {
-      await invoke<boolean>("open_tool_window", { label: kind, title, width: size.width, height: size.height, resizable: size.resizable });
+      await invoke("open_tool_window", { label: kind, title, width: size.width, height: size.height });
     } catch (e) {
       this.opened.delete(kind);
       throw e;
@@ -86,28 +80,6 @@ export class ToolWindowHost {
   /** 開いている別ウィンドウ。 */
   get windows(): ToolKind[] {
     return [...this.opened];
-  }
-
-  /** 別ウィンドウへ自動操作の要求を渡し、返事を待つ。 */
-  async automation(kind: string, request: Record<string, unknown>): Promise<unknown> {
-    if (!this.opened.has(kind as ToolKind)) throw new Error(`ウィンドウが開いていません: ${kind}`);
-    const requestId = this.nextAutomation++;
-    const reply = await new Promise<AutomationReply>((resolve) => {
-      const timer = setTimeout(() => {
-        this.automationWaits.delete(requestId);
-        resolve({ ok: false, error: "別ウィンドウからの返事がありません" });
-      }, AUTOMATION_TIMEOUT);
-      this.automationWaits.set(requestId, {
-        kind: kind as ToolKind,
-        resolve: (r) => {
-          clearTimeout(timer);
-          resolve(r);
-        },
-      });
-      void this.send(kind as ToolKind, { type: "automation", requestId, request });
-    });
-    if (!reply.ok) throw new Error(reply.error);
-    return reply.result;
   }
 
   // ---- 内部 ----
@@ -162,10 +134,6 @@ export class ToolWindowHost {
       case "open":
         await this.open(req.kind);
         return null;
-      case "automationReply":
-        this.automationWaits.get(req.requestId)?.resolve(req.reply);
-        this.automationWaits.delete(req.requestId);
-        return null;
     }
   }
 
@@ -193,12 +161,6 @@ export class ToolWindowHost {
 
   private onClosed(kind: ToolKind): void {
     this.opened.delete(kind);
-    // 操作の途中で閉じた（「変更を保存する」で閉じる一括変更など）ときは、待っている自動操作に閉じたことを返す。
-    for (const [id, wait] of this.automationWaits) {
-      if (wait.kind !== kind) continue;
-      this.automationWaits.delete(id);
-      wait.resolve({ ok: true, result: { closed: true } });
-    }
     // パレットを編集する窓が全部閉じたら、一時適用した色は捨てる（AdvanceMap でも開き直すと元の色）。
     if (!this.opened.has("block-editor") && !this.opened.has("palette-editor")) this.ui.preview = {};
   }

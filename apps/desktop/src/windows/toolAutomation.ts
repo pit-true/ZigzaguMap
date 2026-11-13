@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { click, findField, getField, setField } from "../app/AutomationUi";
 import type { FileDialogs } from "../app/FileDialogs";
@@ -16,19 +18,37 @@ export interface ToolAutomationTarget {
   extra?(request: Record<string, unknown>): Promise<unknown> | undefined;
 }
 
+/** Rust から届く要求。 */
+interface AutomationEvent {
+  readonly id: number;
+  readonly request: Record<string, unknown>;
+}
+
 /**
- * 別ウィンドウの自動操作の入口（メインの入口に `window` を付けた要求が、メイン経由でここへ届く）。
+ * 別ウィンドウの自動操作の入口。メインと同じく Rust が `"window": "<ラベル>"` 付きの要求を
+ * `automation-request-window` でこのウィンドウへ送り、`automation_reply` で返事を返す（ワールドマップエディターと同じ仕組み）。
  * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（README の表）。
  */
-export function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): void {
-  client.automationHandler = async (req) => {
-    const result = await handle(client, target, req);
-    // 押したあとの処理（メインへの要求と、その結果の写しの反映）が終わるのを待つ。
-    await settle();
-    await client.whenIdle();
-    await settle();
-    return result;
-  };
+export async function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): Promise<void> {
+  if ((await invoke<number | null>("automation_port")) === null) return;
+  await getCurrentWebviewWindow().listen<AutomationEvent>("automation-request-window", (event) => {
+    const { id, request } = event.payload;
+    void (async () => {
+      let reply: unknown;
+      try {
+        const result = await handle(client, target, request);
+        // 押したあとの処理（メインへの要求と、その結果の写しの反映）が終わるのを待つ。
+        await settle();
+        await client.whenIdle();
+        await settle();
+        reply = { ok: true, result: result ?? null };
+      } catch (e) {
+        reply = { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
+      await invoke("automation_reply", { id, body: JSON.stringify(reply) });
+    })();
+  });
+  await invoke("automation_ready");
 }
 
 async function handle(client: ToolClient, target: ToolAutomationTarget, req: Record<string, unknown>): Promise<unknown> {

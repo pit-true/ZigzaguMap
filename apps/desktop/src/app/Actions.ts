@@ -25,6 +25,7 @@ export interface ActionTarget {
   saveImage(kind: ImageKind): Promise<void>;
   createIniFromHeader(): Promise<void>;
   openToolWindow(kind: "block-editor"): Promise<void>;
+  openWorldMap(): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
@@ -94,6 +95,7 @@ export class Actions {
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
     h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
     h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));

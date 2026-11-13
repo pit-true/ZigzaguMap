@@ -88,7 +88,7 @@ export class PaletteEditorWindow {
     );
 
     client.onUi(() => this.load());
-    installToolAutomation(client, {
+    void installToolAutomation(client, {
       files: new FileDialogs(),
       actions: {},
       describe: () => this.describe(),

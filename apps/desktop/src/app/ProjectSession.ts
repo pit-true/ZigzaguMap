@@ -3,10 +3,12 @@ import {
   CfruProject,
   CommandBus,
   OverworldSprites,
+  RegionMapProject,
   Rom,
   SpeciesNameTable,
   createDefaultRegistry,
   detectGame,
+  withRegionMap,
   type CommandRegistry,
   type MapDocument,
   type MapId,
@@ -41,6 +43,8 @@ export class ProjectSession {
   private readonly opened = new Map<string, MapId>();
   private species: SpeciesNameTable | null | undefined;
   private sprites: OverworldSprites | null | undefined;
+  /** タウンマップ（ワールドマップエディターを開いたときに読む）。 */
+  private regionMapValue: RegionMapProject | null = null;
 
   private constructor(
     readonly romPath: string,
@@ -50,7 +54,7 @@ export class ProjectSession {
     /** 開くのにかかった時間（ミリ秒）。 */
     readonly loadMs: number,
   ) {
-    this.bus = new CommandBus(project.editorContext());
+    this.bus = new CommandBus(withRegionMap(project.editorContext(), () => this.requireRegionMap().document));
   }
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
@@ -119,6 +123,22 @@ export class ProjectSession {
     return this.sprites;
   }
 
+  /** タウンマップを読む（2 回目以降は同じものを返す）。maps\regionmap.json があれば重ねる。 */
+  async openRegionMap(): Promise<RegionMapProject> {
+    this.regionMapValue ??= await RegionMapProject.open(this.project.rom, this.project.game.code, this.fs.root ? this.fs : null);
+    return this.regionMapValue;
+  }
+
+  /** 読み込み済みのタウンマップ（まだなら null）。 */
+  get regionMap(): RegionMapProject | null {
+    return this.regionMapValue;
+  }
+
+  private requireRegionMap(): RegionMapProject {
+    if (!this.regionMapValue) throw new Error("ワールドマップエディターを開いてから実行してください");
+    return this.regionMapValue;
+  }
+
   /** そのマップが読み込み済みか。 */
   isLoaded(id: MapId): boolean {
     return this.project.loaded(id) !== undefined;
@@ -153,6 +173,11 @@ export class ProjectSession {
     return out;
   }
 
+  /** タウンマップに未出力の変更があるか。 */
+  isRegionMapModified(): boolean {
+    return this.regionMapValue?.isModified() ?? false;
+  }
+
   /** 未出力の変更があるマップ（バンク・マップの順）。 */
   modifiedMaps(): MapId[] {
     return [...this.opened.values()].filter((id) => this.project.isModified(id)).sort((a, b) => a.bank - b.bank || a.map - b.map);
@@ -165,7 +190,10 @@ export class ProjectSession {
   async export(dir?: string): Promise<SaveResult> {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
-    return this.project.save();
+    const result = await this.project.save();
+    if (!this.regionMapValue) return result;
+    const region = await this.regionMapValue.save(this.fs);
+    return { written: [...result.written, ...region.written], removed: [...result.removed, ...region.removed] };
   }
 
   /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */

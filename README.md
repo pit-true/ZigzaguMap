@@ -48,7 +48,7 @@ Ctrl＋右ドラッグ（Ctrl＋右クリック）でスタンプを選ぶと、
 | イベントの削除 | 選択中のイベントを消す（後ろが前に詰まる） |
 | イベントマネージャー | 人・看板・ワープ・スクリプトの数を変えて「設定」。増やした分は値が全部 0 のイベントを末尾に足し、減らした分は末尾から消す。イベントの無いマップにも作れる |
 | マップの移動（ワープ） | 行き先のマップを開き、行き先のワープを選ぶ。無いマップなら「指定したマップは存在しません！」 |
-| スクリプトを開く | 設定 > スクリプトエディターの選択 のエディターを `"<エディター>" "<ROM>" 16F884` の形で起動する（ROM とオフセットの区切りは設定により空白か「:」）。未設定なら「スクリプトエディタが定義されていません！」 |
+| スクリプトを開く | 設定 > スクリプトエディターの選択 のエディターを `"<エディター>" "<ROM>" 16F884` の形で起動する（ROM とオフセットの区切りは設定により空白か「:」。起動のしかたは場所の設定タブと同じで、「:」のときは `"<ROM>:16F884"` になる）。未設定なら「スクリプトエディタが定義されていません！」 |
 
 - 欄の値は入力のたびに反映します（確定ボタンはありません）。同じ欄に続けて入力した分は、1 回のアンドゥでまとめて戻ります。
 - 16 進の欄は AdvanceMap と同じく `$` を前に付けて読みます。空欄は 0、あふれた桁は切り捨てます（4 桁の欄の 10000 は 0）。読めない文字を入れると `'$ZZ' is not a valid integer value.` を出し、値は変えません。10 進のスピンは範囲の端に丸めます（300 は 255）。
@@ -162,7 +162,7 @@ AdvanceMap で ROM へすぐ書き込む「保存」ボタン類（名前の変�
 
 ### 別ウィンドウと編集中の状態
 
-- 別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）は Tauri の本物のウィンドウで、中身は `tool.html` の別のバンドルです。開いたときに初めて読み込み、閉じると WebView ごと破棄します。メインの起動では読み込みません（メイン側の窓口 `windows/ToolWindowHost.ts` も初めて開くときに読み込みます）。
+- 別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）は Tauri の本物のウィンドウで、ワールドマップエディターと同じく中身は同じ `index.html` から、ウィンドウのラベルを見て組み立てます。エディタのコードは開いたときに初めて読み込み、閉じると WebView ごと破棄します。メインの起動では読み込みません（メイン側の窓口 `windows/ToolWindowHost.ts` も初めて開くときに読み込みます）。
 - 編集中の状態（CommandBus とタイルセット）はメインウィンドウだけが持ちます。別ウィンドウはイベント `tool-request` で操作（コマンドの JSON）を送り、メインがそれを CommandBus で実行します。アンドゥ・リドゥはメインと同じ履歴に入り、どのウィンドウでも Ctrl+Z / Ctrl+Y（Ctrl+S は出力）で戻せます。
 - タイルセットが変わると（どのウィンドウの操作でも、アンドゥでも）、メインは開いている別ウィンドウへイベント `tool-message` でタイルセットの写しを送り直します。選んでいるパレットと一時適用した色も、メインが持ってウィンドウどうしで共有します。
 - マップを切り替えると、別ウィンドウはそのマップのタイルセットに追従します。ROM を開き直したときとマップを閉じたときは閉じます。
@@ -209,12 +209,48 @@ AdvanceMap 1.92 日本語版に合わせています（文言は `apps/desktop/s
 
 PC に手を入れる最後の 3 つは、自動操作の入口を付けて起動したときは、確認で「はい」を押しても実行しません。
 
+## ワールドマップエディター
+
+ツール > ワールドマップエディター（Ctrl+W、ツールバーの緑のアイコン）で、タウンマップ（空を飛ぶの地図）を別ウィンドウで開きます。初めて開いたときにベース ROM と `maps\regionmap.json` を読みます。画面の構成は AdvanceMap 1.92 の TWeltkarteForm と同じです（AdvanceMap は素の BPRJ では開けず、地図も黒いままですが、ZigzaguMap では地図の絵と全ての表を読めます）。
+
+| 部分 | 動作 |
+|---|---|
+| 世界地図 | 左クリック（ドラッグしたときは離したマス）で位置を選び、そのマスの値を基本レイヤー・トップレイヤーの欄に読み込む。開いたときは、メインで開いているマップの地名の位置を選ぶ |
+| エディットレイヤーの表示 / フライトポジション/人IDの表示 / トップレイヤーの座標を読み込む | 地名のあるマスの色、地名の位置の白い点、トップレイヤー（洞窟）のマスを重ねて描く。3 つ目を外すとトップレイヤーの欄は「未設定/非表示」 |
+| マップ（16 進）・地名の一覧 | 地名を選んで、名前のオフセット・名前・座標・幅/高さ・人ID・フライトポジションを表示する。16 進でない入力は「'$zz' is not a valid integer value.」 |
+| ポジションの保存 | 座標・幅/高さ・名前（基本レイヤーはフライトポジションも）を確定する。名前はマップ名表の書き換えなので、同じ地名番号の全マップの名前が変わる |
+| フラグの保存 | 人ID（訪問フラグ。無しは FFFF）を確定する |
+| マップの保存 | 選んでいるマスに、欄のマップの値を置く。置いていない値があるままタウンマップNo を切り替えると「ワールドマップの変更を保存しますか？」 |
+| フライトポジション マップ/座標、このマップを開く | 左は空を飛ぶの行き先 3 バイト（バンク・マップ・飛び先の番号）、右は飛び先 6 バイト（バンク・マップ・X・Y）を ROM の並びの 16 進で出す。ボタンで行き先のマップをメインウィンドウで開く |
+| タウンマップNo | 1: カントー、2: 1〜3のしま、3: 4〜5のしま、4: 6〜7のしま。「ワールドマップ番号の管理」は AdvanceMap と同じく押せない |
+| ルーチンの変更 | ROM を書き換えないので、AdvanceMap の書き換え済みのときと同じ質問だけを出して何もしない |
+| 再読み込み | 編集中の状態を読み直し、欄の入力を捨てる |
+
+AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定です。確定した操作はメインの履歴に積まれ、エディターの中でも Ctrl+Z / Ctrl+Y（入力欄の外）で取り消し・やり直し、Ctrl+S で出力できます。
+
+### maps\regionmap.json
+
+タウンマップの変更は `maps\regionmap.json` に書きます。ベース ROM と違う表だけを、項目ごとの読める形（base64 ではない）で書き、全部ベース ROM と同じに戻ったらファイルを消します。字下げは 2 空白、改行は CRLF です。
+
+| キー | 中身 | ROM の表（BPRJ。括弧は表を指すポインタの位置） |
+|---|---|---|
+| `Format` | 1 | |
+| `Layouts` | 変えた面・レイヤーだけ。`Page`（`kanto` / `sevii123` / `sevii45` / `sevii67`）、`Layer`（`map` = 基本レイヤー / `dungeon` = トップレイヤー）、`Rows`（15 行、各行は地名番号の 16 進 2 桁を空白区切りで 22 個） | u8[2][15][22] を 4 面: 0x3B9018・0x3B92AC・0x3B9540・0x3B97D4（0xC5378・0xC5380・0xC5388・0xC53B0、GetMapNo） |
+| `Positions` | 地名 0x58〜0xC5 の全 110 件。`Id`（`"0x58"`）、`X`、`Y` | s16[n][2]: 0x3B89E8（0xC4F20、SetMapNo_and_Pos） |
+| `Sizes` | 同じ 110 件。`Id`、`Width`、`Height` | u16[n][2]: 0x3B8D00（0xC4F1C） |
+| `FlyDestinations` | 地名 0x58〜0xC3 の全 108 件。`Id`、`Bank`、`Map`、`HealLocation`（0 なら飛び先を使わずマップの真ん中へ） | u8[108][3]: 0x3B9A68（0xC648C、FlyDestination） |
+| `HealLocations` | 飛び先 1〜20 の全件。`Index`、`Bank`、`Map`、`X`、`Y` | 8 バイト × 20: 0x3B5944（0xC0E94 の値 + 8、GetWarpPosByNo） |
+| `MapVisitFlags` / `DungeonVisitFlags` | 地名 0x58〜0xC5 の全 110 件。`Id`、`Flag`（`"0x0890"`、無ければ null） | 表ではなく GetMapState（0x0C47C0）/ GetCaveState（0x0C4A5C）の switch 文。取り込むには表を引く命令への書き換えが要る |
+
+名前は `regionmap.json` には書かず、ほかのマップ名の変更と同じく、その地名番号を使うマップの `maps\BB\MM.json` に入ります。地図の絵（タイル・パレット・タイルマップ）は読むだけで編集しません。
+
 ## 出力の仕様
 
 - 書き出し先は `maps\BB\MM.json`（バンク・マップは 2 桁。ND の `scripts/map_project.py` と BochiBochiEditor 改造版と同じ形式）。
 - 書くのは、ベース ROM と内容が違い、既存のファイルとも違うマップだけです。ベース ROM と同じに戻ったマップは、JSON があれば消します。
 - タイルセット（ブロックエディタで変えたもの）は `maps\tilesets\<primary|secondary>_<ヘッダーの位置>\tileset.json` と `tiles.png` に書きます（Bochi と同じ形式）。ベース ROM と同じに戻ったら消します。同じタイルセットを使うマップはどれも、次に開いたときからこの内容で読みます。
 - 何か書くときに `maps\project.json` が無ければ作ります。
+- タウンマップの変更は `maps\regionmap.json` に書きます（上の「ワールドマップエディター」）。
 - ベース ROM には書き込みません。
 
 ## 構成
@@ -306,8 +342,7 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 | `queuePath` | `path`（null でキャンセル） | 次に出るファイル・フォルダのダイアログで選ぶパスを積む（Windows のダイアログは出さない） |
 | `pointer` | `target`（`map` / `movement` / `event` / `palette`）、`type`（`down` / `move` / `up`）、`x`・`y`（部品の左上からの表示上のピクセル）、`button`、`ctrl`、`shift` | マウス操作をまねる。返事はステータスバー |
 | `exit` | | 確認なしで終了する |
-| `windows` | | 開いているウィンドウの一覧（`label`、題名、位置、大きさ、表示中か） |
-| （別ウィンドウ宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する。使える命令は `state`（欄の値）、`getField` / `setField` / `click`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialog`、`queuePath`、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
+| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディターと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialog`、`queuePath`、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
 | `ui.list` | `root`（省略可） | 部品の一覧（`data-auto-id` の ID、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
 | `ui.type` | `id`、`text` | 1 文字ずつ入力する |
 | `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル） |
@@ -319,6 +354,21 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 
 部品の ID は `<場所>.<名前>` の形です（例: 場所の設定タブ `header.music`・`header.saveScripts`、高度な表示 `pro.footer`・`pro.saveFooter`、コネクションマネージャー `conn.direction`・`conn.save`・`conn.down1`、出現ポケモンタブ `wild.type`・`wild.rate`・`wild.rateBar`・`wild.min.1`・`wild.species.1`・`wild.save`、追加ダイアログ `wildAdd.0`〜`wildAdd.3`・`wildAdd.ok`、ブロックエディタ `be.blocks`・`be.tiles`・`be.block`・`be.palette`・`be.xflip`・`be.attr0`〜`be.attr3`・`be.behavior`・`be.save`、パレットエディタ `pal.color.0`〜`pal.color.15`・`pal.red`・`pal.hex`・`pal.apply`・`pal.pick`、一括変更 `adj.tileset2`・`adj.to.0`〜`adj.to.14`・`adj.save`）。一覧は各部品を作るコードの第 1 引数です。
+
+### 別ウィンドウ（ワールドマップエディター）
+
+要求に `"window": "world-map"` を付けると、そのウィンドウへ送ります（`screenshot` に付けるとそのウィンドウを撮る）。`{"cmd":"windows"}` は開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`）です。部品の ID は AdvanceMap の部品名（`Txt_Wert`、`Cbo_Wert_NamenListe`、`Txt_PosX`、`Cmd_NameSpeichern`、`Txt_FlugWert`、`Cmd_GotoFlugPos`、`Cbo_Anzahl`、`WorldmapBox` など。トップレイヤーは名前の後ろに `2`）です。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `state` | | 読み込んだか、面、選んでいるマス、両レイヤーの値、マスの値、地名の位置と行き先、メインで開いているマップ、履歴の有無 |
+| `fields` / `getField` | `id`（getField） | 部品の値（`value`・`checked`・`text`・`enabled`、コンボは `index` と `count`） |
+| `setField` | `id`、`value` | 入力欄は文字列、チェックは true/false、コンボは番号か文字列。input と change を起こす |
+| `click` | `id` | ボタンを押す。返事は開いているダイアログ |
+| `pointer` | `id`、`type`（`down` / `move` / `up`）、`x`・`y`、`button` | 部品の左上からの位置でマウス操作をまねる（世界地図は 1 マス 8px、マス (0,0) が (32,32)） |
+| `canvasPng` | `id`（`WorldmapBox`） | 世界地図の Canvas を PNG（Base64）で返す |
+| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略時はフォーカスのある部品） | キー操作をまねる |
+| `dialog` | `input`、`press` | メインと同じ |
 
 画面側の準備ができる前の要求には `{"ok":false,"error":"画面の準備ができていません"}` を返します。
 

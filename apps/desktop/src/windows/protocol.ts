@@ -5,7 +5,8 @@
  * - 別ウィンドウ → メイン: イベント `tool-request`（ToolRequest）。操作はコマンドの JSON（name と args）で送り、
  *   メインが CommandBus で実行する（アンドゥ・リドゥはメインと同じ履歴に入る）。
  * - メイン → 別ウィンドウ: イベント `tool-message`（ToolMessage）。返事、タイルセットの写し（snapshot）、
- *   ウィンドウどうしで共有する表示の状態（ui）、自動操作の要求。
+ *   ウィンドウどうしで共有する表示の状態（ui）。
+ * - 自動操作の要求は、Rust が `window` 付きの要求を直接そのウィンドウへ送る（toolAutomation.ts）。
  */
 
 /** 別ウィンドウの種類（Tauri のウィンドウのラベル）。 */
@@ -62,22 +63,17 @@ export type ToolRequest =
   | { readonly from: ToolKind; readonly id: number; readonly op: "execute"; readonly name: string; readonly args: Record<string, unknown> }
   | { readonly from: ToolKind; readonly id: number; readonly op: "undo" | "redo" | "export" | "commitPreview" }
   | { readonly from: ToolKind; readonly id: number; readonly op: "setUi"; readonly palette?: number; readonly preview?: Record<number, readonly number[]> }
-  | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind }
-  | { readonly from: ToolKind; readonly id: number; readonly op: "automationReply"; readonly requestId: number; readonly reply: AutomationReply };
-
-/** 自動操作の返事（メインの自動操作の入口と同じ形）。 */
-export type AutomationReply = { readonly ok: true; readonly result: unknown } | { readonly ok: false; readonly error: string };
+  | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind };
 
 /** メイン → 別ウィンドウの知らせ。 */
 export type ToolMessage =
   | { readonly type: "reply"; readonly id: number; readonly ok: boolean; readonly result?: unknown; readonly error?: string }
   | { readonly type: "snapshot"; readonly snapshot: ToolSnapshot; readonly ui: ToolUiState }
-  | { readonly type: "ui"; readonly ui: ToolUiState }
-  | { readonly type: "automation"; readonly requestId: number; readonly request: Record<string, unknown> };
+  | { readonly type: "ui"; readonly ui: ToolUiState };
 
-/** 別ウィンドウの大きさ（内側）と、大きさを変えられるか。AdvanceMap の外寸から題名の帯と枠を除いた値。 */
-export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: number; readonly height: number; readonly resizable: boolean }>> = {
-  "block-editor": { width: 823, height: 253, resizable: false },
-  "palette-editor": { width: 286, height: 186, resizable: false },
-  "block-adjust": { width: 264, height: 461, resizable: true },
+/** 別ウィンドウの大きさ（内側）。AdvanceMap の外寸から題名の帯と枠を除いた値。 */
+export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: number; readonly height: number }>> = {
+  "block-editor": { width: 823, height: 253 },
+  "palette-editor": { width: 286, height: 186 },
+  "block-adjust": { width: 264, height: 461 },
 };

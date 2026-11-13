@@ -5,9 +5,8 @@ mod capture;
 mod files;
 mod pick;
 mod project_fs;
-mod script_editor;
 mod system;
-mod tool_windows;
+mod windows;
 
 use std::sync::Arc;
 
@@ -26,11 +25,11 @@ const DEV_AUTOMATION_PORT: u16 = 17890;
 #[serde(rename_all = "camelCase")]
 pub struct StartupArgs {
     /// 起動時に開く ROM。
-    pub(crate) rom: Option<String>,
+    rom: Option<String>,
     /// 起動時に開くプロジェクトフォルダ（ROM と組で使う）。
-    pub(crate) project: Option<String>,
+    project: Option<String>,
     /// 自動操作のポート。
-    pub(crate) automation: Option<u16>,
+    automation: Option<u16>,
 }
 
 impl StartupArgs {
@@ -96,13 +95,6 @@ pub fn run() {
                 // 作るときの位置が画面外だと既定の位置に置かれることがあるので、作ったあとにもう一度画面外へ出す。
                 let _ = window.set_position(tauri::PhysicalPosition::new(-12000, -12000));
             }
-            // メインを閉じたら、別ウィンドウ（ブロックエディタなど）が残っていても終了する。
-            let handle = app.handle().clone();
-            window.on_window_event(move |event| {
-                if let tauri::WindowEvent::Destroyed = event {
-                    handle.exit(0);
-                }
-            });
             if let Some(p) = placement {
                 files::apply_window_placement(&window, &p);
                 let _ = window.show();
@@ -141,12 +133,11 @@ pub fn run() {
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
-            tool_windows::open_tool_window,
-            tool_windows::close_tool_window,
+            windows::open_tool_window,
+            windows::close_tool_window,
             pick::cursor_color,
             pick::window_pixel,
             automation::automation_capture,
-            script_editor::launch_script_editor,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");

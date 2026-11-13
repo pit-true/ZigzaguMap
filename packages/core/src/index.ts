@@ -207,3 +207,6 @@ export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/co
 export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
 export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";
 export { SetTilesetHeaderCommand, type SetTilesetHeaderArgs } from "./command/commands/tileset/SetTilesetHeaderCommand.js";
+
+// タウンマップ（ワールドマップエディター）
+export * from "./regionmap/index.js";
