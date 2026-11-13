@@ -18,19 +18,26 @@ interface BoxStyle {
 }
 
 /**
- * 種別ごとの文字の箱（AdvanceMap の埋め込み画像を 16px に縮めたものに色を寄せる）。
- * P=黄緑、W=紫に金の文字、S=橙（看板）、S=緑（スクリプト）、F=赤橙（フライトポジション）。
+ * 種別ごとの文字の箱。色は AdvanceMap のマップ&イベント画像から求めた、AdvanceMap の箱の画像そのものの色
+ * （AdvanceMap は箱の画像を 50% でマップに重ねるので、画像の色 = 2 × 重ねた色 − マップの色）。
+ * P=黄緑、W=紫、S=橙（看板）、S=緑（スクリプト）、F=赤（フライトポジション）。文字はどれも黄色。
  */
 const STYLE: Readonly<Record<EventKind, BoxStyle>> = {
-  person: { letter: "P", from: "#c5ea6f", to: "#64d4b9", light: "#c9ef7c", dark: "#62c7b3", ink: "#d8ec9c", inkEdge: "#88b86c" },
-  warp: { letter: "W", from: "#9f459f", to: "#5245c8", light: "#b478b3", dark: "#2c2860", ink: "#f3c44b", inkEdge: "#9c6a26" },
-  trap: { letter: "S", from: "#55ae6d", to: "#79e072", light: "#86c79d", dark: "#3f8256", ink: "#d7e97b", inkEdge: "#8fae6b" },
-  sign: { letter: "S", from: "#d89070", to: "#a88a5c", light: "#d0a49d", dark: "#533d36", ink: "#d8d488", inkEdge: "#b0582c" },
-  fly: { letter: "F", from: "#e07890", to: "#d88c70", light: "#d8acb6", dark: "#7b7669", ink: "#d7e97b", inkEdge: "#a6776f" },
+  person: { letter: "P", from: "#bdec0e", to: "#14d6a3", light: "#b3f358", dark: "#0b4f28", ink: "#f4e81c", inkEdge: "#7a6a08" },
+  warp: { letter: "W", from: "#cf5e8e", to: "#3613c0", light: "#bc5fcc", dark: "#170742", ink: "#f4e616", inkEdge: "#7a6a08" },
+  trap: { letter: "S", from: "#127919", to: "#35c610", light: "#5eaa62", dark: "#114308", ink: "#f6e823", inkEdge: "#7a6a08" },
+  sign: { letter: "S", from: "#f4360a", to: "#dc9b09", light: "#f78155", dark: "#523303", ink: "#f6e822", inkEdge: "#7a6a08" },
+  fly: { letter: "F", from: "#ee084c", to: "#dc5709", light: "#f75472", dark: "#521603", ink: "#f4e60e", inkEdge: "#7a6a08" },
 };
 
-/** 箱の不透明度（下のブロックが少し透ける）。 */
-const BOX_ALPHA = 0.82;
+/** 箱の不透明度（AdvanceMap と同じく、文字も含めて 50% でマップに重ねる）。 */
+const BOX_ALPHA = 0.5;
+
+/** マップ&イベント画像に重ねるもの（イベントタブと同じ印と、カーソルの表示がオンなら選択中の枠）。 */
+export interface EventOverlay {
+  readonly events: readonly PlacedEvent[];
+  readonly selected: PlacedEvent | null;
+}
 
 /** マップ上の 1 件。 */
 export interface PlacedEvent {
@@ -104,10 +111,6 @@ export function drawEventsOn(
 ): void {
   const scale = cellSize / 16;
   c.imageSmoothingEnabled = false;
-  c.font = `${Math.round(14 * scale)}px Arial, sans-serif`;
-  c.textAlign = "center";
-  c.textBaseline = "middle";
-  c.lineJoin = "round";
   for (const e of events) {
     const x = e.x * cellSize;
     const y = e.y * cellSize;
@@ -122,7 +125,7 @@ export function drawEventsOn(
         continue;
       }
     }
-    drawBox(c, STYLE[e.kind], x, y, cellSize, scale);
+    drawBox(c, e.kind, x, y, cellSize);
   }
   if (selected) {
     c.globalAlpha = 1;
@@ -136,25 +139,47 @@ export function drawEventsOn(
   }
 }
 
-function drawBox(c: CanvasRenderingContext2D, s: BoxStyle, x: number, y: number, size: number, scale: number): void {
+/** 種別・大きさごとの箱の画像（不透明で描いておき、重ねるときに 50% にする）。 */
+const boxCache = new Map<string, HTMLCanvasElement>();
+
+function drawBox(c: CanvasRenderingContext2D, kind: EventKind, x: number, y: number, size: number): void {
+  const key = `${kind}:${size}`;
+  let image = boxCache.get(key);
+  if (!image) {
+    image = renderBox(STYLE[kind], size);
+    boxCache.set(key, image);
+  }
   c.globalAlpha = BOX_ALPHA;
-  const g = c.createLinearGradient(x, y, x + size, y + size);
+  c.drawImage(image, x, y);
+  c.globalAlpha = 1;
+}
+
+/** 箱を 1 つ不透明で描く（AdvanceMap の箱の画像に当たるもの）。 */
+function renderBox(s: BoxStyle, size: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const c = canvas.getContext("2d")!;
+  const scale = size / 16;
+  const g = c.createLinearGradient(0, 0, size, size);
   g.addColorStop(0, s.from);
   g.addColorStop(1, s.to);
   c.fillStyle = g;
-  c.fillRect(x, y, size, size);
+  c.fillRect(0, 0, size, size);
   c.fillStyle = s.light;
-  c.fillRect(x, y, size, scale);
-  c.fillRect(x, y, scale, size);
+  c.fillRect(0, 0, size, scale);
+  c.fillRect(0, 0, scale, size);
   c.fillStyle = s.dark;
-  c.fillRect(x, y + size - scale, size, scale);
-  c.fillRect(x + size - scale, y, scale, size);
-  c.globalAlpha = 1;
-  const cx = x + size / 2;
-  const cy = y + size / 2 + scale * 0.5;
+  c.fillRect(0, size - scale, size, scale);
+  c.fillRect(size - scale, 0, scale, size);
+  c.font = `bold ${Math.round(14 * scale)}px Arial, sans-serif`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.lineJoin = "round";
   c.lineWidth = 1.6 * scale;
   c.strokeStyle = s.inkEdge;
-  c.strokeText(s.letter, cx, cy);
+  c.strokeText(s.letter, size / 2, size / 2 + scale * 0.5);
   c.fillStyle = s.ink;
-  c.fillText(s.letter, cx, cy);
+  c.fillText(s.letter, size / 2, size / 2 + scale * 0.5);
+  return canvas;
 }

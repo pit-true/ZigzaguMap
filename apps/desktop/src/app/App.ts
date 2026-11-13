@@ -66,6 +66,7 @@ export class App implements ActionTarget {
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
   readonly grosserBlock: GrosserBlockWindow;
+  private readonly eventTab: EventTab;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -110,6 +111,7 @@ export class App implements ActionTarget {
     const mapTab = new MapTab(state);
     const movementTab = new MovementTab(state);
     const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
+    this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
       [
@@ -483,7 +485,7 @@ export class App implements ActionTarget {
 
   /** ツール > 画像の保存（3 種）。 */
   async saveImage(kind: ImageKind): Promise<void> {
-    const path = await new ImageExport(this.state, this.files).save(kind);
+    const path = await new ImageExport(this.state, this.files, () => this.eventTab.exportOverlay()).save(kind);
     if (path) this.state.setStatus(ja.imageSaved(path));
   }
 
