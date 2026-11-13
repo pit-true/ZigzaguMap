@@ -83,6 +83,15 @@ export class MapTree {
     this.reveal(id, true);
   }
 
+  /** 開いているマップの項目の文字列（AdvanceMap の題名に使う。選んでいる項目を優先する）。 */
+  openedLabel(): string | null {
+    const id = this.openedId;
+    if (!id) return null;
+    const selected = this.selectedKey ? this.rows.get(this.selectedKey) : undefined;
+    if (selected?.node.mapId && sameId(selected.node.mapId, id)) return selected.node.label;
+    return this.findOpenedPath(id)?.at(-1)?.label ?? null;
+  }
+
   /** 未出力の印を付け直す。 */
   refreshMarks(): void {
     for (const row of this.rows.values()) if (row.node.mapId) this.decorate(row);

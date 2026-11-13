@@ -9,8 +9,8 @@ import { jaWild } from "./ja.wild";
  */
 export const ja = {
   appTitle: "ZigzaguMap",
-  /** 題名（マップを開いたとき）。 */
-  windowTitle: (name: string, bank: number, map: number) => `ZigzaguMap - ${name} (${bank}.${map})`,
+  /** マップを開いているときの題名。`item` はマップ一覧の項目の文字列（「マップ名 補足 (B.M)」）。 */
+  windowTitle: (item: string) => `ZigzaguMap - ${item}`,
 
   // [Menue] トップ
   menuFile: "ファイル",

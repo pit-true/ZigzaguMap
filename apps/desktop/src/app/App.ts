@@ -541,7 +541,9 @@ export class App implements ActionTarget {
 
   private async setTitle(mapName: string | null): Promise<void> {
     const map = this.state.map;
-    const title = mapName && map ? ja.windowTitle(mapName, map.id.bank, map.id.map) : ja.appTitle;
+    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む。iniファイル側なら ini の名前）を使う。
+    const item = map ? (this.tree.openedLabel() ?? (mapName ? ja.mapItem(mapName, "", map.id.bank, map.id.map) : null)) : null;
+    const title = item ? ja.windowTitle(item) : ja.appTitle;
     document.title = title;
     await getCurrentWindow()
       .setTitle(title)
