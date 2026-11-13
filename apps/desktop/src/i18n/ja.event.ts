@@ -1,205 +1,115 @@
 import { hex } from "./ja";
+import { hexList, ini } from "./ini";
+
+const E = ini.Events;
 
 /**
- * イベントタブの文言（AdvanceMap 1.92 日本語化パックの Japanese.ini の [Events] [EventMenge] [SignpostTyp]
- * [SignpostAnsprechEbene] [Bewegung] の表記）。ja.ts の `event` から使う。コメントの番号は Japanese.ini の位置。
+ * イベントタブの文言（改訂版 Japanese.ini の [Events] [EventType] [EventMenge] [SignpostTyp]
+ * [SignpostAnsprechEbene] [Bewegung]）。ja.ts の `event` から使う。
  */
 export const jaEvent = {
-  /** 種別コンボの並び（AdvanceMap と同じ: 人、看板、ワープ、スクリプト、フライトポジション）。 */
-  kinds: ["人", "看板", "ワープ", "スクリプト", "フライトポジション"],
-  /** ステータスバーの種別名（41, 43, 40, 42, 46）。 */
-  kindNames: { person: "人", sign: "看板", warp: "ワープ", trap: "スクリプト", fly: "フライトポジション" } as Readonly<Record<string, string>>,
-  number: "イベント番号:", // 450
-  showCursor: "カーソルの表示", // 451
-  remove: "イベントの削除", // 452
-  /** 選んだ種別が 0 件のとき（AdvanceMap はどの種別でもこの文言を出す）。945 */
-  none: "フライトポジションは存在しません！",
-  noEventsInMap: "このマップにはイベントが存在しません", // [Allgemein] 940
-  noEventAtCell: "イベントはありません", // 44
+  /** 種別コンボの並び（AdvanceMap と同じ: 人、看板、ワープ、スクリプト、フライトポジション）。[EventType] */
+  kinds: [ini.EventType["00"], ini.EventType["03"], ini.EventType["01"], ini.EventType["02"], ini.EventType["04"]],
+  /** ステータスバーの種別名。 */
+  kindNames: {
+    person: ini.EventType["00"],
+    sign: ini.EventType["03"],
+    warp: ini.EventType["01"],
+    trap: ini.EventType["02"],
+    fly: ini.EventType["04"],
+  } as Readonly<Record<string, string>>,
+  number: E["450"],
+  showCursor: E["451"],
+  remove: E["452"],
+  /** 選んだ種別が 0 件のとき（AdvanceMap はどの種別でもこの文言を出す）。 */
+  none: E["945"],
+  noEventsInMap: ini.Allgemein["940"],
+  /** ステータスバーでイベントの無いマス（旧版 [Events] 44 にあたる [EventType] 05）。 */
+  noEventAtCell: ini.EventType["05"],
   /** ステータスバー左欄（ホバー）。 */
   status: (x: number, y: number, label: string, offset: number | null) =>
-    `X: ${hexCoord(x)} Y: ${hexCoord(y)}        ${label}` + (offset === null ? "" : `        オフセット: ${hex(offset, 6)}`),
-  noteOk: "ノート:特に異常無し",
-  noteOutside: "ノート:マップの外にイベントがあります。",
-  noteNoEvents: "イベントはありません.",
+    `X: ${hexCoord(x)} Y: ${hexCoord(y)}        ${label}` + (offset === null ? "" : `        ${ini.Allgemein["34"]} ${hex(offset, 6)}`),
+  noteOk: ini.Allgemein["38"],
+  noteOutside: ini.Allgemein["37"],
+  noteNoEvents: ini.Allgemein["36"],
 
-  position: "座標(X/Y) :",
-  unknown: "不明:",
-  offset: "オフセット:",
-  openScript: "スクリプトを開く", // 50
-  editorUndefined: "スクリプトエディタが定義されていません！", // 51
-  editorNotFound: "スクリプトエディタが見つかりません！", // 52
+  /** 座標の欄（種別ごとの 400・413・420・430・460 は同じ文言）。 */
+  position: E["400"],
+  /** 不明の欄（417・419・4113・424・433・461 は同じ文言。人の 412 だけは person.unknown）。 */
+  unknown: E["417"],
+  /** オフセットの欄（4111・425・434 は同じ文言）。 */
+  offset: E["4111"],
+  openScript: E["50"],
+  editorUndefined: E["51"],
+  editorNotFound: E["52"],
 
   person: {
-    number: "人 No.:", // 410
-    graphics: "画像 No.:", // 411
-    elevation: "属性:", // 414
-    movement: "アクション:", // 415
-    range: "移動範囲(YX) :", // 416
-    trainer: "トレーナー:", // 418
-    sight: "視界範囲:", // 4110
-    flag: "人 ID:", // 4112
+    number: E["410"],
+    graphics: E["411"],
+    unknown: E["412"],
+    elevation: E["414"],
+    movement: E["415"],
+    range: E["416"],
+    trainer: E["418"],
+    sight: E["4110"],
+    flag: E["4112"],
   },
   warp: {
-    elevation: "属性:", // 401
-    warpId: "ワープNo.:", // 402
-    bank: "バンク番号:", // 403
-    map: "マップ番号:", // 404
-    go: "マップの移動", // 405
+    elevation: E["401"],
+    warpId: E["402"],
+    bank: E["403"],
+    map: E["404"],
+    go: E["405"],
   },
   trap: {
-    flagValue: "フラグバリュー:", // 421
-    variable: "フラグ No.:", // 422
-    value: "フラグの値:", // 423
+    flagValue: E["421"],
+    variable: E["422"],
+    value: E["423"],
   },
   sign: {
-    elevation: "属性:", // 431
-    type: "イベントタイプ:", // 432
-    item: "アイテムID:", // 435
-    hiddenId: "隠しID:", // 436
-    amount: "個数:", // 437
+    elevation: E["431"],
+    type: E["432"],
+    item: E["435"],
+    hiddenId: E["436"],
+    amount: E["437"],
   },
   fly: {
-    warning: "バンク番号/マップ番号を変えると、このマップからフライトポジションが消えます。", // 462
-    bank: "バンク番号:", // 463
-    map: "マップ番号:", // 464
+    warning: E["462"],
+    bank: E["463"],
+    map: E["464"],
   },
 
   // [EventMenge]
   manager: {
-    title: "イベントマネージャー",
-    persons: "人の数:",
-    signs: "看板の数:",
-    warps: "ワープの数:",
-    traps: "スクリプトの数:",
-    apply: "設定",
+    title: ini.EventMenge["10"],
+    persons: ini.EventMenge["11"],
+    signs: ini.EventMenge["12"],
+    warps: ini.EventMenge["13"],
+    traps: ini.EventMenge["14"],
+    apply: ini.EventMenge["15"],
   },
 
-  /** [SignpostTyp]（コンボの表示は「00 スクリプト」の形）。 */
-  signTypes: [
-    "スクリプト",
-    "主人公上向き時のみスクリプト実行",
-    "主人公下向き時のみスクリプト実行",
-    "主人公右向き時のみスクリプト実行",
-    "主人公左向き時のみスクリプト実行",
-    "隠しアイテム",
-    "隠しアイテム",
-    "隠しアイテム（通常）",
-    "隠しアイテム（RSE専用）",
-  ],
+  /** [SignpostTyp]（コンボの表示は「00 スクリプト(通常)」の形）。 */
+  signTypes: present(hexList(ini.SignpostTyp, 9)),
   /** [SignpostAnsprechEbene]（コンボの表示は「00 制限なし」の形）。 */
-  signElevations: [
-    "制限なし",
-    "通常（波乗り）",
-    "Height 1",
-    "通常（陸）",
-    "Height 3",
-    "Height 4",
-    "Height 5",
-    "Height 6",
-    "Height 7",
-    "Height 8",
-    "Height 9",
-    "Height 10",
-    "Height 11",
-    "Height 12",
-    "Height 13",
-    "Height 14",
-  ],
-  /** [Bewegung]（81 択。添字 66 以降は先頭の 16 進が添字 + 1 だが、書く値は添字。AdvanceMap のまま）。 */
-  movementTypes: [
-    "00移動無し",
-    "01見回る",
-    "02歩き回る",
-    "03上下に歩く",
-    "04上下に歩く",
-    "05左右に歩く",
-    "06左右に歩く",
-    "07上を見る",
-    "08下を見る",
-    "09左を見る",
-    "0A右を見る",
-    "0B下を見る",
-    "0C隠れる",
-    "0D上と下を見る",
-    "0E左と右を見る",
-    "0F上と左を見る",
-    "10上と右を見る",
-    "11下と左を見る",
-    "12下と右を見る",
-    "13上、下、左を見る",
-    "14上、下、右を見る",
-    "15上、左、右を見る",
-    "16下、左、右を見る",
-    "17左回りに見回す",
-    "18右回りに見回す",
-    "19上下に走る",
-    "1A上下に走る",
-    "1B左右に走る",
-    "1C左右に走る",
-    "1D上→右→左→下に走る",
-    "1E右→左→下→上と走る",
-    "1F下→上→右→左と走る",
-    "20左→下→上→右と走る",
-    "21上→左→右→下と走る",
-    "22左→右→下→上と走る",
-    "23下→上→左→右と走る",
-    "24右→下→上→左と走る",
-    "25左→上→下→右と走る",
-    "26上→下→右→左と走る",
-    "27右→左→上→下と走る",
-    "28下→右→左→上と走る",
-    "29右→上→下→左と走る",
-    "2A上→下→左→右と走る",
-    "2B左→右→上→下と走る",
-    "2C下→左→右→上と走る",
-    "2Dまわりに左回りに走る",
-    "2Eまわりに左回りに走る",
-    "2Fまわりに左回りに走る",
-    "30まわりに左回りに走る",
-    "31まわりに左回りに走る",
-    "32まわりに右回りに走る",
-    "33まわりに右回りに走る",
-    "34まわりに右回りに走る",
-    "35コピープレーヤー",
-    "36ミラープレーヤー",
-    "37ミラープレーヤー",
-    "38ミラープレーヤー",
-    "39木の壁に偽装",
-    "3A石の壁に偽装",
-    "3Bミラープレーヤー ",
-    "3Cコピープレーヤー ",
-    "3Dコピープレーヤー",
-    "3Eコピープレーヤー ",
-    "3F隠れる",
-    "40その場で歩く(下)",
-    "41その場で歩く(上)",
-    "43その場で歩く(左)",
-    "44その場で歩く(右)",
-    "45その場でジョギング (下)",
-    "46その場でジョギング (上)",
-    "47その場でジョギング (左)",
-    "48その場でジョギング (右)",
-    "49その場で走る(下)",
-    "4Aその場で走る(上)",
-    "4Bその場で走る(左)",
-    "4Cその場で走る(右)",
-    "4D隠れる",
-    "4Eその場で歩く(下)",
-    "4Fその場で歩く(上)",
-    "50その場で歩く(左)",
-    "51その場で歩く(右)",
-  ],
+  signElevations: present(hexList(ini.SignpostAnsprechEbene, 16)),
+  /** [Bewegung]（00〜50 の 81 択。添字がそのまま動きの値）。 */
+  movementTypes: hexList(ini.Bewegung, 0x51).map((v, i) => `${hex(i, 2)}-${v ?? "???"}`),
   /** アイテム ID のコンボの 1 項目（「マスターボール (0001)」の形）。 */
   itemChoice: (name: string, id: number) => `${name} (${hex(id, 4)})`,
 
   // ダイアログ
   /** 16 進・10 進の欄に読めない文字（Delphi の例外メッセージそのまま）。 */
   invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
-  mapNotFound: "指定したマップは存在しません！", // [Allgemein] 100
+  mapNotFound: ini.Allgemein["100"],
 };
 
 /** ステータスバーの座標（範囲内は 2 桁、0x100 以上は 8 桁。AdvanceMap と同じ）。 */
 function hexCoord(v: number): string {
   return v > 0xff ? hex(v >>> 0, 8) : hex(v, 2);
+}
+
+/** 番号の抜けを「???」で埋める。 */
+function present(list: readonly (string | undefined)[]): string[] {
+  return list.map((v) => v ?? "???");
 }
