@@ -1,0 +1,76 @@
+{
+  "name": "S16_warp_go",
+  "title": "ワープの行き先へ移動",
+  "source": "S16",
+  "issues": [
+    51
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_EventTypen",
+      "value": 2
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_Nr",
+      "value": 0
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_Go"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "title.map",
+        "status.left"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_EventTypen",
+      "value": 2
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_MapBank",
+      "value": 99
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_Go"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

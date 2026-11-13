@@ -1,0 +1,68 @@
+{
+  "name": "S06_border",
+  "title": "境界ブロック",
+  "source": "S06",
+  "issues": [
+    38
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectBlock",
+      "block": 9
+    },
+    {
+      "op": "paintBorder",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "op": "snapshot",
+      "name": "border_after_paint",
+      "target": "border"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left"
+      ]
+    },
+    {
+      "op": "pickBorder",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "op": "paintBlock",
+      "x": 3,
+      "y": 3
+    },
+    {
+      "op": "snapshot",
+      "name": "map_after_border_pick",
+      "target": "map"
+    },
+    {
+      "op": "pickBorder",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "op": "paintBlock",
+      "x": 4,
+      "y": 3
+    },
+    {
+      "op": "snapshot",
+      "name": "map_after_border_pick2",
+      "target": "map"
+    }
+  ]
+}

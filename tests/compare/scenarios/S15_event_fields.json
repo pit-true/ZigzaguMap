@@ -1,0 +1,75 @@
+{
+  "name": "S15_event_fields",
+  "title": "各種別の入力欄の編集",
+  "source": "S15",
+  "issues": [
+    50,
+    52,
+    53
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_EventTypen",
+      "value": 0
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_Nr",
+      "value": 0
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_Bild",
+      "value": 5
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Sichtweite",
+      "value": 3
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_Nr",
+      "value": 1
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_Nr",
+      "value": 0
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Spin_Bild",
+        "field:Txt_Sichtweite"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "after_edit",
+      "target": "event",
+      "compare": {
+        "mode": "overlayCells"
+      }
+    }
+  ]
+}

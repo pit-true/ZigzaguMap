@@ -1,0 +1,46 @@
+{
+  "name": "S21_map_rename",
+  "title": "マップ名の変更",
+  "source": "S21",
+  "issues": [
+    59
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 19
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_Name",
+      "value": 3
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_NeuerName",
+      "value": "テスト"
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_NameSpeichern"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "tree.first60",
+        "field:Cbo_Name"
+      ]
+    }
+  ]
+}

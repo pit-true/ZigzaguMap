@@ -1,0 +1,32 @@
+{
+  "name": "S46_world_map_flags",
+  "title": "人ID・トップレイヤー・このマップを開く",
+  "source": "S46",
+  "issues": [
+    92,
+    93
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ワールドマップエディター"
+      ]
+    },
+    {
+      "op": "clickButton",
+      "screen": "ワールドマップ",
+      "button": "Cmd_GotoFlugPos"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "title.map"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "S50_palette_width",
+  "title": "マップブロックの横幅",
+  "source": "S50",
+  "issues": [
+    97
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "マップブロックの横幅"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "Cancel"
+    },
+    {
+      "op": "snapshot",
+      "name": "palette",
+      "target": "palette"
+    }
+  ]
+}

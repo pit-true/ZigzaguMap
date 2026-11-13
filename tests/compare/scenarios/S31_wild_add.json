@@ -1,0 +1,39 @@
+{
+  "name": "S31_wild_add",
+  "title": "野生ポケモンの追加",
+  "source": "S31",
+  "issues": [
+    72
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 4,
+      "map": 1
+    },
+    {
+      "op": "selectTab",
+      "tab": "wild"
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_WildePokesErstellen"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "OK"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

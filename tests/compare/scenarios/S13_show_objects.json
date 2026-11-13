@@ -1,0 +1,59 @@
+{
+  "name": "S13_show_objects",
+  "title": "オブジェクトの表示",
+  "source": "S13",
+  "issues": [
+    47
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "オブジェクトの表示"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "objects_on",
+      "target": "event",
+      "compare": {
+        "mode": "tolerance",
+        "tolerance": 24
+      }
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state:設定/オブジェクトの表示"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "オブジェクトの表示"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "objects_off",
+      "target": "event",
+      "compare": {
+        "mode": "overlayCells"
+      }
+    }
+  ]
+}

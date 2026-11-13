@@ -1,0 +1,36 @@
+{
+  "name": "S23_map_scripts",
+  "title": "マップスクリプト",
+  "source": "S23",
+  "issues": [
+    61
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Spin_MapScriptNr",
+      "value": 1
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_MapScriptTyp",
+        "field:Txt_MapScriptOffset",
+        "field:Txt_MapScriptFlag"
+      ]
+    }
+  ]
+}

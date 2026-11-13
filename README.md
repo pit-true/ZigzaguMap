@@ -170,6 +170,77 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 
 画面側の準備ができる前の要求には `{"ok":false,"error":"画面の準備ができていません"}` を返します。
 
+## 比較テスト
+
+AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の状態（マップ表示領域の画像、入力欄・一覧の値、ダイアログの有無）を比べます（`tests/compare`）。出力まで進めることは確かめますが、出力物の中身は比べません。Windows だけで動きます。
+
+- AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。どちらもユーザーのマウス・キーボードは使いません。
+- ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
+
+### 準備
+
+1. リポジトリの外に作業フォルダを作り、AdvanceMap 1.92 日本語版のコピーと素の BPRJ のコピーを置きます（AdvanceMap 本体・ROM・画面キャプチャはリポジトリに入れません）。
+2. `pip install -r tools/am-harness/requirements.txt`（Pillow と numpy。仮想環境はリポジトリ外か `.venv`）。
+3. `tests/compare/local.config.example.json` を `tests/compare/local.config.json` にコピーし、パスを直します（`.gitignore` 対象）。環境変数でも上書きできます。
+
+| 項目 | 環境変数 | 内容 |
+|---|---|---|
+| `amSourceDir` | `ZZM_CMP_AM_SRC` | AdvanceMap のコピー（ここから `amWorkDir` を作る） |
+| `amWorkDir` | `ZZM_CMP_AM_DIR` | 比較テスト専用の AdvanceMap（Ini の表示設定は毎回戻す） |
+| `romOriginal` | `ZZM_CMP_ROM` | 素の BPRJ（読むだけ） |
+| `scriptEditorStub` | `ZZM_CMP_STUB` | スクリプトエディタの代わりの exe（省略可） |
+| `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
+| `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
+| `keepRuns` | | 残す結果の数（既定 5。これより古い結果は summary に削除候補として書く。自動では消さない） |
+
+exe のビルド出力を別のドライブに置くときは、`CARGO_TARGET_DIR` を設定してから `scripts\build.cmd` を実行し、`zigzaguExe` にその下の `release\zigzagumap.exe` を書きます。
+
+### 実行
+
+```sh
+python tests/compare/run.py                         # 全シナリオ
+python tests/compare/run.py --scenario S04 S08      # 名前の先頭で選ぶ
+python tests/compare/run.py --only-zigzagu          # ZigzaguMap だけ動かし、AdvanceMap は前回の結果と比べる
+python tests/compare/run.py --list-ops              # 抽象操作 → 実操作の対応表
+python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナリオを issue にする（--dry-run で本文だけ表示）
+```
+
+失敗かエラーがあると終了コード 1 になります。`file_issues.py` は失敗したシナリオごとに issue（ラベル「テスト失敗」、マイルストーン「Phase1」）を作り、同じ題名の issue が開いていればコメントを足します。画像は上げず、結果フォルダ内のパスだけを書きます。
+
+### シナリオ
+
+`tests/compare/scenarios/*.json` に 1 本ずつ書きます。`name`、`title`、`issues`（関連する issue 番号）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
+
+```json
+{"op": "selectMap", "bank": 3, "map": 0}
+{"op": "selectBlock", "block": 9}
+{"op": "dragPaint", "from": [2, 6], "to": [9, 9]}
+{"op": "snapshot", "name": "after_drag", "target": "map"}
+{"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
+```
+
+操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap の自動操作の入口にマウス操作の命令がないため、クリックやドラッグはコマンドで「代用」しています（代用した後はステータスバーの比較を「未対応」にします）。メニューの対応は `tests/compare/zigzagu_menu.json` です。
+
+画像の比べ方（`snapshot` の `compare`）:
+
+- `gba`（既定）: 各色を 5bit に落として画素ごとに比べる（AdvanceMap と ZigzaguMap で 8bit への広げ方が違うため）
+- `cellMean`: マスごとの平均色で比べる（移動許可の文字の字形の違いを許す）
+- `overlayCells`: ブロックだけの画像との差から「重ね描きのあるマス」を求め、その位置だけ比べる（イベントの箱の色や形は比べない）
+- `target` に `blocks` を指定すると、どのタブにいてもブロックだけの画像（マップタブ）を比べる
+
+入力欄の値は、全角・半角の空白、16 進の大文字小文字、先頭の `$` や `0x` をそろえてから比べます。
+
+### 結果の見方
+
+`<resultsDir>/<日時>/` に出ます。
+
+- `summary.md` / `summary.json`: シナリオごとの判定と件数、失敗の中身
+- `<シナリオ>/report.md`: ステップごとの両者の状態、値の対応表、画像のパス
+- `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
+- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`
+
+判定は「合格」（比べたものがすべて同じ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）です。
+
 ## ライセンス
 
 MIT（[LICENSE](LICENSE)）

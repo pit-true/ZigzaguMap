@@ -1,0 +1,30 @@
+{
+  "name": "S38_palette_ref_change",
+  "title": "ブロックのパレット参照先の一括変更",
+  "source": "S38",
+  "issues": [
+    82
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "palette",
+      "target": "palette"
+    }
+  ]
+}

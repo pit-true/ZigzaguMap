@@ -1,0 +1,71 @@
+{
+  "name": "S14_event_select_move",
+  "title": "イベントの選択と移動",
+  "source": "S14",
+  "issues": [
+    49
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "clickEvent",
+      "x": 13,
+      "y": 13
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_EventTypen",
+        "field:Spin_Nr",
+        "field:Txt_PosX"
+      ]
+    },
+    {
+      "op": "dragEvent",
+      "from": [
+        13,
+        13
+      ],
+      "to": [
+        10,
+        10
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_PosX"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "after_move",
+      "target": "event",
+      "compare": {
+        "mode": "overlayCells"
+      }
+    },
+    {
+      "op": "clickEvent",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Cbo_EventTypen"
+      ]
+    }
+  ]
+}
