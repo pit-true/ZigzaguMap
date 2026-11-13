@@ -242,6 +242,7 @@ export class App implements ActionTarget {
 
   async reload(): Promise<void> {
     const s = this.state.session;
+    // AdvanceMap と同じく、読み直したあとはマップを開かない（題名はアプリ名、ステータスは「マップを選択してください」）
     if (s) await this.openSession(s.romPath, s.projectDir, true);
   }
 
@@ -249,10 +250,9 @@ export class App implements ActionTarget {
    * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
    * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
    */
-  async openSession(rom: string, project: string | null, keepMap = false): Promise<void> {
+  async openSession(rom: string, project: string | null, reload = false): Promise<void> {
     if (!(await this.confirmDiscard())) return;
     const state = this.state;
-    const reopen = keepMap ? state.map?.id ?? null : null;
     const previous = state.session;
     state.setStatus(ja.loading);
     let session: ProjectSession;
@@ -287,9 +287,9 @@ export class App implements ActionTarget {
 
       const last = state.settings.data.last;
       const target =
-        reopen ?? (state.settings.data.rememberLast && last && last.rom.toLowerCase() === rom.toLowerCase() ? { bank: last.bank, map: last.map } : null);
+        !reload && state.settings.data.rememberLast && last && last.rom.toLowerCase() === rom.toLowerCase() ? { bank: last.bank, map: last.map } : null;
       if (target && session.catalog.has(target)) {
-        if (!reopen && last && (TAB_ORDER as readonly string[]).includes(last.tab)) state.setTab(last.tab as TabId);
+        if (last && (TAB_ORDER as readonly string[]).includes(last.tab)) state.setTab(last.tab as TabId);
         await this.openMap(target);
       }
     } catch (e) {
