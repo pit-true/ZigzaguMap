@@ -1,5 +1,5 @@
 //! 別ウィンドウ（ワールドマップエディターなどの道具のウィンドウ）を開く。
-//! 中身はメインと同じ index.html で、画面側がウィンドウのラベルを見て組み立てる。
+//! 中身は別ウィンドウ用の入口 tool.html（tool.ts）で、画面側がウィンドウのラベルを見て組み立てる。
 
 use std::sync::Arc;
 
@@ -55,7 +55,8 @@ pub async fn open_tool_window(
         return Ok(());
     }
     let main = app.get_webview_window("main").ok_or("メインウィンドウがありません")?;
-    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
+    // 中身は別ウィンドウ用の入口（tool.html）。メインの画面のコードは読み込まない。
+    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("tool.html".into()))
         .title(title)
         .inner_size(width, height)
         .resizable(false)
