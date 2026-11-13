@@ -23,6 +23,7 @@ import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
+import { FileDialogs } from "./FileDialogs";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
@@ -45,6 +46,8 @@ const DIRTY_CHECK_DELAY = 150;
 export class App implements ActionTarget {
   readonly state: EditorState;
   readonly actions: Actions;
+  /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
+  readonly files = new FileDialogs();
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   private readonly tree: MapTree;
@@ -156,12 +159,12 @@ export class App implements ActionTarget {
   // ---- 開く ----
 
   async openRomDialog(): Promise<void> {
-    const path = await invoke<string | null>("pick_rom");
+    const path = await this.files.rom();
     if (path) await this.openSession(path, null);
   }
 
   async openProjectDialog(): Promise<void> {
-    const folder = await invoke<string | null>("pick_folder", { title: ja.projectFolderTitle });
+    const folder = await this.files.folder(ja.projectFolderTitle);
     if (!folder) return;
     await this.openFolder(folder);
   }
@@ -172,7 +175,7 @@ export class App implements ActionTarget {
     let rom = this.state.session?.romPath ?? known?.rom ?? null;
     if (!rom) {
       this.state.setStatus(ja.needRomForProject);
-      rom = await invoke<string | null>("pick_rom");
+      rom = await this.files.rom();
     }
     if (rom) await this.openSession(rom, folder);
   }
@@ -345,7 +348,7 @@ export class App implements ActionTarget {
     if (!session) return false;
     let target = dir;
     if (target === undefined && (chooseFolder || !session.projectDir)) {
-      const picked = await invoke<string | null>("pick_folder", { title: ja.exportFolderTitle });
+      const picked = await this.files.folder(ja.exportFolderTitle);
       if (!picked) return false;
       target = picked;
     }
