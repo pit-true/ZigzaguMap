@@ -1,7 +1,7 @@
 import type { MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
-import { FR_TILESET_GROUPS, FR_TILESET_PLAIN_GROUP, tilesetGroupOf } from "./data/frTilesets";
+import { FR_TILESET_GROUPS, tilesetGroupOf, tilesetSuffixOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
 import type { MapListSource } from "./Settings";
 
@@ -137,8 +137,7 @@ function group(key: string, label: string, list: readonly MapInfo[], suffix: (m:
 
 /** 「マップとタイルセットで並び替え」の補足（建物/施設、ジム など。通常のマップは無し）。 */
 function suffixOf(m: MapInfo): string {
-  const g = tilesetGroupOf(m.primaryNumber, m.secondaryNumber);
-  return g === null || g === FR_TILESET_PLAIN_GROUP ? "" : g;
+  return tilesetSuffixOf(m.secondaryNumber);
 }
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
