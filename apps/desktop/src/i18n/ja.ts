@@ -59,26 +59,8 @@ export const ja = {
   recentMax: "最近開いたファイルリストの最大数の変更",
   recentClear: "最近開いたファイルリストの履歴を削除する",
   recentShowPath: "最近開いたファイルリストのファイルパスを表示",
-  /** 設定 > 言語 の一覧（AdvanceMap と同じ並び）。 */
-  languages: [
-    "Deutsch",
-    "English",
-    "Polish",
-    "Français",
-    "Netherlands",
-    "Español",
-    "Suomi",
-    "Português",
-    "Italiano",
-    "Português Brasileiro",
-    "Afrikaans",
-    "Japanese",
-    "Greek",
-    "Dansk",
-    "Slovensky",
-    "Chinese",
-    "Korean",
-  ],
+  /** 設定 > 言語（画面は日本語だけなので Japanese の 1 項目）。 */
+  languageJapanese: "Japanese",
 
   // [Menue] ヘッダーのソート
   sortModes: [
@@ -111,6 +93,57 @@ export const ja = {
   about: "Advance Mapについて",
   aboutApp: "ZigzaguMapについて",
   eula: "エンドユーザー規約",
+  /** ZigzaguMapについて（[AboutBox] の並び）。 */
+  help: {
+    aboutTitle: "About",
+    credits: "クレジット:",
+    sections: [
+      [
+        "プログラミング:",
+        [
+          ["名前:", "pit-true"],
+          ["ウェブサイト:", "https://github.com/pit-true/ZigzaguMap"],
+          ["コメント:", "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\ の JSON に出力します。"],
+        ],
+      ],
+      [
+        "元にしたソフト:",
+        [
+          ["名前:", "Advance Map 1.92 (LU-HO Poké)"],
+          ["翻訳:", "Japanese 1.0.3_part_jap (Nanashi/Satry/Ealgrete/Louxies)"],
+        ],
+      ],
+    ] as readonly (readonly [string, readonly (readonly [string, string])[]])[],
+    version: (v: string) => `ZigzaguMap バージョン: ${v}`,
+    license: "ライセンス: MIT",
+    copyright: "Copyright (c) 2026 pit-true",
+  },
+
+  // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）
+  saveAsTitle: "名前を付けて保存",
+  dibFilter: "Device Intependent Bitmap (*.DIB)",
+  allFiles: "All files (*.*)",
+  allFilesGerman: "Alle Dateien (*.*)",
+  imageSaved: (path: string) => `画像を保存しました: ${path}`,
+  // ファイルを開く・PC の設定（[Allgemein] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
+  openFileTitle: "ファイルを開く",
+  programFilter: "Programme (*.exe)",
+  notExeFile: "プログラムファイルは存在していないか、*.exe のバイナリファイルではありません！",
+  scriptSeparatorQuestion:
+    'Are offsets seperated from the ROM name by ":" (default) or " " in the preferred script editor? => Yes for ":"; No for " ".',
+  scriptEditorSet: (path: string) => `スクリプトエディター: ${path}`,
+  romShortcutName: "Most recently used ROM",
+  romShortcutQuestion:
+    "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか?",
+  desktopShortcutQuestion: "デスクトップにZigzaguMapのショートカットを作成しますか?",
+  desktopShortcutCreated: "デスクトップにショートカットを作成しました",
+  contextMenuLabel: "ZigzaguMapで開く",
+  contextMenuAddQuestion: "エクスプローラーの .gba の右クリックに「ZigzaguMapで開く」を追加します（現在のユーザーのレジストリに書きます）。よろしいですか?",
+  contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか?",
+  skippedInAutomation: "自動操作で起動しているため、PC の設定は変えませんでした",
+  notNeededWithoutRomWrite: "ZigzaguMap は ROM へ書き込まないため、この機能は不要です",
+  iniFolderTitle: "Iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
+  iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
   // [Toolbar]
   toolbar: {
@@ -180,6 +213,14 @@ export const ja = {
   recentMaxPrompt: "「ファイル」の下に表示する、最近開いたファイルをいくつリストアップしますか?",
   ok: "OK",
   cancel: "Cancel",
+  /** メッセージボックスのボタン（Windows 標準の日本語表記）。 */
+  yes: "はい(Y)",
+  no: "いいえ(N)",
+  cancelJa: "キャンセル",
+  /** Delphi の StrToInt の例外（AdvanceMap では英語のまま。題名はアプリ名）。 */
+  invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
+  /** ROM でないファイルを開いたとき（AdvanceMap の AdvanceMapError(12) の文言）。 */
+  unknownRomType: "AdvanceMapError(12): Unknown Rom Type! This Rom cannot be edited with Advancemap.",
 
   // [Allgemein] マップ一覧
   rootHeader: "ヘッダー",
@@ -198,6 +239,8 @@ export const ja = {
   romInfoVersion: "ROMバージョン:",
 
   // マップタブ
+  /** スタンプの窓の題名（AdvanceMap でも日本語化されていない）。 */
+  grosserBlock: "Grosser Block",
   borderBlocks: "境界ブロック:",
   selectedBlock: (block: number) => `選択中: ${hex(block, 3)}`,
   selectedStamp: (w: number, h: number) => `選択中: ${w}×${h}`,
@@ -231,6 +274,8 @@ export const ja = {
   wildLevel: "最小/最大 Lv",
   wildSpecies: "Pokemon:",
   wildSlot: (n: number) => `Pokemon${n}:`,
+  /** 種族のコンボの 0 番。 */
+  wildChooseSpecies: "選択してください",
   noWild: "このマップには野生ポケモンが存在しません",
 
   // [Header]

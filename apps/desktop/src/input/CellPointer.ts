@@ -35,7 +35,12 @@ export function attachCellPointer(
     const cell = cellAt(e);
     if (!cell) return;
     e.preventDefault();
-    element.setPointerCapture(e.pointerId);
+    // 自動操作で作ったイベントは捕まえられないことがあるので、失敗しても続ける。
+    try {
+      element.setPointerCapture(e.pointerId);
+    } catch {
+      /* 何もしない */
+    }
     gesture = { button: e.button, ctrl: e.ctrlKey, shift: e.shiftKey };
     last = cell;
     handlers.down(cell, gesture);

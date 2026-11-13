@@ -103,7 +103,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
         { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
         { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
-        { label: ja.language, accel: "T", children: ja.languages.map((label, i) => ({ id: `lang.${i}`, label })) },
+        { label: ja.language, accel: "T", children: [{ id: "lang.ja", label: ja.languageJapanese }] },
         sep,
         { id: "opt.rememberLast", label: ja.rememberLast, accel: "U" },
         { id: "opt.autoSearch", label: ja.autoSearchOffset, accel: "V" },

@@ -4,13 +4,16 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { CommandEvent, MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
+import { messageBox, showError } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
+import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
 import { MenuBar } from "../ui/MenuBar";
 import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
+import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
 import { EventTab } from "../ui/tabs/EventTab";
 import { HeaderTab } from "../ui/tabs/HeaderTab";
 import { MapTab } from "../ui/tabs/MapTab";
@@ -20,12 +23,17 @@ import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { buildMapTree } from "./MapTreeModel";
+import { FileDialogs, writeFile } from "./FileDialogs";
+import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
+import { ImageExport, type ImageKind } from "./ImageExport";
+import { SystemSettings } from "./SystemSettings";
+import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import { ProjectSession } from "./ProjectSession";
+import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
+import { keepWindowPlacement } from "./WindowPlacementKeeper";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -41,18 +49,26 @@ const DIRTY_CHECK_DELAY = 150;
 export class App implements ActionTarget {
   readonly state: EditorState;
   readonly actions: Actions;
+  /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
+  readonly files = new FileDialogs();
+  readonly system: SystemSettings;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   private readonly tree: MapTree;
+  private readonly combo: MapCombo;
+  private readonly splitter: Splitter;
   private readonly romInfo = new RomInfoPanel();
   private readonly statusBar = new StatusBar();
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
+  readonly grosserBlock: GrosserBlockWindow;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
   private closing = false;
+  /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
+  automation = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -60,6 +76,7 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.system = new SystemSettings(state, this.files, () => this.automation);
     this.actions = new Actions(state, this);
     this.menu = new MenuBar({
       items: () => buildMenu(this.recentItems()),
@@ -75,7 +92,9 @@ export class App implements ActionTarget {
       sortMode: () => state.settings.data.sortMode,
     });
     this.tree = new MapTree({ openMap: (id) => void this.openMap(id), isDirty: (id) => state.isDirty(id) });
+    this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
+    this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
     const movementTab = new MovementTab(state);
     const eventTab = new EventTab(state);
@@ -97,6 +116,7 @@ export class App implements ActionTarget {
     this.left.style.width = `${settings.data.leftWidth}px`;
     this.left.append(this.tree.element, this.romInfo.element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
+    this.splitter = splitter;
     this.hint = document.createElement("p");
     this.hint.className = "drop-hint";
     this.hint.textContent = ja.dropHint;
@@ -105,7 +125,7 @@ export class App implements ActionTarget {
     const body = document.createElement("main");
     body.className = "main-body";
     body.append(this.left, splitter.element, tabControl.element);
-    root.append(this.menu.element, this.toolbar.element, body, this.statusBar.element);
+    root.append(this.menu.element, this.toolbar.element, this.combo.element, body, this.statusBar.element);
 
     state.on("status", () => this.statusBar.render(state.status));
     state.on("tab", () => {
@@ -114,10 +134,10 @@ export class App implements ActionTarget {
       if (last && state.map) state.settings.update({ last: { ...last, tab: state.tab } });
     });
     state.on("dirty", () => this.tree.refreshMarks());
-    state.on("view", () => this.toolbar.setVisible(state.settings.data.showToolbar));
+    state.on("view", () => this.applyLayout());
     for (const topic of ["session", "map", "view"] as const) state.on(topic, () => this.toolbar.update());
     this.statusBar.render(state.status);
-    this.toolbar.setVisible(settings.data.showToolbar);
+    this.applyLayout();
     state.emit("view");
   }
 
@@ -135,19 +155,21 @@ export class App implements ActionTarget {
       else await this.state.settings.flush();
     });
     const args = await invoke<StartupArgs>("startup_args");
+    this.automation = args.automation !== null;
     if (args.automation) await startAutomation(this);
+    else await keepWindowPlacement(this.state.settings);
     if (args.rom) await this.openSession(args.rom, args.project);
   }
 
   // ---- 開く ----
 
   async openRomDialog(): Promise<void> {
-    const path = await invoke<string | null>("pick_rom");
+    const path = await this.files.rom();
     if (path) await this.openSession(path, null);
   }
 
   async openProjectDialog(): Promise<void> {
-    const folder = await invoke<string | null>("pick_folder", { title: ja.projectFolderTitle });
+    const folder = await this.files.folder(ja.projectFolderTitle);
     if (!folder) return;
     await this.openFolder(folder);
   }
@@ -158,7 +180,7 @@ export class App implements ActionTarget {
     let rom = this.state.session?.romPath ?? known?.rom ?? null;
     if (!rom) {
       this.state.setStatus(ja.needRomForProject);
-      rom = await invoke<string | null>("pick_rom");
+      rom = await this.files.rom();
     }
     if (rom) await this.openSession(rom, folder);
   }
@@ -179,15 +201,27 @@ export class App implements ActionTarget {
     if (s) await this.openSession(s.romPath, s.projectDir, true);
   }
 
-  /** ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。 */
+  /**
+   * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
+   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
+   */
   async openSession(rom: string, project: string | null, keepMap = false): Promise<void> {
     if (!(await this.confirmDiscard())) return;
     const state = this.state;
     const reopen = keepMap ? state.map?.id ?? null : null;
+    const previous = state.session;
     state.setStatus(ja.loading);
+    let session: ProjectSession;
     try {
-      await state.session?.close();
-      const session = await ProjectSession.open(rom, project);
+      session = await ProjectSession.open(rom, project);
+    } catch (e) {
+      await previous?.reattach().catch(() => undefined);
+      state.setStatus(previous ? ja.statusRomLoaded : ja.statusOpenRom);
+      if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
+      else await showError(errorText(e));
+      return;
+    }
+    try {
       timings.mark("sessionOpened");
       this.unsubscribeBus?.();
       state.session = session;
@@ -201,6 +235,7 @@ export class App implements ActionTarget {
       this.romInfo.show(session.project.game);
       this.hint.hidden = true;
       state.settings.addRecent({ rom, project: session.projectDir });
+      void this.system.updateRomShortcut(rom);
       state.emit("session");
       state.emit("map");
       await this.setTitle(null);
@@ -233,6 +268,7 @@ export class App implements ActionTarget {
       state.mapImage = new MapImage(map.doc.grid, map.tiles);
       state.emit("map");
       this.tree.setOpened(id);
+      this.combo.setOpened(id);
       timings.mark("mapShown");
       timings.lastMapSwitchMs = performance.now() - start;
       state.setStatus(ja.statusMapLoaded(id.bank, id.map));
@@ -243,21 +279,18 @@ export class App implements ActionTarget {
     }
   }
 
+  /** ツール > マップを指定して開く（Ctrl+M）。初期値は今のマップ。 */
   async openMapByNumber(): Promise<void> {
     const session = this.state.session;
     if (!session) return;
-    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, "");
+    const current = this.state.map ? `${this.state.map.id.bank}.${this.state.map.id.map}` : "";
+    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, current);
     if (text === null) return;
     const m = /^\s*(\d+)\s*\.\s*(\d+)\s*$/.exec(text);
-    if (!m) {
-      this.state.setStatus(ja.invalidInput, undefined, true);
-      return;
-    }
+    // AdvanceMap は形の違う入力に、いつも空文字の StrToInt の例外を出す。
+    if (!m) return void (await showError(ja.invalidInteger(""), ja.appTitle));
     const id = { bank: Number(m[1]), map: Number(m[2]) };
-    if (!session.catalog.has(id)) {
-      this.state.setStatus(ja.mapNotFound, undefined, true);
-      return;
-    }
+    if (!session.catalog.has(id)) return void (await showError(ja.mapNotFound));
     await this.openMap(id);
   }
 
@@ -321,7 +354,7 @@ export class App implements ActionTarget {
     if (!session) return false;
     let target = dir;
     if (target === undefined && (chooseFolder || !session.projectDir)) {
-      const picked = await invoke<string | null>("pick_folder", { title: ja.exportFolderTitle });
+      const picked = await this.files.folder(ja.exportFolderTitle);
       if (!picked) return false;
       target = picked;
     }
@@ -341,7 +374,7 @@ export class App implements ActionTarget {
   private async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
     if (!session || session.modifiedMaps().length === 0) return true;
-    const answer = await invoke<string>("ask_yes_no_cancel", { title: ja.question, message: ja.saveChanges });
+    const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
     return true;
@@ -363,33 +396,58 @@ export class App implements ActionTarget {
   }
 
   changeSetting(patch: Partial<SettingsData>): void {
+    const rebuild = patch.mapListSource !== undefined && patch.mapListSource !== this.state.settings.data.mapListSource;
     this.state.settings.update(patch);
+    if (rebuild) this.rebuildTree();
     this.state.emit("view");
     this.state.emit("recent");
   }
 
+  /** 設定 > マップブロックの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
   async askPaletteWidth(): Promise<void> {
     const text = await inputDialog(ja.blockWidthTitle, ja.blockWidthPrompt, String(this.state.settings.data.paletteWidth));
     if (text === null) return;
-    const n = Number(text);
-    if (!Number.isInteger(n) || n < 1 || n > 64) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = parseInteger(text);
+    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
+    if (n < 1 || n > 64) return void (await showError(ja.invalidInput));
     this.changeSetting({ paletteWidth: n });
   }
 
+  /** 設定 > 移動エリアの設定の透明度。 */
   async askOpacity(): Promise<void> {
     const text = await inputDialog(ja.movementOpacity, ja.opacityPrompt, String(this.state.settings.data.movementOpacity));
     if (text === null) return;
-    const n = Number(text.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0 || n > 1) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = Number(text.trim().replace(",", "."));
+    if (text.trim() === "" || !Number.isFinite(n) || n < 0 || n > 1) return void (await showError(ja.invalidInput));
     this.changeSetting({ movementOpacity: n });
   }
 
+  /** 設定 > 最近開いたファイルの設定 > 最近開いたファイルリストの最大数の変更。 */
   async askRecentMax(): Promise<void> {
     const text = await inputDialog(ja.recentMax, ja.recentMaxPrompt, String(this.state.settings.data.recentMax));
     if (text === null) return;
-    const n = Number(text);
-    if (!Number.isInteger(n) || n < 1 || n > 9) return this.state.setStatus(ja.invalidInput, undefined, true);
+    const n = parseInteger(text);
+    if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
+    if (n < 1 || n > 9) return void (await showError(ja.invalidInput));
     this.changeSetting({ recentMax: n, recent: this.state.settings.data.recent.slice(0, n) });
+  }
+
+  /** ツール > 画像の保存（3 種）。 */
+  async saveImage(kind: ImageKind): Promise<void> {
+    const path = await new ImageExport(this.state, this.files).save(kind);
+    if (path) this.state.setStatus(ja.imageSaved(path));
+  }
+
+  /** 設定 > マップの表示設定 > ヘッダーから新たなIniファイルを作る。書き出し先のフォルダを選ばせる。 */
+  async createIniFromHeader(): Promise<void> {
+    const session = this.state.session;
+    if (!session) return;
+    const folder = await this.files.folder(ja.iniFolderTitle);
+    if (!folder) return;
+    const { main, maps } = buildNewIni(session.catalog);
+    await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
+    await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
+    this.state.setStatus(ja.iniCreated(folder));
   }
 
   // ---- 内部 ----
@@ -408,7 +466,22 @@ export class App implements ActionTarget {
   private rebuildTree(): void {
     const session = this.state.session;
     if (!session) return;
-    this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode));
+    this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode, this.state.settings.data.mapListSource));
+    if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
+  }
+
+  /** ツールバーの表示と、左の一覧かコンボボックスかの切り替え。 */
+  private applyLayout(): void {
+    const s = this.state.settings.data;
+    this.toolbar.setVisible(s.showToolbar);
+    const comboMode = s.comboBox;
+    if (comboMode && this.combo.element.hidden && this.state.session) {
+      this.combo.show(comboGroups(this.state.session.catalog));
+      this.combo.setOpened(this.state.map?.id ?? null);
+    }
+    this.combo.setVisible(comboMode);
+    this.left.hidden = comboMode;
+    this.splitter.element.hidden = comboMode;
   }
 
   private async setTitle(mapName: string | null): Promise<void> {
@@ -421,8 +494,17 @@ export class App implements ActionTarget {
   }
 
   showError(e: unknown): void {
-    this.state.setStatus(ja.error(e instanceof Error ? e.message : String(e)), undefined, true);
+    this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
+}
+
+function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** Delphi の StrToInt と同じく、前後の空白を除いた 10 進の整数だけを受け付ける。 */
+function parseInteger(text: string): number | null {
+  return /^\s*[+-]?\d+\s*$/.test(text) ? Number(text) : null;
 }
 
 function fileName(path: string): string {

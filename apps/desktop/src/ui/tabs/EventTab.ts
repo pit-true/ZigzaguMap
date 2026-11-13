@@ -4,6 +4,7 @@ import { attachCellPointer } from "../../input/CellPointer";
 import { hex, ja } from "../../i18n/ja";
 import { drawEvents, placedEvents, type EventKind, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
+import { spriteSourceFor } from "../map/spriteCanvases";
 import { fieldTable, selectBox } from "./fields";
 
 /** 種別の並び（AdvanceMap の種別コンボの順: 人、ワープ、スクリプト、看板）。 */
@@ -102,7 +103,8 @@ export class EventTab {
   }
 
   private draw(): void {
-    drawEvents(this.view.layer, this.events, this.view.cellSize, this.selected);
+    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
+    drawEvents(this.view.layer, this.events, this.view.cellSize, this.selected, sprites);
   }
 }
 

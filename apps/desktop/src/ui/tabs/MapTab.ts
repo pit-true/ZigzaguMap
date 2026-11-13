@@ -21,8 +21,9 @@ export class MapTab {
     new BlockPainter(this.view, state, () => this.palette.scrollToSelection());
 
     this.palette = new BlockPaletteView({
-      select: (selection) => {
-        state.select(selection);
+      select: (selection, stamp) => {
+        if (stamp) state.selectStamp(selection);
+        else state.select(selection);
         const block = selection.blocks[0] ?? 0;
         state.setStatus(ja.statusPaletteBlock(block, state.map?.tiles.blockOffset(block) ?? null));
       },

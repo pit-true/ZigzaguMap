@@ -103,3 +103,41 @@ pub fn save_settings(app: AppHandle, text: String) -> Result<(), String> {
     std::fs::write(&tmp, text.as_bytes()).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, dir.join(SETTINGS_FILE)).map_err(|e| e.to_string())
 }
+
+/// 個人設定に保存したウィンドウの位置と大きさ（物理ピクセル）。
+#[derive(serde::Deserialize)]
+pub struct WindowPlacement {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    #[serde(default)]
+    maximized: bool,
+}
+
+/// 個人設定からウィンドウの位置と大きさを読む。無いか壊れていれば None。
+pub fn saved_window_placement(app: &AppHandle) -> Option<WindowPlacement> {
+    let text = load_settings(app.clone());
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let p: WindowPlacement = serde_json::from_value(value.get("window")?.clone()).ok()?;
+    (p.width >= 200 && p.height >= 150).then_some(p)
+}
+
+/// 位置と大きさを当てる。どのモニターにも重ならない位置なら中央に置く。
+pub fn apply_window_placement(window: &WebviewWindow, p: &WindowPlacement) {
+    use tauri::{PhysicalPosition, PhysicalSize};
+    let visible = window.available_monitors().unwrap_or_default().iter().any(|m| {
+        let pos = m.position();
+        let size = m.size();
+        p.x + 100 < pos.x + size.width as i32 && p.x + p.width as i32 > pos.x + 100 && p.y >= pos.y - 8 && p.y + 40 < pos.y + size.height as i32
+    });
+    let _ = window.set_size(PhysicalSize::new(p.width, p.height));
+    if visible {
+        let _ = window.set_position(PhysicalPosition::new(p.x, p.y));
+    } else {
+        let _ = window.center();
+    }
+    if p.maximized {
+        let _ = window.maximize();
+    }
+}
