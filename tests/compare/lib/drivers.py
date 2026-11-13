@@ -483,7 +483,10 @@ class AdvanceMapDriver(Driver):
                 return out.get(want, "(項目なし)")
             return out
         if fid == "romInfo":
-            return [d.get("text", "") for d in am.vcl_dump() if d.get("parent") == "GroupBox1" and d.get("cls") == "TLabel"]
+            # 左下の ScrollBox_RomInfo の値のラベル（左の見出しは x=8、値は x=120 あたり）を上から
+            vals = [d for d in am.vcl_dump() if d.get("parent") == "ScrollBox_RomInfo" and d.get("cls") == "TLabel"
+                    and d.get("left", 0) >= 60]
+            return [d.get("text", "") for d in sorted(vals, key=lambda d: d.get("top", 0))]
         if fid.startswith("field:"):
             name = fid.split(":", 1)[1]
             d = am.comp(name)

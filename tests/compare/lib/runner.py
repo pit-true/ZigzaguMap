@@ -249,12 +249,19 @@ def compare(scn: dict, am: dict | None, zz: dict, sdir: pathlib.Path, root: path
     return {"verdict": verdict, "rows": rows, "counts": counts}
 
 
-def _dialog_key(d: dict, full: bool) -> dict:
+def _button(b: str) -> str:
+    """ボタンの文字列（アクセスキーの表記「(&Y)」「(Y)」「&」を除く。表示は同じ）。"""
+    import re
     from .langmap import menu_norm
+    return norm_value(re.sub(r"\([A-Z]\)$", "", menu_norm(b)))
+
+
+def _dialog_key(d: dict, full: bool, texts: bool = True) -> dict:
     k = {"title": norm_value(d.get("title", ""))}
     if full:
-        k["texts"] = norm_value(d.get("texts", []))
-        k["buttons"] = [norm_value(menu_norm(b)) for b in d.get("buttons", [])]
+        if texts:
+            k["texts"] = norm_value(d.get("texts", []))
+        k["buttons"] = [_button(b) for b in d.get("buttons", [])]
     return k
 
 
@@ -270,7 +277,9 @@ def compare_dialogs(ad: list, zd: list, step: dict) -> tuple[bool, str]:
         return False, f"ダイアログの数が違う（AdvanceMap {len(ad)} 件、ZigzaguMap {len(zd)} 件）"
     for i, (a, z) in enumerate(zip(ad, zd)):
         full = a.get("cls") == "#32770" and z.get("cls") in ("app", "native")
-        ka, kz = _dialog_key(a, full), _dialog_key(z, full)
+        # ファイルのダイアログは Windows の部品の見出し（「ファイル名(&N):」など）を比べない
+        texts = z.get("cls") != "native"
+        ka, kz = _dialog_key(a, full, texts), _dialog_key(z, full, texts)
         if ka != kz:
             return False, f"{i + 1} 件目が違う（AdvanceMap {ka}、ZigzaguMap {kz}）"
     text = step.get("text")
