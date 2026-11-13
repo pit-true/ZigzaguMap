@@ -98,16 +98,3 @@ export class ToolClient {
     }
   }
 }
-
-/** 描画を 2 回待つ（止まっていても 300ms で諦める）。 */
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, 300);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        clearTimeout(timer);
-        resolve();
-      }),
-    );
-  });
-}

@@ -31,7 +31,7 @@ export class EventMapInput {
 
   constructor(
     private readonly view: MapView,
-    private readonly handlers: EventMapHandlers,
+    handlers: EventMapHandlers,
   ) {
     const stage = view.stage;
     stage.addEventListener("pointerdown", (e) => {

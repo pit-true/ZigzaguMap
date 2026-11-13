@@ -6,7 +6,8 @@
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "lint": "pnpm -r typecheck && node scripts/gen-i18n.mjs --check && node scripts/check-i18n.mjs"
   },
   "devDependencies": {
     "typescript": "^7.0.2"

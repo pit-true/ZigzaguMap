@@ -117,7 +117,7 @@ describe.skipIf(!romPath)("実 ROM: イベント・接続・マップスクリ�
   });
 
   it("野生ヘッダー表の全件が decode → encode で元に戻る", () => {
-    const { rom, source, ids } = load();
+    const { rom, source } = load();
     const table = source.wildTable;
     expect(table.entries.length).toBeGreaterThan(100);
     for (const entry of table.entries) {
@@ -136,7 +136,7 @@ describe.skipIf(!romPath)("実 ROM: イベント・接続・マップスクリ�
   });
 
   it("マップ名表の全件が文字列と元のバイト列の間で往復する", () => {
-    const { rom, source, ids } = load();
+    const { source } = load();
     const names = source.nameTable;
     const codec = TextCodec.japanese;
     for (let id = MAP_NAME_FIRST_ID; id < MAP_NAME_FIRST_ID + MAP_NAME_COUNT; id++) {
@@ -148,7 +148,7 @@ describe.skipIf(!romPath)("実 ROM: イベント・接続・マップスクリ�
   });
 
   it("全マップを MapDocument → JSON → MapDocument と往復しても変わらない", () => {
-    const { rom, source, ids } = load();
+    const { source, ids } = load();
     for (const id of ids) {
       const doc = source.read(id);
       const json = MapSourceJson.stringify(MapSourceConverter.toSource(doc));
@@ -177,7 +177,7 @@ describe.skipIf(!romPath)("実 ROM: イベント・接続・マップスクリ�
   });
 
   it("推定したマップ数が ND の project.json と同じ", () => {
-    const { rom, source, ids } = load();
+    const { source } = load();
     const counts = source.bankTable.counts();
     expect(counts.slice(0, 5)).toEqual([5, 123, 60, 66, 4]);
     expect(counts.length).toBe(43);

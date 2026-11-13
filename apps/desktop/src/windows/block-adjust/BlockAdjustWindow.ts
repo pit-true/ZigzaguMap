@@ -18,7 +18,6 @@ const ROWS = 15;
  * 右の欄は 10 進で読む（数でなければ AdvanceMap と同じ「'$zz' is not a valid integer value.」）。
  */
 export class BlockAdjustWindow {
-  private readonly tileset1: HTMLInputElement;
   private readonly tileset2: HTMLInputElement;
   private readonly to: HTMLInputElement[] = [];
 
@@ -42,7 +41,6 @@ export class BlockAdjustWindow {
     };
     const r1 = radio("adj.tileset1", t.changeTileset1, 8, true);
     const r2 = radio("adj.tileset2", t.changeTileset2, 136, false);
-    this.tileset1 = r1.input;
     this.tileset2 = r2.input;
     const form = document.createElement("div");
     form.className = "adjust-form";

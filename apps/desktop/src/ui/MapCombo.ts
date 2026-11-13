@@ -16,7 +16,7 @@ export class MapCombo {
   private readonly map: HTMLSelectElement;
   private groups: readonly TreeNode[] = [];
 
-  constructor(private readonly host: MapComboHost) {
+  constructor(host: MapComboHost) {
     this.element = document.createElement("div");
     this.element.className = "map-combo";
     this.element.hidden = true;
