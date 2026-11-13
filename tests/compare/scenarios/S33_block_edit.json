@@ -1,0 +1,41 @@
+{
+  "name": "S33_block_edit",
+  "title": "ブロックの編集と保存",
+  "source": "S33",
+  "issues": [
+    74,
+    76
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "clickButton",
+      "screen": "ブロックエディタ",
+      "button": "Cmd_Speichern"
+    },
+    {
+      "op": "snapshot",
+      "name": "map_after_block_save",
+      "target": "map"
+    },
+    {
+      "op": "snapshot",
+      "name": "palette_after_block_save",
+      "target": "palette"
+    }
+  ]
+}

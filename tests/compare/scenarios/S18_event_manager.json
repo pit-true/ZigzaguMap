@@ -1,0 +1,47 @@
+{
+  "name": "S18_event_manager",
+  "title": "イベントマネージャー",
+  "source": "S18",
+  "issues": [
+    56
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Anzahl",
+      "value": 5
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_Aendern"
+    },
+    {
+      "op": "snapshot",
+      "name": "after_manager",
+      "target": "event",
+      "compare": {
+        "mode": "overlayCells"
+      }
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_Anzahl"
+      ]
+    }
+  ]
+}

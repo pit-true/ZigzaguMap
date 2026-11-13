@@ -1,0 +1,60 @@
+{
+  "name": "S11_unsaved_prompt",
+  "title": "未保存のままマップを切り替える",
+  "source": "S11",
+  "issues": [
+    44
+  ],
+  "note": "AdvanceMap は保存の確認を出す。ZigzaguMap は切り替え時に聞かない仕様（README）なので、ダイアログの比較は要判断",
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectBlock",
+      "block": 9
+    },
+    {
+      "op": "paintBlock",
+      "x": 5,
+      "y": 5
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 1,
+      "noWait": true
+    },
+    {
+      "op": "expectDialog",
+      "present": true,
+      "text": "保存"
+    },
+    {
+      "op": "answerDialog",
+      "button": "いいえ"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left",
+        "title.map"
+      ]
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "snapshot",
+      "name": "map_3_0_reverted",
+      "target": "map"
+    }
+  ]
+}

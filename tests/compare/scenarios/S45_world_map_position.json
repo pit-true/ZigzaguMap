@@ -1,0 +1,29 @@
+{
+  "name": "S45_world_map_position",
+  "title": "ワールドマップの位置と名前",
+  "source": "S45",
+  "issues": [
+    90,
+    91
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ワールドマップエディター"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_PosX",
+        "field:Txt_PosY",
+        "field:Txt_Name"
+      ]
+    }
+  ]
+}

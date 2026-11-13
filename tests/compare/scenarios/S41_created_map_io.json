@@ -1,0 +1,30 @@
+{
+  "name": "S41_created_map_io",
+  "title": "作成したマップの保存と読み込み",
+  "source": "S41",
+  "issues": [
+    85
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ファイル",
+        "マップ",
+        "名前をつけて作成したマップを保存"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

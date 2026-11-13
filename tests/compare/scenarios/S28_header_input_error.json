@@ -1,0 +1,36 @@
+{
+  "name": "S28_header_input_error",
+  "title": "ヘッダー・接続の入力エラー",
+  "source": "S28",
+  "issues": [
+    68
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Musik",
+      "value": "zzzz"
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "OK"
+    }
+  ]
+}

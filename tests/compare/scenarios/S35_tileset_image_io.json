@@ -1,0 +1,29 @@
+{
+  "name": "S35_tileset_image_io",
+  "title": "タイルセット画像の入出力",
+  "source": "S35",
+  "issues": [
+    77
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

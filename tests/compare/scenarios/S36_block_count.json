@@ -1,0 +1,29 @@
+{
+  "name": "S36_block_count",
+  "title": "ブロックデータとブロック量",
+  "source": "S36",
+  "issues": [
+    78
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ブロックエディタ"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

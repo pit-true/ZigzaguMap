@@ -1,0 +1,48 @@
+{
+  "name": "S25_advanced_header_edit",
+  "title": "高度なヘッダーの編集",
+  "source": "S25",
+  "issues": [
+    64
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "高度なヘッダーを表示"
+      ]
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_MapBreite",
+      "value": 2
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_MapHeader"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "高度なヘッダーを表示"
+      ]
+    }
+  ]
+}

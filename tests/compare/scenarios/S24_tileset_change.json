@@ -1,0 +1,53 @@
+{
+  "name": "S24_tileset_change",
+  "title": "タイルセットの変更",
+  "source": "S24",
+  "issues": [
+    62
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 19
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Tileset1Nr",
+      "value": 5
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Tileset2Nr",
+      "value": 9
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_TilesetDaten_Speichern"
+    },
+    {
+      "op": "selectTab",
+      "tab": "map"
+    },
+    {
+      "op": "snapshot",
+      "name": "tileset_5_9",
+      "target": "map"
+    },
+    {
+      "op": "snapshot",
+      "name": "palette_5_9",
+      "target": "palette"
+    }
+  ]
+}

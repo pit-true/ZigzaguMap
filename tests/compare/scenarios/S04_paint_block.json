@@ -1,0 +1,66 @@
+{
+  "name": "S04_paint_block",
+  "title": "ブロックを置く（単体・ドラッグ）",
+  "source": "S04",
+  "issues": [
+    32,
+    35
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectBlock",
+      "block": 9
+    },
+    {
+      "op": "paintBlock",
+      "x": 5,
+      "y": 5
+    },
+    {
+      "op": "snapshot",
+      "name": "after_click",
+      "target": "map"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left"
+      ]
+    },
+    {
+      "op": "dragPaint",
+      "from": [
+        2,
+        6
+      ],
+      "to": [
+        9,
+        9
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "after_drag",
+      "target": "map"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "status.left"
+      ]
+    },
+    {
+      "op": "snapshot",
+      "name": "palette_after",
+      "target": "palette"
+    }
+  ]
+}
