@@ -88,6 +88,8 @@ export const jaBlockEditor = {
   changeTileset1: ini.BlockDatenAnpassenForm["10"],
   changeTileset2: ini.BlockDatenAnpassenForm["11"],
   adjustHint: ini.BlockDatenAnpassenForm["12"],
+  /** 右の欄の見出し（旧版は「パ」の 1 文字）。 */
+  adjustTo: ini.BlockDatenAnpassenForm["13"],
   adjustSave: ini.BlockDatenAnpassenForm["14"],
 
   /** [Verhalten_FRLG]（挙動。名前の無い値は 16 進 2 桁だけ）。 */
