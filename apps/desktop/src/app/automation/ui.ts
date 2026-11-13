@@ -76,7 +76,7 @@ export function getField(id: string): Record<string, unknown> {
     out["value"] = el.selectedIndex >= 0 ? el.options[el.selectedIndex]!.text : "";
     out["index"] = el.selectedIndex;
     out["options"] = el.options.length > 64 ? el.options.length : [...el.options].map((o) => o.text);
-  } else if (el instanceof HTMLInputElement && el.type === "checkbox") {
+  } else if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "radio")) {
     out["value"] = el.checked;
   } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     out["value"] = el.value;
@@ -98,7 +98,7 @@ export function setField(id: string, value: unknown): Record<string, unknown> {
     const index = typeof value === "number" ? value : [...el.options].findIndex((o) => o.text === value);
     if (index < 0 || index >= el.options.length) throw new Error(`選択肢がありません: ${String(value)}`);
     el.selectedIndex = index;
-  } else if (el instanceof HTMLInputElement && el.type === "checkbox") {
+  } else if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "radio")) {
     el.checked = value === true;
   } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     el.focus();
@@ -133,7 +133,7 @@ export function describeElement(el: HTMLElement): Record<string, unknown> {
     return { ...base, index: el.selectedIndex, value: el.selectedIndex >= 0 ? el.options[el.selectedIndex]!.text : null, options: el.options.length };
   }
   if (el instanceof HTMLInputElement) {
-    return el.type === "checkbox" ? { ...base, checked: el.checked } : { ...base, value: el.value, readOnly: el.readOnly };
+    return el.type === "checkbox" || el.type === "radio" ? { ...base, checked: el.checked } : { ...base, value: el.value, readOnly: el.readOnly };
   }
   return { ...base, text: el.textContent };
 }

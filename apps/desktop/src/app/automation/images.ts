@@ -7,7 +7,7 @@ import { optStr, str, type AutomationRequest, type CommandTable } from "./regist
  * 画像（`canvasPng` / `ui.shot`）。
  * - `canvasPng {target}`: `map` / `movement` / `event`（マップ表示。重ね描きとグリッドを含む）、`palette`（ブロックパレット。選択の枠とグリッドを含む）、
  *   `border`（境界ブロック）、`movementPalette`（移動許可のパレット）。古い形の `tab` も読む（省略時は表示中のタブのマップ）。
- *   どれも表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる。
+ *   どれも表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる。`id` を付けるとその部品の Canvas（場所の設定の境界の画像 `field:RandBox` など）。
  * - `ui.shot {id}`: 部品の範囲の画面の画像（PrintWindow）。
  */
 
@@ -33,6 +33,13 @@ function composite(container: Element, only?: string): string {
 }
 
 function canvasPng(app: App, req: AutomationRequest): unknown {
+  const id = optStr(req, "id");
+  if (id) {
+    // 部品（`field:<AdvanceMap の部品名>` か ID）の Canvas。部品が Canvas でなければ中の Canvas を重ねる
+    const el = findField(id);
+    const url = el instanceof HTMLCanvasElement ? el.toDataURL("image/png") : composite(el);
+    return { png: url.slice(url.indexOf(",") + 1) };
+  }
   const target = optStr(req, "target") ?? optStr(req, "tab") ?? app.state.tab;
   let url: string | null;
   if (target === "map" || target === "movement" || target === "event") {

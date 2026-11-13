@@ -59,6 +59,8 @@ export function openMapInsertDialog(host: MapInsertHost): Promise<void> {
     const replaceBank = combo("mapInsert.replaceBank", [], 8, 112, 137);
     const replaceMap = combo("mapInsert.replaceMap", [], 160, 112, 137);
     const dummyBank = combo("mapInsert.dummyBank", [], 8, 176, 137);
+    const currentLabel = label(host.currentText(), 8, 32);
+    currentLabel.dataset["autoId"] = "mapInsert.current";
     const remaining = label("0", 160, 180);
     remaining.dataset["autoId"] = "mapInsert.dummyRemaining";
     const dummyImport = button("mapInsert.dummyImport", t.dummyImport, 312, 168, 137, 25, () => undefined);
@@ -130,7 +132,7 @@ export function openMapInsertDialog(host: MapInsertHost): Promise<void> {
 
     body.append(
       bold(t.insertNotice, 8, 8, true),
-      label(host.currentText(), 8, 32),
+      currentLabel,
       bold(t.insertPosition, 8, 56, true),
       button("mapInsert.bankHeader", t.showBankHeader, 312, 56, 137, 25, () => void showBankHeader()),
       bold(t.replaceHead, 8, 80),
