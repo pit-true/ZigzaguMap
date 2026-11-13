@@ -290,6 +290,12 @@ pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --events
 pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --project <CFRU-JP のフォルダ>
 ```
 
+全マップの描画を AdvanceMap の「マップ画像の保存」と画素で比べるには、`tools/am-harness/export_map_images.py <フォルダ>` で AdvanceMap に全マップの画像（`m<バンク>_<マップ>.DIB`）を書かせてから、次を実行します（色は 5 ビットに落として比べ、違うマップとマスを出します）。
+
+```sh
+pnpm --filter @zigzagumap/core compare-map-images -- <rom> <フォルダ> [--json out.json]
+```
+
 アプリの起動とビルド:
 
 ```sh
