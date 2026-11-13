@@ -1,0 +1,17 @@
+{
+  "name": "S57_export_to_other_folder",
+  "title": "出力先を指定して、別の空のフォルダへもう一度出力する",
+  "source": "S57",
+  "issues": [94],
+  "note": "1 回出力したあとに別の空のフォルダへ出力すると maps\\project.json が作られなかった不具合（動画の作成中に見つかったもの）の再発を見る。AdvanceMap は ROM へ保存するだけなので、書いたファイルの確認は ZigzaguMap だけで行う",
+  "steps": [
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectBlock", "block": 9},
+    {"op": "paintBlock", "x": 5, "y": 5},
+    {"op": "export", "dir": "export1"},
+    {"op": "export", "dir": "export2"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["output.files:export1", "output.files:export2"], "only": "zigzagu", "expectedDifference": "SPEC: ZigzaguMap は ROM へ書かず maps\\ へ出力する。出力先ごとに書いたファイルを ZigzaguMap だけで確かめる", "expected": {"output.files:export1": ["maps/03/00.json", "maps/project.json"], "output.files:export2": ["maps/03/00.json", "maps/project.json"]}}
+  ]
+}

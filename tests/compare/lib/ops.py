@@ -40,8 +40,11 @@ OPS: dict[str, dict] = {
                          desc="開いているダイアログ（に入力して）ボタンを押す"),
     "answerFile": dict(args={"path": "str（結果フォルダの中の名前。null で取り消し）"}, taints=["all"],
                        desc="開いている（次に開く）ファイルを選ぶダイアログに答える"),
-    "export": dict(args={}, taints=[], desc="出力（AdvanceMap は ROM の保存）。出力物は比べない"),
+    "export": dict(args={"dir": "str（ZigzaguMap の出力先。結果フォルダの中の名前、既定 export）"}, taints=[],
+                   desc="出力（AdvanceMap は ROM の保存）。出力物の中身は比べない（ZigzaguMap だけ output.files で書いたファイルを確かめられる）"),
     "wait": dict(args={"seconds": "float"}, taints=[], desc="待つ"),
+    "scrollView": dict(args={"target": "map|movement|event|palette|movementPalette", "to": "end|start"}, taints=[],
+                       desc="表示領域のスクロールバーを右下の端（end）か左上（start）へ動かす"),
     # --- 比べる（observe）
     "snapshot": dict(args={"name": "str", "target": "map|movement|event|blocks|border|palette|comp（comp と screen で部品を指す）",
                            "compare": "{mode,...}"},
@@ -65,6 +68,8 @@ FIELDS: dict[str, dict] = {
     "menu.state": dict(scope="all", desc="メニュー全項目の灰色・チェック（menu.state:Menue.12/Menue.120 のようにキーの階層で 1 項目）"),
     "romInfo": dict(scope="all", desc="左下の ROM 情報 4 行"),
     "dialogs": dict(scope="dialog", desc="開いているダイアログ"),
+    "output.files": dict(scope="all", desc="ZigzaguMap が出力先（output.files:<export の dir>）に書いたファイルの一覧（only: zigzagu と expected で使う）"),
+    "view.scroll": dict(scope="all", desc="表示領域の横・縦のスクロールバーが出ていて使えるか（view.scroll:map のように target を付ける）"),
 }
 # "field:<部品名>"（AdvanceMap の Delphi 部品名）で任意の入力欄の値、"enabled:<部品名>" で押せる・入力できるか（灰色でないか）を指定できる。
 
