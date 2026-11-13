@@ -1,0 +1,44 @@
+{
+  "name": "S22_map_options",
+  "title": "マップオプションの変更",
+  "source": "S22",
+  "issues": [
+    60
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 19
+    },
+    {
+      "op": "selectTab",
+      "tab": "header"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Txt_Musik",
+      "value": "0111"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_Wetter",
+      "value": 3
+    },
+    {
+      "op": "export"
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "field:Txt_Musik",
+        "field:Cbo_Wetter"
+      ]
+    }
+  ]
+}

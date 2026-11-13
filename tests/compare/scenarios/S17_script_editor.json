@@ -1,0 +1,53 @@
+{
+  "name": "S17_script_editor",
+  "title": "スクリプトエディタの設定と起動",
+  "source": "S17",
+  "issues": [
+    55,
+    100
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "スクリプトエディターの選択"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "キャンセル"
+    },
+    {
+      "op": "selectTab",
+      "tab": "event"
+    },
+    {
+      "op": "setField",
+      "screen": "main",
+      "field": "Cbo_EventTypen",
+      "value": 0
+    },
+    {
+      "op": "clickButton",
+      "screen": "main",
+      "button": "Cmd_Open"
+    },
+    {
+      "op": "expectDialog",
+      "present": false
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "S44_world_map_open",
+  "title": "ワールドマップエディターを開く",
+  "source": "S44",
+  "issues": [
+    89
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ワールドマップエディター"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

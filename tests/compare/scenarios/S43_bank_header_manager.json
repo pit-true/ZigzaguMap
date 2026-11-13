@@ -1,0 +1,36 @@
+{
+  "name": "S43_bank_header_manager",
+  "title": "マップバンクヘッダーの管理",
+  "source": "S43",
+  "issues": [
+    88
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ダミーデータへ移す/ヘッダー管理",
+        "マップバンクヘッダーの管理"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "dialogs"
+      ]
+    }
+  ]
+}

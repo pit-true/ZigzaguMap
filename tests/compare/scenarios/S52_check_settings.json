@@ -1,0 +1,33 @@
+{
+  "name": "S52_check_settings",
+  "title": "チェック設定の保存",
+  "source": "S52",
+  "issues": [
+    101
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "最後に選択したものを覚える"
+      ]
+    },
+    {
+      "op": "compareFields",
+      "fields": [
+        "menu.state:設定/最後に選択したものを覚える"
+      ]
+    },
+    {
+      "op": "menu",
+      "path": [
+        "設定",
+        "最後に選択したものを覚える"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "S42_map_insert",
+  "title": "マップの追加/挿入",
+  "source": "S42",
+  "issues": [
+    86
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ファイル",
+        "マップ",
+        "マップの追加/挿入"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    }
+  ]
+}

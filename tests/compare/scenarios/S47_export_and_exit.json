@@ -1,0 +1,47 @@
+{
+  "name": "S47_export_and_exit",
+  "title": "出力と終了時の確認",
+  "source": "S47",
+  "issues": [
+    94
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "selectBlock",
+      "block": 9
+    },
+    {
+      "op": "paintBlock",
+      "x": 5,
+      "y": 5
+    },
+    {
+      "op": "export"
+    },
+    {
+      "op": "paintBlock",
+      "x": 6,
+      "y": 5
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ファイル",
+        "終了"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true,
+      "text": "保存"
+    }
+  ]
+}

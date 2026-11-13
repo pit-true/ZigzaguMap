@@ -1,0 +1,34 @@
+{
+  "name": "S54_dummy_data",
+  "title": "ダミーデータ系",
+  "source": "S54",
+  "issues": [
+    103
+  ],
+  "steps": [
+    {
+      "op": "openRom"
+    },
+    {
+      "op": "selectMap",
+      "bank": 3,
+      "map": 0
+    },
+    {
+      "op": "menu",
+      "path": [
+        "ツール",
+        "ダミーデータへ移す/ヘッダー管理",
+        "マップバンクヘッダーをダミーデータに移す"
+      ]
+    },
+    {
+      "op": "expectDialog",
+      "present": true
+    },
+    {
+      "op": "answerDialog",
+      "button": "キャンセル"
+    }
+  ]
+}
