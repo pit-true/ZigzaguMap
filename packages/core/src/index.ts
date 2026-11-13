@@ -117,6 +117,7 @@ export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/P
 export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
+export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
 
 // タイルセットの編集
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";

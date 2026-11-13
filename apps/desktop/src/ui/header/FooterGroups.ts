@@ -2,10 +2,12 @@ import {
   BLOCK_ID_MASK,
   BLOCK_PIXELS,
   MAP_FOOTER,
+  RomLocations,
   SetBorderCommand,
   SetRawFooterCommand,
   createImage,
   toHexBytes,
+  toOffset,
   type Command,
 } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
@@ -16,7 +18,6 @@ import { checkOnInput } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
 import { tilesetNumber } from "./LayoutGroups";
 import { locationText, readOnlyEdit } from "./ProHeaderGroups";
-import { RomLocations, toOffset } from "./RomLocations";
 
 /** 16 進の文字列をバイト列にする（偶数桁の 16 進でなければ null）。 */
 function hexToBytes(text: string): Uint8Array | null {
