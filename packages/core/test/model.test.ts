@@ -13,7 +13,8 @@ describe("MapDocument（合成 ROM）", () => {
     expect(doc.mapNameText()).toBe("マサラ");
     expect(doc.events!.signs[1]!.content.type).toBe("hiddenItem");
     expect(doc.connections).toHaveLength(1);
-    expect(doc.mapScripts![1]!.pointer).toBe(0);
+    // 条件表のポインタは表の位置のまま読む（場所の設定で見せる。出力では 0 にする）
+    expect(doc.mapScripts![1]!.pointer).toBeGreaterThan(0x08000000);
     expect(doc.mapScripts![1]!.table!.entries).toHaveLength(1);
     expect(doc.wild).toHaveLength(1);
     // 表の無いマップは null。
