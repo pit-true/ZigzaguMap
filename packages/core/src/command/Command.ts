@@ -11,6 +11,8 @@ export type JsonObject = { [key: string]: JsonValue };
 export interface EditorContext {
   /** マップの編集中の配置を返す。 */
   grid(id: MapId): BlockGrid;
+  /** マップの編集中のボーダーを返す（ボーダーを編集するコマンドだけが使う）。 */
+  border?(id: MapId): BlockGrid;
 }
 
 /** 操作コマンド。画面の操作はすべてこれを通す。 */

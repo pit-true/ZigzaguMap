@@ -14,21 +14,35 @@ export type GridSource = (id: MapId) => BlockGrid;
  */
 export class GridStore implements EditorContext {
   private readonly grids = new Map<string, BlockGrid>();
+  private readonly borders = new Map<string, BlockGrid>();
   private readonly source: GridSource;
+  private readonly borderSource: GridSource | null;
 
-  constructor(source: MapLoader | GridSource) {
-    this.source =
-      typeof source === "function"
-        ? source
-        : (id) => {
-            const layout = source.readLayout(id);
-            return new BlockGrid(layout.width, layout.height, layout.blocks);
-          };
+  /** `borderSource` を省略すると、MapLoader を渡したときは ROM のボーダーを、関数を渡したときはボーダーなしとする。 */
+  constructor(source: MapLoader | GridSource, borderSource?: GridSource) {
+    if (typeof source === "function") {
+      this.source = source;
+      this.borderSource = borderSource ?? null;
+    } else {
+      this.source = (id) => {
+        const layout = source.readLayout(id);
+        return new BlockGrid(layout.width, layout.height, layout.blocks);
+      };
+      this.borderSource =
+        borderSource ??
+        ((id) => {
+          const layout = source.readLayout(id);
+          return new BlockGrid(layout.borderWidth, layout.borderHeight, layout.border);
+        });
+    }
   }
 
-  /** MapDocument の配置を直接編集する GridStore を作る。`document` は読み込み済みのマップを返すこと。 */
+  /** MapDocument の配置とボーダーを直接編集する GridStore を作る。`document` は読み込み済みのマップを返すこと。 */
   static forDocuments(document: (id: MapId) => MapDocument): GridStore {
-    return new GridStore((id) => document(id).grid);
+    return new GridStore(
+      (id) => document(id).grid,
+      (id) => document(id).border,
+    );
   }
 
   grid(id: MapId): BlockGrid {
@@ -41,6 +55,17 @@ export class GridStore implements EditorContext {
     return grid;
   }
 
+  border(id: MapId): BlockGrid {
+    if (!this.borderSource) throw new Error("ボーダーを編集できません");
+    const key = `${id.bank}.${id.map}`;
+    let border = this.borders.get(key);
+    if (!border) {
+      border = this.borderSource(id);
+      this.borders.set(key, border);
+    }
+    return border;
+  }
+
   /** そのマップを一度でも編集用に読み込んだか。 */
   has(id: MapId): boolean {
     return this.grids.has(`${id.bank}.${id.map}`);
@@ -49,5 +74,6 @@ export class GridStore implements EditorContext {
   /** 保持している配置を捨てる（マップを読み直したときなど）。 */
   forget(id: MapId): void {
     this.grids.delete(`${id.bank}.${id.map}`);
+    this.borders.delete(`${id.bank}.${id.map}`);
   }
 }
