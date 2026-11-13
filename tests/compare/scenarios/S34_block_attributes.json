@@ -1,44 +1,28 @@
 {
   "name": "S34_block_attributes",
-  "title": "ブロックの属性",
+  "title": "ブロックの属性（マップアクションデータ）",
   "source": "S34",
-  "issues": [
-    75
-  ],
+  "issues": [75],
+  "note": "コンボは位置で選ぶ（項目の文字列は「08-…」の形）。保存して別のブロックへ移って戻っても残る。16 進以外は整数エラー",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "setField",
-      "screen": "ブロックエディタ",
-      "field": "Cbo_Aufgaben",
-      "value": "61"
-    },
-    {
-      "op": "setField",
-      "screen": "ブロックエディタ",
-      "field": "Cbo_Hintergrund",
-      "value": "01"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_Aufgaben",
-        "field:Txt_Hinterdrund"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "x": 80, "y": 16, "button": "left"},
+    {"op": "compareFields", "fields": ["field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Cbo_Aufgaben", "value": 8},
+    {"op": "compareFields", "fields": ["field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Cbo_Hintergrund", "value": 1},
+    {"op": "compareFields", "fields": ["field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Txt_Hinterdrund", "value": "21"},
+    {"op": "compareFields", "fields": ["field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Txt_Aufgaben2", "value": "05"},
+    {"op": "clickButton", "screen": "TBlockEditorForm", "button": "Cmd_Speichern"},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "x": 16, "y": 16, "button": "left"},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "x": 80, "y": 16, "button": "left"},
+    {"op": "compareFields", "fields": ["field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Txt_Aufgaben", "value": "zz"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"}
   ]
 }

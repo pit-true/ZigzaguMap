@@ -2,74 +2,49 @@
   "name": "S15_event_fields",
   "title": "各種別の入力欄の編集",
   "source": "S15",
-  "issues": [
-    50,
-    52,
-    53
-  ],
+  "issues": [50, 52, 53],
+  "note": "人（画像・視界・座標・アクション・トレーナー・人 ID）、看板（スクリプト・属性・隠しアイテムへの切り替え）、ワープ、スクリプト、フライト",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_EventTypen",
-      "value": 0
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Bild",
-      "value": 5
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_Sichtweite",
-      "value": 3
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 1
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_Nr",
-      "value": 0
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Spin_Bild",
-        "field:Txt_Sichtweite"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "after_edit",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Spin_Bild", "value": 5},
+    {"op": "setField", "screen": "main", "field": "Txt_Sichtweite", "value": 3},
+    {"op": "setField", "screen": "main", "field": "Txt_PosX", "value": "0005"},
+    {"op": "setField", "screen": "main", "field": "Cbo_BewTyp", "value": 8},
+    {"op": "setField", "screen": "main", "field": "Chk_Trainer", "value": true},
+    {"op": "setField", "screen": "main", "field": "Txt_NrStatus", "value": "0123"},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Spin_Bild", "field:Txt_Unbekannt1", "field:Txt_Unbekannt2", "field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt3", "field:Cbo_BewTyp", "field:Txt_Bewegung", "field:Txt_Unbekannt4", "field:Chk_Trainer", "field:Txt_Unbekannt5", "field:Txt_Sichtweite", "field:Txt_Script", "field:Txt_NrStatus", "field:Txt_Unbekannt6", "field:Txt_Unbekannt7"]},
+    {"op": "snapshot", "name": "after_person_edit", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Txt_Script", "value": "$170000"},
+    {"op": "setField", "screen": "main", "field": "Cbo_AnsprechEbene", "value": 2},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Cbo_AnsprechEbene", "field:Cbo_SignpostTyp", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_SignpostTyp", "value": 5},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Cbo_SignpostTyp", "field:Cbo_ItemID", "field:Txt_HiddenID", "field:Txt_Anzahl", "enabled:Cmd_Open"], "expectedDifference": {"field:Cbo_ItemID": "README「AdvanceMap と違う点」: アイテム ID の名前は ROM の文字コード表で読む（AdvanceMap では一部が文字化けする）"}},
+    {"op": "setField", "screen": "main", "field": "Cbo_ItemID", "value": 13},
+    {"op": "setField", "screen": "main", "field": "Txt_HiddenID", "value": "20"},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Cbo_SignpostTyp", "field:Cbo_ItemID", "field:Txt_HiddenID", "field:Txt_Anzahl"], "expectedDifference": {"field:Cbo_ItemID": "README「AdvanceMap と違う点」: アイテム ID の名前は ROM の文字コード表で読む（AdvanceMap では一部が文字化けする）"}},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 2},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 1},
+    {"op": "setField", "screen": "main", "field": "Spin_WarpTo", "value": 2},
+    {"op": "setField", "screen": "main", "field": "Txt_PosY", "value": "0009"},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt", "field:Spin_WarpTo", "field:Spin_MapBank", "field:Spin_Map"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 3},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 2},
+    {"op": "setField", "screen": "main", "field": "Txt_VarNummer", "value": "4051"},
+    {"op": "setField", "screen": "main", "field": "Txt_VarWert", "value": "0003"},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt1", "field:Txt_VarNummer", "field:Txt_VarWert", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 4},
+    {"op": "setField", "screen": "main", "field": "Txt_PosX", "value": "0007"},
+    {"op": "compareFields", "fields": ["field:Txt_PosX", "field:Txt_PosY", "field:Txt_Unbekannt", "field:Spin_MapBank", "field:Spin_Map"]},
+    {"op": "snapshot", "name": "after_edit", "target": "event", "compare": {"mode": "overlayCells"}}
   ]
 }

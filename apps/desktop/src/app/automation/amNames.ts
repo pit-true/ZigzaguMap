@@ -203,6 +203,7 @@ export const AM_NAMES: Readonly<Record<string, Readonly<Record<string, string>>>
     "newMap.tileset2": "Cbo_Tileset2",
     "newMap.create": "Btn_Erstellen",
     "newMap.cancel": "Btn_Abbrechen",
+    "mapInsert.current": "Lbl_SpeicherOrt",
     "mapInsert.replaceBank": "Cbo_ErsetzenBank",
     "mapInsert.replaceMap": "Cbo_MapNr",
     "mapInsert.dummyBank": "Cbo_VorhandenBank",

@@ -32,15 +32,23 @@ OPS: dict[str, dict] = {
     "menu": dict(args={"key": "[言語ファイルのキー Menue.N]"}, taints=["all"], desc="メインメニューの項目を実行"),
     "setField": dict(args={"screen": "str", "field": "str", "value": "str|int"}, taints=["all"], desc="入力欄・コンボの値を変える"),
     "clickButton": dict(args={"screen": "str", "button": "str"}, taints=["all"], desc="ボタンを押す"),
+    "clickComp": dict(args={"screen": "str", "comp": "AdvanceMap の部品名", "x": "int（部品の左上からの px）", "y": "int",
+                            "button": "left|right"}, taints=["all"], desc="部品（ブロックエディタの一覧など）の中をクリック"),
     "clickEvent": dict(args={"x": "int", "y": "int"}, taints=["all"], desc="イベントタブのマップをクリック"),
     "dragEvent": dict(args={"from": "[x,y]", "to": "[x,y]"}, taints=["all"], desc="イベントをドラッグ"),
-    "answerDialog": dict(args={"button": "str"}, taints=["all"], desc="開いているダイアログのボタンを押す"),
+    "answerDialog": dict(args={"button": "str（close で ×）", "input": "str（入力ダイアログに入れる。省略可）"}, taints=["all"],
+                         desc="開いているダイアログ（に入力して）ボタンを押す"),
+    "answerFile": dict(args={"path": "str（結果フォルダの中の名前。null で取り消し）"}, taints=["all"],
+                       desc="開いている（次に開く）ファイルを選ぶダイアログに答える"),
     "export": dict(args={}, taints=[], desc="出力（AdvanceMap は ROM の保存）。出力物は比べない"),
     "wait": dict(args={"seconds": "float"}, taints=[], desc="待つ"),
     # --- 比べる（observe）
-    "snapshot": dict(args={"name": "str", "target": "map|movement|event|blocks|border|palette", "compare": "{mode,...}"},
+    "snapshot": dict(args={"name": "str", "target": "map|movement|event|blocks|border|palette|comp（comp と screen で部品を指す）",
+                           "compare": "{mode,...}"},
                      observe=True, scope="image", desc="表示領域の画像を取り、画素で比べる"),
     "compareFields": dict(args={"fields": "[欄の ID]"}, observe=True, scope="fields", desc="欄の値を正規化して比べる"),
+    "compareFile": dict(args={"path": "str（answerFile で書かせたファイル）", "compare": "{mode,...}"}, observe=True, scope="image",
+                        desc="両アプリが書いた画像ファイルを画素で比べる（画像保存など）"),
     "expectDialog": dict(args={"present": "bool=true", "text": "str（部分一致、省略可）"}, observe=True, scope="dialog",
                          desc="ダイアログの有無と題名・本文・ボタンを比べる"),
 }
@@ -58,7 +66,7 @@ FIELDS: dict[str, dict] = {
     "romInfo": dict(scope="all", desc="左下の ROM 情報 4 行"),
     "dialogs": dict(scope="dialog", desc="開いているダイアログ"),
 }
-# "field:<部品名>"（AdvanceMap の Delphi 部品名）で任意の入力欄も指定できる。
+# "field:<部品名>"（AdvanceMap の Delphi 部品名）で任意の入力欄の値、"enabled:<部品名>" で押せる・入力できるか（灰色でないか）を指定できる。
 
 
 def taints_of(step: dict) -> set[str]:

@@ -1,103 +1,30 @@
 {
   "name": "S29_wild_view",
-  "title": "野生の表示",
+  "title": "野生の表示とタイプの切り替え",
   "source": "S29",
-  "issues": [
-    69
-  ],
+  "issues": [69],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Typ",
-        "field:Txt_Heufigkeit",
-        "field:Txt_Level1P1",
-        "field:Cbo_Pokemon1"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 37
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Typ",
-        "field:Txt_Heufigkeit",
-        "field:Txt_Level1P1",
-        "field:Cbo_Pokemon1"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 1,
-      "map": 1
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Typ",
-        "field:Txt_Heufigkeit",
-        "field:Txt_Level1P1",
-        "field:Cbo_Pokemon1"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Typ",
-        "field:Txt_Heufigkeit",
-        "field:Txt_Level1P1",
-        "field:Cbo_Pokemon1"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 4,
-      "map": 1
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Typ",
-        "field:Txt_Heufigkeit",
-        "field:Txt_Level1P1",
-        "field:Cbo_Pokemon1"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10", "field:Txt_Level1P11", "field:Txt_Level2P11", "field:Cbo_Pokemon11", "field:Txt_Level1P12", "field:Txt_Level2P12", "field:Cbo_Pokemon12"]},
+    {"op": "selectMap", "bank": 3, "map": 37},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10", "field:Txt_Level1P11", "field:Txt_Level2P11", "field:Cbo_Pokemon11", "field:Txt_Level1P12", "field:Txt_Level2P12", "field:Cbo_Pokemon12"]},
+    {"op": "selectMap", "bank": 1, "map": 1},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10", "field:Txt_Level1P11", "field:Txt_Level2P11", "field:Cbo_Pokemon11", "field:Txt_Level1P12", "field:Txt_Level2P12", "field:Cbo_Pokemon12"]},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10", "field:Txt_Level1P11", "field:Txt_Level2P11", "field:Cbo_Pokemon11", "field:Txt_Level1P12", "field:Txt_Level2P12", "field:Cbo_Pokemon12"]},
+    {"op": "selectMap", "bank": 4, "map": 1},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10", "field:Txt_Level1P11", "field:Txt_Level2P11", "field:Cbo_Pokemon11", "field:Txt_Level1P12", "field:Txt_Level2P12", "field:Cbo_Pokemon12"]},
+    {"op": "selectMap", "bank": 3, "map": 37},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "setField", "screen": "main", "field": "Cbo_Typ", "value": 1},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_Typ", "value": 3},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2", "field:Txt_Level1P3", "field:Txt_Level2P3", "field:Cbo_Pokemon3", "field:Txt_Level1P4", "field:Txt_Level2P4", "field:Cbo_Pokemon4", "field:Txt_Level1P5", "field:Txt_Level2P5", "field:Cbo_Pokemon5", "field:Txt_Level1P6", "field:Txt_Level2P6", "field:Cbo_Pokemon6", "field:Txt_Level1P7", "field:Txt_Level2P7", "field:Cbo_Pokemon7", "field:Txt_Level1P8", "field:Txt_Level2P8", "field:Cbo_Pokemon8", "field:Txt_Level1P9", "field:Txt_Level2P9", "field:Cbo_Pokemon9", "field:Txt_Level1P10", "field:Txt_Level2P10", "field:Cbo_Pokemon10"]}
   ]
 }

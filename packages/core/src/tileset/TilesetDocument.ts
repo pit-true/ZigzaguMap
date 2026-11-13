@@ -50,6 +50,8 @@ export interface TilesetDocumentInit {
   palettes: Uint16Array;
   blocks: Uint16Array;
   attributes: Uint32Array;
+  /** ROM 上のブロック定義の位置（ROM から読んだときだけ。ステータスバーの「オフセット」に出す）。 */
+  romBlocksOffset?: number;
 }
 
 /**
@@ -72,6 +74,8 @@ export class TilesetDocument {
   blocks: Uint16Array;
   /** ブロック属性（1 ブロック 1 個の u32）。 */
   attributes: Uint32Array;
+  /** ROM 上のブロック定義の位置（ROM から読んだときだけ。無ければ 0）。表示だけに使う。 */
+  readonly romBlocksOffset: number;
 
   constructor(init: TilesetDocumentInit) {
     this.pointer = init.pointer >>> 0;
@@ -84,6 +88,7 @@ export class TilesetDocument {
     this.palettes = init.palettes;
     this.blocks = init.blocks;
     this.attributes = init.attributes;
+    this.romBlocksOffset = init.romBlocksOffset ?? 0;
   }
 
   /** 指し方。 */
@@ -125,7 +130,7 @@ export class TilesetDocument {
         isSecondary: this.header[1] !== 0,
         tilesOffset: 0,
         palettesOffset: 0,
-        blocksOffset: 0,
+        blocksOffset: this.romBlocksOffset,
         callback: (this.header[0x10]! | (this.header[0x11]! << 8) | (this.header[0x12]! << 16) | (this.header[0x13]! << 24)) >>> 0,
         attributesOffset: 0,
       },
@@ -149,6 +154,7 @@ export class TilesetDocument {
       palettes: this.palettes.slice(),
       blocks: this.blocks.slice(),
       attributes: this.attributes.slice(),
+      romBlocksOffset: this.romBlocksOffset,
     });
   }
 
@@ -212,6 +218,7 @@ export class TilesetDocument {
       palettes: rom.u16Array(palettesAt, PALETTE_COLORS),
       blocks: rom.u16Array(blocksAt, blockCount * BLOCK_TILE_COUNT),
       attributes,
+      romBlocksOffset: blocksAt,
     });
   }
 

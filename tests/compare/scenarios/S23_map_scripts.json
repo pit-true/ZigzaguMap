@@ -1,36 +1,30 @@
 {
   "name": "S23_map_scripts",
-  "title": "マップスクリプト",
+  "title": "マップスクリプトの表示・種類の変更・追加・削除・保存",
   "source": "S23",
-  "issues": [
-    61
-  ],
+  "issues": [61],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Spin_MapScriptNr",
-      "value": 1
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_MapScriptTyp",
-        "field:Txt_MapScriptOffset",
-        "field:Txt_MapScriptFlag"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "setField", "screen": "main", "field": "Spin_MapScriptNr", "value": 1},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "setField", "screen": "main", "field": "Spin_MapScriptNr", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Cbo_MapScriptTyp", "value": 2},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_MapScriptTyp", "value": 5},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_MapScriptHinzufuegen"},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_MapScriptEntfernen"},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "setField", "screen": "main", "field": "Spin_MapScriptNr", "value": 0},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_MapScriptEntfernen"},
+    {"op": "compareFields", "fields": ["field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_MapScriptFlag", "field:Txt_MapScriptValue", "field:Txt_MapScriptOffset2", "enabled:Txt_MapScriptOffset", "enabled:Txt_MapScriptFlag", "enabled:Spin_MapScriptNr"]},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_MapScriptSpeichern"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
   ]
 }

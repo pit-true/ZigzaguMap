@@ -79,11 +79,13 @@ export class BlockRenderer {
     const isPrimary = tile < PRIMARY_TILE_COUNT;
     const tiles = isPrimary ? this.primary.tiles : this.secondary.tiles;
     const start = (isPrimary ? tile : tile - PRIMARY_TILE_COUNT) * TILE_BYTES;
-    if (start + TILE_BYTES > tiles.length) return;
+    // 画像の無いタイル番号は、AdvanceMap と同じく全画素が色 0 のタイルとして描く（下層ならそのパレットの色 0 で塗る）
+    const missing = start + TILE_BYTES > tiles.length;
+    if (missing && !opaque) return;
 
     for (let py = 0; py < 8; py++) {
       for (let px = 0; px < 8; px++) {
-        const byte = tiles[start + py * 4 + (px >> 1)]!;
+        const byte = missing ? 0 : tiles[start + py * 4 + (px >> 1)]!;
         const index = px & 1 ? byte >> 4 : byte & 0xf;
         if (!opaque && (index === 0 || this.sameAsColor0(pal, index))) continue;
         const dx = ox + (hflip ? 7 - px : px);

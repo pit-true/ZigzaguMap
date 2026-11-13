@@ -43,7 +43,9 @@ export class MapCatalog {
       if (!names.has(region)) {
         let name: string | null = null;
         try {
-          name = project.base.nameTable.name(region);
+          // 名前表を書き換えていれば（場所の設定の「名前の変更を保存」）、その名前
+          const edited = project.editorContext().mapNameEdit(region);
+          name = edited ? project.textCodec.decode(edited) : project.base.nameTable.name(region);
         } catch {
           name = null;
         }

@@ -1,39 +1,33 @@
 {
   "name": "S31_wild_add",
-  "title": "野生ポケモンの追加",
+  "title": "野生ポケモンの追加（データなし・タイプの追加）",
   "source": "S31",
-  "issues": [
-    72
-  ],
+  "issues": [72],
+  "note": "4.1 で何も選ばず OK（中止の案内。ダイアログは開いたまま）、草むら＋釣りで OK。3.19 でタイプの追加を開いてキャンセル",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 4,
-      "map": 1
-    },
-    {
-      "op": "selectTab",
-      "tab": "wild"
-    },
-    {
-      "op": "clickButton",
-      "screen": "main",
-      "button": "Cmd_WildePokesErstellen"
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "OK"
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 4, "map": 1},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "compareFields", "fields": ["enabled:Cmd_WildePokesErstellen", "field:Cmd_WildePokesErstellen"]},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_WildePokesErstellen"},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Chk_Grass", "field:Chk_Wasser", "field:Chk_Baeume", "field:Chk_Angel"]},
+    {"op": "clickButton", "screen": "TCreateWildePokemonForm", "button": "Cmd_OK"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "TCreateWildePokemonForm", "field": "Chk_Grass", "value": true},
+    {"op": "setField", "screen": "TCreateWildePokemonForm", "field": "Chk_Angel", "value": true},
+    {"op": "clickButton", "screen": "TCreateWildePokemonForm", "button": "Cmd_OK"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern", "field:Txt_Level1P1", "field:Txt_Level2P1", "field:Cbo_Pokemon1", "field:Txt_Level1P2", "field:Txt_Level2P2", "field:Cbo_Pokemon2"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_Typ", "value": 3},
+    {"op": "compareFields", "fields": ["field:Cbo_Typ", "field:Txt_Heufigkeit", "field:Lbl_Heufigkeit", "enabled:Cmd_Speichern"]},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "wild"},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_Erweitern"},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Chk_Grass", "field:Chk_Wasser", "field:Chk_Baeume", "field:Chk_Angel"]},
+    {"op": "clickButton", "screen": "TCreateWildePokemonForm", "button": "Cmd_Abbrechen"},
+    {"op": "expectDialog", "present": false}
   ]
 }

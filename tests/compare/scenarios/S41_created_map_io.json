@@ -1,30 +1,27 @@
 {
   "name": "S41_created_map_io",
-  "title": "作成したマップの保存と読み込み",
+  "title": "作成したマップの保存と読み込み（.map / .evt）",
   "source": "S41",
-  "issues": [
-    85
-  ],
+  "issues": [85],
+  "note": "3.0 に 1 ブロック描いて .map に保存し、3.1 を開いてから読み込む",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.11",
-        "Menue.114",
-        "Menue.1143"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectBlock", "block": 9},
+    {"op": "paintBlock", "x": 5, "y": 5},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1143"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerFile", "path": "town.map"},
+    {"op": "expectDialog", "present": false},
+    {"op": "selectMap", "bank": 3, "map": 1},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1141"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerFile", "path": "town.map"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["map.size"]},
+    {"op": "snapshot", "name": "opened_map", "target": "map"},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "snapshot", "name": "opened_events", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "selectTab", "tab": "map"}
   ]
 }

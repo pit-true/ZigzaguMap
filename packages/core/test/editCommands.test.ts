@@ -68,6 +68,13 @@ describe("入力の読み取り（AdvanceMap の欄と同じ規則）", () => {
       expect((e as EditError).code).toBe(EditErrorCode.InvalidInteger);
       expect((e as EditError).params).toEqual({ text: "$ZZ" });
     }
+    // `$` で始まる入力は `$` を重ねない（AdvanceMap と同じ「'$GGGGGG' is not a valid integer value.」）
+    expect(parseHexInput("$16F884")).toBe(0x16f884);
+    try {
+      parseHexInput("$GGGGGG");
+    } catch (e) {
+      expect((e as EditError).params).toEqual({ text: "$GGGGGG" });
+    }
   });
 
   it("10 進欄: Delphi の StrToInt と同じく空白・符号・$・0x を受け付ける", () => {
@@ -320,6 +327,11 @@ describe("マップの大きさ・ボーダー", () => {
         expect([doc.width, doc.height, doc.border.width, doc.border.height]).toEqual([3, 2, 1, 1]);
       },
     );
+    // 幅・高さを変えると、配置は同じ並びのまま新しい幅で折り返す（AdvanceMap と同じ。足りないマスは 0）
+    const q = await open();
+    const before = [...q.loaded(M00)!.grid.cells];
+    new CommandBus(q.editorContext()).execute(new SetRawFooterCommand({ ...M00, footer }));
+    expect([...q.loaded(M00)!.grid.cells]).toEqual(Array.from({ length: 6 }, (_, i) => before[i] ?? 0));
     const p = await open();
     expectEditError(p, new SetBorderCommand({ ...M00, width: 2, height: 1, cells: [1] }), EditErrorCode.InvalidRawBytes);
   });

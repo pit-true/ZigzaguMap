@@ -2,57 +2,15 @@
   "name": "S10_combobox_toolbar",
   "title": "コンボボックス表示とツールバー非表示",
   "source": "S10",
-  "issues": [
-    98
-  ],
+  "issues": [98],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.121"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "menu.state:Menue.12/Menue.121"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.121"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.1211"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "menu.state:Menue.12/Menue.1211"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.1211"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.12", "Menue.121"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.121"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.121"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.1211"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.1211"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.1211"]}
   ]
 }

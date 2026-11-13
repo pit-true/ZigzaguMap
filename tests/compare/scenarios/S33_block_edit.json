@@ -2,40 +2,32 @@
   "name": "S33_block_edit",
   "title": "ブロックの編集と保存",
   "source": "S33",
-  "issues": [
-    74,
-    76
-  ],
+  "issues": [74, 76],
+  "note": "ブロック 0x13 を選び、タイル 0x12 を下層左上へ、左右・上下逆で上層右下へ、右クリックで拾う、パレット 3、変更を保存",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "clickButton",
-      "screen": "ブロックエディタ",
-      "button": "Cmd_Speichern"
-    },
-    {
-      "op": "snapshot",
-      "name": "map_after_block_save",
-      "target": "map"
-    },
-    {
-      "op": "snapshot",
-      "name": "palette_after_block_save",
-      "target": "palette"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "x": 112, "y": 80, "button": "left"},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten", "field:Txt_Aufgaben", "field:Txt_Aufgaben2", "field:Txt_Hinterdrund2", "field:Txt_Hinterdrund", "field:Cbo_Aufgaben", "field:Cbo_Hintergrund"]},
+    {"op": "snapshot", "name": "block_19", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockBox", "compare": {"upscale": true}},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "x": 40, "y": 24, "button": "left"},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten"]},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockBox", "x": 8, "y": 8, "button": "left"},
+    {"op": "snapshot", "name": "block_19_placed", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockBox", "compare": {"upscale": true}},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "XFlip", "value": true},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "YFlip", "value": true},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockBox", "x": 56, "y": 24, "button": "left"},
+    {"op": "snapshot", "name": "block_19_flipped", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockBox", "compare": {"upscale": true}},
+    {"op": "clickComp", "screen": "TBlockEditorForm", "comp": "BlockBox", "x": 24, "y": 8, "button": "right"},
+    {"op": "compareFields", "fields": ["field:Lbl_Tile", "field:Lbl_Block", "field:Lbl_Offset", "field:XFlip", "field:YFlip", "field:Cbo_Paletten"]},
+    {"op": "setField", "screen": "TBlockEditorForm", "field": "Cbo_Paletten", "value": 3},
+    {"op": "snapshot", "name": "tiles_palette3", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}},
+    {"op": "clickButton", "screen": "TBlockEditorForm", "button": "Cmd_Speichern"},
+    {"op": "expectDialog", "present": true},
+    {"op": "snapshot", "name": "blocks_after_save", "target": "comp", "screen": "TBlockEditorForm", "comp": "BlockPaletteBox", "compare": {"upscale": true}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "snapshot", "name": "map_after_block_save", "target": "map"},
+    {"op": "snapshot", "name": "palette_after_block_save", "target": "palette"}
   ]
 }

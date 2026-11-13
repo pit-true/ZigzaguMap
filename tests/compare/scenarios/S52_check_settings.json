@@ -1,33 +1,25 @@
 {
   "name": "S52_check_settings",
-  "title": "チェック設定の保存",
+  "title": "チェックの設定（最後に選択したもの・自動検索・イベントパネル・バックアップ）",
   "source": "S52",
-  "issues": [
-    101
-  ],
+  "issues": [101],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.128"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "menu.state:Menue.12/Menue.128"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.128"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.128"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.128"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.128"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.128"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.1210"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.1210"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.1210"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.1210"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.124"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.124"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.124"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.124"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.1212"], "expectedDifference": "SPEC: ROM へ書き込まないので「開いたときにバックアップを作成」は不要（押すと不要の案内）。チェックは付けない"},
+    {"op": "menu", "key": ["Menue.12", "Menue.1212"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": "SPEC: ZigzaguMap は ROM へ書き込まないため、開いたときのバックアップは不要と案内する"},
+    {"op": "answerDialog", "button": "OK", "only": "zigzagu", "expectedDifference": "ZigzaguMap の案内を閉じる"}
   ]
 }

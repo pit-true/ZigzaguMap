@@ -2,46 +2,21 @@
   "name": "S47_export_and_exit",
   "title": "出力と終了時の確認",
   "source": "S47",
-  "issues": [
-    94
-  ],
+  "issues": [94],
+  "note": "出力（AdvanceMap は ROM の保存）のあと、もう一度編集して終了 → 確認 → キャンセル",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectBlock",
-      "block": 9
-    },
-    {
-      "op": "paintBlock",
-      "x": 5,
-      "y": 5
-    },
-    {
-      "op": "export"
-    },
-    {
-      "op": "paintBlock",
-      "x": 6,
-      "y": 5
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.11",
-        "Menue.115"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true,
-      "text": "保存"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectBlock", "block": 9},
+    {"op": "paintBlock", "x": 5, "y": 5},
+    {"op": "compareFields", "fields": ["title.map"]},
+    {"op": "export"},
+    {"op": "expectDialog", "present": false},
+    {"op": "paintBlock", "x": 6, "y": 5},
+    {"op": "menu", "key": ["Menue.11", "Menue.115"]},
+    {"op": "expectDialog", "present": true, "text": "出力", "expectedDifference": "SPEC: 「ROMの保存」を「出力」に読み替える（終了時の確認の文言「変更を出力しますか?」）"},
+    {"op": "answerDialog", "button": "キャンセル"},
+    {"op": "expectDialog", "present": false},
+    {"op": "snapshot", "name": "after_cancel_exit", "target": "map"}
   ]
 }

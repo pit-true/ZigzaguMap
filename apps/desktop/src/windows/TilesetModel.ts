@@ -122,7 +122,7 @@ export class TilesetModel {
   }
 
   /**
-   * タイル 1 枚（8×8）を RGBA の画像の (x, y) に描く。色 0（透明）と無いタイルは黒（AdvanceMap と同じ）。
+   * タイル 1 枚（8×8）を RGBA の画像の (x, y) に描く。色 0 と無いタイルの画素は、そのパレットの色 0 で塗る（AdvanceMap と同じ）。
    * パレットは表示の色を使う。
    */
   drawTile(out: Uint8ClampedArray, outWidth: number, tile: number, palette: number, hflip: boolean, vflip: boolean, x: number, y: number): void {
@@ -132,16 +132,11 @@ export class TilesetModel {
         const b = bytes ? bytes[py * 4 + (px >> 1)]! : 0;
         const index = px & 1 ? b >> 4 : b & 0xf;
         const o = ((y + (vflip ? 7 - py : py)) * outWidth + x + (hflip ? 7 - px : px)) * 4;
-        if (index === 0) {
-          out[o] = 0;
-          out[o + 1] = 0;
-          out[o + 2] = 0;
-        } else {
-          const p = ((palette & 0xf) * 16 + index) * 4;
-          out[o] = this.rgba[p]!;
-          out[o + 1] = this.rgba[p + 1]!;
-          out[o + 2] = this.rgba[p + 2]!;
-        }
+        // 色 0 もそのパレットの色 0 で塗る（AdvanceMap と同じ。マップの下層と同じ描き方）
+        const p = ((palette & 0xf) * 16 + index) * 4;
+        out[o] = this.rgba[p]!;
+        out[o + 1] = this.rgba[p + 1]!;
+        out[o + 2] = this.rgba[p + 2]!;
         out[o + 3] = 255;
       }
     }

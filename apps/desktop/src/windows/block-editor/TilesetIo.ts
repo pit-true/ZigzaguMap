@@ -157,7 +157,11 @@ export class TilesetIo {
       return;
     }
     const count = Math.max(1, Math.min(data.blockCapacity, Number(text)));
-    if (count === data.attributes.length) return;
+    // AdvanceMap と同じく、数が変わらないときは「中止しました」と出す
+    if (count === data.attributes.length) {
+      await showInfo(t.blockAmountCanceled);
+      return;
+    }
     await this.execute("setBlockCount", { tileset: data.pointer, secondary: true, count });
   }
 

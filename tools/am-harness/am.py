@@ -776,15 +776,78 @@ class AM:
                 out += "\n".join(f"- {i}: {s}" for i, s in enumerate(items))
         return out
 
+    def shown(self, obj) -> bool:
+        """True if the control and all its parents have Visible set (the control is on screen:
+        a hidden TTabPage or a hidden panel of the header tab hides everything inside it)."""
+        for _ in range(64):
+            if not obj:
+                return True
+            if not self.read_mem(obj + 0x57, 1)[:1] == b"\x01":
+                return False
+            obj = self._u32(obj + 0x30)
+        return True
+
+    def tab_page_of(self, obj) -> tuple[int, int] | None:
+        """(notebook hwnd, page index) of the TTabbedNotebook page that holds a control, or None."""
+        o = self._u32(obj + 0x30)
+        for _ in range(64):
+            if not o:
+                return None
+            if self._clsname(o) == "TTabPage":
+                nb = self._u32(o + 0x30)
+                dump = self.vcl_dump()
+                hw = next((d.get("hwnd") for d in dump if d["obj"] == nb), 0)
+                pages = [d["obj"] for d in dump if d.get("cls") == "TTabPage" and self._u32(d["obj"] + 0x30) == nb]
+                return (hw, pages.index(o)) if hw and o in pages else None
+            o = self._u32(o + 0x30)
+        return None
+
     def comp(self, name: str, top=None, parent: str | None = None) -> dict:
-        """One component's live properties by Delphi name (see vcl_dump)."""
+        """One component's live properties by Delphi name (see vcl_dump).
+        Several controls can share a name (the event frames all have Txt_PosX, the wild and header tabs
+        both have Cbo_Typ): the one on screen wins, then one with a window, then the first."""
         tops = [top] if top else [self.main] + [w for w in self.windows() if w != self.main]
+        found = []
         for t in tops:
             for d in self.vcl_dump(t):
                 if d["name"] == name and (parent is None or d.get("parent") == parent):
                     d["top_hwnd"] = t
-                    return d
-        raise KeyError(name)
+                    found.append(d)
+        if not found:
+            raise KeyError(name)
+        # 表示中のものが複数あれば、フォームが直接持つもの（フレームの中の同名の部品より浅いもの）
+        shown = sorted((d for d in found if "left" in d and self.shown(d["obj"])), key=lambda d: d.get("owner_depth", 0))
+        if shown:
+            return shown[0]
+        for d in found:
+            if d.get("hwnd"):
+                return d
+        return found[0]
+
+    def with_page(self, name, fn, top=None):
+        """Run fn(comp) with the TTabbedNotebook page that holds `name` shown (VCL creates the
+        windows of a page only when it is shown). The previous page is shown again afterwards."""
+        d = self.comp(name, top)
+        if d.get("hwnd") and self.shown(d["obj"]):
+            return fn(d)
+        pg = self.tab_page_of(d["obj"])
+        if not pg:
+            if not d.get("hwnd"):
+                raise KeyError(f"{name} is hidden (not on a notebook page; e.g. the other view of the header tab)")
+            return fn(d)
+        nb, idx = pg
+        cur = self.send(nb, TCM_GETCURSEL)
+        self.tab_select(nb, idx)
+        time.sleep(0.3)
+        try:
+            d = self.comp(name, top)
+            if not d.get("hwnd"):
+                raise KeyError(f"{name} has no window even on its page")
+            return fn(d)
+        finally:
+            if cur != idx and cur < 64:
+                self.tab_select(nb, cur)
+                time.sleep(0.2)
 
     def _host(self, d: dict):
         """For a (possibly windowless) control: (host hwnd, x offset, y offset)
@@ -885,13 +948,14 @@ class AM:
         import re
         return re.sub(r"\(\w\)$", "", s).strip()
 
-    def menu(self, *path: str, post=True, wait=0.5) -> int:
+    def menu(self, *path: str, post=True, wait=0.5, hwnd=None) -> int:
         """Run a main-menu command by its label path, e.g. am.menu('ファイル', 'ROMを開く').
-        Labels are compared without '&', accelerator text and '(X)'."""
+        Labels are compared without '&', accelerator text and '(X)'. `hwnd`: another form's menu bar."""
         want = tuple(self._norm(p) for p in path)
-        for it in self.menu_items():
+        win = hwnd or self.main
+        for it in self.menu_items(user32.GetMenu(win)):
             if tuple(self._norm(p) for p in it["path"]) == want and it["id"] is not None:
-                (self.post if post else self.send)(self.main, WM_COMMAND, it["id"], 0)
+                (self.post if post else self.send)(win, WM_COMMAND, it["id"], 0)
                 time.sleep(wait)
                 return it["id"]
         raise KeyError(path)
@@ -1283,25 +1347,54 @@ class AM:
 
     def edit(self, name, value=None, top=None) -> str:
         """Read (value=None) or write an input box by Delphi name."""
-        h = self.comp(name, top).get("hwnd")
-        if not h:
-            raise KeyError(f"{name} has no window yet (page not shown?)")
-        if value is not None:
-            self.set_text(h, str(value))
-        return self.get_text(h)
+        def go(d):
+            h = d["hwnd"]
+            if value is not None:
+                self.set_text(h, str(value))
+            return self.get_text(h)
+        return self.with_page(name, go, top)
+
+    def checkbox(self, name, value=None, top=None) -> bool:
+        """Read (value=None) or set a check box / radio button by Delphi name (BM_CLICK fires OnClick)."""
+        def go(d):
+            h = d["hwnd"]
+            if value is not None and bool(self.check(h)) != bool(value):
+                self.click_button(h, 0.3)
+            return bool(self.check(h))
+        return self.with_page(name, go, top)
+
+    def spin(self, name, value: int, top=None) -> str:
+        """Set a TSpinEdit like a user: WM_SETTEXT alone does not fire its OnChange in AdvanceMap,
+        so put the neighbour value in and press the arrow key (Up/Down) once."""
+        def go(d):
+            h = d["hwnd"]
+            v = int(value)
+            if v < 255:
+                self.set_text(h, str(v + 1))
+                self.key(h, 0x28)  # VK_DOWN
+            else:
+                self.set_text(h, str(v - 1))
+                self.key(h, 0x26)  # VK_UP
+            time.sleep(0.2)
+            self.idle()
+            return self.get_text(h)
+        return self.with_page(name, go, top)
 
     def combo(self, name, select=None, top=None):
-        """Return (items, selected index) of a combo by Delphi name; optionally select."""
-        h = self.comp(name, top).get("hwnd")
-        if select is not None:
-            if isinstance(select, str):
-                select = [i for i, t in enumerate(self.combo_items(h)) if select in t][0]
-            self.combo_select(h, select)
-        return self.combo_items(h), self.combo_sel(h)
+        """Return (items, selected index) of a combo by Delphi name; optionally select
+        (an int is the position; a str selects the first item containing it)."""
+        def go(d):
+            h = d["hwnd"]
+            if select is not None:
+                i = select
+                if isinstance(select, str):
+                    i = [k for k, t in enumerate(self.combo_items(h)) if select in t][0]
+                self.combo_select(h, int(i))
+            return self.combo_items(h), self.combo_sel(h)
+        return self.with_page(name, go, top)
 
     def button(self, name, top=None, wait=0.5):
-        h = self.comp(name, top).get("hwnd")
-        self.click_button(h, wait)
+        self.with_page(name, lambda d: self.click_button(d["hwnd"], wait), top)
 
 
 cls_of, text_of, rect_of, client_rect_of = _cls, _text, _rect, _crect

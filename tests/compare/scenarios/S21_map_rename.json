@@ -1,47 +1,24 @@
 {
   "name": "S21_map_rename",
-  "title": "マップ名の変更",
+  "title": "マップ名の選択と変更",
   "source": "S21",
-  "issues": [
-    59
-  ],
+  "issues": [59],
+  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Cmd_NameSpeichern→Cmd_NameAendern）。名前表の 3 番（ハナダシティ）を「テスト」にする",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Cbo_Name",
-      "value": 3
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_NeuerName",
-      "value": "テスト"
-    },
-    {
-      "op": "clickButton",
-      "screen": "main",
-      "button": "Cmd_NameAendern"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "tree.first60",
-        "field:Cbo_Name"
-      ]
-    }
-  ],
-  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Cmd_NameSpeichern→Cmd_NameAendern）"
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName"]},
+    {"op": "setField", "screen": "main", "field": "Cbo_Name", "value": 3},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName"]},
+    {"op": "setField", "screen": "main", "field": "Txt_NeuerName", "value": "テスト"},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_NameAendern"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["tree.first60", "field:Cbo_Name", "field:Txt_NeuerName"]},
+    {"op": "selectMap", "bank": 3, "map": 3, "savePrompt": "はい", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るとき、ZigzaguMap は確認を出さない。AdvanceMap は「変更を保存しますか?」を出すので「はい」（ROM へ保存）で答える（ZigzaguMap は変更を持ったまま切り替える）"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["title.map", "field:Cbo_Name"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
+  ]
 }

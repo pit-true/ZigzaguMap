@@ -2,120 +2,24 @@
   "name": "S07_grid_zoom",
   "title": "グリッドと拡大表示",
   "source": "S07",
-  "issues": [
-    39,
-    40
-  ],
+  "issues": [39, 40],
   "note": "切り替えたメニューは最後に元へ戻す（ZigzaguMap では個人設定に保存されるため）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.120"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "menu.state:Menue.12/Menue.120"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "grid_on",
-      "target": "map"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.126",
-        "Menue.1260"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "grid_zoom",
-      "target": "map",
-      "compare": {
-        "cell": 32
-      }
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.120"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "zoom_only",
-      "target": "map",
-      "compare": {
-        "cell": 32
-      }
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.126",
-        "Menue.1260"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "normal",
-      "target": "map"
-    },
-    {
-      "op": "selectTab",
-      "tab": "movement"
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.126",
-        "Menue.1261"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_zoom",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12,
-        "cell": 32
-      }
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.126",
-        "Menue.1261"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "movement_normal",
-      "target": "movement",
-      "compare": {
-        "mode": "cellMean",
-        "tolerance": 12
-      }
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.12", "Menue.120"]},
+    {"op": "compareFields", "fields": ["menu.state:Menue.12/Menue.120"]},
+    {"op": "snapshot", "name": "grid_on", "target": "map"},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1260"]},
+    {"op": "snapshot", "name": "grid_zoom", "target": "map", "compare": {"cell": 32}},
+    {"op": "menu", "key": ["Menue.12", "Menue.120"]},
+    {"op": "snapshot", "name": "zoom_only", "target": "map", "compare": {"cell": 32}},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1260"]},
+    {"op": "snapshot", "name": "normal", "target": "map"},
+    {"op": "selectTab", "tab": "movement"},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1261"]},
+    {"op": "snapshot", "name": "movement_zoom", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12, "cell": 32}},
+    {"op": "menu", "key": ["Menue.12", "Menue.126", "Menue.1261"]},
+    {"op": "snapshot", "name": "movement_normal", "target": "movement", "compare": {"mode": "cellMean", "tolerance": 12}}
   ]
 }

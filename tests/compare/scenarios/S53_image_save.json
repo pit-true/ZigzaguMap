@@ -1,29 +1,21 @@
 {
   "name": "S53_image_save",
-  "title": "画像保存",
+  "title": "画像保存（マップ・パレット・マップ＆イベント）",
   "source": "S53",
-  "issues": [
-    102
-  ],
+  "issues": [102],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.131"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.131"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerFile", "path": "map.bmp"},
+    {"op": "compareFile", "path": "map.bmp"},
+    {"op": "menu", "key": ["Menue.13", "Menue.132"]},
+    {"op": "answerFile", "path": "palette.bmp"},
+    {"op": "compareFile", "path": "palette.bmp"},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "menu", "key": ["Menue.13", "Menue.133"]},
+    {"op": "answerFile", "path": "mapevent.bmp"},
+    {"op": "compareFile", "path": "mapevent.bmp", "compare": {"mode": "gba", "maxDiffRatio": 0.03}, "expectedDifference": "ユーザー判断: イベントの箱の画素は比べない（位置だけ）。マップ＆イベント画像は約 3% の差を許す"}
   ]
 }

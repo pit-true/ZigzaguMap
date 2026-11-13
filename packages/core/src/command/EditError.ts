@@ -116,13 +116,13 @@ export function parseIntInput(text: string): number {
 }
 
 /**
- * AdvanceMap の 16 進欄と同じ規則で読む（`$` を前に付けて StrToInt）。空欄は 0。
- * 読めなければ EditError（invalidInteger、text は `$` 付き）。
+ * AdvanceMap の 16 進欄と同じ規則で読む（`$` で始まらなければ前に付けて StrToInt）。空欄は 0。
+ * 読めなければ EditError（invalidInteger、text は `$` 付き。`$GGGGGG` と入れたときは `$` を重ねない）。
  */
 export function parseHexInput(text: string): number {
   if (text === "") return 0;
-  const withPrefix = "$" + text;
-  const m = /^\$([0-9A-Fa-f]+)$/.exec(withPrefix.replace(/^\$\$/, "$"));
+  const withPrefix = text.startsWith("$") ? text : "$" + text;
+  const m = /^\$([0-9A-Fa-f]+)$/.exec(withPrefix);
   if (!m) throw new EditError(EditErrorCode.InvalidInteger, { text: withPrefix });
   const value = parseInt(m[1]!, 16);
   if (!Number.isSafeInteger(value) || value > 0xffffffff) throw new EditError(EditErrorCode.InvalidInteger, { text: withPrefix });

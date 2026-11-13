@@ -29,16 +29,21 @@ export const HEADER_ROOT_KEY = "h";
 /**
  * マップ一覧を作る。根は AdvanceMap と同じく「ヘッダー」「iniファイル」「マップファイル」の 3 つ。
  * 「ヘッダー」の下は並べ替えの種類でグループを作る。
- * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」だけ、「INIの表示」なら「iniファイル」だけを出す。
+ * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」、「INIの表示」なら「iniファイル」を出す（「マップファイル」はどちらでも残す）。
  * 「マップファイル」の下は、保存・読み込みした `.map`（AdvanceMap の MapDateien.ini と同じく、登録した順）。
  */
 export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both", mapFiles: readonly MapFileEntry[] = []): TreeNode[] {
-  const header: TreeNode = { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) };
-  if (source === "header") return [header];
-  const ini: TreeNode = { key: "i", label: ja.rootIni, children: iniGroups(catalog) };
-  if (source === "ini") return [ini];
-  const files = mapFiles.map((f, i): TreeNode => ({ key: `f/${i}`, label: f.name, filePath: f.path }));
-  return [header, ini, { key: "f", label: ja.rootMapFiles, children: files }];
+  const files: TreeNode = {
+    key: "f",
+    label: ja.rootMapFiles,
+    children: mapFiles.map((f, i): TreeNode => ({ key: `f/${i}`, label: f.name, filePath: f.path })),
+  };
+  const header = (): TreeNode => ({ key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) });
+  const ini = (): TreeNode => ({ key: "i", label: ja.rootIni, children: iniGroups(catalog) });
+  // 「マップファイル」はどの表示でも残す（AdvanceMap と同じ）
+  if (source === "header") return [header(), files];
+  if (source === "ini") return [ini(), files];
+  return [header(), ini(), files];
 }
 
 function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {

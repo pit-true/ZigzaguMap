@@ -2,35 +2,16 @@
   "name": "S43_bank_header_manager",
   "title": "マップバンクヘッダーの管理",
   "source": "S43",
-  "issues": [
-    88
-  ],
+  "issues": [88],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.137",
-        "Menue.1374"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "dialogs"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.137", "Menue.1374"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "compareFields", "fields": ["field:Txt_AnzBank", "field:Txt_AnzMap"]},
+    {"op": "clickButton", "screen": "TMapBankHeaderForm", "button": "Cmd_NeueBank"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "expectDialog", "present": false}
   ]
 }

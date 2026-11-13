@@ -20,6 +20,7 @@ import urllib.request
 from dataclasses import dataclass, field
 
 from .config import HARNESS, Config
+from .screens import form_class, zigzagu_window
 
 TAB_NAMES = ["map", "movement", "event", "wild", "header"]
 SORT_LABELS = ["バンク番号で並び替え", "マップの名前で並び替え", "タイルセット番号で並び替え",
@@ -113,8 +114,11 @@ class AdvanceMapDriver(Driver):
         "setField": "入力欄に WM_SETTEXT / コンボに CB_SETCURSEL＋CBN_SELCHANGE（Delphi 部品名で指定）",
         "clickButton": "ボタンに BM_CLICK（Delphi 部品名で指定）",
         "clickEvent": "EventBox を左クリック",
+        "clickComp": "部品（ウィンドウの無い TDXPaintBox も）へ WM_LBUTTONDOWN/UP（親の座標に換算）",
         "dragEvent": "EventBox を左ドラッグ",
         "answerDialog": "ダイアログのボタンに BM_CLICK",
+        "answerFile": "ファイルのダイアログのファイル名の欄に結果フォルダの中のパスを入れて OK",
+        "compareFile": "書かれたファイルを読む",
         "export": "ファイル > ROMの保存（作業用コピーに書く）",
         "wait": "待つ",
         "snapshot": "部品をスクロールしながら PrintWindow で切り出してつなぐ",
@@ -144,6 +148,12 @@ class AdvanceMapDriver(Driver):
             if not cfg.amSourceDir:
                 raise SystemExit("amWorkDir に AdvanceMap.exe がありません。amSourceDir を指定するとコピーを作ります")
             self.mw.make_am_copy(cfg.amSourceDir, cfg.amWorkDir)
+        if cfg.amSourceDir and (cfg.amSourceDir / "Ini" / "AdvanceMap.ini").exists():
+            # 設定（高度なヘッダーの表示・並べ替え・コンボボックスなど、押した時点で Ini に書かれるもの）を毎回コピー元へ戻す
+            shutil.copyfile(cfg.amSourceDir / "Ini" / "AdvanceMap.ini", cfg.amWorkDir / "Ini" / "AdvanceMap.ini")
+        # 作成したマップの一覧（Ini\MapDateien.ini）は空から始める。AdvanceMap 1.92 の配布物には見本の 2 件（C:\AM\Maps の
+        # Testmap_absolut / Testmap_relativ）が入っているが、ZigzaguMap の個人設定（mapFiles）は空から始まるので合わせる
+        (cfg.amWorkDir / "Ini" / "MapDateien.ini").write_bytes(b"")
         self.mw.prep_ini(cfg.amWorkDir, None, cfg.scriptEditorStub)
         self.mw.reset_view_settings(cfg.amWorkDir)
         self.am = self.amlib.AM(desktop_name=f"ZZM_CMP_{os.getpid()}", am_dir=cfg.amWorkDir, shots=self.out)
@@ -218,11 +228,12 @@ class AdvanceMapDriver(Driver):
         self.am.drag(h, ox + a[0], oy + a[1], ox + b[0], oy + b[1], button=button, keys=keys, steps=steps)
 
     def _top(self, screen):
-        if not screen or screen == "main":
+        cls = form_class(screen)
+        if not cls:
             return self.am.main
-        h = self.am.find_window(title=screen, timeout=3)
+        h = self.am.find_window(cls=cls, timeout=3)
         if not h:
-            raise RuntimeError(f"ウィンドウ {screen!r} がありません")
+            raise RuntimeError(f"ウィンドウ {cls}（{screen}）がありません")
         return h
 
     def _current_tab(self):
@@ -235,6 +246,28 @@ class AdvanceMapDriver(Driver):
         time.sleep(0.5)
 
     def op_selectMap(self, step):
+        if step.get("savePrompt"):
+            # 未保存の変更があると AdvanceMap は「変更を保存しますか?」を出す（ZigzaguMap は出さない。仕様上の違い）。
+            # その答え（はい / いいえ）を押してから、開き終わるのを待つ
+            want = f"{int(step['bank'])}.{int(step['map'])}"
+            self.op_selectMap(dict(step, savePrompt=None, noWait=True))
+            t0, seen, dbl = time.time(), [], False
+            while time.time() - t0 < 8:
+                for h in self.am.msgboxes():
+                    seen.append(self.am.dialog_info(h).get("texts"))
+                    self.am.press(h, step["savePrompt"])
+                if not dbl and not seen and time.time() - t0 > 1.0:
+                    # Enter が届かないとき（一覧にフォーカスが無いときなど）はダブルクリックで開く
+                    tv = self.am.by_name("MapList")
+                    its = [i for i in self.am.tv_items(tv) if i["text"].endswith(f"({want})")]
+                    if its:
+                        self.am.tv_select(tv, its[0]["hitem"], dblclick=True)
+                    dbl = True
+                st = self.am.status()
+                if st and st[0].endswith(want) and "完了" in st[0]:
+                    return StepResult("ok", f"保存の確認: {seen}" if seen else "保存の確認は出なかった")
+                time.sleep(0.2)
+            raise RuntimeError(f"マップ {want} が開きません（ステータス: {self.am.status()}、確認: {seen}）")
         if step.get("noWait"):
             # 確認ダイアログが出る場面用: 開く操作だけして待たない
             tv = self.am.by_name("MapList")
@@ -310,6 +343,12 @@ class AdvanceMapDriver(Driver):
     def op_clickEvent(self, step):
         self._click_cell("EventBox", int(step["x"]), int(step["y"]))
 
+    def op_clickComp(self, step):
+        top = self._top(step.get("screen"))
+        self.am.click_comp(step["comp"], int(step["x"]), int(step["y"]), button=step.get("button", "left"), top=top)
+        time.sleep(0.2)
+        self.am.idle()
+
     def op_dragEvent(self, step):
         self._drag_cells("EventBox", _xy(step["from"]), _xy(step["to"]))
 
@@ -322,6 +361,12 @@ class AdvanceMapDriver(Driver):
         return [menu_norm(lang.old_text(k)) for k in keys]
 
     def op_menu(self, step):
+        if step.get("screen"):
+            # 別のフォームのメニュー（ブロックエディタなど）は AdvanceMap の文言の階層で書く
+            self.am.menu(*step["path"], hwnd=self._top(step["screen"]))
+            time.sleep(float(step.get("wait", 0.5)))
+            self.am.idle()
+            return
         self.am.menu(*(self._menu_path(step["key"]) if "key" in step else step["path"]))
         time.sleep(float(step.get("wait", 0.5)))
         self.am.idle()
@@ -331,6 +376,10 @@ class AdvanceMapDriver(Driver):
         d = self.am.comp(step["field"], top=top)
         if d.get("wincls") == "TComboBox":
             self.am.combo(step["field"], select=step["value"], top=top)
+        elif d.get("cls") == "TSpinEdit" and str(step["value"]).lstrip("-").isdigit():
+            self.am.spin(step["field"], int(step["value"]), top=top)
+        elif d.get("cls") in ("TCheckBox", "TRadioButton") or isinstance(step["value"], bool):
+            self.am.checkbox(step["field"], bool(step["value"]), top=top)
         else:
             self.am.edit(step["field"], str(step["value"]), top=top)
 
@@ -338,13 +387,61 @@ class AdvanceMapDriver(Driver):
         top = self._top(step.get("screen"))
         self.am.button(step["button"], top=top)
 
+    def _open_dialogs(self, timeout=2.0):
+        """メッセージボックスを先に、次に VCL のダイアログ（InputBox など）。出るまで少し待つ。"""
+        t0 = time.time()
+        while True:
+            hs = self.am.msgboxes() + [h for h in self.am.windows()
+                                       if h != self.am.main and self._is_dialog(h) and self.amlib.cls_of(h) != "#32770"]
+            if hs or time.time() - t0 > timeout:
+                return hs
+            time.sleep(0.2)
+
     def op_answerDialog(self, step):
-        hs = self.am.msgboxes() or [h for h in self.am.windows() if h != self.am.main and self._is_dialog(h)]
+        hs = self._open_dialogs()
         if not hs:
             raise RuntimeError("ダイアログが開いていません")
-        if not self.am.press(hs[0], step["button"]):
-            raise RuntimeError(f"ボタン {step['button']!r} がありません: {self.am.dialog_info(hs[0])}")
-        time.sleep(0.4)
+        if step["button"] == "close":
+            # ×で閉じる（手前のもの）
+            self.am.post(hs[0], self.amlib.WM_CLOSE)
+            time.sleep(1.0)
+            self.am.idle()
+            return
+        if "input" in step:
+            # 入力ダイアログ（VCL の InputBox）の入力欄に入れてから押す
+            for h in hs:
+                eds = [c for c in self.am.flat(h) if c.cls in ("TEdit", "Edit")]
+                if eds:
+                    self.am.set_text(eds[0].hwnd, str(step["input"]), notify=False)
+                    break
+        for _ in range(10):
+            for h in hs:
+                if self.am.press(h, step["button"]):
+                    time.sleep(0.4)
+                    return
+            # 目当てのボタンのあるダイアログが遅れて出ることがある（前のダイアログを閉じた直後など）
+            time.sleep(0.2)
+            hs = self._open_dialogs(0)
+        raise RuntimeError(f"ボタン {step['button']!r} がありません: {[self.am.dialog_info(h) for h in hs]}")
+
+    def op_answerFile(self, step):
+        path = step.get("path")
+        if path is None:
+            hs = self.am.msgboxes()
+            if not hs:
+                raise RuntimeError("ファイルのダイアログが開いていません")
+            self.am.press(hs[-1], "キャンセル") or self.am.post(hs[-1], self.amlib.WM_CLOSE)
+            return
+        if not self.am.file_dialog(str(self.out / path)):
+            raise RuntimeError("ファイルのダイアログが開いていません")
+        time.sleep(float(step.get("wait", 1.0)))
+        self.am.idle()
+
+    def op_compareFile(self, step):
+        p = self.out / step["path"]
+        if not p.exists():
+            raise RuntimeError(f"ファイルが書かれていません: {p.name}")
+        return {"image": str(p)}
 
     def op_export(self, step):
         self.am.menu("ファイル", "ROMの保存")
@@ -354,8 +451,11 @@ class AdvanceMapDriver(Driver):
 
     # ------------------------------------------------------------------ observe
     def _is_dialog(self, h):
+        """メッセージボックス（#32770）か VCL のフォーム。IME の表示（UAC_InputIndicator など）や補助の窓は除く。"""
         c = self.amlib.cls_of(h)
-        return c not in ("TApplication", "tooltips_class32", "TPUtilWindow", "#32768", "TAMMainForm", "TForm1")
+        if c == "#32770":
+            return True
+        return c.startswith("T") and c not in ("TApplication", "TPUtilWindow", "TAMMainForm", "TForm1")
 
     def dialogs(self):
         out = []
@@ -372,7 +472,8 @@ class AdvanceMapDriver(Driver):
             # #32770 は Windows 標準のメッセージボックス・ファイルのダイアログ、それ以外は VCL のフォーム（窓）
             info["cls"] = "#32770" if self.amlib.cls_of(h) == "#32770" else "form"
             out.append(info)
-        return out
+        # 列挙は手前から。ZigzaguMap（開いた順。最後が手前）に合わせて奥から並べる
+        return out[::-1]
 
     def op_expectDialog(self, step):
         time.sleep(float(step.get("wait", 0.3)))
@@ -423,6 +524,12 @@ class AdvanceMapDriver(Driver):
 
     def op_snapshot(self, step):
         target = step.get("target", "map")
+        if target == "comp":
+            self._top(step.get("screen"))  # 窓があることを確かめる
+            img = self.capture_comp(step["comp"])
+            p = self.out / f"{step['name']}.advancemap.png"
+            img.save(p)
+            return {"image": str(p)}
         comp = self.COMP[target]
         want_tab = self.TAB_OF[target]
         cur = self._current_tab()
@@ -470,12 +577,16 @@ class AdvanceMapDriver(Driver):
                 return [f"{i['depth']}:{i['text']}" for i in items[:60]]
         if fid.startswith("menu.state"):
             am.refresh_menu_states()
-            out = {}
+            out, gray = {}, set()
             for it in am.menu_items():
                 if it["separator"]:
                     continue
                 key = "/".join(am._norm(p) for p in it["path"])
-                out[key] = ("灰" if it["grayed"] else "") + ("✓" if it["checked"] else "")
+                # 灰色のサブメニューの中の項目は押せないので灰色に数える（ZigzaguMap の menu.list と同じ）
+                parent_gray = any(key.startswith(g + "/") for g in gray)
+                if it["grayed"]:
+                    gray.add(key)
+                out[key] = ("灰" if it["grayed"] or parent_gray else "") + ("✓" if it["checked"] else "")
             if ":" in fid:
                 want = fid.split(":", 1)[1]
                 if want.startswith("Menue."):
@@ -487,9 +598,18 @@ class AdvanceMapDriver(Driver):
             vals = [d for d in am.vcl_dump() if d.get("parent") == "ScrollBox_RomInfo" and d.get("cls") == "TLabel"
                     and d.get("left", 0) >= 60]
             return [d.get("text", "") for d in sorted(vals, key=lambda d: d.get("top", 0))]
+        if fid.startswith("enabled:"):
+            # 部品が押せる・入力できるか（灰色でないか）
+            d = am.comp(fid.split(":", 1)[1])
+            h = d.get("hwnd")
+            return bool(d.get("enabled")) and (not h or bool(lib.user32.IsWindowEnabled(h)))
         if fid.startswith("field:"):
             name = fid.split(":", 1)[1]
             d = am.comp(name)
+            if d.get("cls") in ("TCheckBox", "TRadioButton"):
+                return am.checkbox(name) if d.get("hwnd") else False
+            if d.get("cls") == "TScrollBar" and d.get("hwnd"):
+                return str(lib.user32.GetScrollPos(d["hwnd"], 2))  # SB_CTL
             if d.get("wincls") == "TComboBox":
                 items, sel = am.combo(name)
                 return items[sel] if 0 <= sel < len(items) else ""
@@ -534,8 +654,11 @@ class ZigzaguDriver(Driver):
         "setField": "cmd setField {id: field:<部品名>}（別ウィンドウは window）",
         "clickButton": "cmd click {id: field:<部品名>}",
         "clickEvent": "cmd mouse（event を左クリック）",
+        "clickComp": "cmd pointer（別ウィンドウ）/ mouse（メイン）で field:<部品名> の中を押す",
         "dragEvent": "cmd mouse（event を左ドラッグ）",
         "answerDialog": "cmd dialog {press}（OK/はい/いいえ/キャンセルは ok/yes/no/cancel）",
+        "answerFile": "cmd queuePath {path}（ネイティブのダイアログは開かない）",
+        "compareFile": "書かれたファイルを読む",
         "export": "cmd export {dir}",
         "wait": "待つ",
         "snapshot": "cmd canvasPng {target}（blocks は map。palette / border / movementPalette も）",
@@ -593,6 +716,10 @@ class ZigzaguDriver(Driver):
                 raise RuntimeError(f"ZigzaguMap がすぐに終了しました（終了コード {self.proc.returncode}）")
             try:
                 self.call({"cmd": "state"}, timeout=5)
+                if self.cfg.scriptEditorStub:
+                    # AdvanceMap の Ini と同じスクリプトエディタ（比較テスト用の代わりの exe、区切りは空白）にする
+                    self.call({"cmd": "setting", "key": "scriptEditor", "value": str(self.cfg.scriptEditorStub)})
+                    self.call({"cmd": "setting", "key": "scriptSpaceSeparator", "value": True})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e
@@ -640,14 +767,8 @@ class ZigzaguDriver(Driver):
 
     @staticmethod
     def _window_of(screen):
-        """シナリオの screen（AdvanceMap のウィンドウの題名）→ ZigzaguMap のウィンドウのラベル（メインなら None）。"""
-        if not screen or screen == "main":
-            return None
-        for key, label in (("ブロックエディタ", "block-editor"), ("パレットエディタ", "palette-editor"), ("一括", "block-adjust"),
-                           ("ワールドマップ", "world-map")):
-            if key in screen:
-                return label
-        return None  # コネクションマネージャー・新規マップなどはメインの中のダイアログ
+        """シナリオの screen（AdvanceMap のフォームのクラス名）→ ZigzaguMap のウィンドウのラベル（メインなら None）。"""
+        return zigzagu_window(screen)
 
     def _field_req(self, screen, name):
         win = self._window_of(screen)
@@ -664,7 +785,9 @@ class ZigzaguDriver(Driver):
 
     def _all_dialogs(self):
         """開いているダイアログ（メインと別ウィンドウ）と、メイン以外のウィンドウ。AdvanceMap の dialogs() と同じ形にする。"""
-        out = []
+        # 別ウィンドウ（AdvanceMap の VCL のフォームに当たる）を先に、ダイアログを後に（開いた順）
+        out = [{"title": w.get("title", ""), "texts": [], "buttons": [], "cls": "window"}
+               for w in self.call({"cmd": "windows"}) if w["label"] != "main" and w.get("visible")]
         for w in self._windows():
             req = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
             try:
@@ -674,20 +797,22 @@ class ZigzaguDriver(Driver):
             for d in ds:
                 out.append({"title": d.get("title", ""), "texts": [d["text"]] if d.get("text") else [],
                             "buttons": list(d.get("buttons", [])), "cls": "app" if d.get("kind") == "app" else "native"})
-        for w in self.call({"cmd": "windows"}):
-            if w["label"] != "main" and w.get("visible"):
-                out.append({"title": w.get("title", ""), "texts": [], "buttons": [], "cls": "window"})
         return out
 
-    BUTTON_ROLES = {"ok": "ok", "はい": "yes", "yes": "yes", "いいえ": "no", "no": "no", "キャンセル": "cancel", "cancel": "cancel"}
+    BUTTON_ROLES = {"close": "close", "ok": "ok", "はい": "yes", "yes": "yes", "いいえ": "no", "no": "no", "キャンセル": "cancel", "cancel": "cancel"}
 
-    def _press_dialog(self, button):
+    def _press_dialog(self, button, text=None):
         role = self.BUTTON_ROLES.get(button.replace("&", "").split("(")[0].strip().lower())
         for w in self._windows():
             base = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
-            if not self.call(base)["dialogs"]:
+            try:
+                if not self.call(base)["dialogs"]:
+                    continue
+            except AppError:
                 continue
             req = {"cmd": "dialog", "press": role or button}
+            if text is not None:
+                req["input"] = str(text)
             if w != "main":
                 req["window"] = w
             try:
@@ -697,6 +822,17 @@ class ZigzaguDriver(Driver):
                     raise
                 req["press"] = button  # 役割で押せなければ文字列で
                 return self.call(req)
+        if role == "close":
+            # ダイアログが無ければ、手前の別ウィンドウ（ブロックエディタなど）を × で閉じる
+            time.sleep(0.5)  # 自分で閉じる途中のウィンドウ（一括変更の保存のあとなど）を数えない
+            wins = [w["label"] for w in self.call({"cmd": "windows"}) if w["label"] != "main" and w.get("visible") and w.get("ready")]
+            if wins:
+                try:
+                    self.call({"cmd": "close", "window": wins[-1]}, timeout=10)
+                except (TimeoutError, OSError):
+                    pass  # 閉じたウィンドウからは返事が来ないことがある
+                time.sleep(0.5)
+                return None
         raise RuntimeError("ダイアログが開いていません")
 
     def _menu_path(self, keys):
@@ -762,10 +898,35 @@ class ZigzaguDriver(Driver):
     def op_clickEvent(self, step):
         self._mouse("event", "click", (step["x"], step["y"]))
 
+    def op_clickComp(self, step):
+        win = self._window_of(step.get("screen"))
+        x, y = int(step["x"]), int(step["y"])
+        right = step.get("button") == "right"
+        if not win:
+            self.call({"cmd": "mouse", "id": f"field:{step['comp']}", "px": [x, y], "action": "rightClick" if right else "click"})
+            return
+        cid = step["comp"] if win == "world-map" else f"field:{step['comp']}"
+        if not step["comp"].endswith("Box"):
+            # Canvas でない部品（パレットエディタの色の見本など）はクリックの出来事で押す
+            self.call({"cmd": "click", "window": win, "id": cid})
+            return
+        for t in ("move", "down", "up"):
+            self.call({"cmd": "pointer", "window": win, "id": cid, "type": t, "x": x, "y": y,
+                       "button": 2 if right else 0})
+
     def op_dragEvent(self, step):
         self._drag("event", step)
 
     def op_menu(self, step):
+        win = self._window_of(step.get("screen"))
+        if step.get("screen"):
+            # 別ウィンドウのメニューはアクション ID（シナリオの zigzagu）で実行する
+            req = {"cmd": "action", "id": step["zigzagu"]}
+            if win:
+                req["window"] = win
+            self.call(req)
+            time.sleep(float(step.get("wait", 0.3)))
+            return
         keys = step.get("key")
         path = self._menu_path(keys) if keys else step.get("path")
         ent = self.menu_map.get(" > ".join(keys or step.get("path", [])))
@@ -781,18 +942,49 @@ class ZigzaguDriver(Driver):
         time.sleep(float(step.get("wait", 0.3)))
 
     def op_setField(self, step):
-        self.call({"cmd": "setField", "value": step["value"], **self._field_req(step.get("screen"), step["field"])})
+        value = step["value"]
+        if self._window_of(step.get("screen")) == "world-map" and isinstance(value, int) and not isinstance(value, bool)                 and not step["field"].startswith("Cbo_"):
+            value = str(value)  # ワールドマップエディタの入力欄は文字列で入れる
+        self.call({"cmd": "setField", "value": value, **self._field_req(step.get("screen"), step["field"])})
 
     def op_clickButton(self, step):
         self.call({"cmd": "click", **self._field_req(step.get("screen"), step["button"])})
 
     def op_answerDialog(self, step):
-        self._press_dialog(step["button"])
+        self._press_dialog(step["button"], step.get("input"))
         time.sleep(0.2)
 
     def op_expectDialog(self, step):
         time.sleep(float(step.get("wait", 0.3)))
         return {"dialogs": self._all_dialogs()}
+
+    def op_answerFile(self, step):
+        path = step.get("path")
+        value = None if path is None else str(self.out / path)
+        # ファイルのダイアログが開いているウィンドウへ答える（無ければ screen のウィンドウ、それも無ければメインに積む）
+        target = None
+        for w in self._windows():
+            req = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
+            try:
+                if any(d.get("kind") == "native" for d in self.call(req)["dialogs"]):
+                    target = w
+            except AppError:
+                pass
+        target = target or self._window_of(step.get("screen")) or "main"
+        req = {"cmd": "queuePath", "path": value}
+        if target != "main":
+            req["window"] = target
+        self.call(req)
+        time.sleep(float(step.get("wait", 0.8)))
+
+    def op_compareFile(self, step):
+        p = self.out / step["path"]
+        t0 = time.time()
+        while not p.exists() and time.time() - t0 < 5:
+            time.sleep(0.2)
+        if not p.exists():
+            raise RuntimeError(f"ファイルが書かれていません: {p.name}")
+        return {"image": str(p)}
 
     def op_export(self, step):
         d = self.out / "export"
@@ -804,6 +996,14 @@ class ZigzaguDriver(Driver):
 
     def op_snapshot(self, step):
         target = step.get("target", "map")
+        if target == "comp":
+            win = self._window_of(step.get("screen"))
+            req = {"cmd": "canvasPng", "id": step["comp"] if win == "world-map" else f"field:{step['comp']}"}
+            if win:
+                req["window"] = win
+            p = self.out / f"{step['name']}.zigzagu.png"
+            p.write_bytes(base64.b64decode(self.call(req)["png"]))
+            return {"image": str(p)}
         if target not in self.SNAP_TARGETS:
             raise Unsupported(f"画像 {target} を取る命令がありません")
         r = self.call({"cmd": "canvasPng", "target": self.SNAP_TARGETS[target]})
@@ -864,22 +1064,33 @@ class ZigzaguDriver(Driver):
             return [r["value"] for r in self.call({"cmd": "romInfo"})]
         if fid == "dialogs":
             return self._all_dialogs()
-        if fid.startswith("field:"):
-            name = fid.split(":", 1)[1]
+        if fid.startswith(("field:", "enabled:")):
+            kind, name = fid.split(":", 1)
             last = None
-            for w in self._windows():
-                req = {"cmd": "getField", "id": fid if w != "world-map" else name}
+            # 別ウィンドウ（後から開いたもの）を先に探す（ワールドマップエディタの Txt_PosX とイベントの Txt_PosX など、
+            # 同じ名前の部品がメインにもある）。compareFields に screen があればそのウィンドウを最初に
+            wins = [w for w in self._windows() if w != "main"][::-1] + ["main"]
+            first = self._window_of(st.get("_screen")) if isinstance(st, dict) and st.get("_screen") else None
+            if first in wins:
+                wins.remove(first)
+                wins.insert(0, first)
+            for w in wins:
+                req = {"cmd": "getField", "id": f"field:{name}" if w != "world-map" else name}
                 if w != "main":
                     req["window"] = w
                 try:
-                    return self.call(req)["value"]
+                    r = self.call(req)
+                    if kind == "enabled":
+                        return bool(r.get("enabled"))
+                    # ワールドマップエディタの部品は value / checked / text のどれかで返る
+                    return r["value"] if "value" in r else r["checked"] if "checked" in r else r.get("text", "")
                 except AppError as e:
                     last = e
             raise Unsupported(f"欄 {name} に当たる部品がありません（{last}）")
         raise Unsupported(f"欄 {fid} を読む命令がありません")
 
     def op_compareFields(self, step):
-        st = self._state()
+        st = dict(self._state(), _screen=step.get("screen"))
         vals = {}
         for f in step["fields"]:
             try:

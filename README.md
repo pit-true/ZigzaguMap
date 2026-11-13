@@ -5,6 +5,7 @@ CFRU-JP 用のマップエディタです。AdvanceMap 風の操作で、ファ�
 ## 使い方
 
 - **ROM を開く**: ファイル > ROMを開く（Ctrl+O）か、`.gba` をウィンドウにドラッグ＆ドロップします。素の ROM だけでも閲覧と編集ができます。
+- **ROM の再読み込み**: ファイル > ROMの再読み込み（F5）。未出力の変更があれば確かめてから、ROM（とプロジェクト）を読み直します。AdvanceMap と同じく、読み直したあとはマップを開きません（「最後に選択したものを覚える」がオンでも）。
 - **プロジェクトを開く**: ファイル > CFRU-JPのフォルダを開く で CFRU-JP のフォルダを選びます。ベース ROM は、開いている ROM か、以前そのフォルダと組で開いた ROM を使い、どちらも無ければ選ぶよう求めます。フォルダのドラッグ＆ドロップでも開けます。`maps\BB\MM.json` があるマップはそちらを読みます。
 - **最近開いたもの**: ファイルメニューの下に出ます（ROM とフォルダの組で覚えます）。個人設定は `%APPDATA%\io.github.pit-true.zigzagumap\settings.json` に保存します。
 - 起動引数で開くこともできます: `zigzagumap.exe [--project <フォルダ>] <ROM>`。「最後に選択したものを覚える」がオンなら、前回のマップとタブを開きます。
@@ -92,7 +93,7 @@ AdvanceMap で ROM へすぐ書き込む「保存」ボタン類（マップ名�
 |---|---|
 | マップヘッダーの設定: | マップバンクテーブル、バンク番号、マップ番号、バンクの一覧、マップヘッダーの位置（すべて読み取り専用） |
 | マップヘッダーデータ: | マップヘッダー 28 バイトの 16 進と、フッター・イベント・マップスクリプト・コネクションの位置。16 進を書き換えると「保存してマップの再読み込み」が押せ、0x10 以降の設定を反映します |
-| マップフッターデータ: | フッター 28 バイトの 16 進と、横幅・高さ・タイルセット番号・境界ブロックの大きさの欄が連動します（タイルセット番号を変えるとタイルセットのオフセットも変わります） |
+| マップフッターデータ: | フッター 28 バイトの 16 進と、横幅・高さ・タイルセット番号・境界ブロックの大きさの欄が連動します（タイルセット番号を変えるとタイルセットのオフセットも変わります）。横幅・高さを変えて保存すると、AdvanceMap と同じく配置のデータはそのままで新しい横幅で折り返して読みます（足りないマスは 0。「マップサイズの変更」の左上基準の伸縮とは違う） |
 | 境界データ: | 境界のブロックの値（16 進）。変えると画像がすぐ変わります。「マップフッターデータ」の保存で一緒に反映します |
 | タイルセットデータ: | 主・副タイルセットのヘッダー 24 バイトの 16 進。保存で圧縮フラグ・副フラグ・アニメーション関数などを反映します |
 
@@ -240,11 +241,11 @@ AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.
 | 項目 | ZigzaguMap での動作 |
 |---|---|
 | グリッドの表示／オブジェクトの表示／表示サイズ（拡大表示 5 種）／コンボボックス／ツールバーの表示 | AdvanceMap と同じ（チェックの切り替え） |
-| マップリスト > ヘッダー/フッターのみ表示／iniのみ表示 | マップ一覧の根を「ヘッダー」だけ／「iniファイル」だけにする。もう一度押すと両方に戻る |
+| マップリスト > ヘッダー/フッターのみ表示／iniのみ表示 | マップ一覧の根を「ヘッダー」だけ／「iniファイル」だけにする（「マップファイル」はどちらでも残す）。もう一度押すと両方に戻る |
 | マップリスト > ヘッダーから新たなiniファイルを作成する | 選んだフォルダに `NewMain.ini`（マップ名ごとの「番号=バンク.マップ」）と `NewMaps.ini`（`[バンク.マップ]` の `Name=`）を Shift_JIS で書く |
 | ブロックパレットの横幅（Ctrl+P）／移動エリアの設定の透明度／最近開いたファイルリストの最大数の変更 | 入力ダイアログ。数でない入力は AdvanceMap と同じ「'…' is not a valid integer value.」、範囲外（横幅 0 など）は「無効な値が入力されました！正しい値を入力して下さい！」 |
 | 最近開いたファイルの設定 > 履歴を削除する／ファイルパスを表示 | AdvanceMap と同じ |
-| 言語 | 画面は日本語だけなので Japanese の 1 項目 |
+| 言語 | 画面は日本語だけなので Japanese の 1 項目（AdvanceMap と同じく、選んでいる言語にもチェックは付けない） |
 | 最後に選択したものを覚える | 次の起動で前回のマップとタブを開く |
 | イベントパネルの非表示／自動的にオフセットを検索する／高度なヘッダーを表示 | チェックを覚えるだけ（AdvanceMap でもイベントパネルの非表示は見た目が変わらない。後の 2 つは今の画面では使わない） |
 | 開いたときにバックアップを作成、ツール > ダミーデータへ移す/ヘッダー管理（マップバンクヘッダーの管理を除く）、空き領域の検索 | 「ZigzaguMap は ROM へ書き込まないため、この機能は不要です」と案内する |
@@ -442,7 +443,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `ui.list` | `root`（省略可） | 部品の一覧（ID、AdvanceMap の部品名、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
 | `ui.type` | `id`、`text` | 1 文字ずつ入力する |
 | `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル） |
-| `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
+| `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ）か `id`（部品。`field:RandBox` など） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |
 | `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB） |
@@ -493,6 +494,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 
 - AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
+- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。スクリプトエディタは両方とも `scriptEditorStub`（区切りは空白）にします。
 
 ### 準備
 
@@ -508,7 +510,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 | `scriptEditorStub` | `ZZM_CMP_STUB` | スクリプトエディタの代わりの exe（省略可） |
 | `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
 | `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
-| `keepRuns` | | 残す結果の数（既定 5。これより古い結果は summary に削除候補として書く。自動では消さない） |
+| `keepRuns` | | 残す結果の数（既定 5。実行の最後に、これより古い結果フォルダを消す。消せなかったものは summary に書く） |
 | `langOld` | `ZZM_CMP_LANG_OLD` | AdvanceMap 本体の言語ファイル（既定は `amWorkDir` の `Ini\Sprachen\Japanese.ini`） |
 | `langNew` | `ZZM_CMP_LANG_NEW` | ZigzaguMap の文言の基準（既定は `apps/desktop/src/i18n/source/Japanese.ini`） |
 
@@ -521,6 +523,7 @@ python tests/compare/run.py                         # 全シナリオ
 python tests/compare/run.py --scenario S04 S08      # 名前の先頭で選ぶ
 python tests/compare/run.py --only-zigzagu          # ZigzaguMap だけ動かし、AdvanceMap は前回の結果と比べる
 python tests/compare/run.py --list-ops              # 抽象操作 → 実操作の対応表
+python tests/compare/run.py --rejudge <結果フォルダ>  # アプリを動かさず、いまの判定とシナリオの理由書きで判定し直す（手順を変えていないシナリオだけ）
 python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナリオを issue にする（--dry-run で本文だけ表示）
 ```
 
@@ -528,7 +531,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 
 ### シナリオ
 
-`tests/compare/scenarios/*.json` に 1 本ずつ書きます。`name`、`title`、`issues`（関連する issue 番号）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
+`tests/compare/scenarios/*.json` に 1 本ずつ書きます（1 ステップ 1 行）。`name`、`title`、`issues`（関連する issue 番号）、`note`（省略可）、`steps`（両アプリに共通の抽象操作の列）を持ちます。
 
 ```json
 {"op": "selectMap", "bank": 3, "map": 0}
@@ -537,6 +540,10 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 {"op": "snapshot", "name": "after_drag", "target": "map"}
 {"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
 ```
+
+- 別の窓の部品は `screen` に AdvanceMap のフォームのクラス名（`TBlockEditorForm`・`TPalettenForm`・`TBlockdatenAnpassenForm`・`TWeltkarteForm`・`TAnbindungenForm`・`TMapForm`・`TMapEinfuegenForm`・`TMapBankHeaderForm`・`TCreateWildePokemonForm`）で書きます。AdvanceMap では窓をクラス名で探し、ZigzaguMap では別ウィンドウかメインの中のダイアログへ送ります（`lib/screens.py`）。
+- 欄は `field:<部品名>`（値）と `enabled:<部品名>`（押せる・入力できるか）。AdvanceMap に同じ名前の部品が複数あるとき（イベントの各フレームの `Txt_PosX`、野生と場所の設定の `Cbo_Typ` など）は、表示中のもの、その中でフォームが直接持つものを使います。表示していないタブのページの部品は、そのページへ切り替えて読み書きし、元のページへ戻します。
+- コンボの選択は位置（番号）で書きます。入力ダイアログは `answerDialog` の `input`、× は `button: "close"`、ファイルを選ぶダイアログは `answerFile`（結果フォルダの中の名前。`null` で取り消し）。別の窓のメニューは `menu` に `screen` と AdvanceMap の文言の `path`、ZigzaguMap のアクション ID の `zigzagu` を書きます。部品の中のクリックは `clickComp`、部品の画像は `snapshot` の `target: "comp"`、両アプリが書いた画像ファイルは `compareFile` で比べます。
 
 操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap のクリックやドラッグは自動操作の入口の `mouse`（画面と同じ処理を通る）、入力欄とボタンは `setField` / `click` の `field:<AdvanceMap の部品名>`、ダイアログは `dialogs` / `dialog` で行います。
 
@@ -564,7 +571,22 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 - `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
 - `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
 
-判定は「合格」（比べたものがすべて同じ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）です。
+判定は「合格」（比べたものがすべて同じか、シナリオに理由を書いた仕様上の違いだけ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）、「保留」（要判断の結論待ちの違いがある）です。
+
+### 仕様上の違いと保留
+
+SPEC やこれまでの判断で決めた違いは、黙って外さず、シナリオのステップに理由を書きます。summary.md の「仕様上の違いとして除外したステップ・欄」「保留（要判断）」に一覧で出ます。
+
+| 書き方 | 意味 |
+|---|---|
+| `"expectedDifference": "理由"` | このステップが違っても「仕様上の違い」（失敗に数えない） |
+| `"expectedDifference": {"field:X": "理由"}` | compareFields の欄ごと。`menu.state` のような辞書の欄は `{"menu.state": {"ファイル/ROMの保存": "理由", "設定/言語/*": "理由"}}` と項目ごと（ワイルドカード可。理由の無い項目が違えば失敗） |
+| `"expectedDifference": {"title": "理由"}` | expectDialog で、題名（アプリ名など）だけの違いを許す。本文とボタンは比べる |
+| `"pending": "要判断 #番号: 理由"` | 違っても「保留」。項目ごとなら `{"pending": "…"}` を値に書く |
+| `"only": "zigzagu"`（または `"advancemap"`）と `expectedDifference` | 片方のアプリだけで行う手順。ZigzaguMap だけの compareFields は `expected`（AdvanceMap の調査記録の値）と比べる（素の BPRJ で開けないワールドマップエディターなど） |
+| `compare` の `maxDiffRatio` と `expectedDifference` | 違う画素の割合がこれ以下なら「仕様上の違い」（マップ＆イベント画像の約 3% など） |
+
+上の一覧に無い食い違いを仕様上の違いにしたいときは、issue にラベル「要判断」を付けて両者の挙動を書き、そのステップを `pending` にします。
 
 ## ライセンス
 

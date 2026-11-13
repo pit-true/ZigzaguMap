@@ -2,50 +2,31 @@
   "name": "S49_open_map_by_number",
   "title": "マップを指定して開く・以前開いたマップ",
   "source": "S49",
-  "issues": [
-    96
-  ],
+  "issues": [96],
+  "note": "4.1 → 99.9（存在しない）→ abc → 3.37 → 以前開いたマップを 2 回",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.135"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "Cancel"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 37
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.1310"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "title.map"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.135"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK", "input": "4.1"},
+    {"op": "compareFields", "fields": ["title.map", "status.left"]},
+    {"op": "menu", "key": ["Menue.13", "Menue.135"]},
+    {"op": "answerDialog", "button": "OK", "input": "99.9"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.13", "Menue.135"]},
+    {"op": "answerDialog", "button": "OK", "input": "abc"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "menu", "key": ["Menue.13", "Menue.135"]},
+    {"op": "answerDialog", "button": "OK", "input": "3.37"},
+    {"op": "compareFields", "fields": ["title.map"]},
+    {"op": "menu", "key": ["Menue.13", "Menue.135"]},
+    {"op": "answerDialog", "button": "Cancel"},
+    {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
+    {"op": "compareFields", "fields": ["title.map"]},
+    {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
+    {"op": "compareFields", "fields": ["title.map"]}
   ]
 }

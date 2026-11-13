@@ -2,59 +2,18 @@
   "name": "S11_unsaved_prompt",
   "title": "未保存のままマップを切り替える",
   "source": "S11",
-  "issues": [
-    44
-  ],
-  "note": "AdvanceMap は保存の確認を出す。ZigzaguMap は切り替え時に聞かない仕様（README）なので、ダイアログの比較は要判断",
+  "issues": [44],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectBlock",
-      "block": 9
-    },
-    {
-      "op": "paintBlock",
-      "x": 5,
-      "y": 5
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 1,
-      "noWait": true
-    },
-    {
-      "op": "expectDialog",
-      "present": true,
-      "text": "保存"
-    },
-    {
-      "op": "answerDialog",
-      "button": "いいえ"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "status.left",
-        "title.map"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "snapshot",
-      "name": "map_3_0_reverted",
-      "target": "map"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectBlock", "block": 9},
+    {"op": "paintBlock", "x": 5, "y": 5},
+    {"op": "selectMap", "bank": 3, "map": 1, "noWait": true},
+    {"op": "expectDialog", "present": true, "text": "保存", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るときに確認を出さない（ZigzaguMap はマップごとの変更を持ったまま切り替え、未出力の印を付け、閉じるときにだけ確認する）"},
+    {"op": "answerDialog", "button": "いいえ", "only": "advancemap", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るときに確認を出さない（ZigzaguMap はマップごとの変更を持ったまま切り替え、未出力の印を付け、閉じるときにだけ確認する）"},
+    {"op": "compareFields", "fields": ["status.left", "title.map"]},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "snapshot", "name": "map_3_0_after_switch", "target": "map", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るときに確認を出さない（ZigzaguMap はマップごとの変更を持ったまま切り替え、未出力の印を付け、閉じるときにだけ確認する）。AdvanceMap は「いいえ」で変更を捨てる。ZigzaguMap は変更を持ったまま（(5,5) にブロック 9 が残る）"},
+    {"op": "compareFields", "fields": ["tree.first60"], "expectedDifference": "SPEC: ZigzaguMap は未出力のマップに印 * を付ける"}
   ]
 }

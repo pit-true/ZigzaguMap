@@ -2,54 +2,31 @@
   "name": "S39_map_resize",
   "title": "マップサイズの変更",
   "source": "S39",
-  "issues": [
-    83
-  ],
+  "issues": [83],
+  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Txt_Breite→Txt_MapBreite、Txt_Hohe→Txt_MapHoehe、Cmd_Aendern→Cmd_Resize）。縮小（左上が残る）、拡大（増えた部分は黒）、0 は無視",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 19
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_MapBreite",
-      "value": 16
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_MapHoehe",
-      "value": 16
-    },
-    {
-      "op": "clickButton",
-      "screen": "main",
-      "button": "Cmd_Resize"
-    },
-    {
-      "op": "selectTab",
-      "tab": "map"
-    },
-    {
-      "op": "snapshot",
-      "name": "map_16x16",
-      "target": "map"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "map.size"
-      ]
-    }
-  ],
-  "note": "部品名はフォーム定義（dfm）の名前に合わせた（Txt_Breite→Txt_MapBreite、Txt_Hohe→Txt_MapHoehe、Cmd_Aendern→Cmd_Resize）"
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 19},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "setField", "screen": "main", "field": "Txt_MapBreite", "value": 16},
+    {"op": "setField", "screen": "main", "field": "Txt_MapHoehe", "value": 16},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_Resize"},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["map.size", "field:Txt_MapBreite", "field:Txt_MapHoehe"]},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "map_16x16", "target": "map"},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "setField", "screen": "main", "field": "Txt_MapBreite", "value": 30},
+    {"op": "setField", "screen": "main", "field": "Txt_MapHoehe", "value": 20},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_Resize"},
+    {"op": "selectTab", "tab": "map"},
+    {"op": "snapshot", "name": "map_30x20", "target": "map"},
+    {"op": "compareFields", "fields": ["map.size"]},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "setField", "screen": "main", "field": "Txt_MapBreite", "value": 0},
+    {"op": "clickButton", "screen": "main", "button": "Cmd_Resize"},
+    {"op": "compareFields", "fields": ["map.size", "field:Txt_MapBreite"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
+  ]
 }

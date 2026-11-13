@@ -2,86 +2,20 @@
   "name": "S05_pick_stamp",
   "title": "スポイトとスタンプ",
   "source": "S05",
-  "issues": [
-    36,
-    37
-  ],
+  "issues": [36, 37],
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "pickBlock",
-      "x": 5,
-      "y": 3
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "status.left"
-      ]
-    },
-    {
-      "op": "paintBlock",
-      "x": 10,
-      "y": 10
-    },
-    {
-      "op": "snapshot",
-      "name": "after_pick",
-      "target": "map"
-    },
-    {
-      "op": "pickStamp",
-      "from": [
-        4,
-        2
-      ],
-      "to": [
-        7,
-        5
-      ]
-    },
-    {
-      "op": "paintBlock",
-      "x": 12,
-      "y": 12
-    },
-    {
-      "op": "snapshot",
-      "name": "after_stamp",
-      "target": "map"
-    },
-    {
-      "op": "pickPaletteStamp",
-      "from": [
-        0,
-        1
-      ],
-      "to": [
-        2,
-        3
-      ]
-    },
-    {
-      "op": "paintBlock",
-      "x": 0,
-      "y": 0
-    },
-    {
-      "op": "snapshot",
-      "name": "after_palette_stamp",
-      "target": "map"
-    },
-    {
-      "op": "expectDialog",
-      "present": true,
-      "text": "Grosser Block"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "pickBlock", "x": 5, "y": 3},
+    {"op": "compareFields", "fields": ["status.left"]},
+    {"op": "paintBlock", "x": 10, "y": 10},
+    {"op": "snapshot", "name": "after_pick", "target": "map"},
+    {"op": "pickStamp", "from": [4, 2], "to": [7, 5]},
+    {"op": "paintBlock", "x": 12, "y": 12},
+    {"op": "snapshot", "name": "after_stamp", "target": "map"},
+    {"op": "pickPaletteStamp", "from": [0, 1], "to": [2, 3]},
+    {"op": "paintBlock", "x": 0, "y": 0},
+    {"op": "snapshot", "name": "after_palette_stamp", "target": "map"},
+    {"op": "expectDialog", "present": true, "text": "Grosser Block"}
   ]
 }

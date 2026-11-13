@@ -1,29 +1,25 @@
 {
   "name": "S35_tileset_image_io",
-  "title": "タイルセット画像の入出力",
+  "title": "タイルセット画像・パレットファイルの入出力",
   "source": "S35",
-  "issues": [
-    77
-  ],
+  "issues": [77],
+  "note": "タイルセット 1・2 を .dib に書いて画素で比べる。パレットを .pal に書いて読み直す",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.13",
-        "Menue.130"
-      ]
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.13", "Menue.130"]},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["マップチップ", "タイルセット１の保存"], "zigzagu": "tiles.save1"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerFile", "path": "Tileset0.dib"},
+    {"op": "compareFile", "path": "Tileset0.dib"},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["マップチップ", "タイルセット２の保存"], "zigzagu": "tiles.save2"},
+    {"op": "answerFile", "path": "Tileset1.dib"},
+    {"op": "compareFile", "path": "Tileset1.dib"},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["パレット", "パレットファイルの保存"], "zigzagu": "palette.save"},
+    {"op": "answerFile", "path": "Pal0.pal"},
+    {"op": "menu", "screen": "TBlockEditorForm", "path": ["パレット", "パレットファイルを開く"], "zigzagu": "palette.open"},
+    {"op": "answerFile", "path": "Pal0.pal"},
+    {"op": "expectDialog", "present": true},
+    {"op": "snapshot", "name": "tiles_after_pal_open", "target": "comp", "screen": "TBlockEditorForm", "comp": "TilesetBox", "compare": {"upscale": true}}
   ]
 }

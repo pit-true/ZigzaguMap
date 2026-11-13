@@ -48,9 +48,6 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "opt.contextMenu": "contextMenu",
 };
 
-/** いつもチェックが付く項目（言語は日本語だけ）。 */
-const FIXED_CHECKS = new Set(["lang.ja"]);
-
 /**
  * メニュー・ツールバー・ショートカットのアクション。ID から処理を引き、有効・チェックの状態を答える。
  * 処理の無い ID は「未実装」としてステータスバーに出す。
@@ -147,6 +144,7 @@ export class Actions {
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
     if (id === "display.header") return this.state.settings.data.mapListSource === "header";
     if (id === "display.ini") return this.state.settings.data.mapListSource === "ini";
-    return FIXED_CHECKS.has(id);
+    // 言語（日本語だけ）は、AdvanceMap と同じく選んでいる言語にもチェックを付けない
+    return false;
   }
 }

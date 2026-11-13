@@ -2,49 +2,25 @@
   "name": "S19_event_input_error",
   "title": "イベントの入力エラー",
   "source": "S19",
-  "issues": [
-    57
-  ],
+  "issues": [57],
+  "note": "題名は AdvanceMap が「About Advance Map」、ZigzaguMap はアプリ名（仕様上の違いとして読み替える）",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_PosX",
-      "value": "zz"
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "OK"
-    },
-    {
-      "op": "setField",
-      "screen": "main",
-      "field": "Txt_Script",
-      "value": "$GGGGGG"
-    },
-    {
-      "op": "expectDialog",
-      "present": true
-    },
-    {
-      "op": "answerDialog",
-      "button": "OK"
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "setField", "screen": "main", "field": "Cbo_EventTypen", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 0},
+    {"op": "setField", "screen": "main", "field": "Txt_PosX", "value": "zz"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "main", "field": "Txt_Script", "value": "$GGGGGG"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "main", "field": "Txt_Bewegung", "value": "q1"},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。整数エラーの題名は AdvanceMap のアプリの題名"}},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "setField", "screen": "main", "field": "Txt_PosX", "value": ""},
+    {"op": "expectDialog", "present": false},
+    {"op": "compareFields", "fields": ["status.left"]}
   ]
 }

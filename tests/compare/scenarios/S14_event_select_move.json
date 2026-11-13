@@ -2,70 +2,24 @@
   "name": "S14_event_select_move",
   "title": "イベントの選択と移動",
   "source": "S14",
-  "issues": [
-    49
-  ],
+  "issues": [49],
+  "note": "人 1（13,17）を選んで (10,15) へドラッグ、看板 0（16,16）、ワープ 0（6,7）、何も無いマス",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "event"
-    },
-    {
-      "op": "clickEvent",
-      "x": 13,
-      "y": 13
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen",
-        "field:Spin_Nr",
-        "field:Txt_PosX"
-      ]
-    },
-    {
-      "op": "dragEvent",
-      "from": [
-        13,
-        13
-      ],
-      "to": [
-        10,
-        10
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_PosX"
-      ]
-    },
-    {
-      "op": "snapshot",
-      "name": "after_move",
-      "target": "event",
-      "compare": {
-        "mode": "overlayCells"
-      }
-    },
-    {
-      "op": "clickEvent",
-      "x": 1,
-      "y": 1
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_EventTypen"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "event"},
+    {"op": "clickEvent", "x": 13, "y": 17},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "status.left"]},
+    {"op": "dragEvent", "from": [13, 17], "to": [10, 15]},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY"]},
+    {"op": "snapshot", "name": "after_move", "target": "event", "compare": {"mode": "overlayCells"}},
+    {"op": "clickEvent", "x": 16, "y": 16},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY"]},
+    {"op": "clickEvent", "x": 6, "y": 7},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY"]},
+    {"op": "clickEvent", "x": 1, "y": 1},
+    {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen"]},
+    {"op": "hover", "x": 13, "y": 7, "target": "event"},
+    {"op": "compareFields", "fields": ["status.left"]}
   ]
 }

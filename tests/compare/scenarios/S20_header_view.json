@@ -1,118 +1,36 @@
 {
   "name": "S20_header_view",
-  "title": "ヘッダータブ（通常・高度）",
+  "title": "ヘッダータブ（高度な表示と通常表示）",
   "source": "S20",
-  "issues": [
-    58,
-    60,
-    63
-  ],
+  "issues": [58, 60, 63],
+  "note": "高度なヘッダーの表示は既定でオン（両アプリ）。通常表示へ切り替えて同じ 4 マップを比べ、最後に戻す",
   "steps": [
-    {
-      "op": "openRom"
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 0
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Name",
-        "field:Txt_Musik",
-        "field:Cbo_Wetter",
-        "field:Cbo_NameAnzeigen",
-        "field:Txt_Tileset1Nr",
-        "field:Txt_Tileset2Nr"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 4,
-      "map": 1
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Name",
-        "field:Txt_Musik",
-        "field:Cbo_Wetter",
-        "field:Cbo_NameAnzeigen",
-        "field:Txt_Tileset1Nr",
-        "field:Txt_Tileset2Nr"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 1,
-      "map": 1
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Name",
-        "field:Txt_Musik",
-        "field:Cbo_Wetter",
-        "field:Cbo_NameAnzeigen",
-        "field:Txt_Tileset1Nr",
-        "field:Txt_Tileset2Nr"
-      ]
-    },
-    {
-      "op": "selectMap",
-      "bank": 3,
-      "map": 37
-    },
-    {
-      "op": "selectTab",
-      "tab": "header"
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Cbo_Name",
-        "field:Txt_Musik",
-        "field:Cbo_Wetter",
-        "field:Cbo_NameAnzeigen",
-        "field:Txt_Tileset1Nr",
-        "field:Txt_Tileset2Nr"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.129"
-      ]
-    },
-    {
-      "op": "compareFields",
-      "fields": [
-        "field:Txt_MapHeader",
-        "field:Txt_MapBreite",
-        "field:Txt_MapHoehe",
-        "field:Txt_EventOffset"
-      ]
-    },
-    {
-      "op": "menu",
-      "key": [
-        "Menue.12",
-        "Menue.129"
-      ]
-    }
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_MapBankHeader", "field:Txt_BankNr", "field:Txt_MapNr", "field:Txt_MapBank", "field:Txt_MapHeader", "field:Fld_Header", "field:Txt_MapOffset", "field:Txt_EventOffset", "field:Txt_MapScriptsOffset", "field:Txt_AnbindungOffset", "field:Fld_Footer", "field:Txt_Breite", "field:Txt_Hohe", "field:Txt_RandPos", "field:Txt_MapPos", "field:Txt_Tileset1Nr", "field:Txt_Tileset2Nr", "field:Txt_Tileset1", "field:Txt_Tileset2", "field:Txt_RandBreite", "field:Txt_RandHoehe", "field:Txt_Rand", "field:Fld_T1", "field:Fld_T2", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 4, "map": 1},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_MapBankHeader", "field:Txt_BankNr", "field:Txt_MapNr", "field:Txt_MapBank", "field:Txt_MapHeader", "field:Fld_Header", "field:Txt_MapOffset", "field:Txt_EventOffset", "field:Txt_MapScriptsOffset", "field:Txt_AnbindungOffset", "field:Fld_Footer", "field:Txt_Breite", "field:Txt_Hohe", "field:Txt_RandPos", "field:Txt_MapPos", "field:Txt_Tileset1Nr", "field:Txt_Tileset2Nr", "field:Txt_Tileset1", "field:Txt_Tileset2", "field:Txt_RandBreite", "field:Txt_RandHoehe", "field:Txt_Rand", "field:Fld_T1", "field:Fld_T2", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 1, "map": 1},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_MapBankHeader", "field:Txt_BankNr", "field:Txt_MapNr", "field:Txt_MapBank", "field:Txt_MapHeader", "field:Fld_Header", "field:Txt_MapOffset", "field:Txt_EventOffset", "field:Txt_MapScriptsOffset", "field:Txt_AnbindungOffset", "field:Fld_Footer", "field:Txt_Breite", "field:Txt_Hohe", "field:Txt_RandPos", "field:Txt_MapPos", "field:Txt_Tileset1Nr", "field:Txt_Tileset2Nr", "field:Txt_Tileset1", "field:Txt_Tileset2", "field:Txt_RandBreite", "field:Txt_RandHoehe", "field:Txt_Rand", "field:Fld_T1", "field:Fld_T2", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 3, "map": 37},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Txt_MapBankHeader", "field:Txt_BankNr", "field:Txt_MapNr", "field:Txt_MapBank", "field:Txt_MapHeader", "field:Fld_Header", "field:Txt_MapOffset", "field:Txt_EventOffset", "field:Txt_MapScriptsOffset", "field:Txt_AnbindungOffset", "field:Fld_Footer", "field:Txt_Breite", "field:Txt_Hohe", "field:Txt_RandPos", "field:Txt_MapPos", "field:Txt_Tileset1Nr", "field:Txt_Tileset2Nr", "field:Txt_Tileset1", "field:Txt_Tileset2", "field:Txt_RandBreite", "field:Txt_RandHoehe", "field:Txt_Rand", "field:Fld_T1", "field:Fld_T2", "enabled:Cmd_MapEinstellungen_Speichern", "enabled:Cmd_MapDaten_Speichern", "enabled:Cmd_TilesetDaten_Speichern", "menu.state:Menue.12/Menue.129"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName", "field:Cbo_NameAnzeigen", "field:Cbo_Musik", "field:Txt_Musik", "field:Cbo_Hoehle", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_HeaderTile1", "field:Txt_HeaderTile2", "field:Txt_MapBreite", "field:Txt_MapHoehe", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 4, "map": 1},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName", "field:Cbo_NameAnzeigen", "field:Cbo_Musik", "field:Txt_Musik", "field:Cbo_Hoehle", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_HeaderTile1", "field:Txt_HeaderTile2", "field:Txt_MapBreite", "field:Txt_MapHoehe", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 1, "map": 1},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName", "field:Cbo_NameAnzeigen", "field:Cbo_Musik", "field:Txt_Musik", "field:Cbo_Hoehle", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_HeaderTile1", "field:Txt_HeaderTile2", "field:Txt_MapBreite", "field:Txt_MapHoehe", "menu.state:Menue.12/Menue.129"]},
+    {"op": "selectMap", "bank": 3, "map": 37},
+    {"op": "selectTab", "tab": "header"},
+    {"op": "compareFields", "fields": ["field:Cbo_Name", "field:Txt_NeuerName", "field:Cbo_NameAnzeigen", "field:Cbo_Musik", "field:Txt_Musik", "field:Cbo_Hoehle", "field:Cbo_Wetter", "field:Cbo_Typ", "field:Cbo_KampfTyp", "field:Spin_MapScriptNr", "field:Cbo_MapScriptTyp", "field:Txt_MapScriptOffset", "field:Txt_HeaderTile1", "field:Txt_HeaderTile2", "field:Txt_MapBreite", "field:Txt_MapHoehe", "menu.state:Menue.12/Menue.129"]},
+    {"op": "menu", "key": ["Menue.12", "Menue.129"]}
   ]
 }

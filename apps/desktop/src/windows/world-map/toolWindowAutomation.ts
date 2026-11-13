@@ -113,6 +113,9 @@ async function handle(handler: ToolWindowAutomation, req: Record<string, unknown
       await settle();
       return null;
     }
+    case "dialogs":
+      // 開いているダイアログ（メインの `dialogs` と同じ形）
+      return { dialogs: openDialogs.map((d) => ({ kind: "app", title: d.title, text: d.text, buttons: d.buttons })) };
     case "dialog": {
       const top = openDialogs[openDialogs.length - 1];
       if (!top) {

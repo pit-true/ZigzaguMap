@@ -1,0 +1,29 @@
+{
+  "name": "S55_help_reload",
+  "title": "ヘルプの窓と ROM の再読み込み・ROM 以外を開く",
+  "source": "S55",
+  "issues": [23, 104],
+  "note": "Advance Mapについて（F1）とエンドユーザー規約（F2）の窓、ROM の再読み込み（F5。読み直したあとはマップを開かない）、ROM でないファイル（.map）を開く",
+  "steps": [
+    {"op": "openRom"},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "menu", "key": ["Menue.14", "Menue.141"]},
+    {"op": "expectDialog", "present": true, "expectedDifference": {"title": "SPEC: アプリ名と題名（Advance Map → ZigzaguMap）。「Advance Mapについて」は「ZigzaguMapについて」"}},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "menu", "key": ["Menue.14", "Menue.142"]},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "expectDialog", "present": false},
+    {"op": "menu", "key": ["Menue.11", "Menue.111"]},
+    {"op": "compareFields", "fields": ["status.left", "title.map", "tab"]},
+    {"op": "selectMap", "bank": 3, "map": 0},
+    {"op": "snapshot", "name": "map_after_reload", "target": "map"},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1143"]},
+    {"op": "answerFile", "path": "notrom.map"},
+    {"op": "menu", "key": ["Menue.11", "Menue.110"]},
+    {"op": "answerFile", "path": "notrom.map"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "compareFields", "fields": ["title.map"]}
+  ]
+}
