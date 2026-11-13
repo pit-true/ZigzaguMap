@@ -1,0 +1,21 @@
+{
+  "name": "@zigzagumap/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@zigzagumap/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
+    "vite": "^8.3.8"
+  }
+}
