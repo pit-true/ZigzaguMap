@@ -3,12 +3,17 @@
   "title": "マップの追加/挿入",
   "source": "S42",
   "issues": [86],
-  "note": "3.0（1 ブロック描いた）を 4.3 へ差し替え。× で閉じると中止の案内",
+  "note": "× で閉じると中止の案内。3.0（1 ブロック描いた）を 4.3 へ差し替え",
   "steps": [
     {"op": "openRom"},
     {"op": "selectMap", "bank": 3, "map": 0},
     {"op": "selectBlock", "block": 9},
     {"op": "paintBlock", "x": 5, "y": 5},
+    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1144"]},
+    {"op": "answerDialog", "button": "close"},
+    {"op": "expectDialog", "present": true},
+    {"op": "answerDialog", "button": "OK"},
+    {"op": "expectDialog", "present": false},
     {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1144"]},
     {"op": "expectDialog", "present": true},
     {"op": "compareFields", "fields": ["field:Lbl_SpeicherOrt", "field:Cbo_ErsetzenBank", "field:Cbo_MapNr", "field:Cbo_VorhandenBank", "field:Lbl_AnzMaps", "field:Cbo_NeuBank", "field:Txt_AnzNeuerMaps", "enabled:Cmd_Einfuegen", "enabled:Cmd_Ersetzen"]},
@@ -20,10 +25,6 @@
     {"op": "answerDialog", "button": "OK"},
     {"op": "expectDialog", "present": false},
     {"op": "compareFields", "fields": ["title.map", "map.size"]},
-    {"op": "snapshot", "name": "replaced_4_3", "target": "map"},
-    {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1144"]},
-    {"op": "answerDialog", "button": "close"},
-    {"op": "expectDialog", "present": true},
-    {"op": "answerDialog", "button": "OK"}
+    {"op": "snapshot", "name": "replaced_4_3", "target": "map"}
   ]
 }
