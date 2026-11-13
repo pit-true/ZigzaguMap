@@ -7,7 +7,7 @@ const LABEL = 96;
 /**
  * 「フライトポジション」のパネル（AdvanceMap の Frame_FlugPos1）。座標・不明は 4 桁まで（MaxLength=4）。
  * バンク・マップを変えると、このマップのフライトポジションではなくなる（注意文のとおり）。
- * 値は ROM の表の写しに書き、アンドゥできる。maps\ の形式に置き場所が無いため出力はしない。
+ * 値は ROM の表の写しに書き、アンドゥできる。出力では maps\regionmap.json の HealLocations に書く。
  */
 export class FlyPanel extends KindPanel<FlyPosition> {
   constructor(host: PanelHost) {

@@ -35,7 +35,7 @@ export interface DocumentContext extends EditorContext {
   addMap(doc: MapDocument): void;
   /** addMap で加えたマップを除く（取り消し用）。 */
   removeMap(id: MapId): void;
-  /** 編集中のフライトポジションの表（ROM の表の写し。maps\ の形式には置き場所が無く、出力しない）。 */
+  /** 編集中のフライトポジションの表（ROM の表の写し。タウンマップの飛び先と同じ表で、maps\regionmap.json の HealLocations に出力する）。 */
   readonly flyPositions: FlyPosition[];
 }
 

@@ -45,7 +45,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetEventFieldsCommand,
   SetEventCountsCommand,
   SetItemBallCommand,
-  // フライトポジション（出力しない）
+  // フライトポジション（maps\regionmap.json の HealLocations に出力する）
   SetFlyPositionCommand,
   // ヘッダー
   SetHeaderFieldsCommand,

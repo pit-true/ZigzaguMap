@@ -3,6 +3,10 @@ import type { GameOffsets } from "../game/offsets.js";
 import { GridStore } from "../command/GridStore.js";
 import { DocumentStore, mapKey, tilesetKey } from "../command/DocumentStore.js";
 import { FlyTable, cloneFlyPositions } from "../fly/FlyTable.js";
+import { HEAL_LOCATION_COUNT } from "../regionmap/constants.js";
+import { healOf, writeHeal } from "../regionmap/RegionMapDocument.js";
+import { RegionMapJson } from "../regionmap/RegionMapJson.js";
+import { REGION_MAP_PATH } from "../regionmap/RegionMapProject.js";
 import type { DocumentContext } from "../command/DocumentContext.js";
 import { TilesetTable } from "../map/TilesetTable.js";
 import { TILESET_HEADER_SIZE } from "../map/constants.js";
@@ -86,6 +90,8 @@ export class CfruProject {
   /** maps\ の JSON に書かれている落とし物（識別子 → 落とし物。HiddenItem.s の作り直しの判定用）。 */
   private readonly fileItemBalls = new Map<string, ItemBall>();
   private tilesetDataStarts: number[] | null = null;
+  /** 読み込み・出力の時点のフライトポジション（JSON。変更の有無の判定用）。 */
+  private flySaved = "";
 
   private constructor(
     private readonly fs: ProjectFs,
@@ -137,7 +143,31 @@ export class CfruProject {
       tilesets.set(tilesetKey({ pointer: ROM_BASE + source.headerAddress, secondary: source.secondary }), { folder, source });
     }
     const codec = (await fs.exists(CHARMAP_PATH)) ? TextCodec.fromCharmap(await fs.readText(CHARMAP_PATH)) : TextCodec.japanese;
-    return new CfruProject(fs, rom, manifest, jsonMaps, tilesets, codec);
+    const project = new CfruProject(fs, rom, manifest, jsonMaps, tilesets, codec);
+    if (await fs.exists(REGION_MAP_PATH)) project.applyRegionMapFlyPositions(await fs.readText(REGION_MAP_PATH));
+    project.markFlyPositionsSaved();
+    return project;
+  }
+
+  /**
+   * maps\regionmap.json の HealLocations（タウンマップの飛び先。フライトポジションと同じ表）を、編集中のフライトポジションへ重ねる。
+   * タウンマップの絵は読まない（起動を軽くするため）。
+   */
+  private applyRegionMapFlyPositions(text: string): void {
+    const list = this.store.flyPositions;
+    if (list.length !== HEAL_LOCATION_COUNT) return;
+    const heal = list.map(healOf);
+    if (RegionMapJson.applyHealLocations(text, heal, REGION_MAP_PATH)) heal.forEach((h, i) => writeHeal(list[i]!, h));
+  }
+
+  /** フライトポジションに未出力の変更があるか（出力先は maps\regionmap.json の HealLocations）。 */
+  isFlyPositionsModified(): boolean {
+    return JSON.stringify(this.store.flyPositions) !== this.flySaved;
+  }
+
+  /** フライトポジションを出力した（maps\regionmap.json を書いた）ことを記録する。 */
+  markFlyPositionsSaved(): void {
+    this.flySaved = JSON.stringify(this.store.flyPositions);
   }
 
   /** maps\project.json の中身。無ければ null。 */

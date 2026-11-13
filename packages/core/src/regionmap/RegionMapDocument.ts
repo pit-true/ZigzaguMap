@@ -13,6 +13,7 @@ import {
   type RegionMapLayer,
   type RegionMapPage,
 } from "./constants.js";
+import type { FlyPosition } from "../fly/types.js";
 
 /** 地名ごとの位置と大きさ（マス単位）。 */
 export interface RegionSection {
@@ -29,12 +30,16 @@ export interface FlyDestination {
   heal: number;
 }
 
-/** 飛び先（回復地点）1 件。 */
+/**
+ * 飛び先（回復地点）1 件。ROM の表はイベントタブの「フライトポジション」（FlyPosition）と同じもの。
+ * `unknown` は末尾の 2 バイト（AdvanceMap の「不明:」）。
+ */
 export interface HealLocation {
   bank: number;
   map: number;
   x: number;
   y: number;
+  unknown: number;
 }
 
 /** 編集できる表をすべて写したもの（JSON にでき、取り消しの控えと別ウィンドウへの受け渡しに使う）。 */
@@ -66,6 +71,8 @@ export function layoutIndex(page: RegionMapPage | number, layer: RegionMapLayer 
  */
 export class RegionMapDocument {
   private data: RegionMapSnapshot;
+  /** つないだフライトポジションの表（linkHealLocations）。つないでいれば飛び先はこちらを読み書きする。 */
+  private healStore: FlyPosition[] | null = null;
 
   constructor(snapshot: RegionMapSnapshot) {
     RegionMapDocument.check(snapshot);
@@ -106,11 +113,22 @@ export class RegionMapDocument {
 
   /** 飛び先（1〜20）。範囲外なら null。 */
   healLocation(index: number): HealLocation | null {
-    return index >= 1 && index <= HEAL_LOCATION_COUNT ? { ...this.data.heal[index - 1]! } : null;
+    if (index < 1 || index > HEAL_LOCATION_COUNT) return null;
+    return this.healStore ? healOf(this.healStore[index - 1]!) : { ...this.data.heal[index - 1]! };
   }
 
   setHealLocation(index: number, value: HealLocation): void {
-    this.data.heal[index - 1] = { ...value };
+    if (this.healStore) writeHeal(this.healStore[index - 1]!, value);
+    else this.data.heal[index - 1] = { ...value };
+  }
+
+  /**
+   * 飛び先の表を、イベントタブのフライトポジションの表（同じ ROM の表）とつなぐ。以後はどちらで変えても同じ値になる
+   * （つないだ時点の値は `store` 側を使う）。`store` は 20 件。
+   */
+  linkHealLocations(store: FlyPosition[]): void {
+    if (store.length !== HEAL_LOCATION_COUNT) throw new Error("フライトポジションの表の件数が違います");
+    this.healStore = store;
   }
 
   /** 人ID（訪問フラグ）。表の範囲外なら NO_FLAG。 */
@@ -139,23 +157,26 @@ export class RegionMapDocument {
 
   /** 全体の写し。 */
   snapshot(): RegionMapSnapshot {
-    return clone(this.data);
+    const s = clone(this.data);
+    if (this.healStore) s.heal = this.healStore.map(healOf);
+    return s;
   }
 
   /** 写しに戻す。 */
   restore(snapshot: RegionMapSnapshot): void {
     RegionMapDocument.check(snapshot);
     this.data = clone(snapshot);
+    if (this.healStore) snapshot.heal.forEach((h, i) => writeHeal(this.healStore![i]!, h));
   }
 
-  /** 複製。 */
+  /** 複製（つないだ表は引き継がず、今の値を写す）。 */
   clone(): RegionMapDocument {
-    return new RegionMapDocument(this.data);
+    return new RegionMapDocument(this.snapshot());
   }
 
   /** 内容が同じか。 */
   equals(other: RegionMapDocument): boolean {
-    return JSON.stringify(this.data) === JSON.stringify(other.data);
+    return JSON.stringify(this.snapshot()) === JSON.stringify(other.snapshot());
   }
 
   /** 写しの形と数を確かめる。違えば Error。 */
@@ -181,8 +202,22 @@ function clone(s: RegionMapSnapshot): RegionMapSnapshot {
     layouts: s.layouts.map((l) => l.slice()),
     sections: s.sections.map((v) => ({ x: v.x, y: v.y, width: v.width, height: v.height })),
     fly: s.fly.map((v) => ({ bank: v.bank, map: v.map, heal: v.heal })),
-    heal: s.heal.map((v) => ({ bank: v.bank, map: v.map, x: v.x, y: v.y })),
+    heal: s.heal.map((v) => ({ bank: v.bank, map: v.map, x: v.x, y: v.y, unknown: v.unknown })),
     mapFlags: s.mapFlags.slice(),
     dungeonFlags: s.dungeonFlags.slice(),
   };
+}
+
+/** フライトポジション（X・Y は u16）を飛び先（X・Y は s16）として読む。 */
+export function healOf(p: FlyPosition): HealLocation {
+  return { bank: p.bank, map: p.map, x: (p.x << 16) >> 16, y: (p.y << 16) >> 16, unknown: p.unknown };
+}
+
+/** 飛び先の値をフライトポジションへ書く（同じオブジェクトを書き換える）。 */
+export function writeHeal(p: FlyPosition, h: HealLocation): void {
+  p.bank = h.bank & 0xff;
+  p.map = h.map & 0xff;
+  p.x = h.x & 0xffff;
+  p.y = h.y & 0xffff;
+  p.unknown = h.unknown & 0xffff;
 }

@@ -54,7 +54,7 @@ Ctrl＋右ドラッグ（Ctrl＋右クリック）でスタンプを選ぶと、
 - 16 進の欄は AdvanceMap と同じく `$` を前に付けて読みます。空欄は 0、あふれた桁は切り捨てます（4 桁の欄の 10000 は 0）。読めない文字を入れると `'$ZZ' is not a valid integer value.` を出し、値は変えません。10 進のスピンは範囲の端に丸めます（300 は 255）。
 - スクリプトのオフセットは下位 3 バイトだけを書き、上位 1 バイトは元のままです。
 - 看板のイベントタイプが 05〜08 のときは、オフセットの代わりにアイテム ID・隠し ID・個数を出します。
-- フライトポジションは ROM の表を読んで表示・編集できますが、`maps\` の形式に置き場所が無いため出力しません。
+- フライトポジションの表は、タウンマップの飛び先（回復地点）と同じ ROM の表です。編集は `maps\regionmap.json` の `HealLocations` に出力します（ワールドマップエディターを開いていなくても書きます）。ワールドマップエディターで飛び先を変えても、同じ値になります。
 - 人の落とし物（ItemBalls）は画面では変えません。ほかの欄を編集しても、落とし物は保ったまま出力します。
 - マップの外にイベントがあると、ステータスバーの右欄に「ノート:マップの外にイベントがあります。」を出します。
 - 設定 > オブジェクトの表示（ツールバーの主人公のボタン）をオンにすると、AdvanceMap と同じく人を ROM の OW 画像（下向きの 1 コマ目）で描き、人以外の箱は描きません。
@@ -246,7 +246,7 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 | `Positions` | 地名 0x58〜0xC5 の全 110 件。`Id`（`"0x58"`）、`X`、`Y` | s16[n][2]: 0x3B89E8（0xC4F20、SetMapNo_and_Pos） |
 | `Sizes` | 同じ 110 件。`Id`、`Width`、`Height` | u16[n][2]: 0x3B8D00（0xC4F1C） |
 | `FlyDestinations` | 地名 0x58〜0xC3 の全 108 件。`Id`、`Bank`、`Map`、`HealLocation`（0 なら飛び先を使わずマップの真ん中へ） | u8[108][3]: 0x3B9A68（0xC648C、FlyDestination） |
-| `HealLocations` | 飛び先 1〜20 の全件。`Index`、`Bank`、`Map`、`X`、`Y` | 8 バイト × 20: 0x3B5944（0xC0E94 の値 + 8、GetWarpPosByNo） |
+| `HealLocations` | 飛び先 1〜20 の全件。`Index`、`Bank`、`Map`、`X`、`Y`、`Unknown`（末尾 2 バイト。AdvanceMap の「不明:」。無い古いファイルはベース ROM の値）。イベントタブのフライトポジション（AdvanceMap の FlugposHeader の表）と同じ表 | 8 バイト × 20: 0x3B5944（0xC0E94 の値 + 8、GetWarpPosByNo。0xC0E44 も同じ表を指す） |
 | `MapVisitFlags` / `DungeonVisitFlags` | 地名 0x58〜0xC5 の全 110 件。`Id`、`Flag`（`"0x0890"`、無ければ null） | 表ではなく GetMapState（0x0C47C0）/ GetCaveState（0x0C4A5C）の switch 文。取り込むには表を引く命令への書き換えが要る |
 
 名前は `regionmap.json` には書かず、ほかのマップ名の変更と同じく、その地名番号を使うマップの `maps\BB\MM.json` に入ります。地図の絵（タイル・パレット・タイルマップ）は読むだけで編集しません。

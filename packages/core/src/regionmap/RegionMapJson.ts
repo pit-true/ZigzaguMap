@@ -11,7 +11,7 @@ import {
   REGION_MAP_PAGES,
   REGION_MAP_WIDTH,
 } from "./constants.js";
-import { RegionMapDocument, layoutIndex, type RegionMapSnapshot } from "./RegionMapDocument.js";
+import { RegionMapDocument, layoutIndex, type HealLocation, type RegionMapSnapshot } from "./RegionMapDocument.js";
 
 /** maps\regionmap.json の Format の値。 */
 export const REGION_MAP_FORMAT = 1;
@@ -26,7 +26,8 @@ const TABLES = ["Layouts", "Positions", "Sizes", "FlyDestinations", "HealLocatio
  *   変えた面・レイヤーだけを書く。
  * - Positions / Sizes: 地名 0x58〜0xC5 の全件（Id は `0x58` の形）。
  * - FlyDestinations: 地名 0x58〜0xC3 の全件（Bank, Map, HealLocation）。
- * - HealLocations: 飛び先 1〜20 の全件（Index, Bank, Map, X, Y）。
+ * - HealLocations: 飛び先 1〜20 の全件（Index, Bank, Map, X, Y, Unknown）。イベントタブのフライトポジションと同じ表。
+ *   Unknown は末尾の 2 バイト（AdvanceMap の「不明:」）。Unknown の無い古いファイルはベース ROM の値を使う。
  * - MapVisitFlags / DungeonVisitFlags: 地名 0x58〜0xC5 の全件（Flag は `0x0890` の形、無ければ null）。
  */
 export class RegionMapJson {
@@ -59,11 +60,20 @@ export class RegionMapJson {
       out["Sizes"] = a.sections.map((s, i) => ({ Id: id(i), Width: s.width, Height: s.height }));
     }
     if (!same(a.fly, b.fly)) out["FlyDestinations"] = a.fly.map((f, i) => ({ Id: id(i), Bank: f.bank, Map: f.map, HealLocation: f.heal }));
-    if (!same(a.heal, b.heal)) out["HealLocations"] = a.heal.map((h, i) => ({ Index: i + 1, Bank: h.bank, Map: h.map, X: h.x, Y: h.y }));
+    if (!same(a.heal, b.heal)) out["HealLocations"] = a.heal.map((h, i) => ({ Index: i + 1, Bank: h.bank, Map: h.map, X: h.x, Y: h.y, Unknown: h.unknown }));
     if (!same(a.mapFlags, b.mapFlags)) out["MapVisitFlags"] = flagList(a.mapFlags);
     if (!same(a.dungeonFlags, b.dungeonFlags)) out["DungeonVisitFlags"] = flagList(a.dungeonFlags);
     if (Object.keys(out).length === 1) return null;
     return writeIndentedJson(out);
+  }
+
+  /**
+   * 飛び先（HealLocations）だけを読む（タウンマップの絵を読まずに、イベントタブのフライトポジションへ重ねるため）。
+   * `heal` はベース ROM の値で、書かれていればその値に置き換える。書かれていなければ false。
+   */
+  static applyHealLocations(text: string, heal: HealLocation[], path: string | null = null): boolean {
+    const o = parseJsonObject(text, path);
+    return readHealLocations(o, heal, path);
   }
 
   /** 読む。書かれていない表はベース ROM の値。形式が不正なら ProjectFormatError。 */
@@ -110,10 +120,7 @@ export class RegionMapJson {
       checkId(e, i, "FlyDestinations", path);
       s.fly[i] = { bank: int(e, "Bank", 0, 255, path), map: int(e, "Map", 0, 255, path), heal: int(e, "HealLocation", 0, 255, path) };
     });
-    entries(o, "HealLocations", HEAL_LOCATION_COUNT, path)?.forEach((e, i) => {
-      if (readInt(e, "Index", path) !== i + 1) throw new ProjectFormatError(`HealLocations の ${i + 1} 番目の Index が違います`, path);
-      s.heal[i] = { bank: int(e, "Bank", 0, 255, path), map: int(e, "Map", 0, 255, path), x: int(e, "X", -0x8000, 0x7fff, path), y: int(e, "Y", -0x8000, 0x7fff, path) };
-    });
+    readHealLocations(o, s.heal, path);
     for (const [key, list] of [
       ["MapVisitFlags", s.mapFlags],
       ["DungeonVisitFlags", s.dungeonFlags],
@@ -140,6 +147,22 @@ function id(index: number): string {
 
 function flagList(flags: number[]): BochiJsonValue[] {
   return flags.map((f, i) => ({ Id: id(i), Flag: f === 0xffff ? null : "0x" + hex(f, 4) }));
+}
+
+/** HealLocations を `heal`（ベース ROM の値）へ重ねる。書かれていなければ false。 */
+function readHealLocations(o: JsonRecord, heal: HealLocation[], path: string | null): boolean {
+  const list = entries(o, "HealLocations", HEAL_LOCATION_COUNT, path);
+  list?.forEach((e, i) => {
+    if (readInt(e, "Index", path) !== i + 1) throw new ProjectFormatError(`HealLocations の ${i + 1} 番目の Index が違います`, path);
+    heal[i] = {
+      bank: int(e, "Bank", 0, 255, path),
+      map: int(e, "Map", 0, 255, path),
+      x: int(e, "X", -0x8000, 0x7fff, path),
+      y: int(e, "Y", -0x8000, 0x7fff, path),
+      unknown: e["Unknown"] === undefined ? heal[i]!.unknown : int(e, "Unknown", 0, 0xffff, path),
+    };
+  });
+  return list !== null;
 }
 
 function same(a: unknown, b: unknown): boolean {

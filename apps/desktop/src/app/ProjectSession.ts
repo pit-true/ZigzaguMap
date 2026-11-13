@@ -125,7 +125,12 @@ export class ProjectSession {
 
   /** タウンマップを読む（2 回目以降は同じものを返す）。maps\regionmap.json があれば重ねる。 */
   async openRegionMap(): Promise<RegionMapProject> {
-    this.regionMapValue ??= await RegionMapProject.open(this.project.rom, this.project.game.code, this.fs.root ? this.fs : null);
+    this.regionMapValue ??= await RegionMapProject.open(
+      this.project.rom,
+      this.project.game.code,
+      this.fs.root ? this.fs : null,
+      this.project.editorContext().flyPositions,
+    );
     return this.regionMapValue;
   }
 
@@ -175,7 +180,7 @@ export class ProjectSession {
 
   /** タウンマップに未出力の変更があるか。 */
   isRegionMapModified(): boolean {
-    return this.regionMapValue?.isModified() ?? false;
+    return this.regionMapValue?.isModified() ?? this.project.isFlyPositionsModified();
   }
 
   /** 未出力の変更があるマップ（バンク・マップの順）。 */
@@ -191,8 +196,10 @@ export class ProjectSession {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
     const result = await this.project.save();
-    if (!this.regionMapValue) return result;
-    const region = await this.regionMapValue.save(this.fs);
+    // フライトポジションは mapsegionmap.json の HealLocations に書くので、タウンマップを開いていなくても読んで書く。
+    if (!this.regionMapValue && !this.project.isFlyPositionsModified()) return result;
+    const region = await (await this.openRegionMap()).save(this.fs);
+    this.project.markFlyPositionsSaved();
     return { written: [...result.written, ...region.written], removed: [...result.removed, ...region.removed] };
   }
 
