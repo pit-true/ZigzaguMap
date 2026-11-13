@@ -83,7 +83,15 @@ pub fn run() {
             } else {
                 builder = builder.center();
             }
-            builder.build()?;
+            let placement = if args.automation.is_none() { files::saved_window_placement(app.handle()) } else { None };
+            if placement.is_some() {
+                builder = builder.visible(false);
+            }
+            let window = builder.build()?;
+            if let Some(p) = placement {
+                files::apply_window_placement(&window, &p);
+                let _ = window.show();
+            }
             automation::start(app.handle().clone(), app.state::<Arc<Automation>>().inner().clone());
             Ok(())
         })

@@ -27,6 +27,7 @@ import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
+import { keepWindowPlacement } from "./WindowPlacementKeeper";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -54,6 +55,8 @@ export class App implements ActionTarget {
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
   private closing = false;
+  /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
+  automation = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -136,7 +139,9 @@ export class App implements ActionTarget {
       else await this.state.settings.flush();
     });
     const args = await invoke<StartupArgs>("startup_args");
+    this.automation = args.automation !== null;
     if (args.automation) await startAutomation(this);
+    else await keepWindowPlacement(this.state.settings);
     if (args.rom) await this.openSession(args.rom, args.project);
   }
 
