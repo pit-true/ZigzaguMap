@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod project_fs;
 mod system;
+mod windows;
 
 use std::sync::Arc;
 
@@ -57,7 +58,7 @@ fn startup_args(args: State<'_, StartupArgs>) -> StartupArgs {
 }
 
 /// 自動操作で起動したときの WebView2 の引数（画面外・非アクティブでも描画を止めない）。
-const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
+pub(crate) const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
      --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -125,6 +126,7 @@ pub fn run() {
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
+            windows::open_tool_window,
         ])
         .run(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");
