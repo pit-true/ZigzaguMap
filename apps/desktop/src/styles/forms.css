@@ -1,0 +1,77 @@
+/* イベント・野生・ヘッダーのタブの欄。 */
+.side-panel {
+  width: 190px;
+  flex: none;
+  overflow: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tab-page.form-page {
+  overflow: auto;
+  padding: 8px;
+  display: block;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.field-table {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 5px 8px;
+  align-items: center;
+}
+
+input[readonly],
+.readonly-select {
+  height: 19px;
+  padding: 0 3px;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+  color: var(--text);
+  min-width: 0;
+}
+
+select {
+  height: 21px;
+}
+
+.group-box {
+  border: 1px solid #d5dfe5;
+  border-radius: 3px;
+  margin: 0 0 8px;
+  padding: 6px 12px 10px;
+  max-width: 465px;
+}
+
+.group-box legend {
+  padding: 0 2px;
+}
+
+.group-label {
+  margin: 8px 0 2px;
+}
+
+.wild-table {
+  max-width: 340px;
+}
+
+.wild-grid {
+  display: grid;
+  grid-template-columns: 80px 30px 30px 1fr;
+  gap: 5px 2px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.note {
+  color: var(--gray-text);
+  margin: 8px 0;
+}

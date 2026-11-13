@@ -1,0 +1,33 @@
+/* ステータスバー（2 欄、高さ 19px）。 */
+.status-bar {
+  height: 19px;
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 1px 0 0;
+}
+
+.status-panel {
+  line-height: 16px;
+  padding: 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--shadow);
+  border-right-color: var(--highlight);
+  border-bottom-color: var(--highlight);
+}
+
+.status-left {
+  width: 355px;
+  flex: none;
+  white-space: pre;
+}
+
+.status-right {
+  flex: 1;
+}
+
+.status-left.error {
+  color: #c00000;
+}

@@ -1,0 +1,50 @@
+/* 中央のタブ（TTabbedNotebook）。 */
+.tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.tab-strip {
+  display: flex;
+  height: 21px;
+  flex: none;
+  padding: 2px 2px 0;
+  align-items: flex-end;
+}
+
+.tab-head {
+  height: 18px;
+  padding: 0 5px;
+  line-height: 16px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--face);
+  margin-right: -1px;
+}
+
+.tab-head.selected {
+  height: 20px;
+  background: var(--window);
+  position: relative;
+  z-index: 1;
+  margin-bottom: -1px;
+  padding-bottom: 1px;
+}
+
+.tab-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--face);
+}
+
+.tab-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}

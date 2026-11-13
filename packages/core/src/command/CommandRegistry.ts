@@ -1,6 +1,9 @@
 import type { Command, CommandRecord } from "./Command.js";
 import { PlaceBlockCommand } from "./commands/PlaceBlockCommand.js";
 import { PlaceMovementCommand } from "./commands/PlaceMovementCommand.js";
+import { PaintBlocksCommand } from "./commands/PaintBlocksCommand.js";
+import { PaintBorderCommand } from "./commands/PaintBorderCommand.js";
+import { PaintMovementCommand } from "./commands/PaintMovementCommand.js";
 
 /** JSON の引数からコマンドを作る関数。 */
 export type CommandFactory = (args: Record<string, unknown>) => Command;
@@ -32,5 +35,8 @@ export class CommandRegistry {
 export function createDefaultRegistry(): CommandRegistry {
   return new CommandRegistry()
     .register(PlaceBlockCommand.NAME, PlaceBlockCommand.fromJson)
-    .register(PlaceMovementCommand.NAME, PlaceMovementCommand.fromJson);
+    .register(PlaceMovementCommand.NAME, PlaceMovementCommand.fromJson)
+    .register(PaintBlocksCommand.NAME, PaintBlocksCommand.fromJson)
+    .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
+    .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
 }
