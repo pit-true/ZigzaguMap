@@ -516,6 +516,8 @@ scripts\build.cmd clippy   # cargo clippy（Rust の lint）
 | 待機時メモリ（WebView2 込み） | 150MB 以下 | `scripts\measure-memory.ps1` の専用ワーキングセットの合計 |
 | 配布物 | 10MB 以下 | `zigzagumap.exe` の大きさ |
 
+Phase1 の終わり（2026-11-14、素の BPRJ）に測った値: 起動からマップ表示まで 中央値 750ms（5 回の最大 767ms）、マップの切り替え 中央値 27ms（50 回の最大 58ms）、メモリ（専用ワーキングセットの合計）は起動直後 75MB・ROM を開いた後 105MB・マップを 10 枚切り替えた後 114MB・ブロックエディタを開いた後 146MB・閉じた後 116MB、exe 3.6MB です。
+
 ### 起動とマップ切り替えの時間
 
 `scripts/measure-startup.mjs` で測ります。毎回、一時フォルダの `--profile` に前回のマップ（3.0）を覚えた設定を置き、`zigzagumap.exe --automation <ポート> --profile <一時フォルダ> <ROM>` で起動して（画面外・非アクティブ。通常の設定には触れない）、exe を起動してからマップを描き終えるまで（画面側の記録 `mapShown`）を測ります。続けてマップを 10 枚切り替え、自動操作の `selectMap` の返事の `switchMs`（読み込み・描画・一覧の更新まで）を集めます。
