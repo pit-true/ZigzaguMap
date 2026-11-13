@@ -3,6 +3,7 @@ import { ja } from "../i18n/ja";
 import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
 import { FR_TILESET_GROUPS, FR_TILESET_PLAIN_GROUP, tilesetGroupOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
+import type { MapListSource } from "./Settings";
 
 /** マップ一覧の 1 項目。`mapId` があればマップ、`children` があればグループ。 */
 export interface TreeNode {
@@ -26,13 +27,14 @@ export const HEADER_ROOT_KEY = "h";
 /**
  * マップ一覧を作る。根は AdvanceMap と同じく「ヘッダー」「iniファイル」「マップファイル」の 3 つ。
  * 「ヘッダー」の下は並べ替えの種類でグループを作る。
+ * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」だけ、「INIの表示」なら「iniファイル」だけを出す。
  */
-export function buildMapTree(catalog: MapCatalog, sortMode: number): TreeNode[] {
-  return [
-    { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) },
-    { key: "i", label: ja.rootIni, children: iniGroups(catalog) },
-    { key: "f", label: ja.rootMapFiles, children: [] },
-  ];
+export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both"): TreeNode[] {
+  const header: TreeNode = { key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) };
+  if (source === "header") return [header];
+  const ini: TreeNode = { key: "i", label: ja.rootIni, children: iniGroups(catalog) };
+  if (source === "ini") return [ini];
+  return [header, ini, { key: "f", label: ja.rootMapFiles, children: [] }];
 }
 
 function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {

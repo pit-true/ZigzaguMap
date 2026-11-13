@@ -20,6 +20,7 @@ export interface ActionTarget {
   askOpacity(): Promise<void>;
   askRecentMax(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
+  createIniFromHeader(): Promise<void>;
 }
 
 /** 設定の切り替え（チェックつきの項目）と、対応する設定の名前。 */
@@ -79,6 +80,9 @@ export class Actions {
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
+    h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));
+    h.set("display.createIni", () => target.createIniFromHeader());
     h.set("image.map", () => target.saveImage("map"));
     h.set("image.mapEvent", () => target.saveImage("mapEvent"));
     h.set("image.palette", () => target.saveImage("palette"));
@@ -118,6 +122,8 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
+    if (id === "display.header") return this.state.settings.data.mapListSource === "header";
+    if (id === "display.ini") return this.state.settings.data.mapListSource === "ini";
     return FIXED_CHECKS.has(id);
   }
 }

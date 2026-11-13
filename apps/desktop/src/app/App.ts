@@ -23,7 +23,8 @@ import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { FileDialogs } from "./FileDialogs";
+import { FileDialogs, writeFile } from "./FileDialogs";
+import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
@@ -391,7 +392,9 @@ export class App implements ActionTarget {
   }
 
   changeSetting(patch: Partial<SettingsData>): void {
+    const rebuild = patch.mapListSource !== undefined && patch.mapListSource !== this.state.settings.data.mapListSource;
     this.state.settings.update(patch);
+    if (rebuild) this.rebuildTree();
     this.state.emit("view");
     this.state.emit("recent");
   }
@@ -431,6 +434,18 @@ export class App implements ActionTarget {
     if (path) this.state.setStatus(ja.imageSaved(path));
   }
 
+  /** 設定 > マップの表示設定 > ヘッダーから新たなIniファイルを作る。書き出し先のフォルダを選ばせる。 */
+  async createIniFromHeader(): Promise<void> {
+    const session = this.state.session;
+    if (!session) return;
+    const folder = await this.files.folder(ja.iniFolderTitle);
+    if (!folder) return;
+    const { main, maps } = buildNewIni(session.catalog);
+    await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
+    await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
+    this.state.setStatus(ja.iniCreated(folder));
+  }
+
   // ---- 内部 ----
 
   /** ファイル > 最近開いたもの（登録されている分だけ。最大数を超えた分は出さない）。 */
@@ -447,7 +462,7 @@ export class App implements ActionTarget {
   private rebuildTree(): void {
     const session = this.state.session;
     if (!session) return;
-    this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode));
+    this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode, this.state.settings.data.mapListSource));
     if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
   }
 

@@ -118,6 +118,8 @@ export const ja = {
   allFiles: "All files (*.*)",
   allFilesGerman: "Alle Dateien (*.*)",
   imageSaved: (path: string) => `画像を保存しました: ${path}`,
+  iniFolderTitle: "Iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
+  iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
   // [Toolbar]
   toolbar: {
