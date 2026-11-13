@@ -82,6 +82,31 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
   }
 }
 
+/**
+ * コンボボックス表示のグループ（AdvanceMap と同じく ini のグループ名。ini に無いマップは最後の「名称なし」にまとめる）。
+ * 各マップの文字列はヘッダーのマップ名。
+ */
+export function comboGroups(catalog: MapCatalog): TreeNode[] {
+  const listed = new Set<string>();
+  const out = FR_INI_GROUPS.flatMap(([name, ids], i): TreeNode[] => {
+    const children = ids.flatMap((text): TreeNode[] => {
+      const info = catalog.get(parseId(text));
+      if (!info) return [];
+      listed.add(text);
+      return [{ key: `c/${i}/${text}`, label: ja.mapItem(info.name ?? ja.noName, "", info.id.bank, info.id.map), mapId: info.id }];
+    });
+    return children.length > 0 ? [{ key: `c/${i}`, label: name, children }] : [];
+  });
+  const rest = catalog.maps.filter((m) => !listed.has(`${m.id.bank}.${m.id.map}`));
+  if (rest.length > 0) out.push(group("c/rest", ja.noName, rest, () => ""));
+  return out;
+}
+
+function parseId(text: string): MapId {
+  const [bank, map] = text.split(".").map(Number) as [number, number];
+  return { bank, map };
+}
+
 function iniGroups(catalog: MapCatalog): TreeNode[] {
   return FR_INI_GROUPS.map(([name, ids], i) => ({
     key: `i/${i}`,

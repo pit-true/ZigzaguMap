@@ -29,6 +29,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "zoom.palette": "zoomBlockPalette",
   "zoom.movementPalette": "zoomMovementPalette",
   "view.toolbar": "showToolbar",
+  "view.combobox": "comboBox",
   "opt.rememberLast": "rememberLast",
   "recent.showPath": "recentShowPath",
 };

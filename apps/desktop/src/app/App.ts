@@ -6,6 +6,7 @@ import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
+import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
 import { MenuBar } from "../ui/MenuBar";
 import { RomInfoPanel } from "../ui/RomInfoPanel";
@@ -22,7 +23,7 @@ import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { startAutomation } from "./Automation";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { buildMapTree } from "./MapTreeModel";
+import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
@@ -47,6 +48,8 @@ export class App implements ActionTarget {
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
   private readonly tree: MapTree;
+  private readonly combo: MapCombo;
+  private readonly splitter: Splitter;
   private readonly romInfo = new RomInfoPanel();
   private readonly statusBar = new StatusBar();
   private readonly left: HTMLElement;
@@ -81,6 +84,7 @@ export class App implements ActionTarget {
       sortMode: () => state.settings.data.sortMode,
     });
     this.tree = new MapTree({ openMap: (id) => void this.openMap(id), isDirty: (id) => state.isDirty(id) });
+    this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
     this.grosserBlock = new GrosserBlockWindow(state);
     const mapTab = new MapTab(state);
@@ -104,6 +108,7 @@ export class App implements ActionTarget {
     this.left.style.width = `${settings.data.leftWidth}px`;
     this.left.append(this.tree.element, this.romInfo.element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
+    this.splitter = splitter;
     this.hint = document.createElement("p");
     this.hint.className = "drop-hint";
     this.hint.textContent = ja.dropHint;
@@ -112,7 +117,7 @@ export class App implements ActionTarget {
     const body = document.createElement("main");
     body.className = "main-body";
     body.append(this.left, splitter.element, tabControl.element);
-    root.append(this.menu.element, this.toolbar.element, body, this.statusBar.element);
+    root.append(this.menu.element, this.toolbar.element, this.combo.element, body, this.statusBar.element);
 
     state.on("status", () => this.statusBar.render(state.status));
     state.on("tab", () => {
@@ -121,10 +126,10 @@ export class App implements ActionTarget {
       if (last && state.map) state.settings.update({ last: { ...last, tab: state.tab } });
     });
     state.on("dirty", () => this.tree.refreshMarks());
-    state.on("view", () => this.toolbar.setVisible(state.settings.data.showToolbar));
+    state.on("view", () => this.applyLayout());
     for (const topic of ["session", "map", "view"] as const) state.on(topic, () => this.toolbar.update());
     this.statusBar.render(state.status);
-    this.toolbar.setVisible(settings.data.showToolbar);
+    this.applyLayout();
     state.emit("view");
   }
 
@@ -254,6 +259,7 @@ export class App implements ActionTarget {
       state.mapImage = new MapImage(map.doc.grid, map.tiles);
       state.emit("map");
       this.tree.setOpened(id);
+      this.combo.setOpened(id);
       timings.mark("mapShown");
       timings.lastMapSwitchMs = performance.now() - start;
       state.setStatus(ja.statusMapLoaded(id.bank, id.map));
@@ -432,6 +438,21 @@ export class App implements ActionTarget {
     const session = this.state.session;
     if (!session) return;
     this.tree.show(buildMapTree(session.catalog, this.state.settings.data.sortMode));
+    if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
+  }
+
+  /** ツールバーの表示と、左の一覧かコンボボックスかの切り替え。 */
+  private applyLayout(): void {
+    const s = this.state.settings.data;
+    this.toolbar.setVisible(s.showToolbar);
+    const comboMode = s.comboBox;
+    if (comboMode && this.combo.element.hidden && this.state.session) {
+      this.combo.show(comboGroups(this.state.session.catalog));
+      this.combo.setOpened(this.state.map?.id ?? null);
+    }
+    this.combo.setVisible(comboMode);
+    this.left.hidden = comboMode;
+    this.splitter.element.hidden = comboMode;
   }
 
   private async setTitle(mapName: string | null): Promise<void> {
