@@ -92,7 +92,8 @@ export class RomMapSource {
       mapScripts:
         header.scripts === 0
           ? null
-          : this.scripts.read(this.toOffset(header.scripts, "マップスクリプト")).map((e) => (e.table ? { ...e, pointer: 0 } : e)),
+          : // 条件表のポインタ（表の位置）も残す。場所の設定で表の位置として見せるだけで、出力では 0 にして表を書き直す
+            this.scripts.read(this.toOffset(header.scripts, "マップスクリプト")),
       wild: this.wildTable.readEncounters(id.bank, id.map),
       itemBalls: [],
     });

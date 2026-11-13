@@ -791,7 +791,7 @@ class ZigzaguDriver(Driver):
         for w in self._windows():
             req = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
             try:
-                ds = self.call(req)["dialogs"]
+                ds = self.call(req, timeout=10)["dialogs"]
             except Exception:  # noqa: BLE001
                 ds = []
             for d in ds:
@@ -806,10 +806,10 @@ class ZigzaguDriver(Driver):
         for w in self._windows():
             base = {"cmd": "dialogs"} if w == "main" else {"cmd": "dialogs", "window": w}
             try:
-                if not self.call(base)["dialogs"]:
+                if not self.call(base, timeout=10)["dialogs"]:
                     continue
-            except AppError:
-                continue
+            except (AppError, OSError):
+                continue  # 閉じかけのウィンドウ（返事が来ない）は飛ばす
             req = {"cmd": "dialog", "press": role or button}
             if text is not None:
                 req["input"] = str(text)

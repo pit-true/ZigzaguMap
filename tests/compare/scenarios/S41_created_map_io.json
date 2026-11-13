@@ -13,7 +13,7 @@
     {"op": "expectDialog", "present": true},
     {"op": "answerFile", "path": "town.map"},
     {"op": "expectDialog", "present": false},
-    {"op": "selectMap", "bank": 3, "map": 1},
+    {"op": "selectMap", "bank": 3, "map": 1, "savePrompt": "はい", "expectedDifference": "SPEC（README「AdvanceMap と違う点」）: 未出力のまま別のマップへ移るとき、ZigzaguMap は確認を出さない。AdvanceMap は「変更を保存しますか?」を出すので「はい」（ROM へ保存）で答える（ZigzaguMap は変更を持ったまま切り替える）"},
     {"op": "menu", "key": ["Menue.11", "Menue.114", "Menue.1141"]},
     {"op": "expectDialog", "present": true},
     {"op": "answerFile", "path": "town.map"},
