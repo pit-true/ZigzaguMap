@@ -75,6 +75,11 @@ export class BlockPaletteView {
     this.redraw();
   }
 
+  /** 同じ組のまま、ブロックの絵や数が変わったときに描き直す。 */
+  refresh(): void {
+    this.redraw();
+  }
+
   /** 1 行の数、拡大、グリッドを設定する。 */
   configure(width: number, zoom: number, grid: boolean): void {
     if (width === this.width && zoom === this.zoom && grid === this.grid) return;

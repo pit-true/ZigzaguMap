@@ -314,6 +314,7 @@ export class App implements ActionTarget {
 
   /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
   private onCommand(e: CommandEvent): void {
+    if (this.onTilesetCommand(e)) return;
     const args = e.command?.args as { bank?: unknown; map?: unknown } | undefined;
     if (typeof args?.bank !== "number" || typeof args.map !== "number") return;
     const id = { bank: args.bank, map: args.map };
@@ -325,6 +326,19 @@ export class App implements ActionTarget {
     this.pendingDirty.set(`${id.bank}.${id.map}`, id);
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
     this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
+  }
+
+  /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */
+  private onTilesetCommand(e: CommandEvent): boolean {
+    const args = e.command?.args as { tileset?: unknown; secondary?: unknown } | undefined;
+    if (typeof args?.tileset !== "number" || typeof args.secondary !== "boolean") return false;
+    const changed = this.state.session?.refreshTilesets({ pointer: args.tileset, secondary: args.secondary }) ?? [];
+    if (this.state.map && changed.includes(this.state.map.tiles)) {
+      this.state.mapImage?.redrawAll();
+      this.state.emit("cells");
+      this.state.emit("tiles");
+    }
+    return true;
   }
 
   /** 未出力の印を付け直す。 */
@@ -373,7 +387,7 @@ export class App implements ActionTarget {
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
   private async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
-    if (!session || session.modifiedMaps().length === 0) return true;
+    if (!session || (session.modifiedMaps().length === 0 && !session.hasUnsavedChanges())) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
