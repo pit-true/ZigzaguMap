@@ -29,6 +29,7 @@ export function buildNewIni(catalog: MapCatalog): { main: Uint8Array; maps: Uint
   return { main: encodeShiftJis(lines(main)), maps: encodeShiftJis(lines(maps)) };
 }
 
+/** 1 行ずつ CRLF を付ける。AdvanceMap と同じく、全角の空白は半角に、中黒（0xAF）は半角の「･」にする。 */
 function lines(list: readonly string[]): string {
-  return list.map((l) => `${l}\r\n`).join("");
+  return list.map((l) => `${l.replace(/　/g, " ").replace(/・/g, "･")}\r\n`).join("");
 }
