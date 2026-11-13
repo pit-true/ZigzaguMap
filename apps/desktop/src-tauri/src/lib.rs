@@ -119,6 +119,7 @@ pub fn run() {
             project_fs::project_set_root,
             project_fs::fs_read_text,
             project_fs::fs_write_text,
+            project_fs::fs_write_bytes,
             project_fs::fs_read_bytes,
             project_fs::fs_exists,
             project_fs::fs_remove,

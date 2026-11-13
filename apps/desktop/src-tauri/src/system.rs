@@ -164,7 +164,7 @@ fn parent_of(path: &str) -> String {
 }
 
 /// `%XX` を戻す（ヘッダーに日本語のパスを載せるため、画面側で encodeURIComponent している）。
-fn percent_decode(s: &str) -> String {
+pub(crate) fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
