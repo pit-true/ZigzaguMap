@@ -215,6 +215,7 @@ function describe(app: App): unknown {
     status: s.status,
     dialogs: describeDialogs(),
     settings: s.settings.data,
+    profile: app.profileDir,
     title: document.title,
     timings: timings.toJson(),
   };

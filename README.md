@@ -8,6 +8,7 @@ CFRU-JP 用のマップエディタです。AdvanceMap 風の操作で、ファ�
 - **プロジェクトを開く**: ファイル > CFRU-JPのフォルダを開く で CFRU-JP のフォルダを選びます。ベース ROM は、開いている ROM か、以前そのフォルダと組で開いた ROM を使い、どちらも無ければ選ぶよう求めます。フォルダのドラッグ＆ドロップでも開けます。`maps\BB\MM.json` があるマップはそちらを読みます。
 - **最近開いたもの**: ファイルメニューの下に出ます（ROM とフォルダの組で覚えます）。個人設定は `%APPDATA%\io.github.pit-true.zigzagumap\settings.json` に保存します。
 - 起動引数で開くこともできます: `zigzagumap.exe [--project <フォルダ>] <ROM>`。「最後に選択したものを覚える」がオンなら、前回のマップとタブを開きます。
+- `--profile <フォルダ>` を付けると、個人設定（`settings.json`）と WebView2 のデータ（`EBWebView`）をそのフォルダに置きます（無ければ作ります）。通常の個人設定には触れません。
 - **マップを開く**: 左の一覧の項目をダブルクリックか Enter（AdvanceMap と同じく、選ぶだけでは開きません）。ツール > マップを指定して開く（Ctrl+M）、以前開いたマップを開く（Alt+BkSp）も使えます。
 - **元に戻す・やり直す**: Ctrl+Z / Ctrl+Y（Ctrl+Shift+Z も可）。AdvanceMap の「オブジェクトの表示」の Ctrl+Z は、アンドゥに使うため外しています。
 - **出力**: ファイル > 出力（Ctrl+S）。素の ROM だけを開いているときは、最初に出力先のフォルダを選びます。ファイル > 出力先を指定して出力 で別のフォルダへ書くこともできます。ファイル > バックアップの作成 も「出力先を指定して出力」と同じです。
@@ -234,7 +235,7 @@ AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.
 
 ## 設定
 
-設定メニューの項目は、押すとすぐ個人設定（`%APPDATA%\io.github.pit-true.zigzagumap\settings.json`）に保存します。ウィンドウの位置と大きさ（最大化を含む）も覚え、次の起動で元に戻します。
+設定メニューの項目は、押すとすぐ個人設定（`%APPDATA%\io.github.pit-true.zigzagumap\settings.json`。`--profile` を付けたときはそのフォルダ）に保存します。ウィンドウの位置と大きさ（最大化を含む）も覚え、次の起動で元に戻します。
 
 | 項目 | ZigzaguMap での動作 |
 |---|---|
@@ -377,12 +378,24 @@ scripts\build.cmd check    # cargo check だけ
 
 ## 自動操作の入口（テスト用）
 
-開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。リリースの exe に付けたときは、操作を奪わないようウィンドウを画面外に出し、アクティブにしません。音も出しません（WebView2 に `--mute-audio` を付け、Windows 標準のメッセージボックスは出さない。画面内のダイアログは音を鳴らさない）。
+開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
+
+- リリースの exe に付けたときは、操作を奪わないよう、メインも別ウィンドウも作った時点から画面外に置き、アクティブにせず、タスクバーにも出しません（見えない状態で作ってから画面外へ動かして表示する）。音も出しません（WebView2 に `--mute-audio` を付け、Windows 標準のメッセージボックスは出さない。画面内のダイアログは音を鳴らさない）。
+- `--automation` を付けたときは、個人設定と WebView2 のデータを通常の場所（`%APPDATA%\io.github.pit-true.zigzagumap\`、`%LOCALAPPDATA%\io.github.pit-true.zigzagumap\EBWebView`）に置きません。`--profile <フォルダ>` を付ければそのフォルダ、付けなければ一時フォルダ（`%TEMP%\zigzagumap-profile-<プロセスID>`。終了時に消す）を使います。`state` の `profile` が使っているフォルダです。
+- 確認作業でも比較テストでも、**`--profile` を必ず付けて**起動してください（設定を残したいときは同じフォルダを渡す）。
+- 開発ビルドの既定のポート（17890）で起動したときは、`--automation` を付けていないので通常の個人設定を使います。
 
 ```sh
-zigzagumap.exe --automation 17891
+zigzagumap.exe --automation 17891 --profile C:\temp\zzm-profile
 node scripts/automation-client.mjs 17891 '{"cmd":"state"}'
 node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
+```
+
+確かめるスクリプト（`tests/automation`。ポート 17990〜17999 を使い、自分が起動したプロセスだけを終わらせる）:
+
+```sh
+python tests/automation/profile_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>    # 通常の設定と WebView2 のデータが 1 バイトも変わらないこと
+python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>  # どのウィンドウも画面内に出ず、前面にならないこと
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -443,7 +456,7 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 
 AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の状態（マップ表示領域の画像、入力欄・一覧の値、ダイアログの有無）を比べます（`tests/compare`）。出力まで進めることは確かめますが、出力物の中身は比べません。Windows だけで動きます。
 
-- AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
+- AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
 
 ### 準備

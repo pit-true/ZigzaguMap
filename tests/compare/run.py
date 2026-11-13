@@ -15,6 +15,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -100,6 +101,8 @@ def main():
         meta = {"started": started.isoformat(timespec="seconds"), "exe": str(cfg.zigzaguExe), "commit": commit,
                 "onlyZigzagu": a.only_zigzagu, "keepRuns": cfg.keepRuns, "deleteCandidates": old_runs(cfg)}
         tot = report.write(run_dir, results, meta)
+        # ZigzaguMap のプロファイル（設定と WebView2 のデータ）は結果に残さない
+        shutil.rmtree(run_dir / "_zigzagu-profile", ignore_errors=True)
         log(f"合計: {tot}")
         log(f"まとめ: {run_dir / 'summary.md'}")
         logf.close()
