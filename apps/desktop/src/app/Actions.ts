@@ -83,6 +83,9 @@ export class Actions {
     // バックアップの作成は「出力先を指定して出力」に読み替える。
     h.set("file.backup", () => target.exportMaps(true));
     h.set("lang.ja", () => undefined);
+    h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
+    h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
+    h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
     h.set("view.paletteWidth", () => target.askPaletteWidth());
     h.set("view.opacity", () => target.askOpacity());
     h.set("recent.max", () => target.askRecentMax());

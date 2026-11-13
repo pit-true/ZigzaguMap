@@ -93,6 +93,31 @@ export const ja = {
   about: "Advance Mapについて",
   aboutApp: "ZigzaguMapについて",
   eula: "エンドユーザー規約",
+  /** ZigzaguMapについて（[AboutBox] の並び）。 */
+  help: {
+    aboutTitle: "About",
+    credits: "クレジット:",
+    sections: [
+      [
+        "プログラミング:",
+        [
+          ["名前:", "pit-true"],
+          ["ウェブサイト:", "https://github.com/pit-true/ZigzaguMap"],
+          ["コメント:", "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\ の JSON に出力します。"],
+        ],
+      ],
+      [
+        "元にしたソフト:",
+        [
+          ["名前:", "Advance Map 1.92 (LU-HO Poké)"],
+          ["翻訳:", "Japanese 1.0.3_part_jap (Nanashi/Satry/Ealgrete/Louxies)"],
+        ],
+      ],
+    ] as readonly (readonly [string, readonly (readonly [string, string])[]])[],
+    version: (v: string) => `ZigzaguMap バージョン: ${v}`,
+    license: "ライセンス: MIT",
+    copyright: "Copyright (c) 2026 pit-true",
+  },
 
   // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）
   saveAsTitle: "名前を付けて保存",

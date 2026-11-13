@@ -156,3 +156,106 @@
   border-top-width: 0;
   border-left-width: 0;
 }
+
+/* ヘルプの窓（About 446×483、規約 576×415 に寄せる）。 */
+.help-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.help-buttons button {
+  width: 105px;
+  height: 33px;
+}
+
+.about-window {
+  width: 446px;
+}
+
+.about-window .dialog-body {
+  padding: 0 8px 10px;
+}
+
+.about-band {
+  display: flex;
+  align-items: center;
+  height: 49px;
+  margin: 0 -8px 6px;
+  padding: 0 12px;
+  background: #000;
+  color: #fff;
+  font: bold 22px "Segoe UI", sans-serif;
+}
+
+.about-band span:last-child {
+  flex: 1;
+  text-align: center;
+}
+
+.about-icon svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+}
+
+.about-credits {
+  margin: 0;
+  padding: 4px 8px 10px;
+  border: 1px solid #a0a0a0;
+}
+
+.about-heading {
+  margin: 10px 0 6px;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.about-table {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 4px 6px;
+}
+
+.about-table span:first-child,
+.about-table span:nth-child(odd) {
+  text-align: right;
+}
+
+.about-link {
+  color: #0000ff;
+  text-decoration: underline;
+  user-select: text;
+}
+
+.about-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.about-copy {
+  margin-top: 10px;
+}
+
+.eula-window,
+.readme-window {
+  width: 576px;
+}
+
+.help-memo {
+  display: block;
+  width: 100%;
+  height: 300px;
+  resize: none;
+  background: #c8c8c8;
+  border: none;
+  font: 12px "MS UI Gothic", "Meiryo UI", sans-serif;
+  user-select: text;
+}
+
+.readme-window .help-memo {
+  height: 420px;
+  background: var(--window);
+  font-family: Consolas, "MS Gothic", monospace;
+}
