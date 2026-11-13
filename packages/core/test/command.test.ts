@@ -88,7 +88,7 @@ describe("CommandBus", () => {
 describe("CommandRegistry", () => {
   it("JSON の操作列を再生できる", () => {
     const registry = createDefaultRegistry();
-    expect(registry.names()).toEqual(["placeBlock", "placeMovement"]);
+    expect(registry.names()).toEqual(expect.arrayContaining(["placeBlock", "placeMovement"]));
     const grid = new BlockGrid(1, 1);
     const bus = new CommandBus(singleGridContext(grid));
     const script = JSON.parse(

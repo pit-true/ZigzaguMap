@@ -1,6 +1,7 @@
 import type { Command, CommandRecord } from "./Command.js";
 import { PlaceBlockCommand } from "./commands/PlaceBlockCommand.js";
 import { PlaceMovementCommand } from "./commands/PlaceMovementCommand.js";
+import { registerEditCommands } from "./editCommands.js";
 
 /** JSON の引数からコマンドを作る関数。 */
 export type CommandFactory = (args: Record<string, unknown>) => Command;
@@ -30,7 +31,8 @@ export class CommandRegistry {
 
 /** 組み込みのコマンドをすべて登録した表を作る。 */
 export function createDefaultRegistry(): CommandRegistry {
-  return new CommandRegistry()
+  const registry = new CommandRegistry()
     .register(PlaceBlockCommand.NAME, PlaceBlockCommand.fromJson)
     .register(PlaceMovementCommand.NAME, PlaceMovementCommand.fromJson);
+  return registerEditCommands(registry);
 }
