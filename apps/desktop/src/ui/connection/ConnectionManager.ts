@@ -14,7 +14,8 @@ import { askYesNo } from "../MessageBox";
 import { commit, watchCommands } from "../form/commit";
 import { button, combo, edit, label, panel, selectIndex, setEnabled, spin } from "../form/controls";
 import { DraftList, type DraftOps } from "../form/DraftList";
-import { readHex, readInt, toByte } from "../form/inputErrors";
+import { toByte } from "../form/inputErrors";
+import { checkOnInput, tryInteger } from "../form/integerInput";
 
 /** 矢印ボタン 1 つ（方向と、同じ方向の何番目か）。 */
 interface Arrow {
@@ -141,7 +142,11 @@ export class ConnectionManager {
       d.direction = this.direction.selectedIndex;
       this.showArrows();
     });
-    for (const el of [this.offset, this.bank, this.map, this.unknown]) el.addEventListener("change", () => this.store());
+    // AdvanceMap は 4 つとも入力のたびに読む（不明の欄は `$` を含めた文字のまま読む）。
+    for (const el of [this.offset, this.bank, this.map, this.unknown]) {
+      checkOnInput(el, "int");
+      el.addEventListener("change", () => this.store());
+    }
 
     state.on("map", () => this.reload(true));
     watchCommands(state, () => this.reload(false));
@@ -236,34 +241,33 @@ export class ConnectionManager {
     return items.filter((c) => c.direction === direction)[rank - 1] ?? null;
   }
 
-  /** 欄の値を下書きに入れる。読めない値ならエラーを出して false。 */
-  private store(): boolean {
+  /**
+   * 欄の値を下書きに入れる。読めない欄は（入力のときにエラーを出してあるので）黙って元の値のままにする。
+   * AdvanceMap は範囲を確かめず、書くときに型の大きさに切り詰める。
+   */
+  private store(): void {
     const c = this.current;
-    if (!c) return true;
-    const offset = readInt(this.offset.value);
-    if (offset === null) return false;
-    const bank = readInt(this.bank.value);
-    if (bank === null) return false;
-    const map = readInt(this.map.value);
-    if (map === null) return false;
-    const padding = readHex(this.unknown.value);
-    if (padding === null) return false;
-    // AdvanceMap は範囲を確かめず、書くときに型の大きさに切り詰める。
-    c.offset = offset | 0;
-    c.bank = toByte(bank);
-    c.map = toByte(map);
-    c.padding = padding & 0xffff;
-    return true;
+    if (!c) return;
+    const offset = tryInteger(this.offset.value, "int");
+    const bank = tryInteger(this.bank.value, "int");
+    const map = tryInteger(this.map.value, "int");
+    const padding = tryInteger(this.unknown.value, "int");
+    if (offset !== null) c.offset = offset | 0;
+    if (bank !== null) c.bank = toByte(bank);
+    if (map !== null) c.map = toByte(map);
+    if (padding !== null) c.padding = padding & 0xffff;
   }
 
   private select(index: number): void {
-    if (index < 0 || index >= this.count || !this.store()) return;
+    if (index < 0 || index >= this.count) return;
+    this.store();
     this.index = index;
     this.showCurrent();
   }
 
   private add(): void {
-    if (!this.draft || !this.store()) return;
+    if (!this.draft) return;
+    this.store();
     this.index = this.draft.add({ direction: 0, offset: 0, bank: 0, map: 0, padding: 0 });
     this.showCurrent();
   }
@@ -279,7 +283,8 @@ export class ConnectionManager {
   private save(): void {
     const map = this.state.map;
     const draft = this.draft;
-    if (!map || !draft || !this.store()) return;
+    if (!map || !draft) return;
+    this.store();
     const commands: Command[] = draft.plan(map.doc.connections ?? [], connectionOps(map.id));
     if (commit(this.state, commands)) this.reload(false);
   }

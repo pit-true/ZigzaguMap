@@ -1,15 +1,10 @@
-import {
-  MAP_HEADER_SIZE,
-  MAP_LAYOUT_SIZE,
-  ROM_BASE,
-  TILESET_HEADER_SIZE,
-  mapFooterCodec,
-  mapHeaderCodec,
-  type CfruProject,
-  type MapDocument,
-  type MapId,
-  type TilesetDocument,
-} from "@zigzagumap/core";
+import { MAP_HEADER_SIZE, MAP_LAYOUT_SIZE, TILESET_HEADER_SIZE } from "../map/constants.js";
+import { mapFooterCodec, mapHeaderCodec } from "../map/MapHeaderCodec.js";
+import type { MapId } from "../map/types.js";
+import type { MapDocument } from "../model/MapDocument.js";
+import { ROM_BASE } from "../rom/Rom.js";
+import type { TilesetDocument } from "../tileset/TilesetDocument.js";
+import type { CfruProject } from "./CfruProject.js";
 
 /** 高度なヘッダーのオフセット欄（ROM 先頭からの位置。ROM 上に無いものは null）。 */
 export interface MapLocations {

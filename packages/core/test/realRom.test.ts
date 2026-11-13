@@ -52,4 +52,17 @@ describe.skipIf(!romPath)("実 ROM（ZIGZAGU_TEST_ROM）", () => {
     }
     expect(colors.size).toBeGreaterThan(8);
   });
+
+  it("AdvanceMap と同じく、下層の色 0 はそのパレットの色 0 で塗り、上層は色 0 と同じ色を抜く", () => {
+    const { loader } = load();
+    const pixel = (bank: number, map: number, x: number, y: number) => {
+      const image = renderMap(loader.load({ bank, map }));
+      const o = (y * image.width + x) * 4;
+      return [image.data[o], image.data[o + 1], image.data[o + 2]];
+    };
+    // 1.1 の (4,21) の下端: 下層・上層とも色 0。下層のパレット 8 の色 0（水の色）になる。
+    expect(pixel(1, 1, 65, 351)).toEqual([74, 115, 173]);
+    // 0.0 の (0,7): 上層のパレット 10 の色 5 は色 0 と同じ黒なので抜け、下層が見える。
+    expect(pixel(0, 0, 8, 121)).not.toEqual([0, 0, 0]);
+  });
 });

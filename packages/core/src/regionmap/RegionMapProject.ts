@@ -1,5 +1,6 @@
 import { MAPS_DIR } from "../project/paths.js";
 import type { ProjectFs } from "../project/ProjectFs.js";
+import type { FlyPosition } from "../fly/types.js";
 import type { Rom } from "../rom/Rom.js";
 import type { RegionMapDocument } from "./RegionMapDocument.js";
 import type { RegionMapGraphics } from "./RegionMapGraphics.js";
@@ -29,11 +30,15 @@ export class RegionMapProject {
   }
 
   /** ベース ROM を読み、maps\regionmap.json があれば重ねる。`fs` が null なら ROM だけ。 */
-  static async open(rom: Rom, gameCode: string, fs: ProjectFs | null): Promise<RegionMapProject> {
+  static async open(rom: Rom, gameCode: string, fs: ProjectFs | null, flyPositions: FlyPosition[] | null = null): Promise<RegionMapProject> {
     const data = RegionMapReader.read(rom, gameCode);
     let doc = data.document.clone();
     if (fs && (await fs.exists(REGION_MAP_PATH))) doc = RegionMapJson.parse(await fs.readText(REGION_MAP_PATH), data.document, REGION_MAP_PATH);
-    return new RegionMapProject(data.document, doc, data.graphics, data.addresses);
+    const project = new RegionMapProject(data.document, doc, data.graphics, data.addresses);
+    // 飛び先の表は、イベントタブのフライトポジションの表（同じ ROM の表）とつなぐ。値はそちらを使い、
+    // ファイルの内容と違えば（つなぐ前に控えた内容と比べて）未出力の変更になる。
+    if (flyPositions) doc.linkHealLocations(flyPositions);
+    return project;
   }
 
   /** 書き出してから変わったか。 */

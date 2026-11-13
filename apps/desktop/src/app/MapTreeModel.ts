@@ -1,7 +1,7 @@
 import type { MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
-import { FR_TILESET_GROUPS, FR_TILESET_PLAIN_GROUP, tilesetGroupOf } from "./data/frTilesets";
+import { FR_TILESET_GROUPS, tilesetGroupOf, tilesetSuffixOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
 import type { MapFileEntry, MapListSource } from "./Settings";
 
@@ -77,12 +77,13 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
       const byRegion = new Map<number, MapInfo[]>();
       for (const m of maps) push(byRegion, m.region, m);
       const out = catalog.regionNames.map(([region, name]) =>
-        group(`h/r${region}`, name, byRegion.get(region) ?? [], (m) => (withSuffix ? suffixOf(m) : "")),
+        group(`h/r${region}`, listText(name), byRegion.get(region) ?? [], (m) => (withSuffix ? suffixOf(m) : "")),
       );
-      // 名前表の範囲外の地名番号のマップは最後にまとめる。
+      // 名前表の範囲外の地名番号のマップは最後の名前の無いグループにまとめる。
+      // AdvanceMap はこのグループを中身が無くても出す（「タイルセットのグループで並び替え」の最後の空のグループと同じ）。
       const known = new Set(catalog.regionNames.map(([r]) => r));
       const rest = maps.filter((m) => !known.has(m.region));
-      if (rest.length > 0) out.push(group("h/r?", ja.noName, rest, (m) => (withSuffix ? suffixOf(m) : "")));
+      out.push(group("h/r?", "", rest, (m) => (withSuffix ? suffixOf(m) : "")));
       return out;
     }
   }
@@ -133,7 +134,7 @@ function group(key: string, label: string, list: readonly MapInfo[], suffix: (m:
     label,
     children: sorted.map((m) => ({
       key: `${key}/${m.id.bank}.${m.id.map}`,
-      label: ja.mapItem(m.name ?? ja.noName, suffix(m), m.id.bank, m.id.map),
+      label: ja.mapItem(m.name === null ? ja.noName : listText(m.name), suffix(m), m.id.bank, m.id.map),
       mapId: m.id,
     })),
   };
@@ -146,8 +147,15 @@ export function mapLabel(m: MapInfo, sortMode: number): string {
 
 /** 「マップとタイルセットで並び替え」の補足（建物/施設、ジム など。通常のマップは無し）。 */
 function suffixOf(m: MapInfo): string {
-  const g = tilesetGroupOf(m.primaryNumber, m.secondaryNumber);
-  return g === null || g === FR_TILESET_PLAIN_GROUP ? "" : g;
+  return tilesetSuffixOf(m.secondaryNumber);
+}
+
+/**
+ * 一覧（と題名）に出すマップ名。AdvanceMap は名前表の空白を半角の空白、中黒を半角の「･」で出すので合わせる
+ * （「19ばん すいどう」「サント･アンヌごう」）。
+ */
+export function listText(name: string): string {
+  return name.replace(/　/g, " ").replace(/・/g, "･");
 }
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {

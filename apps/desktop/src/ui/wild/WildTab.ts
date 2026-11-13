@@ -3,7 +3,8 @@ import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { commit, watchCommands } from "../form/commit";
 import { autoId, button, combo, edit, label, panel, place } from "../form/controls";
-import { clampByte, readInt, toByte, tryInt } from "../form/inputErrors";
+import { clampByte, toByte } from "../form/inputErrors";
+import { checkOnInput, tryInteger } from "../form/integerInput";
 import { FR_SPECIES_COUNT, SpeciesOptions } from "./SpeciesNames";
 
 /** 1 枠の欄。 */
@@ -72,6 +73,9 @@ export class WildTab {
       const y = 104 + i * 24;
       const min = edit(`wild.min.${i + 1}`, 96, y, 25);
       const max = edit(`wild.max.${i + 1}`, 120, y, 25);
+      // AdvanceMap は Lv の欄も入力のたびに読む（読めなければエラー。範囲は確かめない）。
+      checkOnInput(min, "int");
+      checkOnInput(max, "int");
       const species = combo(`wild.species.${i + 1}`, [], 144, y, 97);
       this.rows.push({ parts: [label(w.slot(i + 1), 8, y + 2), min, max, species], min, max, species });
     }
@@ -82,13 +86,10 @@ export class WildTab {
     this.element.append(this.frame, this.sorry);
 
     this.type.addEventListener("change", () => this.showArea());
-    this.rate.addEventListener("input", () => {
-      const n = tryInt(this.rate.value);
-      if (n !== null) this.showRate(clampByte(n), false);
-    });
+    // 入力のたびに読んでトラックバーと百分率を合わせる（読めなければエラー）。確定したら丸めた値を出し直す。
+    checkOnInput(this.rate, "int", (n) => this.showRate(clampByte(n), false));
     this.rate.addEventListener("change", () => {
-      if (this.rate.value === "") return;
-      const n = readInt(this.rate.value);
+      const n = tryInteger(this.rate.value, "int");
       if (n !== null) this.showRate(clampByte(n), true);
     });
     this.bar.addEventListener("input", () => this.showRate(Number(this.bar.value), true));
@@ -171,24 +172,21 @@ export class WildTab {
     if (!map || !area || !wild) return;
     const base = { bank: map.id.bank, map: map.id.map, time: wild.time, area: this.type.selectedIndex };
     const commands: Command[] = [];
-    if (this.rate.value !== "") {
-      const n = readInt(this.rate.value);
-      if (n === null) return;
-      const rate = clampByte(n);
+    // 読めない欄は入力のときにエラーを出してあるので、元の値のままにする。
+    const rateValue = tryInteger(this.rate.value, "int");
+    if (rateValue !== null) {
+      const rate = clampByte(rateValue);
       if (rate !== area.rate) commands.push(new SetWildRateCommand({ ...base, rate }));
     }
     for (let i = 0; i < area.slots.length && i < this.rows.length; i++) {
       const slot = area.slots[i]!;
       const row = this.rows[i]!;
-      const level = (input: HTMLInputElement, old: number): number | null => {
-        if (input.value.trim() === "") return old;
-        const n = readInt(input.value);
-        return n === null ? null : toByte(n);
+      const level = (input: HTMLInputElement, old: number): number => {
+        const n = tryInteger(input.value, "int");
+        return n === null ? old : toByte(n);
       };
       const minLevel = level(row.min, slot.minLevel);
-      if (minLevel === null) return;
       const maxLevel = level(row.max, slot.maxLevel);
-      if (maxLevel === null) return;
       const species = row.species.selectedIndex < 0 ? slot.species : row.species.selectedIndex;
       if (minLevel !== slot.minLevel || maxLevel !== slot.maxLevel || species !== slot.species) {
         commands.push(new SetWildSlotCommand({ ...base, slot: i, minLevel, maxLevel, species }));

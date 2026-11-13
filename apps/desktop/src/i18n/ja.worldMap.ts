@@ -1,49 +1,54 @@
+import { ini } from "./ini";
+
+const W = ini.WorldMapEditor;
+
 /**
- * ワールドマップエディターの文言。Japanese.ini の [WorldMapEditor] の表記をそのまま使う（コメントの番号は節の中の番号）。
+ * ワールドマップエディタの文言。改訂版 Japanese.ini の [WorldMapEditor] の値を使う。
  * ROM へは書き込まないので、「保存」は編集中の状態への確定に読み替える（ファイルへの出力は Ctrl+S の「出力」）。
  */
 export const jaWorldMap = {
-  title: "ワールドマップエディター", // Titel
-  posX: "縦座標", // 10（AdvanceMap では横の値の前に出る）
-  posY: "横座標", // 11
-  showEditLayer: "エディットレイヤーの表示", // 12
-  showFlyFlags: "フライトポジション/人IDの表示", // 13
-  readTopLayer: "トップレイヤーの座標を読み込む", // 14
-  changeRoutine: "ルーチンの変更", // 15
-  reload: "再読み込み", // 16
-  saveMap: "マップの保存", // 17
+  title: W.Title,
+  posX: W["10"],
+  posY: W["11"],
+  showEditLayer: W["12"],
+  showFlyFlags: W["13"],
+  readTopLayer: W["14"],
+  changeRoutine: W["15"],
+  reload: W["16"],
+  saveMap: W["17"],
 
-  mapValue: "マップ:", // 20
-  nameHeader: "名前のヘッダー:", // 21
-  nameOffset: "名前のオフセット:", // 22
-  name: "名前:", // 23
-  position: "座標(X/Y) :", // 24
-  size: "幅/高さ:", // 25
-  savePosition: "ポジションの保存", // 26
-  unset: "未設定/非表示", // 27
-  baseLayer: "基本レイヤー", // 28
-  topLayer: "トップレイヤー", // 29
+  mapValue: W["20"],
+  nameHeader: W["21"],
+  nameOffset: W["22"],
+  name: W["23"],
+  position: W["24"],
+  size: W["25"],
+  savePosition: W["26"],
+  unset: W["27"],
+  baseLayer: W["28"],
+  topLayer: W["29"],
 
-  flagLabel: "この座標の人ID:", // 30
-  saveFlag: "フラグの保存", // 31
-  routineAlreadyFlags: "人IDのルーチンは既に編集されています。データを書き直しますか？", // 33
-  routineCanceled: "人IDのルーチンの変更を中止しました！", // 35
-  flagSaveCanceled: "人IDの保存を中止しました！", // 37
+  flagLabel: W["30"],
+  saveFlag: W["31"],
+  routineAlreadyFlags: W["33"],
+  routineCanceled: W["35"],
+  flagSaveCanceled: W["37"],
 
-  flyPosition: "フライトポジション マップ/座標", // 40
-  openThisMap: "このマップを開く", // 41
+  flyPosition: W["40"],
+  openThisMap: W["41"],
 
-  townMapNo: "タウンマップNo:", // 50
-  manageNumbers: "ワールドマップ番号の管理", // 51
+  townMapNo: W["50"],
+  manageNumbers: W["51"],
 
-  saveChanges: "ワールドマップの変更を保存しますか？", // 61
-  routineAlreadyPositions: "位置決めのルーチンは既に編集されています。データを書き直しますか？", // 63
-  cannotSaveTopPosition: "このマップ名のためにトップレイヤーの位置を保存することができません。", // 64
+  saveChanges: W["61"],
+  routineAlreadyPositions: W["63"],
+  cannotSaveTopPosition: W["64"],
 
   credit: "Afforded by Mastermind_X",
-  question: "質問",
-  error: "エラー",
-  information: "情報",
+  question: ini.Allgemein["00"],
+  error: ini.Allgemein["02"],
+  information: ini.Allgemein["01"],
+  /** Delphi のアプリケーションの題名（ini に無い）。 */
   appTitle: "Advance Map",
   /** 16 進・10 進として読めない入力（Delphi の StrToInt の文言）。 */
   invalidInteger: (text: string) => `'${text}' is not a valid integer value.`,
@@ -56,7 +61,7 @@ export const jaWorldMap = {
   /** ZigzaguMap 独自: 読み込めない。 */
   loadFailed: (message: string) => `タウンマップを読み込めません: ${message}`,
   /** ZigzaguMap 独自: ROM が開かれていない。 */
-  noRom: "ROMを開いてください",
+  noRom: ini.Allgemein["30"],
   /** 値の範囲外。 */
   outOfRange: (field: string, value: number, min: number, max: number) => `${field} の値 ${value} は範囲外です（${min}〜${max}）`,
   mapNameInvalidChar: (char: string) => `名前に使えない文字があります: ${char}`,

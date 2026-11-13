@@ -3,7 +3,7 @@ import { FileDialogs } from "../../app/FileDialogs";
 import { ja } from "../../i18n/ja";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
 import { autoId, button, edit, label, place } from "../../ui/form/controls";
-import { readHex } from "../../ui/form/inputErrors";
+import { readInteger } from "../../ui/form/integerInput";
 import { showError } from "../../ui/MessageBox";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
@@ -46,7 +46,7 @@ export class BlockAdjustWindow {
     this.tileset2 = r2.input;
     const form = document.createElement("div");
     form.className = "adjust-form";
-    form.append(r1.root, r2.root, label(t.adjustHint, 8, 48));
+    form.append(r1.root, r2.root, label(t.adjustHint, 8, 48), label(t.adjustTo, 136, 48));
     for (let i = 0; i < ROWS; i++) {
       const from = edit(`adj.from.${i}`, 8, 64 + i * 24, 121);
       from.value = String(i);
@@ -73,7 +73,7 @@ export class BlockAdjustWindow {
       // 表は 10 進で出しているので、10 進として読める欄は 10 進で読む（「10」をパレット 16 と読まないため）。
       // 読めない欄は AdvanceMap と同じく 16 進として読み、だめなら「'$zz' is not a valid integer value.」。
       const text = field.value.trim();
-      const value = /^\d+$/.test(text) ? Number(text) : readHex(text);
+      const value = /^\d+$/.test(text) ? Number(text) : readInteger(text.replace(/^\$/, ""), "hex");
       if (value === null) return;
       if (value > 15) {
         await showError(ja.invalidInput);

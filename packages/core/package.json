@@ -31,7 +31,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && tsc -p test/tsconfig.json",
     "test": "vitest run",
-    "dump-map": "tsc -p tsconfig.build.json && node scripts/dump-map.ts"
+    "dump-map": "tsc -p tsconfig.build.json && node scripts/dump-map.ts",
+    "compare-map-images": "tsc -p tsconfig.build.json && node scripts/compare-map-images.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

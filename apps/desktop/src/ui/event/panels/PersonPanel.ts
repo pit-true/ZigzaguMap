@@ -21,7 +21,7 @@ export class PersonPanel extends ListKindPanel<PersonEvent> {
     this.row(f.number, LABEL, this.spin("number", () => (this.current?.index ?? 0) + 1, null));
     this.row(f.graphics, LABEL, this.spin("graphics", (e) => e.graphicsId, (_e, v) => ({ graphicsId: v })));
     this.row(
-      ja.event.unknown,
+      f.unknown,
       LABEL,
       this.hex("unknown1", 2, 25, (e) => e.kind, (_e, v) => ({ kind: v }), { bits: 8 }),
       this.hex("unknown2", 2, 25, (e) => e.padding1, (_e, v) => ({ padding1: v }), { bits: 8 }),

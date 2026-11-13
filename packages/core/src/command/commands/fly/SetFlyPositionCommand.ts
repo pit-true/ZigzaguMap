@@ -22,7 +22,7 @@ export type SetFlyPositionArgs = JsonObject & {
 /**
  * 「フライトポジションを変える」コマンド（AdvanceMap のイベントタブの「フライトポジション」）。
  * バンク・マップを変えると、そのマップのフライトポジションではなくなる（AdvanceMap の注意文のとおり）。
- * 表は ROM の写しで、maps\ の形式には置き場所が無いため出力しない。
+ * 表はタウンマップの飛び先と同じ ROM の表で、出力では maps\regionmap.json の HealLocations に書く。
  */
 export class SetFlyPositionCommand extends SnapshotCommand<SetFlyPositionArgs, FlyPosition> {
   static readonly NAME = "setFlyPosition";

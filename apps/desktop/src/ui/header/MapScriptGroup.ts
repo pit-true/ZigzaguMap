@@ -5,7 +5,8 @@ import { messageBox } from "../MessageBox";
 import { commit } from "../form/commit";
 import { button, combo, edit, group, label, selectIndex, setEnabled, spin } from "../form/controls";
 import type { DraftList } from "../form/DraftList";
-import { offsetText, readHex } from "../form/inputErrors";
+import { offsetText } from "../form/inputErrors";
+import { checkOnInput, tryInteger } from "../form/integerInput";
 import { scriptTypeChoices, type HeaderContext } from "./HeaderContext";
 import { newScriptDraftList, offsetToPointer, scriptDrafts, pointerToOffset, scriptOps, type ScriptDraft } from "./MapScriptDraft";
 
@@ -67,8 +68,12 @@ export class MapScriptGroup {
       if (Number.isInteger(n) && n >= 0 && n < this.count) this.select(n);
     });
     this.type.addEventListener("change", () => this.changeType());
-    this.offset.addEventListener("change", () => this.store());
-    for (const el of [this.flag, this.flagValue, this.flagOffset]) el.addEventListener("change", () => this.store());
+    // AdvanceMap は入力のたびに読む（オフセットの欄は `$` を含めた文字のまま、フラグと値は `$` を付けて読む）。
+    checkOnInput(this.offset, "int");
+    checkOnInput(this.flag, "hex");
+    checkOnInput(this.flagValue, "hex");
+    checkOnInput(this.flagOffset, "int");
+    for (const el of [this.offset, this.flag, this.flagValue, this.flagOffset]) el.addEventListener("change", () => this.store());
   }
 
   private get count(): number {
@@ -118,31 +123,26 @@ export class MapScriptGroup {
 
   private select(index: number): void {
     if (index < 0 || index >= this.count) return;
-    if (!this.store()) return;
+    this.store();
     this.index = index;
     this.show();
   }
 
-  /** 欄の値を下書きに入れる。読めない値ならエラーを出して false。 */
-  private store(): boolean {
+  /** 欄の値を下書きに入れる。読めない欄は（入力のときにエラーを出してあるので）黙って元の値のままにする。 */
+  private store(): void {
     const d = this.current;
-    if (!d) return true;
+    if (!d) return;
     if (!isTableType(d.type)) {
-      const offset = readHex(this.offset.value);
-      if (offset === null) return false;
-      d.pointer = offsetToPointer(offset);
-      return true;
+      const offset = tryInteger(this.offset.value, "int");
+      if (offset !== null) d.pointer = offsetToPointer(offset);
+      return;
     }
-    const flag = readHex(this.flag.value);
-    if (flag === null) return false;
-    const value = readHex(this.flagValue.value);
-    if (value === null) return false;
-    const offset = readHex(this.flagOffset.value);
-    if (offset === null) return false;
-    d.flag = flag & 0xffff;
-    d.value = value & 0xffff;
-    d.flagOffset = offsetToPointer(offset);
-    return true;
+    const flag = tryInteger(this.flag.value, "hex");
+    const value = tryInteger(this.flagValue.value, "hex");
+    const offset = tryInteger(this.flagOffset.value, "int");
+    if (flag !== null) d.flag = flag & 0xffff;
+    if (value !== null) d.value = value & 0xffff;
+    if (offset !== null) d.flagOffset = offsetToPointer(offset);
   }
 
   /** 種類を変える。条件表の種類にするとフラグ欄が使え、フラグのオフセットに元のオフセットが入る（AdvanceMap と同じ）。 */
@@ -161,7 +161,8 @@ export class MapScriptGroup {
   }
 
   private add(): void {
-    if (!this.draft || !this.ctx || !this.store()) return;
+    if (!this.draft || !this.ctx) return;
+    this.store();
     this.index = this.draft.add({ type: 0, pointer: 0, flag: 0, value: 0, flagOffset: 0, hasRow: false });
     this.show();
   }
@@ -176,7 +177,8 @@ export class MapScriptGroup {
   private save(): void {
     const c = this.ctx;
     const draft = this.draft;
-    if (!c || !draft || !this.store()) return;
+    if (!c || !draft) return;
+    this.store();
     const unset = draft.items.findIndex((d) => d.value.type === 0);
     if (unset >= 0) {
       void messageBox(ja.errorTitle, ja.header.scriptTypeUnset(unset), "error");

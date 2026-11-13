@@ -12,7 +12,7 @@ import "../../styles/event.css";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { showError } from "../MessageBox";
-import { drawEvents, eventAt, placedEvents, type PlacedEvent } from "../map/EventLayer";
+import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
 import { spriteSourceFor } from "../map/spriteCanvases";
 import { EventCommonPanel } from "./EventCommonPanel";
@@ -239,6 +239,14 @@ export class EventTab {
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites);
+  }
+
+  /**
+   * マップ&イベント画像に重ねるもの。AdvanceMap と同じく、イベントタブに描いている印（フライトポジションを含む）と、
+   * カーソルの表示がオンなら選択中のイベントの赤い枠。
+   */
+  exportOverlay(): EventOverlay {
+    return { events: this.placed, selected: this.showCursor ? this.selectedPlaced() : null };
   }
 
   private selectedPlaced(): PlacedEvent | null {

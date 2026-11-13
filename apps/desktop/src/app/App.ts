@@ -69,6 +69,7 @@ export class App implements ActionTarget {
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
   readonly grosserBlock: GrosserBlockWindow;
+  private readonly eventTab: EventTab;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -134,6 +135,7 @@ export class App implements ActionTarget {
     installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
     const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
+    this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
       [
@@ -280,7 +282,7 @@ export class App implements ActionTarget {
       state.emit("session");
       state.emit("map");
       await this.setTitle(null);
-      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(formatDuration(session.loadMs)));
+      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
 
       const last = state.settings.data.last;
       const target =
@@ -549,7 +551,7 @@ export class App implements ActionTarget {
 
   /** ツール > 画像の保存（3 種）。 */
   async saveImage(kind: ImageKind): Promise<void> {
-    const path = await new ImageExport(this.state, this.files).save(kind);
+    const path = await new ImageExport(this.state, this.files, () => this.eventTab.exportOverlay()).save(kind);
     if (path) this.state.setStatus(ja.imageSaved(path));
   }
 
@@ -608,7 +610,9 @@ export class App implements ActionTarget {
 
   private async setTitle(mapName: string | null): Promise<void> {
     const map = this.state.map;
-    await this.setRawTitle(mapName && map ? ja.windowTitle(mapName, map.id.bank, map.id.map) : ja.appTitle);
+    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む。iniファイル側なら ini の名前）を使う。
+    const item = map ? (this.tree.openedLabel() ?? (mapName ? ja.mapItem(mapName, "", map.id.bank, map.id.map) : null)) : null;
+    await this.setRawTitle(item ? ja.windowTitle(item) : ja.appTitle);
   }
 
   private async setRawTitle(title: string): Promise<void> {
@@ -656,14 +660,4 @@ function toolbarLabel(id: string): string {
     "help.about": ja.toolbar.about,
   };
   return map[id] ?? id;
-}
-
-/** 読込時間の表記（00:00:01.601）。 */
-function formatDuration(ms: number): string {
-  const total = Math.round(ms);
-  const h = Math.floor(total / 3_600_000);
-  const m = Math.floor(total / 60_000) % 60;
-  const s = Math.floor(total / 1000) % 60;
-  const pad = (n: number, d = 2): string => String(n).padStart(d, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(total % 1000, 3)}`;
 }

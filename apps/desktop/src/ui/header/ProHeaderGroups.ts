@@ -1,10 +1,9 @@
-import { SetRawHeaderCommand, SetTilesetHeaderCommand, toHexBytes, type Command } from "@zigzagumap/core";
+import { RomLocations, SetRawHeaderCommand, SetTilesetHeaderCommand, toHexBytes, type Command } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { button, edit, group, label, memo } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
 import type { HeaderContext } from "./HeaderContext";
-import { RomLocations } from "./RomLocations";
 
 /** 読み取り専用の欄。 */
 export function readOnlyEdit(id: string, x: number, y: number, width: number): HTMLInputElement {

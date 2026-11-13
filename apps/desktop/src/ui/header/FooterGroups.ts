@@ -2,20 +2,22 @@ import {
   BLOCK_ID_MASK,
   BLOCK_PIXELS,
   MAP_FOOTER,
+  RomLocations,
   SetBorderCommand,
   SetRawFooterCommand,
   createImage,
   toHexBytes,
+  toOffset,
   type Command,
 } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { commit } from "../form/commit";
 import { autoId, button, edit, group, label, memo, place } from "../form/controls";
-import { offsetText, readInt, tryInt } from "../form/inputErrors";
+import { offsetText } from "../form/inputErrors";
+import { checkOnInput, followInput } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
 import { tilesetNumber } from "./LayoutGroups";
 import { locationText, readOnlyEdit } from "./ProHeaderGroups";
-import { RomLocations, toOffset } from "./RomLocations";
 
 /** 16 進の文字列をバイト列にする（偶数桁の 16 進でなければ null）。 */
 function hexToBytes(text: string): Uint8Array | null {
@@ -105,20 +107,21 @@ export class FooterGroups {
       }
       this.dirty();
     });
-    const field = (input: HTMLInputElement, write: (n: number) => void): void => {
-      input.addEventListener("input", () => {
-        const n = tryInt(input.value);
-        if (n === null) return;
+    // AdvanceMap と同じく入力のたびに読み、フッターの 16 進へ連動する。横幅・高さ・タイルセット番号は読めなければエラー、
+    // 境界ブロックの横幅・高さはエラーを出さない（AdvanceMap で確かめた動作）。
+    const field = (input: HTMLInputElement, write: (n: number) => void, check = true): void => {
+      const apply = (n: number): void => {
         write(n);
         this.showFields(true);
         this.dirty();
-      });
-      input.addEventListener("change", () => void readInt(input.value));
+      };
+      if (check) checkOnInput(input, "int", apply);
+      else followInput(input, "int", apply);
     };
     field(this.width, (n) => setU32(this.bytes, MAP_FOOTER.width, n));
     field(this.height, (n) => setU32(this.bytes, MAP_FOOTER.height, n));
-    field(this.borderWidth, (n) => (this.bytes[MAP_FOOTER.borderWidth] = n & 0xff));
-    field(this.borderHeight, (n) => (this.bytes[MAP_FOOTER.borderHeight] = n & 0xff));
+    field(this.borderWidth, (n) => (this.bytes[MAP_FOOTER.borderWidth] = n & 0xff), false);
+    field(this.borderHeight, (n) => (this.bytes[MAP_FOOTER.borderHeight] = n & 0xff), false);
     field(this.tileset1No, (n) => this.setTileset(MAP_FOOTER.primaryTileset, n));
     field(this.tileset2No, (n) => this.setTileset(MAP_FOOTER.secondaryTileset, n));
     this.border.addEventListener("input", () => {

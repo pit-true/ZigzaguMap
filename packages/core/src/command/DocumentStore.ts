@@ -43,7 +43,7 @@ export class DocumentStore implements DocumentContext {
   readonly workMaps = new Map<string, WorkMapInfo>();
   /** このセッションで変えたマップ名。 */
   readonly mapNameEdits = new Map<number, Uint8Array>();
-  /** 編集中のフライトポジションの表（CfruProject が ROM の表を写す。maps\ には出力しない）。 */
+  /** 編集中のフライトポジションの表（CfruProject が ROM の表を写し、maps\regionmap.json があれば重ねる）。 */
   readonly flyPositions: FlyPosition[] = [];
   /** 読み込んだマップが持っていた名前（地名番号ごとに最初のもの）。 */
   private readonly loadedNames = new Map<number, Uint8Array>();
