@@ -29,7 +29,7 @@ mod win {
 pub fn park_and_show(window: &WebviewWindow) {
     #[cfg(windows)]
     if let Ok(hwnd) = window.hwnd() {
-        let hwnd = hwnd.0 as *mut std::ffi::c_void;
+        let hwnd = hwnd.0;
         unsafe {
             win::SetWindowPos(hwnd, std::ptr::null_mut(), PARK, PARK, 0, 0, win::SWP_NOSIZE | win::SWP_NOZORDER | win::SWP_NOACTIVATE);
             win::ShowWindow(hwnd, win::SW_SHOWNOACTIVATE);

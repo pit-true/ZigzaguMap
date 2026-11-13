@@ -166,7 +166,7 @@ fn ps_quote(s: &str) -> String {
 }
 
 fn parent_of(path: &str) -> String {
-    PathBuf::from(path).parent().map(|p| display_path(p)).unwrap_or_default()
+    PathBuf::from(path).parent().map(display_path).unwrap_or_default()
 }
 
 /// `%XX` を戻す（ヘッダーに日本語のパスを載せるため、画面側で encodeURIComponent している）。

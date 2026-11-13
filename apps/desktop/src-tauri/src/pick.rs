@@ -71,7 +71,7 @@ pub fn cursor_color() -> Result<PickedColor, String> {
 pub fn window_pixel(app: AppHandle, label: String, x: u32, y: u32) -> Result<PickedColor, String> {
     let window = app.get_webview_window(&label).ok_or("ウィンドウがありません")?;
     #[cfg(windows)]
-    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as *mut std::ffi::c_void;
+    let hwnd = window.hwnd().map_err(|e| e.to_string())?.0;
     #[cfg(not(windows))]
     let hwnd = {
         let _ = &window;
