@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { App } from "./App";
+import { click, findField, getField, setField } from "./AutomationUi";
 import { TAB_ORDER, type TabId } from "./EditorState";
 import { timings } from "./timings";
 
@@ -94,7 +95,7 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
     case "key": {
       // キー操作をまねる（メニューの見た目の確認用）。押して離すまでを送る。
       const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
-      const target = document.activeElement ?? document.body;
+      const target = typeof req["id"] === "string" ? findField(req["id"]) : (document.activeElement ?? document.body);
       target.dispatchEvent(new KeyboardEvent("keydown", init));
       target.dispatchEvent(new KeyboardEvent("keyup", init));
       return null;
@@ -112,6 +113,12 @@ async function handle(app: App, req: Record<string, unknown>): Promise<unknown> 
       if (!map) throw new Error("マップが開かれていません");
       return { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells], border: [...map.doc.border.cells] };
     }
+    case "getField":
+      return getField(str(req, "id"));
+    case "setField":
+      return setField(str(req, "id"), req["value"]);
+    case "click":
+      return click(str(req, "id"));
     case "state":
       app.checkDirty(true);
       return describe(app);
