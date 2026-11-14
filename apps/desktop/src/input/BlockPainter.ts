@@ -1,6 +1,8 @@
 import { BLOCK_PIXELS, PaintBlocksCommand, PaintCellValuesCommand, createImage, formatHex, type Command } from "@zigzagumap/core";
+import type { BlockUsageService } from "../app/BlockUsageService";
 import type { BlockSelection } from "../app/EditorState";
 import type { EditorState } from "../app/EditorState";
+import type { MixingBag } from "../app/MixingBag";
 import { ja } from "../i18n/ja";
 import { jaPaint } from "../i18n/ja.paint";
 import type { Cell, MapView } from "../ui/map/MapView";
@@ -29,6 +31,8 @@ const PREVIEW_ALPHA = 0.75;
  * - Alt＋左ドラッグ: 押したマスと離したマスのブロックと移動許可を入れ替える（Phase3 #233）。
  * - Esc: 矩形塗り・入れ替え・矩形の選択のドラッグを取りやめる。
  * - Shift つきの左クリックは修飾キーなしと同じ。
+ * ミキシングバッグ（#236）: 袋を使う選択のとき、鉛筆と矩形塗りは各マスのブロックを袋の中から乱数で選ぶ（移動許可は
+ * 「移動許可を自動で選ぶ」（#235）がオンなら、そのブロックにいちばん多い移動許可も書く）。
  * どの操作も、隣のマップの帯の上でも動く（Phase3 #234。帯で見えていない部分には描かない）。2 枚にまたがる操作は、
  * マップごとのコマンドをまとめて 1 回の操作にする（隣のマップは書く前に読み込む）。
  */
@@ -39,6 +43,10 @@ export class BlockPainter {
   /** 画面のマスとマップのマスの対応（隣の帯は App が `cells.neighbors` を入れる）。 */
   readonly cells: MapCells;
   private readonly preview: PreviewCanvas;
+  /** ミキシングバッグ（MapTab が入れる）。 */
+  bag: MixingBag | null = null;
+  /** ブロックの使用回数（袋から描くときの移動許可。App が入れる）。 */
+  usage: BlockUsageService | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -114,22 +122,39 @@ export class BlockPainter {
   /** 選択（複数ブロックなら左上を `cell`）を置く。移動許可を持つ選択は、設定がオンなら移動許可ごと置く。 */
   paintSelection(cell: Cell, s: BlockSelection, merge = false): void {
     const sel = s.movements !== undefined && s.movements.length === s.blocks.length ? s : { width: s.width, height: s.height, blocks: s.blocks };
-    this.write(tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel), true, merge);
+    const list = tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel);
+    if (this.bag?.appliesTo(s)) return this.write(this.fromBag(list), true, merge, true);
+    this.write(list, true, merge);
   }
 
   /** 矩形塗り（1 回の操作）。 */
   private fillRect(rect: CellRect): void {
-    this.write(tileRect(rect, this.state.selection), false, false);
+    const list = tileRect(rect, this.state.selection);
+    if (this.bag?.appliesTo(this.state.selection)) return this.write(this.fromBag(list), false, false, true);
+    this.write(list, false, false);
+  }
+
+  /** 各マスのブロックを袋から選ぶ（移動許可は、自動で選ぶ設定がオンで使用回数があれば、いちばん多いもの）。 */
+  private fromBag(list: readonly FillCell[]): FillCell[] {
+    const bag = this.bag!;
+    const map = this.state.map;
+    const usage = this.state.settings.data.autoMovement ? (this.usage?.ready ?? null) : null;
+    return list.map((c) => {
+      const block = bag.pick();
+      const movement = usage && map ? usage.mostMovement(block, map.doc.primaryTileset, map.doc.secondaryTileset) : null;
+      return movement === null ? { x: c.x, y: c.y, block } : { x: c.x, y: c.y, block, movement };
+    });
   }
 
   /**
    * 画面のマスの一覧を、マップごとのコマンドにして実行する。隣のマップが読み込まれていなければ、読み込んでから実行する
    * （その間の操作は順に待たせる）。`forDrag` はドラッグで続けて描く操作（まとめて 1 回にする）。
    */
-  private write(list: readonly FillCell[], forDrag: boolean, merge: boolean): void {
+  private write(list: readonly FillCell[], forDrag: boolean, merge: boolean, fromBag = false): void {
     const groups = this.cells.split(list);
     if (groups.length === 0) return;
-    const withMovements = this.state.settings.data.pasteMovements;
+    // 袋から描くときは、移動許可を持つマス（自動で選んだもの）だけ移動許可も書く。それ以外は「移動許可も貼る」に従う
+    const withMovements = fromBag || this.state.settings.data.pasteMovements;
     this.cells.run(
       groups.map((g) => g.id),
       () => groups.flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []),

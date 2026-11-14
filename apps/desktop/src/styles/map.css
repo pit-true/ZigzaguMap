@@ -103,3 +103,27 @@
   border-bottom: 1px solid var(--shadow);
   white-space: nowrap;
 }
+
+/* ミキシングバッグ（ui/map/MixingBagView.ts。Phase3 #236） */
+.mixing-bag {
+  flex: none;
+  padding: 2px;
+  border-top: 1px solid var(--shadow);
+}
+
+.mixing-bag.active {
+  outline: 2px solid #1060d0;
+  outline-offset: -2px;
+}
+
+.mixing-bag-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+.mixing-bag-blocks canvas {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}

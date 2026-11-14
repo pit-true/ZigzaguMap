@@ -47,6 +47,9 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Esc", action: jaPaint.shortcutCancel, where: jaPaint.shortcutDragWhere },
   // ダイブ先・浮上先の重ね表示（Phase3 #232。ui/map/DiveOverlay.ts）
   { keys: "Space（押している間）", action: jaNeighbors.shortcutDive, where: jaNeighbors.shortcutDiveWhere },
+  // ミキシングバッグ（Phase3 #236。ui/map/BlockPaletteView.ts・MixingBagView.ts）
+  { keys: "Ctrl＋左クリック", action: jaPaint.shortcutBag, where: jaPaint.shortcutBagWhere },
+  { keys: "Ctrl＋クリック", action: jaPaint.shortcutBagClear, where: jaPaint.shortcutBagClearWhere },
   ...scriptEditorKeys(),
 ];
 

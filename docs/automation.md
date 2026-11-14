@@ -292,3 +292,5 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `trainer.json` | | `maps\trainers.json` の中身（`trainers`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
 
 trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。同じ番号が無ければ足す）と `removeTrainer`（`{"id": 700}`）でもできます（元に戻せる）。
+- ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
+
