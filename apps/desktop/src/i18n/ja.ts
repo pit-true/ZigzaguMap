@@ -56,7 +56,6 @@ export const ja = {
   blockPaletteWidth: M["122"],
   movementOpacity: M["1217"],
   showToolbar: M["1211"],
-  language: M["125"],
   rememberLast: M["128"],
   autoSearchOffset: M["1210"],
   advancedHeader: M["129"],
@@ -68,8 +67,6 @@ export const ja = {
   recentMax: M["1216"],
   recentClear: M["12180"],
   recentShowPath: M["12181"],
-  /** 設定 > 言語（画面は日本語だけなので Japanese の 1 項目）。 */
-  languageJapanese: ini["INI-Version"].Sprache,
 
   // [Menue] ヘッダーのソート
   sortModes: [M["12720"], M["12721"], M["12722"], M["12723"], M["12724"]],

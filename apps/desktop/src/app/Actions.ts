@@ -81,7 +81,6 @@ export class Actions {
     }
     // バックアップの作成は「出力先を指定して出力」に読み替える。
     h.set("file.backup", () => target.exportMaps(true));
-    h.set("lang.ja", () => undefined);
     h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
     h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
     h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
@@ -138,7 +137,6 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
-    // 言語（日本語だけ）は、AdvanceMap と同じく選んでいる言語にもチェックを付けない
     return false;
   }
 }
