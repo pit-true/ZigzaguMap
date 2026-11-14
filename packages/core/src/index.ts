@@ -214,6 +214,7 @@ export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/Place
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";
 export { PaintCellsCommand, type CellWrite } from "./command/commands/PaintCellsCommand.js";
 export { PaintBlocksCommand, type PaintBlocksArgs } from "./command/commands/PaintBlocksCommand.js";
+export { PaintCellValuesCommand, type PaintCellValuesArgs } from "./command/commands/PaintCellValuesCommand.js";
 export { PaintMovementCommand, type PaintMovementArgs } from "./command/commands/PaintMovementCommand.js";
 export { PaintBorderCommand, type PaintBorderArgs } from "./command/commands/PaintBorderCommand.js";
 
