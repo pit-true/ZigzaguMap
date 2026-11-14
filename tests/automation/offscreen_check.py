@@ -1,9 +1,10 @@
 """自動操作で起動したウィンドウが、作られた時点から画面外・非アクティブであることを確かめる。
 
-  python tests/automation/offscreen_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>]
+  python tests/automation/offscreen_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>] [--project <CFRU-JP のフォルダの写し>]
 
 SetWinEventHook でこのプロセスのトップレベルのウィンドウの表示・移動・前面化を全部記録しながら、
 起動 → ROM を開く → マップを開く → ワールドマップエディター・ブロックエディタ（とパレットエディタ）を開いて閉じる → 終了 を行い、
+（`--project` を渡すと ROM と一緒に開き、大きさを変えられるスクリプトエディタも開いて閉じる。フォルダには書き込まない）
 - 見えている状態で、どこかのモニターに少しでも重なった瞬間があるか
 - 前面（アクティブ）になった瞬間があるか
 を調べる。どちらも無ければ合格（終了コード 0）。
@@ -128,6 +129,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rom", required=True)
     ap.add_argument("--exe")
+    ap.add_argument("--project")
     a = ap.parse_args()
     w = Watcher()
     w.start()
@@ -146,7 +148,7 @@ def main() -> int:
     zzmod.subprocess.Popen = P  # type: ignore[assignment]
     try:
         z.start()
-        z.call({"cmd": "open", "rom": a.rom})
+        z.call({"cmd": "open", "rom": a.rom, **({"project": a.project} if a.project else {})})
         z.call({"cmd": "selectMap", "bank": 3, "map": 0})
         z.call({"cmd": "action", "id": "tools.worldMap"})
         z.call({"cmd": "action", "id": "tools.blockEditor"})
@@ -159,8 +161,17 @@ def main() -> int:
             z.call({"cmd": "action", "id": "palette.editor", "window": "block-editor"})
         except Exception as e:  # noqa: BLE001
             print("パレットエディタは開けませんでした:", e)
+        if a.project:
+            first = sorted(pathlib.Path(a.project, "assembly/overworld_scripts").glob("*.s"))[0].name
+            z.call({"cmd": "script.open", "path": f"assembly/overworld_scripts/{first}", "line": 1})
+            for _ in range(50):
+                if any(x["label"] == "script-editor" and x["ready"] for x in z.call({"cmd": "windows"})):
+                    break
+                time.sleep(0.2)
+            else:
+                print("スクリプトエディタが開きませんでした")
         time.sleep(1.5)
-        for label in ("palette-editor", "block-editor", "world-map"):
+        for label in ("script-editor", "palette-editor", "block-editor", "world-map"):
             try:
                 z.call({"cmd": "close", "window": label})
             except Exception:  # noqa: BLE001
