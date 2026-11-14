@@ -24,6 +24,7 @@ export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
 export { TilesetTable } from "./map/TilesetTable.js";
+export { LayoutSharing } from "./map/LayoutSharing.js";
 export {
   MAP_FOOTER,
   MAP_HEADER,

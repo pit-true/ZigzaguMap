@@ -27,6 +27,8 @@ python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFR
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
+python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
+    # Phase3 の表示・ホバー・スタンプ（配置の共有など）。名前はスクリプトの CHECKS の鍵
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 ```
@@ -205,3 +207,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - イベントタブのスクリプトのラベルの欄: `event.person.label`・`event.sign.label`・`event.trap.label`（入力欄）、`<欄>.drop`（▼）、`<欄>.list`（一覧）、`<欄>.option:<ラベル>`（一覧の行）。「スクリプトを開く」は `event.person.openScript` など。照合用の座標の知らせは `event.labelWarn`、「座標で付け直す」は `event.labelRealign`。
 - マップスクリプトのパネル（場所の設定タブのかんたん表示）: `easy.ms`（パネル）、`easy.ms.create`（表を作る）、`easy.ms.addType`（種類を足す）、`easy.ms.removeTable`、`easy.ms.item:<n>`、`easy.ms.item:<n>.script`（行き先のラベルの欄）、`easy.ms.item:<n>.open`・`.remove`・`.addCondition`、`easy.ms.item:<n>.condition:<m>.variable`・`.value`・`.script`・`.open`・`.remove`、ROM の一覧は `easy.ms.rom:<n>` と `easy.ms.romOpen:<n>`。
 - スクリプトエディタ: ROM のタブの帯 `se.romBar`、「.s に取り込む」`se.romImport`、取り込みの一覧の名前 `romImport.label:<n>`、`romImport.ok`・`romImport.cancel`。ビルドの欄 `build.panel`、`build.run`・`build.stop`・`build.clear`・`build.close`、`build.status`、`build.log`、`build.problems`、`build.problem:<n>`。
+
+## Phase3 の部品と命令（表示・ホバー・スタンプ）
+
+- 場所の設定タブの「配置の共有」（#228）: かんたん表示 `easy.layoutShared`（「この配置（ブロックの並び）は N 枚のマップで使われています」の文。共有していないマップでは `visible` が false）・一覧 `easy.layoutShared.list`・一覧のマップ `easy.layoutShared.map:<バンク>.<マップ>`（`click` で開く。表示中のマップはボタンにしない）。くわしく表示は頭が `header.`（`header.layoutShared` など）。
