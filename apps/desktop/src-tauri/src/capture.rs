@@ -127,15 +127,8 @@ pub fn capture_window(hwnd: *mut std::ffi::c_void) -> Result<(u32, u32, Vec<u8>)
             return Err("ウィンドウの画像を取れませんでした".into());
         }
         // 影を除いた範囲に切り詰める。
-        let (cx, cy, cw, ch) = if has_frame {
-            let cx = (visible.left - outer.left).clamp(0, w);
-            let cy = (visible.top - outer.top).clamp(0, h);
-            let cw = (visible.right - visible.left).clamp(1, w - cx);
-            let ch = (visible.bottom - visible.top).clamp(1, h - cy);
-            (cx, cy, cw, ch)
-        } else {
-            (0, 0, w, h)
-        };
+        let frame = has_frame.then(|| (visible.left - outer.left, visible.top - outer.top, visible.right - outer.left, visible.bottom - outer.top));
+        let (cx, cy, cw, ch) = frame_rect(w, h, frame);
         let mut rgba = Vec::with_capacity((cw * ch * 4) as usize);
         for y in cy..cy + ch {
             let row = ((y * w + cx) * 4) as usize;
@@ -145,6 +138,18 @@ pub fn capture_window(hwnd: *mut std::ffi::c_void) -> Result<(u32, u32, Vec<u8>)
         }
         Ok((cw as u32, ch as u32, rgba))
     }
+}
+
+/// 影を除いた枠（ウィンドウの左上からの left, top, right, bottom）を、ウィンドウ（w x h）の中の (x, y, 幅, 高さ) にする。
+fn frame_rect(w: i32, h: i32, frame: Option<(i32, i32, i32, i32)>) -> (i32, i32, i32, i32) {
+    // 枠をウィンドウの内側に切り詰める。重ならない（大きさを取れていない）ときはウィンドウ全体にする。
+    let Some((left, top, right, bottom)) = frame else { return (0, 0, w, h) };
+    let (l, t) = (left.clamp(0, w), top.clamp(0, h));
+    let (r, b) = (right.clamp(0, w), bottom.clamp(0, h));
+    if r <= l || b <= t {
+        return (0, 0, w, h);
+    }
+    (l, t, r - l, b - t)
 }
 
 /// ウィンドウのクライアント領域の矩形（物理ピクセル）を切り出す（パネルだけの画像用）。
@@ -169,13 +174,26 @@ pub fn capture_client_rect(hwnd: *mut std::ffi::c_void, x: i32, y: i32, w: i32, 
         ClientToScreen(hwnd, &mut client);
         (client.x - origin.0, client.y - origin.1)
     };
-    let (fw, fh) = (fw as i32, fh as i32);
-    let left = (ox + x).clamp(0, fw);
-    let top = (oy + y).clamp(0, fh);
-    let cw = w.clamp(1, (fw - left).max(1));
-    let ch = h.clamp(1, (fh - top).max(1));
+    crop_rgba(fw, fh, &rgba, ox + x, oy + y, w, h)
+}
+
+/// RGBA の画像（fw x fh）から矩形を切り出す。画像からはみ出す分は切り詰め、画像と重ならなければ Err（落ちない）。
+pub fn crop_rgba(fw: u32, fh: u32, rgba: &[u8], x: i32, y: i32, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
+    let (fw, fh) = (fw as i64, fh as i64);
+    if (rgba.len() as i64) < fw * fh * 4 {
+        return Err("ウィンドウの画像が足りません".into());
+    }
+    let (x, y) = (x as i64, y as i64);
+    let left = x.max(0);
+    let top = y.max(0);
+    let right = (x + (w as i64).max(0)).min(fw);
+    let bottom = (y + (h as i64).max(0)).min(fh);
+    if right <= left || bottom <= top {
+        return Err(format!("部品がウィンドウに見えていません（{x},{y} の {w}x{h}。ウィンドウは {fw}x{fh}）"));
+    }
+    let (cw, ch) = (right - left, bottom - top);
     let mut out = Vec::with_capacity((cw * ch * 4) as usize);
-    for row in top..top + ch {
+    for row in top..bottom {
         let start = ((row * fw + left) * 4) as usize;
         out.extend_from_slice(&rgba[start..start + (cw * 4) as usize]);
     }
@@ -271,4 +289,70 @@ pub fn base64(data: &[u8]) -> String {
         s.push(if c.len() > 2 { T[n as usize & 63] as char } else { '=' });
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 4x3 の画像。画素 (x, y) の R に x、G に y を入れる。
+    fn image() -> Vec<u8> {
+        let mut v = Vec::new();
+        for y in 0..3u8 {
+            for x in 0..4u8 {
+                v.extend_from_slice(&[x, y, 0, 255]);
+            }
+        }
+        v
+    }
+
+    fn corner(out: &(u32, u32, Vec<u8>)) -> (u8, u8) {
+        (out.2[0], out.2[1])
+    }
+
+    #[test]
+    fn crop_inside() {
+        let out = crop_rgba(4, 3, &image(), 1, 1, 2, 2).unwrap();
+        assert_eq!((out.0, out.1, corner(&out)), (2, 2, (1, 1)));
+        assert_eq!(out.2.len(), 2 * 2 * 4);
+    }
+
+    #[test]
+    fn crop_clips_overhang() {
+        // 下と右にはみ出す（スクロールする枠の中の長い部品）
+        let out = crop_rgba(4, 3, &image(), 2, 1, 10, 10).unwrap();
+        assert_eq!((out.0, out.1, corner(&out)), (2, 2, (2, 1)));
+        // 左と上にはみ出す
+        let out = crop_rgba(4, 3, &image(), -5, -2, 7, 4).unwrap();
+        assert_eq!((out.0, out.1, corner(&out)), (2, 2, (0, 0)));
+    }
+
+    #[test]
+    fn crop_outside_is_error() {
+        for (x, y, w, h) in [(0, 3, 4, 5), (0, 100, 4, 5), (4, 0, 2, 2), (10, 10, 1, 1), (-10, 0, 5, 3), (0, -10, 4, 5), (0, 0, 0, 0), (1, 1, -5, -5)] {
+            assert!(crop_rgba(4, 3, &image(), x, y, w, h).is_err(), "{x},{y},{w},{h}");
+        }
+    }
+
+    #[test]
+    fn crop_extreme_values_do_not_panic() {
+        for (x, y, w, h) in [(i32::MAX, i32::MAX, i32::MAX, i32::MAX), (i32::MIN, i32::MIN, i32::MAX, i32::MAX), (i32::MIN, 0, i32::MIN, 1), (1, 1, i32::MAX, i32::MAX)] {
+            let _ = crop_rgba(4, 3, &image(), x, y, w, h);
+        }
+    }
+
+    #[test]
+    fn crop_short_buffer_is_error() {
+        assert!(crop_rgba(4, 3, &image()[..20], 0, 0, 4, 3).is_err());
+    }
+
+    #[test]
+    fn frame_inside_window() {
+        // 影を除いた枠。ウィンドウ（100x80）の中に収まる
+        assert_eq!(frame_rect(100, 80, Some((8, 1, 92, 72))), (8, 1, 84, 71));
+        // 枠がウィンドウの外（最小化の直後など）でも落ちない
+        assert_eq!(frame_rect(100, 80, Some((100, 80, 50, 50))), (0, 0, 100, 80));
+        assert_eq!(frame_rect(100, 80, Some((-50, -50, -10, -10))), (0, 0, 100, 80));
+        assert_eq!(frame_rect(100, 80, None), (0, 0, 100, 80));
+    }
 }

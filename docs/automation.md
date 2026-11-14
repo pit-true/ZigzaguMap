@@ -49,12 +49,12 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
 | `selectMovement` | `value` | 移動許可の選択を変える（移動エリアタブなら、パレットのそのマスを左クリックするのと同じ） |
 | `selection` | | 選択中のブロック（`block`）・移動許可（`movement`）・イベント（`event`: 種別・番号・数）とステータスバー |
-| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、コンボなら `index` と `options`（64 件を超えるときは件数） |
+| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、コンボなら `index` と `options`（64 件を超えるときは件数）、入力欄なら `readOnly` と `focused`（フォーカスがあるか） |
 | `setField` | `id`、`value` | 部品に値を入れ、人が入力したときと同じく `input` → `change` を送る。コンボは番号か項目の文字、チェックは true / false。返事は `getField` と同じものと、開いているダイアログ（`dialogs`） |
 | `click` | `id` | ボタンなどを押す（無効なら失敗）。返事は開いているダイアログ |
 | `ui.list` | `root`（省略可） | 部品の一覧（ID、AdvanceMap の部品名、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
 | `ui.type` | `id`、`text` | 1 文字ずつ入力する |
-| `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル） |
+| `ui.shot` | `id` | 部品の範囲の画像を PNG（Base64）で返す（例: `event.panel` でイベントタブの右パネル）。スクロールする枠やウィンドウからはみ出す分は切り詰め、まったく見えていない部品はエラーを返す |
 | `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ）か `id`（部品。`field:RandBox` など） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |

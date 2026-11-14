@@ -22,6 +22,8 @@ use crate::capture;
 
 /// 画面側の返事を待つ時間。
 const REPLY_TIMEOUT: Duration = Duration::from_secs(120);
+/// 受け付ける本文の大きさの上限（Content-Length が大きすぎると確保に失敗して落ちるため）。
+const MAX_BODY: usize = 64 * 1024 * 1024;
 
 /// 自動操作の状態。
 #[derive(Default)]
@@ -207,6 +209,9 @@ fn read_request(stream: &mut TcpStream) -> std::io::Result<String> {
                 length = value.trim().parse().unwrap_or(0);
             }
         }
+    }
+    if length > MAX_BODY {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("本文が大きすぎます（{length} バイト）")));
     }
     let mut body = vec![0u8; length];
     reader.read_exact(&mut body)?;

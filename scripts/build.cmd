@@ -4,6 +4,7 @@ rem Git Bash puts its own link.exe first on PATH, so load the MSVC environment f
 rem   scripts\build.cmd          -> pnpm tauri build (release exe)
 rem   scripts\build.cmd check    -> cargo check only
 rem   scripts\build.cmd clippy   -> cargo clippy (Rust lint; warnings fail)
+rem   scripts\build.cmd test     -> cargo test (Rust unit tests)
 rem   scripts\build.cmd debug    -> pnpm tauri build --debug
 setlocal
 set "ROOT=%~dp0.."
@@ -25,6 +26,11 @@ call "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 if /i "%~1"=="clippy" (
   cd /d "%ROOT%\apps\desktop\src-tauri" || exit /b 1
   cargo clippy --all-targets -- -D warnings || exit /b 1
+  exit /b 0
+)
+if /i "%~1"=="test" (
+  cd /d "%ROOT%\apps\desktop\src-tauri" || exit /b 1
+  cargo test || exit /b 1
   exit /b 0
 )
 if /i "%~1"=="check" (

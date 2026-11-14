@@ -1009,6 +1009,7 @@ pnpm typecheck   # 型チェック（使っていない変数・引数もエラ�
 pnpm test        # 単体テスト（core と、画面の DOM を使わない部分）
 pnpm lint        # 型チェック + 文言の生成物の確認 + 文言の突き合わせ
 scripts\build.cmd clippy   # Rust の lint（警告もエラーにする）
+scripts\build.cmd test     # Rust の単体テスト（画像の切り出しなど）
 ```
 
 単体テスト（`packages/core/test`）には、出力の往復テストを含みます: マップを JSON にして読み直すと同じになること（`project.test.ts`。素の ROM では `realRomProject.test.ts` が全マップ）、全種類のコマンドを実行して出力し、開き直すと同じで、全部取り消すと JSON が消えること（`realRomEdit.test.ts`）、タイルセット・落とし物・新しいマップ・マップ名の出力（`editSave.test.ts`。漢字を含むマップ名（ND の `charmap.tbl` で漢字は `FC xx yy` の 3 バイト）を出力して読み直すテストも含む。`ZIGZAGU_TEST_ND_PROJECT` を入れると、NeoDark-CFRU の `charmap.tbl` そのもので確かめる）。
@@ -1068,6 +1069,7 @@ scripts\build.cmd          # リリースビルド
 scripts\build.cmd debug    # デバッグビルド
 scripts\build.cmd check    # cargo check だけ
 scripts\build.cmd clippy   # cargo clippy（Rust の lint）
+scripts\build.cmd test     # cargo test（Rust の単体テスト）
 ```
 
 出力先を変えたいときは、環境変数 `CARGO_TARGET_DIR` を設定してから実行します（exe は `<CARGO_TARGET_DIR>\release\zigzagumap.exe` にできます）。
