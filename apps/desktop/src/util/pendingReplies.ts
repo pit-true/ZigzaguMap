@@ -3,6 +3,14 @@ import { errorText } from "./errors";
 /** 返事（成功なら `result`、失敗なら `error`）。ウィンドウの間のやり取りで同じ形を使う。 */
 export type Reply = { readonly id: number; readonly ok: true; readonly result: unknown } | { readonly id: number; readonly ok: false; readonly error: string };
 
+/** 届いた返事の形（ブロックエディタ・マップ作成補助の返事は `ok` が boolean で、`error` を省くことがある）。 */
+export interface ReplyLike {
+  readonly id: number;
+  readonly ok: boolean;
+  readonly result?: unknown;
+  readonly error?: string;
+}
+
 /** 返事を待つ 1 件。 */
 export interface PendingReply {
   readonly id: number;
@@ -14,7 +22,7 @@ export interface PendingReply {
 
 /**
  * 別のウィンドウへ送った要求の返事を待つ台帳（番号を振り、同じ番号の返事で約束を決める）。
- * スクリプトエディタとメインの両側で使う。
+ * 別ウィンドウ（スクリプトエディタ・ワールドマップ・マップ作成補助・ブロックエディタなど）とメインの両側で使う。
  */
 export class PendingReplies {
   private nextId = 1;
@@ -44,13 +52,18 @@ export class PendingReplies {
     return { id, reply, fail };
   }
 
-  /** 返事が届いた（知らない番号なら何もしない）。 */
-  settle(reply: Reply): void {
+  /** 返事を待っている数。 */
+  get size(): number {
+    return this.waiting.size;
+  }
+
+  /** 返事が届いた（知らない番号なら何もしない）。失敗の返事に文言が無ければ `fallbackError` を使う。 */
+  settle(reply: ReplyLike, fallbackError = ""): void {
     const w = this.waiting.get(reply.id);
     if (!w) return;
     this.waiting.delete(reply.id);
     if (reply.ok) w.resolve(reply.result);
-    else w.reject(new Error(reply.error));
+    else w.reject(new Error(reply.error ?? fallbackError));
   }
 
   /** 待っているものを全部失敗にする（相手のウィンドウが閉じたとき）。 */
