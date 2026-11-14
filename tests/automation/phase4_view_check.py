@@ -418,6 +418,11 @@ def check_palette(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
 # ---- #315 ----
 
 
+def visible_maps(z: Zigzagu) -> set[tuple[int, int]]:
+    """マップ一覧で開いている枝に見えているマップ（マップファイルの項目を除く）。"""
+    return {(i["mapId"]["bank"], i["mapId"]["map"]) for i in z.call({"cmd": "tree.list", "visibleOnly": True}) if i.get("mapId")}
+
+
 def check_thumbs(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     st = z.call({"cmd": "thumbs.state"})
     check(not st["enabled"] and st["maps"] == 0 and st["rows"] == 0, "既定はオフで、何も作らない")
@@ -434,11 +439,26 @@ def check_thumbs(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     running = z.call({"cmd": "thumbs.state"})["running"]
     check(max(during) < 100, f"作っている最中の切り替えも 100ms 以内（{[round(t, 1) for t in during]}、最中か {running}）")
     st = z.call({"cmd": "thumbs.state", "wait": True})
-    total = len([i for i in z.call({"cmd": "tree.list"}) if i.get("mapId") and i["key"].startswith("h")])
-    check(st["maps"] == total and st["images"] < st["maps"], f"全マップ {st['maps']} 枚（{total}）、絵は {st['images']} 枚（配置が同じものは使い回す）、{st['ms']:.0f}ms")
+    visible = visible_maps(z)
+    check(st["maps"] == len(visible) and st["images"] <= st["maps"], f"開いている枝に見えているマップの分だけ作る（{st['maps']} 枚、見えているマップ {len(visible)}、絵は {st['images']} 枚。配置が同じものは使い回す）、{st['ms']:.0f}ms")
     ctx.setdefault("timings", []).append(("thumbs", st["ms"], st["maps"], st["images"]))
     check(st["rows"] > 0, f"開いている枝の行に描く（{st['rows']} 行）")
     shot(z, shots, "view_tree_thumbnails.png")
+    # 3.0 の枝を閉じると、その分を捨てる。別の枝を開くと、その分を作る
+    items = z.call({"cmd": "tree.list"})
+    at = next(i for i, it in enumerate(items) if it.get("mapId") == {"bank": 3, "map": 0} and it["key"].startswith("h"))
+    branch = next(items[i] for i in range(at - 1, -1, -1) if items[i]["depth"] < items[at]["depth"])
+    z.call({"cmd": "tree.open", "key": branch["key"]})
+    closed = z.call({"cmd": "thumbs.state", "wait": True})
+    check(closed["maps"] == len(visible_maps(z)) and closed["maps"] < st["maps"], f"枝を閉じると、その分を捨てる（{st['maps']} → {closed['maps']} 枚、行 {closed['rows']}）")
+    other = next((it for it in items if it["key"].startswith("h") and it["hasChildren"] and not it["expanded"] and it["depth"] == branch["depth"]), None)
+    if other:
+        z.call({"cmd": "tree.open", "key": other["key"]})
+        opened = z.call({"cmd": "thumbs.state", "wait": True})
+        check(opened["maps"] == len(visible_maps(z)) and opened["rows"] > 0, f"別の枝（{other['text']}）を開くと、その分を作る（{opened['maps']} 枚、行 {opened['rows']}）")
+        z.call({"cmd": "tree.open", "key": other["key"]})
+    z.call({"cmd": "tree.open", "key": branch["key"]})
+    z.call({"cmd": "thumbs.state", "wait": True})
     # 作り終えたあとの切り替え
     times = []
     for m in (1, 2, 3, 0):
