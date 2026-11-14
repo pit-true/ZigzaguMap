@@ -6,6 +6,10 @@ import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
+import { jaEventView } from "../i18n/ja.eventView";
+import { jaTownMini } from "../i18n/ja.townMini";
+import { jaPointers } from "../i18n/ja.pointers";
+import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -85,6 +89,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
+        // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
+        { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
         {
           // 隣のマップの帯（Phase3。ZigzaguMap 独自）
           label: jaNeighbors.menu,
@@ -103,6 +109,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.autoPenTint", label: jaPen.autoPenTint },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
+        // タウンマップの小窓（#306。ZigzaguMap 独自）
+        { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -181,6 +189,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", shortcut: ctrl("M"), enable: "rom" },
         // ZigzaguMap 独自（Phase3 #237）。マップ名の一部で探して開く（HexManiacAdvance の Ctrl+G。ZigzaguMap の Ctrl+G はグリッド）。
         { id: "map.find", label: jaMapFind.find, shortcut: ctrl("F"), enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #307）。今のマップのポインタと、ROM の参照元の検索（読むだけの調査の道具）
+        { id: "tools.pointers", label: jaPointers.menu, shortcut: { key: "P", ctrl: true, shift: true, text: "Ctrl+Shift+P" }, enable: "map" },
         {
           label: ja.dummyData,
           accel: "X",

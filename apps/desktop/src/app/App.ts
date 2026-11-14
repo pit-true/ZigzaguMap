@@ -55,6 +55,8 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import type { MixingBag } from "./MixingBag";
 import { MapExtras } from "./mapExtras";
+import { registerEventKindActions } from "../ui/event/eventVisibility";
+import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
@@ -131,6 +133,8 @@ export class App implements ActionTarget {
   readonly pen: PenExtras;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
+  /** Phase4 の表示・一覧・調査（接続の境目の注意など）。 */
+  readonly views: ViewFeatures;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -151,6 +155,8 @@ export class App implements ActionTarget {
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
+    // 表示 > イベントの種類（#304）
+    registerEventKindActions(this.actions, state, (patch) => this.changeSetting(patch));
     this.newMaps = new NewMapController({
       state,
       files: this.files,
@@ -200,6 +206,7 @@ export class App implements ActionTarget {
       editTrainer: (index) => void this.trainers.editForPerson(index),
       placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
+      placeItemBall: (x, y) => void events.placeItemBall(x, y),
       summaries: () => events.eventSummaries(),
     });
     this.eventTab = eventTab;
@@ -222,8 +229,18 @@ export class App implements ActionTarget {
     this.left = document.createElement("aside");
     this.left.className = "left-panel";
     this.left.style.width = `${settings.data.leftWidth}px`;
-    this.treeFilter = new MapTreeFilter(this.tree);
+    this.treeFilter = new MapTreeFilter(this.tree, () => this.state.session?.catalog ?? null);
     this.left.append(this.treeFilter.element, this.tree.element);
+    this.views = new ViewFeatures({
+      state,
+      actions: this.actions,
+      extras: this.extras,
+      statusBar: this.statusBar,
+      treeFilter: this.treeFilter,
+      eventTab,
+      files: this.files,
+      isAutomation: () => this.automation,
+    });
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");

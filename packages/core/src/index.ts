@@ -48,6 +48,9 @@ export { WarpCodec, warpCodec } from "./event/WarpCodec.js";
 export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
+export { POINTER_SCAN_CHUNK, findPointerRefs, findPointerRefsChunked, toPointerValue } from "./rom/PointerScan.js";
+export { knownMapRanges, listMapPointers, rangeAt, type KnownRange, type KnownRangeKind, type MapPointer, type MapPointerKind } from "./map/MapPointers.js";
+export { DEFAULT_ITEM_BALL_STYLE, ItemBallStyleCounter, isRomItemBallScript, type ItemBallStyle } from "./event/ItemBallStyle.js";
 export {
   CLONE_RANGE,
   CloneSyncCommand,
@@ -73,6 +76,7 @@ export * from "./connection/layout.js";
 export type { ConnectionHeader, MapConnection } from "./connection/types.js";
 export { ConnectionCodec, ConnectionHeaderCodec, connectionCodec, connectionHeaderCodec } from "./connection/ConnectionCodec.js";
 export { ConnectionReader } from "./connection/ConnectionReader.js";
+export { SEAM_VIEW, blockDiffer, findSeamIssues, seamCells, type SeamIssue, type SeamNeighbor } from "./connection/ConnectionSeams.js";
 
 // マップスクリプト
 export * from "./mapscript/layout.js";

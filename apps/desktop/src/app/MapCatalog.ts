@@ -18,6 +18,8 @@ export interface MapInfo {
   readonly region: number;
   /** マップ名（地名番号から引いた名前。無ければ null）。 */
   readonly name: string | null;
+  /** 配置（レイアウト）の番号（ヘッダーの値。一覧の「地形:」の絞り込み。#305）。 */
+  readonly layoutId: number;
   /** タイルセット 1・2 の番号（AdvanceMap と同じ数え方。数えられなければ -1）。 */
   readonly primaryNumber: number;
   readonly secondaryNumber: number;
@@ -54,20 +56,20 @@ export class MapCatalog {
       return names.get(region)!;
     };
 
-    const raw: { id: MapId; region: number; primary: number; secondary: number }[] = [];
+    const raw: { id: MapId; region: number; layoutId: number; primary: number; secondary: number }[] = [];
     for (const id of project.mapIds()) {
       try {
         // 読み込み済みのマップは編集中の値（差し替え・名前の変更）を使う。
         if (project.inBase(id) && !project.hasJson(id) && !project.loaded(id)) {
           const header = mapHeaderCodec.decode(rom.slice(project.base.bankTable.headerOffset(id), MAP_HEADER_SIZE));
           const footer = mapFooterCodec.decode(rom.slice(header.layout - ROM_BASE, MAP_LAYOUT_SIZE));
-          raw.push({ id, region: header.regionMapSectionId, primary: footer.primaryTileset, secondary: footer.secondaryTileset });
+          raw.push({ id, region: header.regionMapSectionId, layoutId: header.layoutId, primary: footer.primaryTileset, secondary: footer.secondaryTileset });
         } else {
           const doc = await project.load(id);
-          raw.push({ id, region: doc.header.regionMapSectionId, primary: doc.primaryTileset, secondary: doc.secondaryTileset });
+          raw.push({ id, region: doc.header.regionMapSectionId, layoutId: doc.header.layoutId, primary: doc.primaryTileset, secondary: doc.secondaryTileset });
         }
       } catch {
-        raw.push({ id, region: -1, primary: 0, secondary: 0 });
+        raw.push({ id, region: -1, layoutId: -1, primary: 0, secondary: 0 });
       }
     }
 
@@ -82,6 +84,7 @@ export class MapCatalog {
     const maps = raw.map((r) => ({
       id: r.id,
       region: r.region,
+      layoutId: r.layoutId,
       name: r.region >= 0 ? nameOf(r.region) : null,
       primaryNumber: numberOf(r.primary),
       secondaryNumber: numberOf(r.secondary),

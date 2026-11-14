@@ -31,3 +31,9 @@
   color: var(--note-text);
   font-size: 11px;
 }
+
+/* スライダーの見出し（移動エリア・イベントの濃さ。#304） */
+.opacity-caption {
+  margin: 4px 0 2px;
+  font-weight: bold;
+}

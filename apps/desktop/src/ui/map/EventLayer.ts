@@ -107,15 +107,17 @@ export function drawEvents(
   cellSize: number,
   selected: PlacedEvent | null,
   sprites: SpriteSource | null = null,
+  opacity = 1,
 ): void {
   const c = canvas.getContext("2d")!;
   c.clearRect(0, 0, canvas.width, canvas.height);
-  drawEventsOn(c, events, cellSize, selected, sprites, true);
+  drawEventsOn(c, events, cellSize, selected, sprites, true, opacity);
 }
 
 /**
  * `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。`cloneMarks` が true ならクローンに印を付ける
  * （画面だけ。書き出す画像は AdvanceMap と同じく印を付けない）。
+ * `opacity` はイベントの濃さ（#304。0.1〜1）。箱は AdvanceMap と同じ 50% にさらに掛け、OW 画像はそのまま掛ける。選択の枠には掛けない。
  */
 export function drawEventsOn(
   c: CanvasRenderingContext2D,
@@ -124,8 +126,10 @@ export function drawEventsOn(
   selected: PlacedEvent | null,
   sprites: SpriteSource | null = null,
   cloneMarks = false,
+  opacity = 1,
 ): void {
   const scale = cellSize / 16;
+  const alpha = clampOpacity(opacity);
   c.imageSmoothingEnabled = false;
   for (const e of events) {
     const x = e.x * cellSize;
@@ -137,12 +141,14 @@ export function drawEventsOn(
       if (image) {
         const w = image.width * scale;
         const h = image.height * scale;
+        c.globalAlpha = alpha;
         c.drawImage(image, x + (cellSize - w) / 2, y + cellSize - h, w, h);
+        c.globalAlpha = 1;
         if (cloneMarks && e.clone) drawCloneMark(c, x, y, cellSize);
         continue;
       }
     }
-    drawBox(c, e.kind, x, y, cellSize);
+    drawBox(c, e.kind, x, y, cellSize, alpha);
     if (cloneMarks && e.clone) drawCloneMark(c, x, y, cellSize);
   }
   if (selected) {
@@ -183,14 +189,19 @@ function drawCloneMark(c: CanvasRenderingContext2D, x: number, y: number, size: 
 /** 種別・大きさごとの箱の画像（不透明で描いておき、重ねるときに 50% にする）。 */
 const boxCache = new Map<string, HTMLCanvasElement>();
 
-function drawBox(c: CanvasRenderingContext2D, kind: EventKind, x: number, y: number, size: number): void {
+/** イベントの濃さを 0.1〜1 に収める（数でなければ 1）。 */
+export function clampOpacity(opacity: number): number {
+  return Number.isFinite(opacity) ? Math.min(1, Math.max(0.1, opacity)) : 1;
+}
+
+function drawBox(c: CanvasRenderingContext2D, kind: EventKind, x: number, y: number, size: number, alpha = 1): void {
   const key = `${kind}:${size}`;
   let image = boxCache.get(key);
   if (!image) {
     image = renderBox(STYLE[kind], size);
     boxCache.set(key, image);
   }
-  c.globalAlpha = BOX_ALPHA;
+  c.globalAlpha = BOX_ALPHA * alpha;
   c.drawImage(image, x, y);
   c.globalAlpha = 1;
 }

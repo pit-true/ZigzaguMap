@@ -27,6 +27,7 @@ import { viewCommands } from "./view";
 import { blockUsageCommands } from "./blockUsage";
 import { templateCommands } from "./templates";
 import { trainerCommands } from "./trainers";
+import { viewToolCommands } from "./viewTools";
 import { tilesetCommands } from "./tileset";
 import { penCommands } from "./pen";
 import { errorText } from "../../util/errors";
@@ -64,6 +65,7 @@ const registry: CommandRegistry = new CommandRegistry([
   neighborCommands,
   bagCommands,
   compositeCommands,
+  viewToolCommands,
   tilesetCommands,
   penCommands,
   { commands: () => registry.names() },

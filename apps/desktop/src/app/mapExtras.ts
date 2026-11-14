@@ -46,6 +46,8 @@ export class MapExtras {
   readonly composite: CompositeImage;
   /** 使用の印（#235。マップタブと移動エリアタブ）。 */
   readonly usageMarks: { readonly map: UsageMarks; readonly movement: UsageMarks };
+  /** 隣のマップの帯（マップ・移動エリア・イベントの各タブ。Phase4 の機能が帯の上に描き足す）。 */
+  readonly neighborLayers: { readonly map: NeighborLayer; readonly movement: NeighborLayer; readonly event: NeighborLayer };
 
   constructor(
     state: EditorState,
@@ -71,6 +73,7 @@ export class MapExtras {
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
       ([view, tab]) => new NeighborLayer(view, state, this.neighbors, openFrom[tab], { tab, movement: tab === "movement", clones: tab === "event" }),
     );
+    this.neighborLayers = { map: layers[0]!, movement: layers[1]!, event: layers[2]! };
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
