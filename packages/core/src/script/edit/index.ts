@@ -40,3 +40,11 @@ export {
   type MapScriptTableModel,
   type MapScriptTableSpan,
 } from "./MapScriptTableText.js";
+export {
+  keepStringsInPlan,
+  planScriptRemoval,
+  type RemovalFile,
+  type RemovalKept,
+  type ScriptRemovalInput,
+  type ScriptRemovalPlan,
+} from "./ScriptRemoval.js";
