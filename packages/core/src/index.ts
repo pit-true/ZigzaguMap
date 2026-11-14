@@ -141,6 +141,25 @@ export {
 } from "./command/commands/project/AddRomEraseRangesCommand.js";
 export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
 
+// スタンプ（maps\stamps\、#224）
+export {
+  STAMP_FORMAT,
+  STAMP_MAX_SIDE,
+  checkStampShape,
+  createStamp,
+  formatStampPointer,
+  parseStamp,
+  stampCellValue,
+  stampFileBase,
+  stampFits,
+  stampPath,
+  stampUsesSecondary,
+  stringifyStamp,
+  type Stamp,
+  type StampCell,
+} from "./project/StampJson.js";
+export { StampLibrary, type StampLibraryOptions, type StampProblem } from "./stamp/StampLibrary.js";
+
 // タイルセットの編集
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
 export {
