@@ -5,7 +5,9 @@ import { ja } from "../i18n/ja";
 import { jaPaint } from "../i18n/ja.paint";
 import type { Cell, MapView } from "../ui/map/MapView";
 import { attachCellPointer } from "./CellPointer";
+import { MapCells } from "./MapCells";
 import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
+import { PreviewCanvas } from "./PreviewCanvas";
 
 /** ドラッグ中の道具（Phase3 #233）。 */
 type Drag =
@@ -27,11 +29,16 @@ const PREVIEW_ALPHA = 0.75;
  * - Alt＋左ドラッグ: 押したマスと離したマスのブロックと移動許可を入れ替える（Phase3 #233）。
  * - Esc: 矩形塗り・入れ替え・矩形の選択のドラッグを取りやめる。
  * - Shift つきの左クリックは修飾キーなしと同じ。
+ * どの操作も、隣のマップの帯の上でも動く（Phase3 #234。帯で見えていない部分には描かない）。2 枚にまたがる操作は、
+ * マップごとのコマンドをまとめて 1 回の操作にする（隣のマップは書く前に読み込む）。
  */
 export class BlockPainter {
   private drag: Drag | null = null;
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
   hoverCell: Cell | null = null;
+  /** 画面のマスとマップのマスの対応（隣の帯は App が `cells.neighbors` を入れる）。 */
+  readonly cells: MapCells;
+  private readonly preview: PreviewCanvas;
 
   constructor(
     private readonly view: MapView,
@@ -39,7 +46,9 @@ export class BlockPainter {
     /** ブロックを拾ったとき（パレットを追従させる）。 */
     private readonly onPicked: () => void,
   ) {
-    attachCellPointer(view.stage, (e) => view.cellAt(e), {
+    this.cells = new MapCells(state);
+    this.preview = new PreviewCanvas(view);
+    attachCellPointer(view.stage, (e) => this.cellAt(e), {
       down: (cell, g) => {
         if (g.button === 0 && g.ctrl) this.startDrag({ tool: "rect", anchor: cell, last: cell, cancelled: false });
         else if (g.button === 0 && g.alt) this.startDrag({ tool: "swap", anchor: cell, last: cell, cancelled: false });
@@ -57,7 +66,7 @@ export class BlockPainter {
         const d = this.drag;
         this.drag = null;
         if (d) {
-          this.clearRect();
+          this.preview.end();
           if (d.cancelled) return;
           const end = cell ?? (d.tool === "pick" ? d.anchor : d.last);
           if (d.tool === "pick") this.selectRect(d.anchor, end);
@@ -73,7 +82,7 @@ export class BlockPainter {
       if (e.key !== "Escape" || !this.drag || this.drag.cancelled) return;
       e.preventDefault();
       this.drag.cancelled = true;
-      this.clearRect();
+      this.preview.end();
       this.state.setStatus(jaPaint.dragCancelled);
     });
   }
@@ -81,6 +90,12 @@ export class BlockPainter {
   /** ドラッグ中の道具（自動操作と確認用。無ければ null）。 */
   get tool(): "pick" | "rect" | "swap" | null {
     return this.drag?.tool ?? null;
+  }
+
+  /** マウスの位置のマス（主マップか、見せている隣の帯の上だけ）。 */
+  private cellAt(e: MouseEvent): Cell | null {
+    const c = this.view.cellAtAny(e);
+    return c && this.cells.resolve(c) ? c : null;
   }
 
   private startDrag(d: Drag, cell: Cell = d.anchor): void {
@@ -98,63 +113,78 @@ export class BlockPainter {
 
   /** 選択（複数ブロックなら左上を `cell`）を置く。移動許可を持つ選択は、設定がオンなら移動許可ごと置く。 */
   paintSelection(cell: Cell, s: BlockSelection, merge = false): void {
-    const map = this.state.map;
-    const session = this.state.session;
-    if (!map || !session) return;
-    const command = paintCommand(map.id, map.doc.grid, cell, s, this.state.settings.data.pasteMovements);
-    if (command) session.bus.execute(command, { merge });
+    const sel = s.movements !== undefined && s.movements.length === s.blocks.length ? s : { width: s.width, height: s.height, blocks: s.blocks };
+    this.write(tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel), true, merge);
   }
 
   /** 矩形塗り（1 回の操作）。 */
   private fillRect(rect: CellRect): void {
-    const map = this.state.map;
-    const session = this.state.session;
-    if (!map || !session) return;
-    const command = cellsCommand(map.id, map.doc.grid, tileRect(rect, this.state.selection), this.state.settings.data.pasteMovements);
-    if (command) session.bus.execute(command);
+    this.write(tileRect(rect, this.state.selection), false, false);
   }
 
-  /** 2 マスのブロックと移動許可を入れ替える（1 回の操作）。 */
+  /**
+   * 画面のマスの一覧を、マップごとのコマンドにして実行する。隣のマップが読み込まれていなければ、読み込んでから実行する
+   * （その間の操作は順に待たせる）。`forDrag` はドラッグで続けて描く操作（まとめて 1 回にする）。
+   */
+  private write(list: readonly FillCell[], forDrag: boolean, merge: boolean): void {
+    const groups = this.cells.split(list);
+    if (groups.length === 0) return;
+    const withMovements = this.state.settings.data.pasteMovements;
+    this.cells.run(
+      groups.map((g) => g.id),
+      () => groups.flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []),
+      forDrag,
+      merge,
+    );
+  }
+
+  /** 2 マスのブロックと移動許可を入れ替える（1 回の操作。2 枚のマップにまたがってもよい）。 */
   private swap(a: Cell, b: Cell): void {
-    const map = this.state.map;
-    const session = this.state.session;
-    if (!map || !session || (a.x === b.x && a.y === b.y)) return;
-    const grid = map.doc.grid;
-    if (!grid.inBounds(a.x, a.y) || !grid.inBounds(b.x, b.y)) return;
-    const va = grid.getCell(a.x, a.y);
-    const vb = grid.getCell(b.x, b.y);
-    session.bus.execute(
-      new PaintCellValuesCommand({
-        bank: map.id.bank,
-        map: map.id.map,
-        cells: [
-          { x: a.x, y: a.y, block: vb & 0x3ff, movement: vb >> 10 },
-          { x: b.x, y: b.y, block: va & 0x3ff, movement: va >> 10 },
-        ],
-      }),
+    const ra = this.cells.resolve(a);
+    const rb = this.cells.resolve(b);
+    if (!ra || !rb || (a.x === b.x && a.y === b.y)) return;
+    const ga = this.cells.gridOf(ra.id);
+    const gb = this.cells.gridOf(rb.id);
+    if (!ga || !gb) return;
+    const va = ga.getCell(ra.x, ra.y);
+    const vb = gb.getCell(rb.x, rb.y);
+    this.write(
+      [
+        { x: a.x, y: a.y, block: vb & 0x3ff, movement: vb >> 10 },
+        { x: b.x, y: b.y, block: va & 0x3ff, movement: va >> 10 },
+      ],
+      false,
+      false,
     );
     this.state.setStatus(jaPaint.swapped(a.x, a.y, b.x, b.y));
   }
 
+  /** 画面のマスのブロックと移動許可（どのマップでもなければ null）。 */
+  private cellValue(cell: Cell): number | null {
+    const ref = this.cells.resolve(cell);
+    const grid = ref ? this.cells.gridOf(ref.id) : null;
+    return ref && grid ? grid.getCell(ref.x, ref.y) : null;
+  }
+
   private pick(cell: Cell): void {
-    const map = this.state.map;
-    if (!map) return;
-    const block = map.doc.grid.getBlock(cell.x, cell.y);
+    const value = this.cellValue(cell);
+    if (value === null) return;
+    const block = value & 0x3ff;
     this.state.selectBlock(block);
     this.state.setStatus(ja.statusBlock(block));
     this.onPicked();
   }
 
   private selectRect(a: Cell, b: Cell): void {
-    const map = this.state.map;
-    if (!map) return;
+    if (!this.state.map) return;
     const r = rectOf(a, b);
     const blocks: number[] = [];
     const movements: number[] = [];
     for (let y = r.y; y < r.y + r.height; y++) {
       for (let x = r.x; x < r.x + r.width; x++) {
-        blocks.push(map.doc.grid.getBlock(x, y));
-        movements.push(map.doc.grid.getMovement(x, y));
+        const v = this.cellValue({ x, y }) ?? 0;
+        blocks.push(v & 0x3ff);
+        movements.push(v >> 10);
       }
     }
     this.state.selectStamp({ width: r.width, height: r.height, blocks, movements });
@@ -164,25 +194,26 @@ export class BlockPainter {
   private hover(cell: Cell | null): void {
     if (cell) this.hoverCell = cell;
     const map = this.state.map;
-    if (!cell || !map) return;
+    // 隣の帯の上（主マップの外）は、表示の補助の欄に隣のマップの座標を出す（#238）ので、ここでは出さない
+    if (!cell || !map || !map.doc.grid.inBounds(cell.x, cell.y)) return;
     this.state.setStatus(ja.statusMapCell(cell.x, cell.y, hex4(map.doc.grid.getBlock(cell.x, cell.y))));
   }
 
   /** ドラッグ中の下見（矩形の選択は赤い枠、矩形塗りはブロックを半透明で、入れ替えは 2 マスの枠）。 */
   private drawPreview(d: Drag, cell: Cell): void {
-    this.clearRect();
-    if (d.tool === "pick") return this.strokeRect(rectOf(d.anchor, cell), "#ff0000");
+    const p = this.preview.begin();
+    if (d.tool === "pick") return strokeRect(p, rectOf(d.anchor, cell), "#ff0000");
     if (d.tool === "swap") {
-      this.strokeRect(rectOf(d.anchor, d.anchor), "#ffd000");
-      return this.strokeRect(rectOf(cell, cell), "#ffd000");
+      strokeRect(p, rectOf(d.anchor, d.anchor), "#ffd000");
+      return strokeRect(p, rectOf(cell, cell), "#ffd000");
     }
     const rect = rectOf(d.anchor, cell);
-    this.drawBlocks(tileRect(rect, this.state.selection));
-    this.strokeRect(rect, "#ff0000");
+    this.drawBlocks(p, tileRect(rect, this.state.selection).filter((c) => this.cells.resolve(c)));
+    strokeRect(p, rect, "#ff0000");
   }
 
-  /** ブロックを重ね描きの Canvas に半透明で描く（矩形塗りの下見）。 */
-  private drawBlocks(cells: readonly FillCell[]): void {
+  /** ブロックを下見の Canvas に半透明で描く（矩形塗りの下見。主マップのタイルセットで描く）。 */
+  private drawBlocks(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, cells: readonly FillCell[]): void {
     const map = this.state.map;
     if (!map || cells.length === 0) return;
     const minX = Math.min(...cells.map((c) => c.x));
@@ -195,26 +226,21 @@ export class BlockPainter {
     tmp.width = image.width;
     tmp.height = image.height;
     tmp.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
-    const c = this.view.layerContext;
-    const size = this.view.cellSize;
-    c.save();
-    c.imageSmoothingEnabled = false;
-    c.globalAlpha = PREVIEW_ALPHA;
-    c.drawImage(tmp, minX * size, minY * size, w * size, h * size);
-    c.restore();
+    p.c.save();
+    p.c.imageSmoothingEnabled = false;
+    p.c.globalAlpha = PREVIEW_ALPHA;
+    p.c.drawImage(tmp, p.ox + minX * p.size, p.oy + minY * p.size, w * p.size, h * p.size);
+    p.c.restore();
   }
+}
 
-  private strokeRect(r: CellRect, color: string): void {
-    const c = this.view.layerContext;
-    const size = this.view.cellSize;
-    c.strokeStyle = color;
-    c.lineWidth = 1;
-    c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, r.width * size - 1, r.height * size - 1);
-  }
+/** 分けたあとのマスはどれもそのマップの中（MapCells.split が確かめる）。 */
+const alwaysInside = { inBounds: (): boolean => true };
 
-  private clearRect(): void {
-    this.view.layerContext.clearRect(0, 0, this.view.layer.width, this.view.layer.height);
-  }
+function strokeRect(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, r: CellRect, color: string): void {
+  p.c.strokeStyle = color;
+  p.c.lineWidth = 1;
+  p.c.strokeRect(p.ox + r.x * p.size + 0.5, p.oy + r.y * p.size + 0.5, r.width * p.size - 1, r.height * p.size - 1);
 }
 
 /**

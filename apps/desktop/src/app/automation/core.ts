@@ -117,7 +117,15 @@ export const coreCommands: CommandTable = {
     return { status: app.state.status, dialogs: listDialogs() };
   },
   key,
-  cells: (app) => {
+  cells: async (app, req) => {
+    // 隣のマップへ書く操作は、読み込んでから実行するので、それを待つ（Phase3 #234）
+    await app.settlePainting();
+    // `bank`・`map` を付けると、そのマップ（編集中のものか、読み取り専用で読んだもの）の配置
+    if (typeof req["bank"] === "number" && typeof req["map"] === "number") {
+      const doc = await requireSession(app).project.peek({ bank: req["bank"], map: req["map"] });
+      if (!doc) throw new Error(`マップ ${req["bank"]}.${req["map"]} はありません`);
+      return { width: doc.width, height: doc.height, cells: [...doc.grid.cells], border: [...doc.border.cells] };
+    }
     const map = app.state.map;
     if (!map) throw new Error("マップが開かれていません");
     return { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells], border: [...map.doc.border.cells] };

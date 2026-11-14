@@ -11,13 +11,15 @@ export class MovementTab {
   readonly view: MapView;
   private readonly layer: MovementLayer;
   private readonly palette: MovementPaletteView;
+  /** マップのマウス操作（隣の帯は App が `painter.cells.neighbors` を入れる）。 */
+  readonly painter: MovementPainter;
 
   constructor(private readonly state: EditorState) {
     this.element = document.createElement("div");
     this.element.className = "movement-tab";
     this.view = new MapView("movement-tab-view");
     this.layer = new MovementLayer(this.view.layer);
-    new MovementPainter(this.view, state, () => this.palette.showSelection(state.movement, true), () => this.resetLayer());
+    this.painter = new MovementPainter(this.view, state, () => this.palette.showSelection(state.movement, true), () => this.resetLayer());
     this.palette = new MovementPaletteView({
       select: (value) => {
         state.selectMovement(value);
