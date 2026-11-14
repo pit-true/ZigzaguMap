@@ -82,7 +82,7 @@ pub fn save_settings(app: AppHandle, text: String) -> Result<(), String> {
 }
 
 /// 個人設定に保存したウィンドウの位置と大きさ（物理ピクセル）。
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct WindowPlacement {
     x: i32,
     y: i32,
