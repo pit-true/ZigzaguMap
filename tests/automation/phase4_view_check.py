@@ -298,8 +298,60 @@ def check_town(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "state"})["settings"]["showTownMap"] is False, "設定に残る（オフ）")
 
 
+# ---- #307 ----
+
+
+def check_pointers(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    items = {i["id"]: i for i in z.call({"cmd": "menu.list"}) if i.get("id")}
+    check(items.get("tools.pointers", {}).get("shortcut") == "Ctrl+Shift+P", "ツール > ポインタ一覧（Ctrl+Shift+P）")
+    z.call({"cmd": "key", "key": "P", "ctrl": True, "shift": True})
+    time.sleep(0.5)
+    st = z.call({"cmd": "pointers.state"})
+    check(st["open"] and len(st["rows"]) > 10, f"Ctrl+Shift+P で開き、{len(st['rows'])} 行")
+    head = st["rows"][0]
+    check(head["kind"] == "header" and len(head["bytes"]) == 4, f"先頭はマップの表の行（{head['location']:X} → {head['value']:X}）")
+    check(head["bytes"] == [head["value"] & 255, (head["value"] >> 8) & 255, (head["value"] >> 16) & 255, head["value"] >> 24], "バイト列はリトルエンディアン")
+    shot(z, shots, "view_pointers.png", "pointers")
+    # 3.0 のヘッダーの場所を探すと、マップの表の中の 1 か所
+    r = z.call({"cmd": "pointers.search", "address": head["value"] - 0x08000000}, timeout=120)
+    check(len(r["hits"]) == 1 and r["hits"][0]["offset"] == head["location"], f"3.0 のヘッダーの参照元は 1 か所（{[h['offset'] for h in r['hits']]}）")
+    check("3.0 のヘッダー" in r["hits"][0]["place"], f"場所の名前（{r['hits'][0]['place']}）")
+    check(r["maxGapMs"] < 200, f"探している間も画面が止まらない（いちばん長い止まり {r['maxGapMs']}ms、{r['ms']:.1f}ms、{r['chunks']} 回）")
+    ctx.setdefault("timings", []).append(("base", r["ms"], r["chunks"], r["maxGapMs"]))
+    shot(z, shots, "view_pointers_search.png", "pointers")
+    # ほかの ROM のファイル
+    other = z.call({"cmd": "pointers.search", "address": head["value"], "rom": ctx["rom"]}, timeout=120)
+    check(len(other["hits"]) >= 1 and other["rom"] == ctx["rom"], f"ほかの ROM のファイルでも探せる（{len(other['hits'])} か所）")
+    # 行を選ぶとイベントが選ばれる（逆も）
+    st = z.call({"cmd": "pointers.state"})
+    rows = st["rows"]
+    people = [i for i, p in enumerate(rows) if p["kind"] in ("personScript", "signScript", "trapScript")]
+    check(len(people) > 0, f"イベントのスクリプトの行がある（{len(people)} 行）")
+    pi = people[-1] if people else None
+    if pi is not None:
+        want = {"personScript": "person", "signScript": "sign", "trapScript": "trap"}[rows[pi]["kind"]]
+        z.call({"cmd": "pointers.select", "row": pi})
+        ev = z.call({"cmd": "event.state"})
+        check(z.call({"cmd": "state"})["tab"] == "event" and ev["kind"] == want and ev["index"] == rows[pi]["index"], f"行を選ぶとイベントタブで{want} {rows[pi]['index']} が選ばれる")
+        first = people[0]
+        fk = {"personScript": "person", "signScript": "sign", "trapScript": "trap"}[rows[first]["kind"]]
+        z.call({"cmd": "event.select", "kind": fk, "index": rows[first]["index"]})
+        sel = z.call({"cmd": "pointers.state"})["selected"]
+        check(sel == first, f"イベントタブで {fk} {rows[first]['index']} を選ぶと行も選ばれる（{sel}）")
+        z.call({"cmd": "mouse", "id": f"pointers.row.{pi}", "action": "rightClick", "px": [4, 4]})
+        menu = z.call({"cmd": "contextMenu.state"}) or {}
+        check([i["id"] for i in menu.get("items", [])] == ["copyValue", "copyBytes", "copyLocation"], "行の右クリックにコピーの項目")
+        z.call({"cmd": "contextMenu.press", "id": "copyBytes"})
+        want = " ".join(f"{b:02X}" for b in rows[pi]["bytes"])
+        check(z.call({"cmd": "pointers.state"})["lastCopied"] == want, f"バイト列をコピー（{want}）")
+    z.call({"cmd": "click", "id": "pointers.close"})
+    check(not z.call({"cmd": "pointers.state"})["open"], "閉じる")
+
+
 CHECKS = {
     "events": check_events,
+    "pointers": check_pointers,
     "seams": check_seams,
     "filter": check_filter,
     "town": check_town,

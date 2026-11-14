@@ -1,5 +1,5 @@
 import type { App } from "../App";
-import { int, type AutomationRequest, type CommandTable } from "./registry";
+import { int, num, type AutomationRequest, type CommandTable } from "./registry";
 
 /**
  * Phase4 の表示・一覧・調査（列 3）の命令。
@@ -63,7 +63,60 @@ async function townPick(app: App, req: AutomationRequest): Promise<unknown> {
   return { region, filter: app.treeFilter.input.value };
 }
 
+/**
+ * `pointers.state`: ポインタ一覧（#307）。開いているか `open`、上の説明 `note`、一覧 `rows`（`kind`・`index`・`location`・`value`・`bytes`）、
+ * 選んでいる行 `selected`（無ければ -1）、最後の検索 `last`（`value`・`rom`・`hits`（`offset`・`place`）・`ms`・`chunks`）、
+ * 最後にコピーした文字 `lastCopied`（自動操作ではクリップボードへ書かない）。窓を作っていなければ作るが、開きはしない。
+ */
+async function pointersState(app: App): Promise<unknown> {
+  const d = await app.views.pointers();
+  return {
+    open: d.isOpen,
+    note: document.querySelector<HTMLElement>(".pointer-note")?.textContent ?? null,
+    rows: d.list,
+    selected: d.selectedRow,
+    last: d.last,
+    lastCopied: app.views.lastCopied,
+  };
+}
+
+/**
+ * `pointers.search {address, rom?}`: 参照元を探す（窓を開いてから。`address` は ROM の上の位置かポインタの値の数、`rom` はほかの ROM の
+ * パス）。返事は `pointers.state` の `last` と同じ形と、探している間の画面の止まり `maxGapMs`（0ms の待ちを繰り返し、間のいちばん長い時間）。
+ */
+async function pointersSearch(app: App, req: AutomationRequest): Promise<unknown> {
+  const d = await app.views.pointers();
+  d.open();
+  const rom = typeof req["rom"] === "string" ? req["rom"] : null;
+  let last = performance.now();
+  let maxGap = 0;
+  let running = true;
+  const tick = (): void => {
+    const now = performance.now();
+    maxGap = Math.max(maxGap, now - last);
+    last = now;
+    if (running) setTimeout(tick, 0);
+  };
+  setTimeout(tick, 0);
+  try {
+    const r = await d.search(num(req, "address"), rom);
+    return { ...r, maxGapMs: Math.round(maxGap * 10) / 10 };
+  } finally {
+    running = false;
+  }
+}
+
+/** `pointers.select {row}`: 一覧の行を押したのと同じ（イベントの行ならイベントタブで選ぶ）。 */
+async function pointersSelect(app: App, req: AutomationRequest): Promise<unknown> {
+  const d = await app.views.pointers();
+  d.selectRow(int(req, "row"));
+  return { selected: d.selectedRow };
+}
+
 export const viewToolCommands: CommandTable = {
+  "pointers.state": pointersState,
+  "pointers.search": pointersSearch,
+  "pointers.select": pointersSelect,
   "town.state": townState,
   "town.pick": townPick,
   "seams.state": seamsState,

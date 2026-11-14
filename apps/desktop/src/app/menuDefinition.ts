@@ -8,6 +8,7 @@ import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
 import { jaEventView } from "../i18n/ja.eventView";
 import { jaTownMini } from "../i18n/ja.townMini";
+import { jaPointers } from "../i18n/ja.pointers";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 
@@ -186,6 +187,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", shortcut: ctrl("M"), enable: "rom" },
         // ZigzaguMap 独自（Phase3 #237）。マップ名の一部で探して開く（HexManiacAdvance の Ctrl+G。ZigzaguMap の Ctrl+G はグリッド）。
         { id: "map.find", label: jaMapFind.find, shortcut: ctrl("F"), enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #307）。今のマップのポインタと、ROM の参照元の検索（読むだけの調査の道具）
+        { id: "tools.pointers", label: jaPointers.menu, shortcut: { key: "P", ctrl: true, shift: true, text: "Ctrl+Shift+P" }, enable: "map" },
         {
           label: ja.dummyData,
           accel: "X",

@@ -231,7 +231,16 @@ export class App implements ActionTarget {
     this.left.style.width = `${settings.data.leftWidth}px`;
     this.treeFilter = new MapTreeFilter(this.tree, () => this.state.session?.catalog ?? null);
     this.left.append(this.treeFilter.element, this.tree.element);
-    this.views = new ViewFeatures({ state, actions: this.actions, extras: this.extras, statusBar: this.statusBar, treeFilter: this.treeFilter });
+    this.views = new ViewFeatures({
+      state,
+      actions: this.actions,
+      extras: this.extras,
+      statusBar: this.statusBar,
+      treeFilter: this.treeFilter,
+      eventTab,
+      files: this.files,
+      isAutomation: () => this.automation,
+    });
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");

@@ -112,6 +112,7 @@ export class EventTab {
   private dragCount = 0;
   /** 右クリックの「ここに○○を追加」（#304）。 */
   readonly quickAdd: EventQuickAdd;
+  private readonly selectListeners = new Set<() => void>();
 
   constructor(
     private readonly state: EditorState,
@@ -224,6 +225,12 @@ export class EventTab {
     this.index = index;
     this.editor.endSession();
     this.refresh();
+    for (const l of this.selectListeners) l();
+  }
+
+  /** 選ぶイベントが変わったときに呼ぶ関数を足す（ポインタ一覧の行の連動など。#307）。 */
+  onSelect(listener: () => void): void {
+    this.selectListeners.add(listener);
   }
 
   /** 選んだ種別の個数（フライトポジションは 0 か 1）。 */
