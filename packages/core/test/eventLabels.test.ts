@@ -124,6 +124,25 @@ describe("イベントのラベル", () => {
     expect(s.mismatches(3, 0, now)).toEqual([]);
   });
 
+  it("マップを左・上へ広げたら照合用の座標もずらす（#231。逆にずらせば戻る）", () => {
+    const text = MapLabelsJson.stringify({
+      bank: 3,
+      map: 0,
+      mapScripts: null,
+      table: null,
+      persons: [{ index: 0, x: 1, y: 1, kind: "npc", label: "A" }],
+      signs: [],
+      traps: [],
+    });
+    const s = new EventLabelStore("", [{ path: "maps/03/scripts_00.json", text }]);
+    s.shiftPositions(3, 0, 3, 0);
+    // イベントも 3 右へずれたので、ずれの知らせは出ない
+    expect(s.mismatches(3, 0, pos([[4, 1]]))).toEqual([]);
+    expect(s.mismatches(3, 0, pos([[1, 1]]))).toHaveLength(1);
+    s.shiftPositions(3, 0, -3, 0);
+    expect(s.mismatches(3, 0, pos([[1, 1]]))).toEqual([]);
+  });
+
   it("ラベル名の変更はすべてのマップと表に反映する", () => {
     const s = new EventLabelStore(SCRIPTS);
     s.setTable(3, 2, { label: "T", items: [{ type: 1, script: "Sign_A", conditions: [] }] });

@@ -240,6 +240,7 @@ export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/h
 export { SetMapNameCommand, type SetMapNameArgs } from "./command/commands/header/SetMapNameCommand.js";
 export { MAP_SIZE_LIMIT, checkMapSize, maxMapHeight, resizeGrid } from "./command/commands/layout/mapSize.js";
 export { ResizeMapCommand, type ResizeMapArgs } from "./command/commands/layout/ResizeMapCommand.js";
+export { MIN_EDGE_RESIZE, ResizeMapEdgeCommand, edgeShift, type ResizeMapEdgeArgs } from "./command/commands/layout/ResizeMapEdgeCommand.js";
 export { SetBorderCommand, type SetBorderArgs } from "./command/commands/layout/SetBorderCommand.js";
 export { SetTilesetsCommand, type SetTilesetsArgs } from "./command/commands/layout/SetTilesetsCommand.js";
 export { SetRawFooterCommand, type SetRawFooterArgs } from "./command/commands/layout/SetRawFooterCommand.js";
@@ -310,3 +311,4 @@ export * from "./script/link/index.js";
 export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
 export * from "./script/summary/index.js";
+export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
