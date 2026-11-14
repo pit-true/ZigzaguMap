@@ -1,4 +1,4 @@
-import type { MapEvents } from "@zigzagumap/core";
+import { PERSON_KIND_CLONE, type MapEvents, type PersonEvent } from "@zigzagumap/core";
 
 /** マップ上に描くイベントの種別（フライトポジションを含む）。 */
 export type EventKind = "person" | "warp" | "trap" | "sign" | "fly";
@@ -45,8 +45,19 @@ export interface PlacedEvent {
   readonly index: number;
   readonly x: number;
   readonly y: number;
-  /** 人の画像番号（人以外は無し）。 */
+  /** 人の画像番号（人以外は無し。クローンなら元の人の画像番号。#298）。 */
   readonly graphicsId?: number;
+  /** クローン（種類 1 の人）なら true（画面では角に小さな印を付ける。#298）。 */
+  readonly clone?: boolean;
+}
+
+/** 人を描く画像番号を引く関数（クローンを元の人の見た目で描くため。#298）。 */
+export type PersonGraphics = (p: PersonEvent) => number;
+
+/** 人を印の 1 件にする（クローンなら `clone` を付け、画像番号は `graphics` で引く）。 */
+export function placedPerson(p: PersonEvent, index: number, graphics: PersonGraphics | null = null, x = p.x, y = p.y): PlacedEvent {
+  const clone = p.kind === PERSON_KIND_CLONE;
+  return { kind: "person", index, x, y, graphicsId: clone && graphics ? graphics(p) : p.graphicsId, ...(clone ? { clone } : {}) };
 }
 
 /** 画像番号から OW の画像（Canvas）を返す。無ければ null。 */
@@ -61,12 +72,12 @@ export interface PlacedFly {
 
 /**
  * イベントの一覧を、描く順（下から 人、ワープ、スクリプト、看板、フライトポジション）で平らにする。
- * AdvanceMap と同じく、後ろのものほど上に描かれ、クリックでも優先される。
+ * AdvanceMap と同じく、後ろのものほど上に描かれ、クリックでも優先される。クローンの見た目は `graphics` で引く（#298）。
  */
-export function placedEvents(events: MapEvents | null, fly: PlacedFly | null = null): PlacedEvent[] {
+export function placedEvents(events: MapEvents | null, fly: PlacedFly | null = null, graphics: PersonGraphics | null = null): PlacedEvent[] {
   const out: PlacedEvent[] = [];
   if (events) {
-    events.persons.forEach((e, index) => out.push({ kind: "person", index, x: e.x, y: e.y, graphicsId: e.graphicsId }));
+    events.persons.forEach((e, index) => out.push(placedPerson(e, index, graphics)));
     events.warps.forEach((e, index) => out.push({ kind: "warp", index, x: e.x, y: e.y }));
     events.traps.forEach((e, index) => out.push({ kind: "trap", index, x: e.x, y: e.y }));
     events.signs.forEach((e, index) => out.push({ kind: "sign", index, x: e.x, y: e.y }));
@@ -88,6 +99,7 @@ export function eventAt(events: readonly PlacedEvent[], x: number, y: number): P
  * イベントを種別ごとの文字の箱で描く。`selected` があれば赤い 1px の枠で囲む（カーソルの表示）。
  * `sprites` を渡すと（オブジェクトの表示）、AdvanceMap と同じく人を OW 画像で描き、人以外の箱は描かない。
  * OW 画像はマスの下端にそろえ、横はマスの中央に置く。画像が無い人は箱で描く。
+ * クローンもほかの人と同じ箱・OW 画像で描き、画面ではマスの右上に小さな印を付ける（#298）。
  */
 export function drawEvents(
   canvas: HTMLCanvasElement,
@@ -98,16 +110,20 @@ export function drawEvents(
 ): void {
   const c = canvas.getContext("2d")!;
   c.clearRect(0, 0, canvas.width, canvas.height);
-  drawEventsOn(c, events, cellSize, selected, sprites);
+  drawEventsOn(c, events, cellSize, selected, sprites, true);
 }
 
-/** `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。 */
+/**
+ * `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。`cloneMarks` が true ならクローンに印を付ける
+ * （画面だけ。書き出す画像は AdvanceMap と同じく印を付けない）。
+ */
 export function drawEventsOn(
   c: CanvasRenderingContext2D,
   events: readonly PlacedEvent[],
   cellSize: number,
   selected: PlacedEvent | null,
   sprites: SpriteSource | null = null,
+  cloneMarks = false,
 ): void {
   const scale = cellSize / 16;
   c.imageSmoothingEnabled = false;
@@ -122,10 +138,12 @@ export function drawEventsOn(
         const w = image.width * scale;
         const h = image.height * scale;
         c.drawImage(image, x + (cellSize - w) / 2, y + cellSize - h, w, h);
+        if (cloneMarks && e.clone) drawCloneMark(c, x, y, cellSize);
         continue;
       }
     }
     drawBox(c, e.kind, x, y, cellSize);
+    if (cloneMarks && e.clone) drawCloneMark(c, x, y, cellSize);
   }
   if (selected) {
     c.globalAlpha = 1;
@@ -137,6 +155,29 @@ export function drawEventsOn(
     c.fillRect(x, y, scale, cellSize);
     c.fillRect(x + cellSize - scale, y, scale, cellSize);
   }
+}
+
+/** クローンの印の色（白い縁の水色の三角）。 */
+const CLONE_MARK = "#3cc8ff";
+const CLONE_MARK_EDGE = "#ffffff";
+
+/** クローンの印（マスの右上の小さな三角。#298）。 */
+function drawCloneMark(c: CanvasRenderingContext2D, x: number, y: number, size: number): void {
+  const s = Math.max(4, Math.round(size * 0.375));
+  const right = x + size;
+  c.save();
+  c.globalAlpha = 1;
+  c.beginPath();
+  c.moveTo(right - s, y);
+  c.lineTo(right, y);
+  c.lineTo(right, y + s);
+  c.closePath();
+  c.fillStyle = CLONE_MARK;
+  c.fill();
+  c.lineWidth = Math.max(1, size / 16);
+  c.strokeStyle = CLONE_MARK_EDGE;
+  c.stroke();
+  c.restore();
 }
 
 /** 種別・大きさごとの箱の画像（不透明で描いておき、重ねるときに 50% にする）。 */

@@ -1131,7 +1131,8 @@ class ZigzaguDriver(Driver):
                 return out.get(want, "(項目なし)")
             return out
         if fid == "romInfo":
-            return [r["value"] for r in self.call({"cmd": "romInfo"})]
+            # 左下の ROM 情報の欄は、ユーザーFB #297 で外した（何も出さない）
+            return []
         if fid == "dialogs":
             return self._all_dialogs()
         if fid.startswith(("field:", "enabled:")):

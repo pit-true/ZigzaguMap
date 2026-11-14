@@ -1,14 +1,14 @@
-import { MOVEMENT_SHIFT, PERSON_KIND_CLONE, resolveCell, type MapDocument, type MapId } from "@zigzagumap/core";
+import { MOVEMENT_SHIFT, PERSON_KIND_CLONE, resolveCell, type MapDocument, type MapId, type PersonEvent } from "@zigzagumap/core";
 import type { EditorState, TabId } from "../../app/EditorState";
 import type { NeighborFrame, NeighborService } from "../../app/neighbors/NeighborService";
 import { MOVEMENT_COLORS, movementLabel } from "../../app/data/movementColors";
+import { personGraphicsId } from "./cloneLook";
+import { drawEventsOn, placedPerson, type PlacedEvent, type PersonGraphics, type SpriteSource } from "./EventLayer";
 import type { MapView } from "./MapView";
+import { spriteSourceFor } from "./spriteCanvases";
 
 /** 隣のマップを暗くする割合（黒を重ねる不透明度）。 */
 const NEIGHBOR_SHADE = 0.3;
-/** クローンの印の色（人の箱と同じ系統の色を薄くしたもの）。 */
-const CLONE_FILL = "rgba(64, 160, 255, 0.45)";
-const CLONE_EDGE = "#ffffff";
 
 /** 1 つのタブの描き方。 */
 export interface NeighborLayerOptions {
@@ -16,7 +16,10 @@ export interface NeighborLayerOptions {
   readonly tab: TabId;
   /** 移動許可も重ねるか（移動エリアタブ）。 */
   readonly movement?: boolean;
-  /** 表示 > クローンがオンのとき、このマップのクローン（マップの外にある写し）を帯の上に描くか（イベントタブ。#242）。 */
+  /**
+   * 表示 > クローンがオンのとき、このマップのクローン（マップの外にある写し）を帯の上に描くか（イベントタブ。#242）。
+   * ほかの人と同じく、オブジェクトの表示がオンなら元の人の OW 画像、オフなら人の箱で描く（#298）。
+   */
   readonly clones?: boolean;
 }
 
@@ -27,6 +30,8 @@ export interface NeighborLayerOptions {
 export class NeighborLayer {
   private canvases: HTMLCanvasElement[] = [];
   private frame: NeighborFrame | null = null;
+  /** クローンの元のマップを読み終えたら描き直す（#298。同じ関数を渡して 1 回だけ呼ばせる）。 */
+  private readonly onCloneOrigin = (): void => this.draw();
 
   constructor(
     private readonly view: MapView,
@@ -95,7 +100,10 @@ export class NeighborLayer {
     const origin = this.view.originPx;
     const opacity = this.state.settings.data.movementOpacity;
     const doc = this.state.map?.doc;
+    const session = this.state.session;
     const clones = this.options.clones && this.state.settings.data.showClones && doc ? outsideClones(doc) : [];
+    const graphics: PersonGraphics = (p) => personGraphicsId(session, p, this.onCloneOrigin);
+    const sprites = clones.length > 0 && this.state.settings.data.showObjects ? spriteSourceFor(session) : null;
     bands.forEach((band, i) => {
       const canvas = this.canvases[i]!;
       const at = band.placement.bandAt;
@@ -111,9 +119,10 @@ export class NeighborLayer {
       c.imageSmoothingEnabled = false;
       c.drawImage(band.bitmap, 0, 0, w, h);
       if (this.options.movement) drawMovements(c, band.grid, band.placement.band, size, opacity);
+      // クローンは帯といっしょに暗くする（隣のマップのものだと分かるように）
+      if (clones.length > 0) drawClones(c, clones, at, size, graphics, sprites);
       c.fillStyle = `rgba(0, 0, 0, ${NEIGHBOR_SHADE})`;
       c.fillRect(0, 0, w, h);
-      if (clones.length > 0) drawClones(c, clones, at, size);
     });
   }
 }
@@ -122,33 +131,45 @@ export class NeighborLayer {
  * 表示中のマップのクローン（種類 1 の人）のうち、マップの外（隣の帯の上）にあるものの位置（主マップの左上が原点。負もある）。
  * クローンの自動作成（#242）は、隣のマップの人の写しを、このマップの外の座標に置く。
  */
-export function outsideClones(doc: MapDocument): { x: number; y: number }[] {
+export function outsideClones(doc: MapDocument): OutsideClone[] {
   const signed = (v: number): number => (v & 0x8000 ? v - 0x10000 : v);
-  const out: { x: number; y: number }[] = [];
-  for (const p of doc.events?.persons ?? []) {
-    if (p.kind !== PERSON_KIND_CLONE) continue;
-    const x = signed(p.x);
-    const y = signed(p.y);
-    if (x < 0 || y < 0 || x >= doc.width || y >= doc.height) out.push({ x, y });
-  }
+  const out: OutsideClone[] = [];
+  doc.events?.persons.forEach((person, index) => {
+    if (person.kind !== PERSON_KIND_CLONE) return;
+    const x = signed(person.x);
+    const y = signed(person.y);
+    if (x < 0 || y < 0 || x >= doc.width || y >= doc.height) out.push({ x, y, index, person });
+  });
   return out;
 }
 
-/** 帯（主マップの座標で `band` の範囲）の上にクローンの印（点線の枠）を描く。 */
-function drawClones(c: CanvasRenderingContext2D, clones: readonly { x: number; y: number }[], band: { x: number; y: number; width: number; height: number }, size: number): void {
-  c.save();
-  c.setLineDash([3, 2]);
-  c.lineWidth = 2;
+/** マップの外にあるクローン（位置は主マップの左上が原点。`index` は人の番号）。 */
+export interface OutsideClone {
+  readonly x: number;
+  readonly y: number;
+  readonly index: number;
+  readonly person: PersonEvent;
+}
+
+/**
+ * 帯（主マップの座標で `band` の範囲）の上にクローンを描く（#298）。主マップの人と同じ箱か OW 画像（`sprites`）で、
+ * 元の人の見た目（`graphics`）にし、右上にクローンの印を付ける。
+ */
+function drawClones(
+  c: CanvasRenderingContext2D,
+  clones: readonly OutsideClone[],
+  band: { x: number; y: number; width: number; height: number },
+  size: number,
+  graphics: PersonGraphics,
+  sprites: SpriteSource | null,
+): void {
+  const events: PlacedEvent[] = [];
   for (const p of clones) {
     const x = p.x - band.x;
     const y = p.y - band.y;
-    if (x < 0 || y < 0 || x >= band.width || y >= band.height) continue;
-    c.fillStyle = CLONE_FILL;
-    c.fillRect(x * size, y * size, size, size);
-    c.strokeStyle = CLONE_EDGE;
-    c.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    if (x >= 0 && y >= 0 && x < band.width && y < band.height) events.push(placedPerson(p.person, p.index, graphics, x, y));
   }
-  c.restore();
+  drawEventsOn(c, events, size, null, sprites, true);
 }
 
 /** 帯の上に移動許可を重ねる（MovementLayer と同じ色と文字）。 */
