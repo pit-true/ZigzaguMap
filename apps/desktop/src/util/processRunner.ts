@@ -93,6 +93,16 @@ export class ProcessRunner {
     return { id, cwd, lines, done, kill: () => invoke<boolean>("process_kill", { id }) };
   }
 
+  /** 作業フォルダの下のテキストファイルを読む（ビルドが書いたログ）。 */
+  static readText(path: string, cwd: string | null): Promise<string> {
+    return invoke<string>("process_read_text", { path, cwd });
+  }
+
+  /** ファイルを写す（ビルドの手順の `copy`）。`from`・`to` は `cwd`（プロジェクトフォルダからの相対パスか絶対パス）から。写した大きさを返す。 */
+  static copy(from: string, to: string, cwd: string | null): Promise<number> {
+    return invoke<number>("process_copy", { from, to, cwd });
+  }
+
   private onOutput(e: OutputEvent): void {
     const p = this.pending.get(e.id);
     if (!p) return;

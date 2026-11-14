@@ -81,12 +81,13 @@ fn startup_args(args: State<'_, StartupArgs>) -> StartupArgs {
 /// issue #108 の計測で待機時メモリを減らせたものを足す（scripts/measure-memory.ps1。描画と速さが変わらないことを確かめたものだけ）。
 /// - `--disable-gpu`: GPU プロセスを使わない（Canvas 2D と合成をソフトウェアで行う。GPU プロセスの約 50MB と、その確保した領域が無くなる）
 /// - `NetworkServiceInProcess2`: ネットワークのユーティリティプロセスをブラウザのプロセスにまとめる（約 5MB）
+/// - `--js-flags=--expose-gc`: 画面から V8 の GC を呼べるようにする（マップを切り替えたあと、手の空いたときに 1 回集める。util/idleGc.ts）
 pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
-     --enable-features=NetworkServiceInProcess2 --disable-gpu";
+     --enable-features=NetworkServiceInProcess2 --disable-gpu --js-flags=--expose-gc";
 
 /// 自動操作で起動したときの WebView2 の引数（BROWSER_ARGS に加えて、画面外・非アクティブでも描画を止めない。音は出さない）。
 pub(crate) const AUTOMATION_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
-     --enable-features=NetworkServiceInProcess2 --disable-gpu \
+     --enable-features=NetworkServiceInProcess2 --disable-gpu --js-flags=--expose-gc \
      --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows --mute-audio";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -157,6 +158,8 @@ pub fn run() {
             process::process_spawn,
             process::process_kill,
             process::process_running,
+            process::process_copy,
+            process::process_read_text,
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,

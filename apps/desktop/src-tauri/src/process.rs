@@ -3,6 +3,7 @@
 //! - `process_spawn`: コマンドを作業フォルダで起動し、標準出力と標準エラーを 1 行ずつ、呼んだウィンドウへ
 //!   イベント `process-output`（`{ id, stream, line }`）で送る。終わったら `process-exit`（`{ id, code }`）を送る。
 //!   `process_kill` で止められる（子プロセスごと止める）。
+//! - `process_copy`: ファイルを写す（ビルドの手順の `copy`）。
 //!
 //! 作業フォルダは、開いているプロジェクトフォルダからの相対パス（`..` で上へ出てもよい）か絶対パス。
 //! コマンドは設定（zigzagumap.json）に書いたもので、画面には黒いコンソールのウィンドウを出さない。
@@ -112,6 +113,16 @@ pub fn process_spawn(
         return Err(format!("同じ ID のコマンドが動いています: {id}"));
     }
     let mut cmd = Command::new(&command);
+    if let Some(path) = std::env::var_os("PATH") {
+        // Microsoft Store の python / python3 の代わりの exe（WindowsApps）を外す。DPE の make.py は python3 があればそれを呼び、
+        // 代わりの exe は何もせずに終わるため（tests/realcopy の builder と Chronos の build.py も同じことをしている）
+        let kept: Vec<PathBuf> = std::env::split_paths(&path)
+            .filter(|p| !p.to_string_lossy().to_ascii_lowercase().contains(r"\microsoft\windowsapps"))
+            .collect();
+        if let Ok(joined) = std::env::join_paths(kept) {
+            cmd.env("PATH", joined);
+        }
+    }
     cmd.args(&args)
         .current_dir(&dir)
         .env("PYTHONUTF8", "1")
@@ -177,6 +188,39 @@ pub fn process_kill(processes: State<'_, Arc<Processes>>, id: String) -> Result<
 #[tauri::command]
 pub fn process_running(processes: State<'_, Arc<Processes>>) -> Vec<String> {
     processes.running.lock().map(|r| r.keys().cloned().collect()).unwrap_or_default()
+}
+
+/// ファイルを写す（ビルドの手順の `copy`。ND の CFRU の test.gba を DPE の BPRJ0.gba にする）。
+/// `from` と `to` は `cwd`（プロジェクトフォルダからの相対パスか絶対パス）からの相対パスか絶対パス。写した大きさを返す。
+#[tauri::command]
+pub fn process_copy(root: State<'_, ProjectRoot>, from: String, to: String, cwd: Option<String>) -> Result<u64, String> {
+    let dir = resolve_cwd(&root, cwd.as_deref())?;
+    let src = dir.join(&from);
+    let dest = dir.join(&to);
+    if !src.is_file() {
+        return Err(format!("写すファイルがありません: {}", display_path(&src)));
+    }
+    let parent = dest.parent().ok_or("写し先が不正です")?;
+    if !parent.is_dir() {
+        return Err(format!("写し先のフォルダがありません: {}", display_path(parent)));
+    }
+    std::fs::copy(&src, &dest).map_err(|e| format!("{} → {}: {e}", display_path(&src), display_path(&dest)))
+}
+
+/// ビルドが書いたログを読む（Chronos の build.py は、失敗した段のログのパスだけを出す）。`path` は `cwd` の下のファイルに限る
+/// （絶対パスでも、`cwd` の外なら断る）。4MB を超える分は読まない。UTF-8 として読めないバイトは置き換える。
+#[tauri::command]
+pub fn process_read_text(root: State<'_, ProjectRoot>, path: String, cwd: Option<String>) -> Result<String, String> {
+    let dir = resolve_cwd(&root, cwd.as_deref())?;
+    let file = std::fs::canonicalize(dir.join(&path)).map_err(|e| format!("{path}: {e}"))?;
+    if !file.starts_with(&dir) || !file.is_file() {
+        return Err(format!("作業フォルダの中のファイルではありません: {}", display_path(&file)));
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(&file)
+        .and_then(|f| f.take(4 * 1024 * 1024).read_to_end(&mut bytes))
+        .map_err(|e| format!("{}: {e}", display_path(&file)))?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// 終了時に動いているコマンドを止める。

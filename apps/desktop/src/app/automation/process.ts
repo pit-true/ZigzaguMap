@@ -2,7 +2,7 @@ import { ProcessRunner, type ProcessExit, type ProcessSpec, type RunningProcess 
 import { optStr, str, type AutomationRequest, type CommandTable } from "./registry";
 
 /**
- * 外部コマンドの確認（`process.run` / `process.start` / `process.output` / `process.kill`）。
+ * 外部コマンドの確認（`process.run` / `process.start` / `process.output` / `process.kill` / `process.copy`）。
  * 自動操作の入口と同じく、`--automation` で起動したときだけ読み込む。
  */
 
@@ -52,4 +52,5 @@ export const processCommands: CommandTable = {
     entry.exit = await entry.proc.done;
     return { killed, ...(describe(entry.proc, entry.exit) as object) };
   },
+  "process.copy": async (_app, req) => ({ bytes: await ProcessRunner.copy(str(req, "from"), str(req, "to"), optStr(req, "cwd")) }),
 };

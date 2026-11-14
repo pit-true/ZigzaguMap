@@ -4,7 +4,7 @@
 
 - 一時フォルダの --profile で起動する（通常の設定には触れない。画面外・非アクティブ・音なし）。
 - 一時フォルダで短いコマンドを動かし、出力の行と終了コードが届くこと、長いコマンドを途中で止められること、
-  を確かめる。
+  ビルドの手順の copy（process.copy）でファイルを写せることを確かめる。
 失敗があれば終了コード 1。
 """
 from __future__ import annotations
@@ -69,6 +69,15 @@ def main() -> int:
             except AppError as e:
                 check(True, f"無いコマンドはエラーになる（{e}）")
 
+            # ファイルを写す（ビルドの手順の copy）
+            (work / "copy_src.bin").write_bytes(b"zz" * 10)
+            r = z.call({"cmd": "process.copy", "from": "copy_src.bin", "to": "copy_dest.bin", "cwd": str(work)})
+            check(r["bytes"] == 20 and (work / "copy_dest.bin").read_bytes() == b"zz" * 10, "copy でファイルを写せる")
+            try:
+                z.call({"cmd": "process.copy", "from": "no_such.bin", "to": "x.bin", "cwd": str(work)})
+                check(False, "無いファイルの copy はエラーになる")
+            except AppError as e:
+                check(True, f"無いファイルの copy はエラーになる（{e}）")
     if failures:
         print(f"\n失敗 {len(failures)} 件")
         return 1

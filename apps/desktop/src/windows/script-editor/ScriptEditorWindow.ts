@@ -8,10 +8,15 @@ import { jaScriptEditor as t } from "../../i18n/ja.scriptEditor";
 import { openDialogs } from "../../ui/Dialog";
 import { messageBox } from "../../ui/MessageBox";
 import { errorText } from "../../util/errors";
+import { BuildPanel } from "./BuildPanel";
+import { jaRomScript } from "../../i18n/ja.romScript";
+import { openRomImportDialog } from "./RomImportDialog";
+import { detectLabelRename, indexAsmFile, isScriptLabelName, renameLabelInText } from "@zigzagumap/core";
+import { inputDialog } from "../../ui/InputDialog";
 import { EditorTab, sameStat, type FileStat } from "./EditorTab";
 import { buildExtensions, type EditorFileContext } from "./extensions";
 import { decodeScriptText, encodeScriptText, isEditableScriptPath, normalizeScriptPath, scriptFileKind, type DecodedText } from "./fileText";
-import type { ScriptEditorQuery } from "./protocol";
+import type { ScriptEditorQuery, ScriptRomOpenRequest } from "./protocol";
 import { ScriptEditorClient } from "./ScriptEditorClient";
 
 /** 外部の変更を調べる間隔（ms）。 */
@@ -39,6 +44,13 @@ export class ScriptEditorWindow {
   private checking = false;
   private closing = false;
   private lastTitle = "";
+  /** ビルドの欄（#198）。 */
+  readonly build: BuildPanel;
+  /** プロジェクトフォルダ（絶対パス。hello で受け取る）。 */
+  private projectDir: string | null = null;
+  /** ROM のタブの上の帯（読み取り専用の印と「.s に取り込む」）。 */
+  private readonly romBar: HTMLElement;
+  private readonly romImport: HTMLButtonElement;
 
   constructor(root: HTMLElement) {
     root.classList.add("script-editor");
@@ -50,6 +62,20 @@ export class ScriptEditorWindow {
     this.empty = document.createElement("div");
     this.empty.className = "se-empty";
     this.empty.textContent = t.noFiles;
+    this.romBar = document.createElement("div");
+    this.romBar.className = "se-rom-bar";
+    this.romBar.dataset["autoId"] = "se.romBar";
+    this.romBar.hidden = true;
+    const romNote = document.createElement("span");
+    romNote.textContent = jaRomScript.readOnly;
+    this.romImport = document.createElement("button");
+    this.romImport.type = "button";
+    this.romImport.textContent = jaRomScript.importButton;
+    this.romImport.dataset["autoId"] = "se.romImport";
+    this.romImport.addEventListener("click", () => {
+      if (this.activeTab?.rom) void this.importRom(this.activeTab);
+    });
+    this.romBar.append(romNote, this.romImport);
     this.view = new EditorView({ parent: body });
     this.view.dom.dataset["autoId"] = "se.editor";
     body.append(this.empty);
@@ -62,7 +88,14 @@ export class ScriptEditorWindow {
     this.status.className = "se-position";
     this.status.dataset["autoId"] = "se.position";
     bar.append(this.message, this.status);
-    root.append(this.tabBar, body, bar);
+    this.build = new BuildPanel({
+      confirmSave: () => this.confirmSaveBeforeBuild(),
+      mainDirty: async () => Number(await this.client.request({ type: "mainDirty" })),
+      exportMain: async () => (await this.client.request({ type: "exportMain" })) === true,
+      projectDir: () => this.projectDir,
+      openFile: (path, line) => void this.open(path, line),
+    });
+    root.append(this.tabBar, this.romBar, body, this.build.element, bar);
     this.render();
   }
 
@@ -80,11 +113,16 @@ export class ScriptEditorWindow {
     await this.client.connect({
       open: (req) => void this.open(req.path, req.line),
       query: (q) => this.answer(q),
+      build: () => void this.build.run(),
+      openRom: (req) => this.openRom(req),
     });
     const { startScriptEditorAutomation } = await import("./automation");
     await startScriptEditorAutomation(this);
     const hello = await this.client.hello();
+    this.projectDir = hello.projectDir ?? null;
     for (const req of hello.opens) await this.open(req.path, req.line);
+    for (const req of hello.roms ?? []) this.openRom(req);
+    if (hello.build) void this.build.run();
     setInterval(() => void this.checkExternal(), POLL_MS);
   }
 
@@ -128,6 +166,47 @@ export class ScriptEditorWindow {
     return true;
   }
 
+  /** 素の ROM のスクリプトを読み取り専用のタブで開く（#206。同じアドレスのタブがあれば中身を入れ替える）。 */
+  openRom(req: ScriptRomOpenRequest): EditorTab {
+    let tab = this.tabs.find((x) => x.rom && x.path === req.key) ?? null;
+    if (tab) {
+      tab.rom = req;
+      tab.state = this.createState(tab, req.text);
+      tab.savedDoc = tab.state.doc;
+      if (tab === this.activeTab) this.view.setState(tab.state);
+    } else {
+      tab = new EditorTab(req.key, "asm", EditorState.create({ doc: "" }), "\n", false, null);
+      tab.rom = req;
+      tab.state = this.createState(tab, req.text);
+      tab.savedDoc = tab.state.doc;
+      this.tabs.push(tab);
+    }
+    this.activate(tab);
+    this.render();
+    return tab;
+  }
+
+  /** 「.s に取り込む」: 付ける名前を一覧で確かめてから、メインで取り込む（#207）。`rename` を渡すと一覧を出さない（自動操作）。 */
+  async importRom(tab: EditorTab, rename?: Record<string, string>): Promise<unknown> {
+    const rom = tab.rom;
+    if (!rom) return null;
+    if (!rom.importable || !rom.target) {
+      this.setMessage(jaRomScript.notImportable);
+      return null;
+    }
+    const chosen = rename ?? (await openRomImportDialog(rom));
+    if (!chosen) return null;
+    try {
+      const plan = (await this.client.request({ type: "importRom", pointer: rom.pointer, target: rom.target, rename: chosen })) as { entryLabel: string };
+      this.setMessage(jaRomScript.importDone(plan.entryLabel));
+      return plan;
+    } catch (e) {
+      this.setMessage(jaRomScript.importFailed(errorText(e)));
+      await messageBox(ja.errorTitle, jaRomScript.importFailed(errorText(e)), "error");
+      return null;
+    }
+  }
+
   /** タブを切り替える。 */
   activate(tab: EditorTab): void {
     if (this.activeTab === tab) return;
@@ -166,6 +245,16 @@ export class ScriptEditorWindow {
     return true;
   }
 
+  /** ビルドの前に、未保存のタブを保存するか聞く（はい = 全部保存、いいえ = そのまま、キャンセル = ビルドしない）。 */
+  private async confirmSaveBeforeBuild(): Promise<boolean> {
+    const dirty = this.tabs.filter((x) => x.dirty);
+    if (dirty.length === 0) return true;
+    const text = dirty.length === 1 ? t.confirmSave(dirty[0]!.name) : t.confirmSaveMany(dirty.length);
+    const answer = await messageBox(ja.question, text, "warning", "yesNoCancel");
+    if (answer === "cancel") return false;
+    return answer === "yes" ? this.saveAll() : true;
+  }
+
   /** ウィンドウを閉じてよいか（未保存があれば聞く。「はい」なら全部保存する）。 */
   async confirmClose(): Promise<boolean> {
     const dirty = this.tabs.filter((x) => x.dirty);
@@ -190,8 +279,9 @@ export class ScriptEditorWindow {
 
   /** 保存する（既定は表示中のタブ）。改行の形と BOM は読んだときのもの。保存できたら true。 */
   async save(tab: EditorTab | null = this.activeTab): Promise<boolean> {
-    if (!tab) return false;
+    if (!tab || tab.rom) return false;
     const doc = tab.state.doc;
+    const before = tab.savedDoc.toString();
     tab.saving = true;
     try {
       await invoke("fs_write_text", { path: tab.path, text: encodeScriptText(doc.toString(), tab.lineEnding, tab.bom) });
@@ -207,7 +297,67 @@ export class ScriptEditorWindow {
     this.setMessage(t.saved(tab.path));
     this.render();
     this.client.saved(tab.path);
+    void this.checkManualRename(tab, before, doc.toString());
     return true;
+  }
+
+  // ---- ラベル名の変更（#203） ----
+
+  /**
+   * ラベル名を変える（F2）。`assembly/overworld_scripts` の下のすべての `.s` の定義と参照を変え（開いているタブは本文を、
+   * 開いていないファイルはディスクを書き換える）、メインへ知らせる（メインはイベントと eventscripts の側を変えるコマンドを実行する）。
+   * `to` を渡すと名前を聞かない（自動操作）。変えた数を返す。
+   */
+  async renameLabel(from: string, to?: string): Promise<{ count: number; files: string[]; uses: number } | null> {
+    const next = to ?? (await inputDialog(t.renameTitle, t.renamePrompt(from), from));
+    if (next === null || next === from) return null;
+    if (!isScriptLabelName(next)) {
+      await messageBox(ja.errorTitle, t.renameInvalid(next), "error");
+      return null;
+    }
+    let count = 0;
+    const files: string[] = [];
+    for (const path of await listAsmFiles("assembly/overworld_scripts")) {
+      const tab = this.findTab(path);
+      try {
+        if (tab) {
+          const r = renameLabelInText(tab.state.doc.toString(), from, next);
+          if (r.count === 0) continue;
+          const spec = minimalChange(tab.state.doc.toString(), r.text)!;
+          if (tab === this.activeTab) this.view.dispatch({ ...spec, userEvent: "input.rename" });
+          else tab.state = tab.state.update({ ...spec, userEvent: "input.rename" }).state;
+          count += r.count;
+        } else {
+          const decoded = decodeScriptText(await invoke<string>("fs_read_text", { path }));
+          const r = renameLabelInText(decoded.text, from, next);
+          if (r.count === 0) continue;
+          await invoke("fs_write_text", { path, text: encodeScriptText(r.text, decoded.lineEnding, decoded.bom) });
+          this.client.saved(path);
+          count += r.count;
+        }
+        files.push(path);
+      } catch (e) {
+        await messageBox(ja.errorTitle, t.saveFailed(path, errorText(e)), "error");
+      }
+    }
+    this.render();
+    const uses = Number(await this.client.request({ type: "labelRenamed", from, to: next, path: this.activeTab?.path ?? "" }).catch(() => 0));
+    this.setMessage(t.renamed(from, next, count, files.length, uses));
+    return { count, files, uses };
+  }
+
+  /** 保存するとき、手で書き換えたラベルが 1 つだけなら（消えた 1 つと増えた 1 つ）、イベントのラベルも変えるか聞く。 */
+  private async checkManualRename(tab: EditorTab, before: string, after: string): Promise<void> {
+    if (tab.kind !== "asm") return;
+    const names = (text: string): string[] => indexAsmFile(tab.path, text).labels.map((l) => l.name);
+    const found = detectLabelRename(names(before), names(after));
+    if (!found) return;
+    const uses = Number(await this.client.request({ type: "labelUses", label: found.from }).catch(() => 0));
+    if (uses === 0) return;
+    const answer = await messageBox(ja.question, t.confirmRename(found.from, found.to, uses), "question", "yesNo");
+    if (answer !== "yes") return;
+    const n = Number(await this.client.request({ type: "labelRenamed", from: found.from, to: found.to, path: tab.path }).catch(() => 0));
+    this.setMessage(t.renamed(found.from, found.to, 0, 0, n));
   }
 
   /** 未保存のタブを全部保存する。全部保存できたら true。 */
@@ -225,7 +375,7 @@ export class ScriptEditorWindow {
     this.checking = true;
     try {
       for (const tab of [...this.tabs]) {
-        if (tab.saving || !this.tabs.includes(tab)) continue;
+        if (tab.saving || tab.rom || !this.tabs.includes(tab)) continue;
         await this.checkTab(tab);
       }
     } finally {
@@ -303,8 +453,10 @@ export class ScriptEditorWindow {
       kind: tab.kind,
       save: () => void this.save(tab),
       openFile: (path, line) => void this.open(path, line),
+      renameLabel: (from) => void this.renameLabel(from),
     };
     const extensions: Extension[] = [buildExtensions(ctx), EditorView.updateListener.of((u) => this.onUpdate(tab, u))];
+    if (tab.rom) extensions.push(EditorState.readOnly.of(true));
     return EditorState.create({ doc: text, extensions });
   }
 
@@ -320,13 +472,39 @@ export class ScriptEditorWindow {
         return Promise.resolve(this.tabs.filter((x) => x.dirty).map((x) => x.path));
       case "saveAll":
         return this.saveAll();
+      case "bufferText":
+        return Promise.resolve(this.findTab(query.path)?.state.doc.toString() ?? null);
+      case "setBufferText":
+        return this.setBufferText(query.path, query.text, query.save);
     }
+  }
+
+  /** 開いているタブ（大文字小文字は区別しない）。 */
+  findTab(rawPath: string): EditorTab | null {
+    const path = normalizeScriptPath(rawPath).toLowerCase();
+    return this.tabs.find((x) => x.path.toLowerCase() === path) ?? null;
+  }
+
+  /** メインから届いた書き換え（ひな形など）を本文に入れる。`save` は、前に未保存の変更が無かったときだけ保存する。変わった範囲だけを置き換え、元に戻す履歴に入る。 */
+  private async setBufferText(path: string, text: string, save: boolean): Promise<boolean> {
+    const tab = this.findTab(path);
+    if (!tab) return false;
+    const wasDirty = tab.dirty;
+    const spec = minimalChange(tab.state.doc.toString(), text);
+    if (spec) {
+      if (tab === this.activeTab) this.view.dispatch({ ...spec, userEvent: "input.main" });
+      else tab.state = tab.state.update({ ...spec, userEvent: "input.main" }).state;
+    }
+    this.render();
+    // 保存するのは、書き換える前に未保存の変更が無かったときだけ（ほかの編集を勝手に保存しない）
+    return save && !wasDirty ? this.save(tab) : true;
   }
 
   private onKey(e: KeyboardEvent): void {
     if (e.defaultPrevented || !e.ctrlKey || e.altKey || openDialogs.length > 0) return;
     const key = e.key.toLowerCase();
     if (key === "s" && !e.shiftKey) void this.save();
+    else if (key === "b" && !e.shiftKey) void this.build.run();
     else if (key === "w" && !e.shiftKey) {
       if (this.activeTab) void this.closeTab(this.activeTab);
     } else if (key === "tab") this.cycle(e.shiftKey ? -1 : 1);
@@ -389,6 +567,10 @@ export class ScriptEditorWindow {
     );
     const has = this.activeTab !== null;
     this.view.dom.hidden = !has;
+    const rom = this.activeTab?.rom ?? null;
+    this.romBar.hidden = rom === null;
+    this.romImport.disabled = !rom?.importable;
+    this.romImport.title = rom?.importable ? "" : jaRomScript.notImportable;
     this.empty.hidden = has;
     const title = t.windowTitle(this.activeTab?.name ?? null, this.activeTab?.dirty ?? false);
     if (title !== this.lastTitle) {
@@ -413,6 +595,28 @@ export class ScriptEditorWindow {
     if (tab.bom) parts.push(t.bom);
     this.status.textContent = parts.join("　");
   }
+}
+
+/** フォルダの下の `.s`（下のフォルダも）。 */
+async function listAsmFiles(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const name of await invoke<string[]>("fs_list", { path: dir }).catch(() => [] as string[])) {
+    const path = `${dir}/${name}`;
+    if (/\.s$/i.test(name)) out.push(path);
+    else if ((await statFile(path).catch(() => null))?.dir) out.push(...(await listAsmFiles(path)));
+  }
+  return out;
+}
+
+/** 2 つの本文の、変わった範囲だけを置き換える変更（同じなら null）。 */
+function minimalChange(before: string, after: string): { changes: { from: number; to: number; insert: string } } | null {
+  if (before === after) return null;
+  let start = 0;
+  const max = Math.min(before.length, after.length);
+  while (start < max && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+  let end = 0;
+  while (end < max - start && before.charCodeAt(before.length - 1 - end) === after.charCodeAt(after.length - 1 - end)) end++;
+  return { changes: { from: start, to: before.length - end, insert: after.slice(start, after.length - end) } };
 }
 
 /** ファイルの更新日時と大きさ（無ければ null）。 */
