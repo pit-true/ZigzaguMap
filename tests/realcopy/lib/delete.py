@@ -14,8 +14,10 @@
 """
 from __future__ import annotations
 
+import base64
 import contextlib
 import importlib.util
+import os
 import io
 import json
 import pathlib
@@ -37,6 +39,18 @@ REPO = pathlib.Path(__file__).resolve().parents[3]
 PATCHES = REPO / "build-support" / "patches"
 ED = {"window": "script-editor"}
 LONG = "こんにちは！\\nきょうは いいてんきだね\\pまたね\\nげんきでね"
+# 新しい画面のスクリーンショットを置くフォルダ（環境変数 ZZM_RC_SHOTS。無ければ撮らない）
+SHOTS = pathlib.Path(os.environ["ZZM_RC_SHOTS"]) if os.environ.get("ZZM_RC_SHOTS") else None
+
+
+def _shot(z: Zigzagu, name: str, window: str | None = None) -> None:
+    if not SHOTS:
+        return
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    png = z.call({"cmd": "screenshot", **({"window": window} if window else {})})
+    (SHOTS / name).write_bytes(base64.b64decode(png if isinstance(png, str) else png["png"]))
+
+
 LONG_WRAPPED = "こんにちは！\\n\nきょうは いいてんきだね\\p\nまたね\\n\nげんきでね"
 
 
@@ -157,10 +171,22 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
     check(bool(r.get("opened")) and _wait_editor(z), "エディタで置いた人のスクリプトを開く")
     z.call({"cmd": "editor.project", **ED})
     labels_k = [text_label] + ([f"{text_label}_k"] if nd else [])
+    if SHOTS:
+        # 「本文を編集」の入力欄（複数行）を出して撮る
+        z.call({"cmd": "editor.stringEdit", "label": text_label, "text": LONG_WRAPPED, **ED})
+        script_text = z.call({"cmd": "editor.text", "path": SCRIPT, **ED})["text"].split("\n")
+        z.call({"cmd": "editor.activate", "path": SCRIPT, **ED})
+        line = next(i for i, t in enumerate(script_text) if text_label in t and "msgbox" in t)
+        col = script_text[line].index(text_label) + 2
+        z.call({"cmd": "editor.stringEdit", "line": line + 1, "column": col, "label": text_label, "open": True, **ED})
+        time.sleep(0.5)
+        _shot(z, f"string-1-multiline-edit-{fx.name}.png", "script-editor")
+        z.call({"cmd": "editor.closeHover", **ED})
     for lab in labels_k:
         z.call({"cmd": "editor.stringEdit", "label": lab, "text": LONG_WRAPPED, **ED})
     z.call({"cmd": "editor.open", "path": STRINGS, **ED})
     z.call({"cmd": "editor.save", **ED})
+    _shot(z, f"string-2-file-{fx.name}.png", "script-editor")
     written = (proj / STRINGS).read_text(encoding="utf-8")
     check(LONG_WRAPPED in written.replace("\r\n", "\n"), ".string に制御記号のあとで改行した形で書かれる")
     if not nd:
@@ -182,6 +208,7 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
         titles = [d["title"] for d in r["dialogs"]]
         text = next((d["text"] for d in r["dialogs"] if d["title"] == "イベントを削除"), "")
         check("埋める範囲" in text and "埋めない範囲" in text, "確認のダイアログに埋める範囲と埋めない範囲の数が出る")
+        _shot(z, f"delete-2-confirm-rom-{fx.name}.png")
         z.call({"cmd": "dialog", "press": "ok"})
         time.sleep(0.5)
         st = z.call({"cmd": "romErase.state"})
@@ -222,7 +249,9 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
     z.call({"cmd": "mouse", "target": "event", "cell": [ev["x"], ev["y"]], "action": "rightClick"})
     menu = z.call({"cmd": "contextMenu.state"})
     check(bool(menu) and any(i["id"] == "delete" and i["enabled"] for i in menu["items"]), "右クリックで「イベントを削除」が出る")
+    _shot(z, f"delete-4-context-menu-{fx.name}.png")
     z.call({"cmd": "contextMenu.press", "id": "delete"})
+    _shot(z, f"delete-5-confirm-script-{fx.name}.png")
     z.call({"cmd": "dialog", "press": "ok"})
     time.sleep(0.5)
     z.call({"cmd": "script.settle"})
