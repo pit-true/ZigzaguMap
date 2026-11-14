@@ -306,7 +306,7 @@ export class App implements ActionTarget {
     state.emit("session");
     state.emit("map");
     await this.setTitle(null);
-    state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
+    state.setStatus(ja.statusRomLoaded, "");
   }
 
   // ---- マップ ----

@@ -68,8 +68,6 @@ export class ProjectSession {
     private readonly fs: TauriProjectFs,
     readonly project: CfruProject,
     private catalogValue: MapCatalog,
-    /** 開くのにかかった時間（ミリ秒）。 */
-    readonly loadMs: number,
     /** maps\scripts.json の対応表（開いたときに読む。小さなファイル 1 つだけ）。 */
     readonly scriptsTable: ScriptsTableProject,
     /** イベントのラベル（eventscripts と maps\BB\scripts_MM.json。開いたときに読む）。 */
@@ -109,7 +107,6 @@ export class ProjectSession {
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
   static async open(romPath: string, projectDir: string | null, romBytes?: Uint8Array): Promise<ProjectSession> {
-    const start = performance.now();
     // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
     const bytes = romBytes ?? (await ProjectSession.readRom(romPath));
     const fs = new TauriProjectFs();
@@ -120,7 +117,7 @@ export class ProjectSession {
     const labels = await EventLabelProject.open(fs.root ? fs : null);
     const romErase = await RomEraseProject.open(fs.root ? fs : null);
     const trainers = await TrainersProject.open(fs.root ? fs : null);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels, romErase, trainers);
+    return new ProjectSession(romPath, fs, project, catalog, scripts, labels, romErase, trainers);
   }
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */

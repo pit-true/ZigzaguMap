@@ -5,7 +5,7 @@ import { jaHelpViewer, jaShortcuts } from "./ja.help";
 import { jaHeaderSimple } from "./ja.headerSimple";
 import { jaView } from "./ja.view";
 import { jaWild } from "./ja.wild";
-import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
+import { hexList, hexRecord, ini, numbered } from "./ini";
 
 const M = ini.Menue;
 const A = ini.Allgemein;
@@ -158,8 +158,6 @@ export const ja = {
   statusOpenRom: A["30"],
   statusRomLoaded: A["31"],
   statusMapLoaded: (bank: number, map: number) => `${A["32"]} ${bank}.${map}`,
-  /** 読み込みにかかった時間（ミリ秒）。ini の %s に秒を入れる。 */
-  statusLoadTime: (ms: number) => fmt(A["110"], (ms / 1000).toFixed(3)),
   statusMapCell: (x: number, y: number, block: string) => `X: ${hex(x, 2)} Y: ${hex(y, 2)}        ${A["33"]} ${block}`,
   statusBlock: (block: number) => `${A["33"]} ${hex(block, 4)}`,
   statusPaletteBlock: (block: number, offset: number | null) =>
