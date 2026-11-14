@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::automation::Automation;
+use crate::files;
 use crate::offscreen;
 use crate::profile::Profile;
 use crate::{StartupArgs, AUTOMATION_BROWSER_ARGS, BROWSER_ARGS};
@@ -28,10 +29,38 @@ pub(crate) fn prepare<'a, R: Runtime, M: Manager<R>>(
     }
 }
 
+/// 大きさを変えられるウィンドウの指定（スクリプトエディタなど）。省略すると大きさ固定。
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResizeOptions {
+    /// 最小の大きさ（論理ピクセル）。
+    min_width: Option<f64>,
+    min_height: Option<f64>,
+    /// 前回の位置と大きさ（物理ピクセル。メインが個人設定から渡す）。自動操作のときは使わない。
+    placement: Option<files::WindowPlacement>,
+    /// 動かしたり大きさを変えたりしたら、メインへ `tool-placement`（`{ label, x, y, width, height, maximized }`）を送る
+    /// （メインが個人設定に残す。個人設定を書くのはメインだけにするため）。
+    remember: Option<bool>,
+}
+
+/// `tool-placement` の中身（物理ピクセル）。
+#[derive(Clone, serde::Serialize)]
+struct PlacementEvent {
+    label: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    maximized: bool,
+}
+
 /// 道具のウィンドウを開く。同じラベルのウィンドウがあれば前に出すだけ。
-/// メインウィンドウを親にする（メインより手前に出て、メインを閉じると一緒に閉じる）。大きさは固定。
+/// メインウィンドウを親にする（メインより手前に出て、メインを閉じると一緒に閉じる）。
+/// `resize` を渡すと大きさを変えられ、最大化もできる（渡さなければ大きさ固定）。
 /// 自動操作で起動したときは、メインと同じく画面外に出してアクティブにしない。
 /// Windows では同期のコマンドでウィンドウを作ると止まるため async にしている。
+// Tauri のコマンドは引数がそのまま画面側の名前になるので、構造体にまとめない。
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn open_tool_window(
     app: AppHandle,
@@ -41,6 +70,7 @@ pub async fn open_tool_window(
     title: String,
     width: f64,
     height: f64,
+    resize: Option<ResizeOptions>,
 ) -> Result<(), String> {
     let offscreen = args.offscreen();
     if let Some(window) = app.get_webview_window(&label) {
@@ -56,30 +86,54 @@ pub async fn open_tool_window(
     }
     let main = app.get_webview_window("main").ok_or("メインウィンドウがありません")?;
     // 中身は別ウィンドウ用の入口（tool.html）。メインの画面のコードは読み込まない。
-    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("tool.html".into()))
+    let resizable = resize.is_some();
+    let resize = resize.unwrap_or_default();
+    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("tool.html".into()))
         .title(title)
         .inner_size(width, height)
-        .resizable(false)
-        .maximizable(false)
+        .resizable(resizable)
+        .maximizable(resizable)
         .minimizable(false)
         .parent(&main)
         .map_err(|e| e.to_string())?;
+    if let (Some(w), Some(h)) = (resize.min_width, resize.min_height) {
+        builder = builder.min_inner_size(w, h);
+    }
     let builder = prepare(builder, &args, &profile);
+    // 自動操作のときは覚えた位置を使わない（画面外に出す）。
+    let placement = if args.automation.is_none() { resize.placement } else { None };
     let window = if offscreen {
         let window = builder.build().map_err(|e| e.to_string())?;
         offscreen::park_and_show(&window);
         window
+    } else if let Some(p) = placement {
+        let window = builder.visible(false).build().map_err(|e| e.to_string())?;
+        files::apply_window_placement(&window, &p);
+        let _ = window.show();
+        window
     } else {
         builder.center().build().map_err(|e| e.to_string())?
     };
+    let remember = resize.remember == Some(true) && args.automation.is_none();
     // 閉じたら自動操作の受け付けを外し（開き直したときに画面の準備を待つため）、メインへ知らせる。
     let state = app.state::<Arc<Automation>>().inner().clone();
     let handle = app.clone();
-    window.on_window_event(move |event| {
-        if let WindowEvent::Destroyed = event {
+    let watched = window.clone();
+    window.on_window_event(move |event| match event {
+        WindowEvent::Destroyed => {
             state.forget(&label);
             let _ = handle.emit_to("main", "tool-closed", &label);
         }
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) if remember => {
+            if watched.is_minimized().unwrap_or(false) {
+                return;
+            }
+            let (Ok(pos), Ok(size)) = (watched.outer_position(), watched.inner_size()) else { return };
+            let maximized = watched.is_maximized().unwrap_or(false);
+            let event = PlacementEvent { label: label.clone(), x: pos.x, y: pos.y, width: size.width, height: size.height, maximized };
+            let _ = handle.emit_to("main", "tool-placement", event);
+        }
+        _ => {}
     });
     Ok(())
 }

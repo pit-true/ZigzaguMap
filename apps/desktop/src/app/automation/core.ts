@@ -1,4 +1,5 @@
 import { openedUrls } from "../../util/externalLinks";
+import { ProcessRunner } from "../../util/processRunner";
 import type { App } from "../App";
 import { TAB_ORDER, type TabId } from "../EditorState";
 import { timings } from "../timings";
@@ -114,9 +115,11 @@ export const coreCommands: CommandTable = {
     if (!map) throw new Error("マップが開かれていません");
     return { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells], border: [...map.doc.border.cells] };
   },
-  state: (app) => {
+  state: async (app) => {
     app.checkDirty(true);
-    return describeState(app);
+    // 待たずに起動しようとしたもの（エミュレータ。自動操作のときは起動せずに記録だけする）
+    const launched = await ProcessRunner.launched().catch(() => []);
+    return { ...(describeState(app) as object), launched };
   },
   setting: (app, req) => {
     // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない）。

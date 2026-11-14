@@ -1,0 +1,10 @@
+{
+  "_説明": "local.config.json にコピーして自分の環境のパスに直す（local.config.json はコミットしない）。環境変数 ZZM_RC_ND_CFRU / ZZM_RC_ND_DPE / ZZM_RC_CHRONOS / ZZM_RC_COPY_ROOT / ZZM_RC_EXE でも上書きできる。実フォルダ（ndCfru・ndDpe・chronos）は読むだけで、写しは copyRoot の下に作る。copyRoot は実フォルダの下にしてはいけない",
+  "ndCfru": "C:\\path\\to\\NeoDark-CFRU-main",
+  "ndDpe": "C:\\path\\to\\NeoDark-DPE-main",
+  "chronos": "C:\\path\\to\\Chronos",
+  "copyRoot": "D:\\zigzagu-build\\p2-fixtures",
+  "zigzaguExe": "D:\\zigzagu-build\\compare-runner\\release\\zigzagumap.exe",
+  "ports": [47820, 47829],
+  "buildTimeout": 3600
+}

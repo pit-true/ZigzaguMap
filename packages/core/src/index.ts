@@ -218,3 +218,12 @@ export { SetTilesetHeaderCommand, type SetTilesetHeaderArgs } from "./command/co
 
 // タウンマップ（ワールドマップエディター）
 export * from "./regionmap/index.js";
+
+// スクリプト（Phase2。フォルダごとに index.ts から公開する）
+export * from "./script/config/index.js";
+export * from "./script/commands/index.js";
+export * from "./script/asm/index.js";
+export * from "./script/index/index.js";
+export * from "./script/strings/index.js";
+export * from "./script/project/index.js";
+export * from "./script/disasm/index.js";
