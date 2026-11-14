@@ -18,6 +18,16 @@ export interface MapWrites<T> {
   readonly cells: T[];
 }
 
+/** ダブルクリックとみなす 2 回の押下の間（ms）。Windows の設定の最大（900ms）より長めに取る。 */
+export const DOUBLE_CLICK_MS = 1500;
+
+/** 左ボタンの 1 回の押下で描いたもの（ダブルクリックでマップを開くときに取り消す）。 */
+interface Press {
+  readonly at: number;
+  /** この押下で履歴に積んだコマンド（まとめたものは最初の 1 つに入る）。 */
+  readonly commands: Command[];
+}
+
 function keyOf(id: MapId): string {
   return `${id.bank}.${id.map}`;
 }
@@ -32,6 +42,9 @@ export class MapCells {
   /** 隣のマップを読み込んでから実行する操作の列（順を守るため）。 */
   private queue: Promise<void> = Promise.resolve();
   private queued = 0;
+  /** 最近の押下（新しい順に 2 つまで）と、押している間の押下。 */
+  private presses: Press[] = [];
+  private pressing: Press | null = null;
 
   constructor(private readonly state: EditorState) {}
 
@@ -108,9 +121,13 @@ export class MapCells {
   run(ids: readonly MapId[], make: () => Command[], forDrag: boolean, merge: boolean): void {
     const session = this.state.session;
     if (!session) return;
+    const press = this.pressing;
     const exec = (): void => {
       const command = this.combine(make(), forDrag);
-      if (command) session.bus.execute(command, { merge });
+      if (!command) return;
+      session.bus.execute(command, { merge });
+      // まとめられずに積まれたものだけを覚える（まとめたものは前のコマンドを戻せば一緒に戻る）
+      if (press && session.bus.last === command) press.commands.push(command);
     };
     if (this.queued === 0 && !this.needsLoad(ids)) return exec();
     this.queued++;
@@ -120,6 +137,43 @@ export class MapCells {
       })
       .catch(() => undefined)
       .finally(() => this.queued--);
+  }
+
+  /**
+   * 左ボタンで描き始めた（離すまでに実行したコマンドを、この押下のものとして覚える）。描く道具が押したときに呼ぶ。
+   * ダブルクリックでマップを開くとき（隣の帯・Space で重ねたダイブ先）に `retractPresses` で取り消すため。
+   */
+  pressStart(): void {
+    this.pressing = { at: performance.now(), commands: [] };
+    this.presses = [this.pressing, ...this.presses].slice(0, 2);
+  }
+
+  /** 離した。 */
+  pressEnd(): void {
+    this.pressing = null;
+  }
+
+  /**
+   * ダブルクリックでマップを開く前に、その 2 回の押下で描いた分を取り消し、やり直しの履歴にも残さない。
+   * 押下が `DOUBLE_CLICK_MS` より前のもの、そのあとにほかの操作が積まれたものは戻さない。戻したコマンドの数を返す。
+   */
+  async retractPresses(): Promise<number> {
+    const now = performance.now();
+    const recent = this.presses.filter((p) => now - p.at < DOUBLE_CLICK_MS);
+    this.presses = [];
+    this.pressing = null;
+    // 隣のマップの読み込みを待っている描画は、実行されてから戻す
+    await this.settle();
+    const bus = this.state.session?.bus;
+    if (!bus) return 0;
+    let count = 0;
+    for (const press of recent) {
+      for (const command of [...press.commands].reverse()) {
+        if (!bus.retract(command)) return count;
+        count++;
+      }
+    }
+    return count;
   }
 
   /** 読み込み待ちの操作が残っていないことを待つ（自動操作用）。 */

@@ -15,6 +15,8 @@ export const jaScriptEditor = {
   notEditable: (path: string) => `このファイルはエディタで開けません（開けるのは assembly/overworld_scripts と strings の中だけです）: ${path}`,
   readFailed: (path: string, error: string) => `${path} を読めませんでした: ${error}`,
   saveFailed: (path: string, error: string) => `${path} を保存できませんでした: ${error}`,
+  /** 開いていないファイルをメインの書き込みの列で書こうとしたが、読んでから書くまでの間にほかの書き込みで変わり続けた（#293）。 */
+  writeConflict: "ほかの書き込みと重なって書けませんでした。もう一度試してください",
   saved: (path: string) => `${path} を保存しました`,
   reloaded: (path: string) => `${path} が外部で変更されたので読み直しました`,
   deleted: (path: string) => `${path} が見つかりません（外部で消されたか、名前が変わりました）。保存すると作り直します`,

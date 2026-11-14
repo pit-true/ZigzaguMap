@@ -39,6 +39,10 @@ interface PlacementEvent extends WindowPlacement {
 
 /** 問い合わせの答えを待つ時間（ms）。 */
 const QUERY_TIMEOUT_MS = 10_000;
+/** エディタを閉じる間、書き込みを待たせる長さの上限（ms。閉じる前の確認に答えないまま放っておかれたとき）。 */
+const CLOSE_HOLD_MS = 5 * 60_000;
+/** メインからエディタを閉じたあと、tool-closed が来なくても書き込みの待ちを解くまでの時間（ms）。 */
+const CLOSE_FALLBACK_MS = 2_000;
 
 /**
  * メインウィンドウ側の、スクリプトエディタ（別ウィンドウ）の窓口。初めてスクリプトを開くときに読み込む（メインの起動では読まない）。
@@ -115,7 +119,18 @@ export class ScriptHost {
       this.app.state.settings.update({ [request.key]: request.value });
       return null;
     },
+    closing: async () => {
+      await this.holdWrites();
+      return null;
+    },
+    closeCancelled: () => {
+      this.releaseWrites();
+      return null;
+    },
+    writeIfUnchanged: (request) => this.app.scripts.files.writeIfUnchanged(normalizeScriptPath(request.path), request.expected, request.text),
   };
+  /** エディタを閉じる間、書き込みの列を止めているもの（解くと次の書き込みが動く）。 */
+  private writeHold: (() => void) | null = null;
 
   private constructor(private readonly app: App) {
     this.roms = new RomScripts(app);
@@ -133,6 +148,8 @@ export class ScriptHost {
       this.pendingRoms = [];
       this.pendingBuild = false;
       this.queries.rejectAll(new Error("closed"));
+      // 閉じた: 待たせていた書き込みはディスクへ書く
+      this.releaseWrites();
     });
     await listen<PlacementEvent>("tool-placement", (e) => {
       const { label, ...placement } = e.payload;
@@ -305,10 +322,35 @@ export class ScriptHost {
     return (await this.query({ type: "saveAll" })) === true;
   }
 
-  /** エディタを閉じる（確かめない。未保存の確認は App が先に済ませる）。 */
+  /** エディタを閉じる（確かめない。未保存の確認は App が先に済ませる）。並んでいる書き込みを済ませてから閉じる。 */
   close(): void {
     if (!this.opened) return;
-    void invoke("close_tool_window", { label: SCRIPT_EDITOR_WINDOW });
+    void this.holdWrites()
+      .then(() => invoke("close_tool_window", { label: SCRIPT_EDITOR_WINDOW }))
+      // 消えたことは tool-closed で知る。ウィンドウがもう無かったときのために、少し待って解く
+      .finally(() => setTimeout(() => this.releaseWrites(), CLOSE_FALLBACK_MS));
+  }
+
+  /**
+   * エディタを閉じる間、`.s`・`.string` への書き込みを待たせる（#293）。並んでいる書き込み（エディタの本文へ送るもの）が済んだら決まる。
+   * ウィンドウが消えるか（`tool-closed`）、閉じるのをやめるか、時間が過ぎたら解く。
+   */
+  private holdWrites(): Promise<void> {
+    if (this.writeHold) return Promise.resolve();
+    let release!: () => void;
+    const until = new Promise<void>((resolve) => (release = resolve));
+    const timer = setTimeout(() => this.releaseWrites(), CLOSE_HOLD_MS);
+    this.writeHold = () => {
+      clearTimeout(timer);
+      release();
+    };
+    return this.app.scripts.files.hold(until);
+  }
+
+  private releaseWrites(): void {
+    const release = this.writeHold;
+    this.writeHold = null;
+    release?.();
   }
 
   // ---- 内部 ----

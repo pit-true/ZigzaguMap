@@ -6,6 +6,7 @@ import { inputDialog } from "../../ui/InputDialog";
 import { messageBox } from "../../ui/MessageBox";
 import { errorText } from "../../util/errors";
 import { statFile, type EditorTab } from "./EditorTab";
+import { writeOnDisk } from "./diskWrite";
 import { decodeScriptText, encodeScriptText } from "./fileText";
 import type { ScriptEditorWindow } from "./ScriptEditorWindow";
 import { minimalChange } from "./textChange";
@@ -42,13 +43,15 @@ export class LabelRenamer {
           w.dispatchTo(tab, { ...spec, userEvent: "input.rename" });
           count += r.count;
         } else {
-          const decoded = decodeScriptText(await invoke<string>("fs_read_text", { path }));
-          const r = renameLabelInText(decoded.text, from, next);
-          if (r.count === 0) continue;
-          await invoke("fs_write_text", { path, text: encodeScriptText(r.text, decoded.lineEnding, decoded.bom) });
-          w.client.saved(path);
+          const n = await writeOnDisk(w.client, path, (raw) => {
+            if (raw === null) return null;
+            const decoded = decodeScriptText(raw);
+            const r = renameLabelInText(decoded.text, from, next);
+            return r.count === 0 ? null : { text: encodeScriptText(r.text, decoded.lineEnding, decoded.bom), count: r.count };
+          });
+          if (n === 0) continue;
           void w.project.reloadFile(path);
-          count += r.count;
+          count += n;
         }
         files.push(path);
       } catch (e) {

@@ -8,7 +8,6 @@ import {
   eventTemplate,
   parseWidthRegistryListing,
   planWidthRegistry,
-  readTextIfExists,
   templateFields,
   templateItemBall,
   templateLabelName,
@@ -83,8 +82,23 @@ export class TemplatePlacer {
     this.extensions.push(extension);
   }
 
-  /** 置く。置けなければ Error（理由つき）。 */
+  /** 置いている途中か（「.s を新しく作る」の入力を待っている間も）。 */
+  private placing = false;
+
+  /**
+   * 置く。置けなければ Error（理由つき）。置いている途中（入力を待っている間など）にもう 1 つ置こうとしたら、待たずに Error（#294）。
+   */
   async place(request: TemplatePlaceRequest): Promise<TemplatePlaceResult> {
+    if (this.placing) throw new Error(t.busy);
+    this.placing = true;
+    try {
+      return await this.placeNow(request);
+    } finally {
+      this.placing = false;
+    }
+  }
+
+  private async placeNow(request: TemplatePlaceRequest): Promise<TemplatePlaceResult> {
     const app = this.app;
     const session = app.state.session;
     const map = app.state.map?.id;
@@ -158,27 +172,38 @@ export class TemplatePlacer {
     const config = (await this.app.scripts.scriptConfig())?.config;
     const reg = config?.widthRegistry;
     const step = config?.widthCheck;
-    const fs = this.app.state.session?.files;
-    if (!reg || !step || step.args.length === 0 || !fs) return [];
+    if (!reg || !step || step.args.length === 0 || !this.app.state.session?.files.root) return [];
     try {
       const runner = await ProcessRunner.get();
       const proc = await runner.spawn({ command: step.command, args: [step.args[0]!, "--list-registry"], cwd: step.cwd }, () => {});
       await proc.done;
       const listing = parseWidthRegistryListing(proc.lines.filter((l) => l.stream === "stdout").map((l) => l.line).join("\n"));
-      const text = (await this.app.scripts.files.read(stringsPath))?.text ?? "";
-      const before = await readTextIfExists(fs, reg.path);
-      const plan = planWidthRegistry({
-        registryText: before,
-        listing,
-        fileKey: reg.prefix + stringsPath,
-        stringText: text,
-        window: reg.window,
-        unresolvedReason: (buffers) => buffers,
-      });
-      if (plan.text === null) return [];
-      await fs.writeText(reg.path, plan.text);
-      this.registryEdits.set(command, { path: reg.path, before, after: plan.text });
-      return [...plan.added];
+      const files = this.app.scripts.files;
+      const text = (await files.read(stringsPath))?.text ?? "";
+      // 登録の読み書きは .s・.string と同じ書き込みの列で行う（エディタの幅検査の登録と混ざらないように）
+      let edit: { before: string | null; after: string; added: string[] } | null = null;
+      await files.change(
+        reg.path,
+        (current, existed) => {
+          const before = existed ? current : null;
+          const plan = planWidthRegistry({
+            registryText: before,
+            listing,
+            fileKey: reg.prefix + stringsPath,
+            stringText: text,
+            window: reg.window,
+            unresolvedReason: (buffers) => buffers,
+          });
+          if (plan.text === null) return null;
+          edit = { before, after: plan.text, added: [...plan.added] };
+          return plan.text;
+        },
+        { create: "" },
+      );
+      const done = edit as { before: string | null; after: string; added: string[] } | null;
+      if (!done) return [];
+      this.registryEdits.set(command, { path: reg.path, before: done.before, after: done.after });
+      return done.added;
     } catch {
       return [];
     }
@@ -187,9 +212,9 @@ export class TemplatePlacer {
   /** 取り消し・やり直しで、幅検査の登録も戻す。 */
   private onCommand(e: CommandEvent): void {
     const edit = e.command ? this.registryEdits.get(e.command) : undefined;
-    const fs = this.app.state.session?.files;
-    if (!edit || !fs || (e.type !== "undo" && e.type !== "redo")) return;
+    if (!edit || (e.type !== "undo" && e.type !== "redo")) return;
     const text = e.type === "undo" ? edit.before : edit.after;
-    void this.app.scripts.trackWork(text === null ? fs.remove(edit.path) : fs.writeText(edit.path, text));
+    const files = this.app.scripts.files;
+    void this.app.scripts.trackWork<unknown>(text === null ? files.removeFile(edit.path) : files.change(edit.path, () => text, { create: "" }));
   }
 }

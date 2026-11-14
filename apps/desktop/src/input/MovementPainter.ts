@@ -48,7 +48,11 @@ export class MovementPainter {
           if (g.button === 0 && g.ctrl) {
             this.rect = { anchor: cell, last: cell, cancelled: false };
             this.showPreview(rectOf(cell, cell));
-          } else if (g.button === 0) this.paint(cell, false);
+          } else if (g.button === 0) {
+            // ダブルクリックで隣のマップを開くとき、この押下で書いた分を取り消せるよう覚える
+            this.cells.pressStart();
+            this.paint(cell, false);
+          }
         },
         move: (cell, g) => {
           const r = this.rect;
@@ -59,6 +63,7 @@ export class MovementPainter {
           } else if (g.button === 0) this.paint(cell, true);
         },
         up: (cell, g) => {
+          this.cells.pressEnd();
           const r = this.rect;
           if (r) {
             this.rect = null;

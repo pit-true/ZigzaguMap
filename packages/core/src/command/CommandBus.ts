@@ -50,6 +50,19 @@ export class CommandBus {
     return true;
   }
 
+  /**
+   * 直前に実行したコマンド `command` を取り消し、やり直しの履歴にも残さない（無かったことにする）。
+   * 履歴の先頭が `command` でなければ何もせず false。購読者には undo として知らせる（描き直し・未出力の印のため）。
+   * ダブルクリックでマップを開くとき、その 1 回目・2 回目のクリックで描いた分を消すのに使う。
+   */
+  retract(command: Command): boolean {
+    if (this.done[this.done.length - 1] !== command) return false;
+    this.done.pop();
+    command.undo(this.context);
+    this.emit({ type: "undo", command });
+    return true;
+  }
+
   /** 取り消したコマンドをやり直す。やり直すものが無ければ false。 */
   redo(): boolean {
     const command = this.undone.pop();

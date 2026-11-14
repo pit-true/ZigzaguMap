@@ -71,6 +71,18 @@ export interface ScriptEditorRequestMap {
   labelUses: MessageSpec<{ readonly label: string }, number>;
   /** エディタの個人設定を変えた（メインが settings.json に残す。今はテーマ `scriptEditorTheme` だけ）。 */
   setting: MessageSpec<{ readonly key: "scriptEditorTheme"; readonly value: string }, null>;
+  /**
+   * ウィンドウを閉じ始める（#293。未保存の確認の前に送る）。メインは並んでいる書き込みを済ませてから返事をし、ウィンドウが消えるか
+   * `closeCancelled` が届くまで、`.s`・`.string` への次の書き込みを待たせる（閉じる前の保存と混ぜず、閉じたあとはディスクへ書く）。
+   */
+  closing: MessageSpec<NoArgs, null>;
+  /** 閉じるのをやめた（未保存の確認で「キャンセル」）。メインは書き込みの待ちを解く。 */
+  closeCancelled: MessageSpec<NoArgs, null>;
+  /**
+   * 開いていないファイルをディスクに書く（ラベル名の変更・幅検査の登録）。メインの書き込みの列で、ディスクの本文が `expected`
+   * （無いファイルなら null）のときだけ書く。書けたら true、変わっていたら false（読み直してやり直す）。
+   */
+  writeIfUnchanged: MessageSpec<{ readonly path: string; readonly expected: string | null; readonly text: string }, boolean>;
 }
 
 /**
