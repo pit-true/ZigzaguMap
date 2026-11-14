@@ -17,6 +17,7 @@ export {
   type ScriptCommandStep,
   type ScriptConfig,
   type ScriptConfigSettings,
+  type WidthRegistrySetting,
 } from "./ScriptConfig.js";
 export {
   SCRIPT_CONFIG_FILE,
