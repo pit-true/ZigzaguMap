@@ -617,10 +617,8 @@ export class App implements ActionTarget {
       const deleter = await this.eventDeleter();
       const plan = await deleter.plan(id, kind as "person" | "sign" | "warp" | "trap", index);
       const { confirmEventDelete, eventName } = await import("../ui/event/EventDeleteDialog");
-      if (confirm && !(await confirmEventDelete(plan))) {
-        this.state.setStatus("");
-        return false;
-      }
+      this.state.setStatus("");
+      if (confirm && !(await confirmEventDelete(plan))) return false;
       const files = await deleter.run(plan);
       this.state.setStatus(files.length > 0 ? t.doneWithFiles(eventName(plan), files) : t.done(eventName(plan)));
       return true;
