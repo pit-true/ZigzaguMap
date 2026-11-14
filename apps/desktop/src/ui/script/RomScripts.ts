@@ -8,6 +8,7 @@ import {
   SetEventLabelCommand,
   SetMapScriptTableCommand,
   asmBlockText,
+  defaultScriptsJsonStringsPath,
   disassembleScripts,
   findImportedLabels,
   formatHex,
@@ -103,7 +104,7 @@ export class RomScripts {
     const paths = new Set<string>();
     for (const row of session.scriptsTable.document.rows) {
       paths.add(row.entry.script);
-      paths.add(row.entry.strings ?? `strings/overworld_strings_${row.entry.script.replace(/^.*\//, "").replace(/\.s$/, "")}.string`);
+      paths.add(row.entry.strings ?? defaultScriptsJsonStringsPath(row.entry.script));
     }
     for (const p of paths) {
       const loaded = await this.app.scripts.files.read(p).catch(() => null);
