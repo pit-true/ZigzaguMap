@@ -226,19 +226,38 @@ export class CfruProject {
   }
 
   /**
-   * マップを読むが、保持しない（索引づくりなどで全マップをなめるとき。読み込み済みならそのマップを返す）。
-   * 無いマップなら null。返したものを編集しないこと。
+   * マップを読み取り専用で読む（隣のマップの帯の表示用）。読み込み済みならそれを返し、無ければ DocumentStore に入れずに読む。
+   * 返したものを編集してはいけない（編集するときは load で読み込む）。消したマップや読めないマップは null。
    */
   async peek(id: MapId): Promise<MapDocument | null> {
-    const k = mapKey(id);
     const cached = this.store.find(id);
     if (cached) return cached;
+    const k = mapKey(id);
     if (this.store.removedMaps.has(k)) return null;
-    if (this.jsonMaps.has(k)) {
-      const path = mapSourcePath(id);
-      return MapSourceConverter.fromSource(MapSourceJson.parse(await this.fs.readText(path), path), path);
+    try {
+      if (this.jsonMaps.has(k)) {
+        const path = mapSourcePath(id);
+        return MapSourceConverter.fromSource(MapSourceJson.parse(await this.fs.readText(path), path), path);
+      }
+      return this.base.has(id) ? this.base.read(id) : null;
+    } catch {
+      return null;
     }
-    return this.base.has(id) ? this.base.read(id) : null;
+  }
+
+  /** マップの主・副タイルセットを読み取り専用で読む（読み込み済みならそれを使い、無ければ DocumentStore に入れない）。 */
+  async peekTilesets(doc: MapDocument): Promise<{ primary: Tileset; secondary: Tileset }> {
+    const read = async (pointer: number, secondary: boolean): Promise<Tileset> => {
+      const ref = { pointer, secondary };
+      const cached = this.store.findTileset(ref);
+      if (cached) return cached.toTileset();
+      const entry = this.tilesetSources.get(tilesetKey(ref));
+      const t = entry
+        ? TilesetDocument.fromSource(entry.source, await this.fs.readBytes(`${entry.folder}/${TILESET_IMAGE_FILE}`), this.fs.inflate)
+        : TilesetDocument.fromRom(this.rom, ref, this.dataStarts());
+      return t.toTileset();
+    };
+    return { primary: await read(doc.primaryTileset, false), secondary: await read(doc.secondaryTileset, true) };
   }
 
   /** マップを読む。例外を投げず、読めなかった理由を結果で返す。 */
@@ -422,6 +441,19 @@ export class CfruProject {
       if (!isWorkMapId(doc.id) && this.jsonMaps.has(k)) for (const item of doc.itemBalls) this.fileItemBalls.set(item.id, { ...item });
     }
     return { written: writes.map((w) => w.path), removed: removals };
+  }
+
+  /**
+   * maps\project.json が無ければ作る（中身は読み込んだもの、無ければベース ROM のバンクごとのマップ数）。
+   * スタンプ（maps\stamps\）のように出力を待たずに maps\ へ書くときに使う。BochiBochiEditor 改造版は
+   * maps\ に JSON があって project.json が無いと開けないため。戻り値は書いたパス（あれば null）。
+   */
+  async ensureManifest(): Promise<string | null> {
+    if (await this.fs.exists(PROJECT_MANIFEST_PATH)) return null;
+    const manifest = this.manifestValue ?? { format: PROJECT_MANIFEST_FORMAT, baseBankCounts: this.base.bankTable.counts() };
+    await this.fs.writeText(PROJECT_MANIFEST_PATH, ProjectManifestJson.stringify(manifest));
+    this.manifestValue = manifest;
+    return PROJECT_MANIFEST_PATH;
   }
 
   /** 既にある（ベース ROM と maps\ の JSON の）マップのバンクごとの数。 */

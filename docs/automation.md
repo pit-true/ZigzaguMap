@@ -27,6 +27,10 @@ python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFR
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
+python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
+    # Phase3 の表示・ホバー・スタンプ（配置の共有など）。名前はスクリプトの CHECKS の鍵
+python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
+    # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -38,7 +42,7 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `open` | `rom`、`project`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ |
 | `selectMap` | `bank`、`map` | マップを開く。返事の `switchMs` は切り替えにかかった時間 |
 | `tab` | `name`（`map` / `movement` / `event` / `wild` / `header`） | タブを切り替える |
-| `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`） |
+| `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`）。`group` の中や `targets` で 2 枚以上のマップを変えるときは、そのマップも先に読み込む。変わったマップには全部未出力の印が付く |
 | `undo` / `redo` | | 元に戻す／やり直す |
 | `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
 | `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |
@@ -71,7 +75,7 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物 |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
@@ -203,3 +207,22 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - イベントタブのスクリプトのラベルの欄: `event.person.label`・`event.sign.label`・`event.trap.label`（入力欄）、`<欄>.drop`（▼）、`<欄>.list`（一覧）、`<欄>.option:<ラベル>`（一覧の行）。「スクリプトを開く」は `event.person.openScript` など。照合用の座標の知らせは `event.labelWarn`、「座標で付け直す」は `event.labelRealign`。
 - マップスクリプトのパネル（場所の設定タブのかんたん表示）: `easy.ms`（パネル）、`easy.ms.create`（表を作る）、`easy.ms.addType`（種類を足す）、`easy.ms.removeTable`、`easy.ms.item:<n>`、`easy.ms.item:<n>.script`（行き先のラベルの欄）、`easy.ms.item:<n>.open`・`.remove`・`.addCondition`、`easy.ms.item:<n>.condition:<m>.variable`・`.value`・`.script`・`.open`・`.remove`、ROM の一覧は `easy.ms.rom:<n>` と `easy.ms.romOpen:<n>`。
 - スクリプトエディタ: ROM のタブの帯 `se.romBar`、「.s に取り込む」`se.romImport`、取り込みの一覧の名前 `romImport.label:<n>`、`romImport.ok`・`romImport.cancel`。ビルドの欄 `build.panel`、`build.run`・`build.stop`・`build.clear`・`build.close`、`build.status`、`build.log`、`build.problems`、`build.problem:<n>`。
+
+## Phase3 の部品と命令（表示・ホバー・スタンプ）
+
+- 場所の設定タブの「配置の共有」（#228）: かんたん表示 `easy.layoutShared`（「この配置（ブロックの並び）は N 枚のマップで使われています」の文。共有していないマップでは `visible` が false）・一覧 `easy.layoutShared.list`・一覧のマップ `easy.layoutShared.map:<バンク>.<マップ>`（`click` で開く。表示中のマップはボタンにしない）。くわしく表示は頭が `header.`（`header.layoutShared` など）。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `event.hover` | `kind`（`person` / `sign` / `warp` / `trap`）・`index`、または `cell: [x, y]`、`show`（false で返したあと消す。既定 true） | イベントタブ（先に `tab` で `event`）のそのマスの吹き出し（#226）を待たずに出し、中身ができるまで待って返す。返事は `shown`（出したか。イベントが無ければ false）、`visible`、`cell`、`sections`（イベントごとの `title`・`lines`・`warn`・`image`（画像があるか））、`text`（全部の行を改行でつないだもの） |
+| `event.hover.state` | | 今出している吹き出し（返事は `event.hover` と同じ形）。マウスの `hover` で 0.4 秒止めたあとに読む |
+| `event.hover.hide` | | 吹き出しを消す |
+
+吹き出しの部品の ID は `event.hover`（`ui.shot` で撮れる）です。ワープの吹き出しは行き先の周辺画像（`sections[].image` が true）と、ワープできないブロックの上なら `warn`（「このブロックではワープできません…」）を持ちます（#240）。
+
+## Phase3 の部品と命令（接続・描画）
+
+- 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。
+- `canvasPng` のマップのタブ（`map` / `movement` / `event`）に `neighbors: true` を付けると、隣のマップの帯と主マップの枠も含めた画像を返す（無ければ主マップだけ）。
+- `mouse` のマップのタブの `cell` は主マップの左上が原点。負の値や大きさを超える値で、隣のマップの帯の上を指せる（例: 上の帯の上のダブルクリック `{"cmd":"mouse","target":"map","action":"dblclick","cell":[5,-3]}`）。`px` は今までどおり部品（ステージ）の左上から。
+- 見せ方の切り替えはメニューのアクション `neighbors.band` / `neighbors.all` / `neighbors.off`（`{"cmd":"action","id":"neighbors.off"}`）か、`{"cmd":"setting","key":"neighborView","value":"off"}`。比較テストは AdvanceMap と同じ見た目で比べるため、起動のたびに `off` にする。

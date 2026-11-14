@@ -113,6 +113,8 @@ export const eventCommands: CommandTable = {
       fly: tab.count("fly") > 0,
       events: map?.doc.events ?? null,
       itemBalls: map?.doc.itemBalls ?? [],
+      /** ワープできないブロックの上にあるワープの番号（#240）。 */
+      warpWarnings: tab.warpWarnings(),
     };
   },
 };

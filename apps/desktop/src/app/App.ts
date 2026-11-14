@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { affectedMaps, flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
@@ -48,10 +48,13 @@ import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
+import type { ScriptSummaries } from "../ui/event/ScriptSummaries";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
+import { NeighborService } from "./neighbors/NeighborService";
+import { NeighborLayer } from "../ui/map/NeighborLayer";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -88,7 +91,7 @@ export class App implements ActionTarget {
   private readonly eventTab: EventTab;
   /** マップの外のイベントの帯。 */
   readonly outsideBar: OutsideEventsBar;
-  readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
+  readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(withNeighbors?: boolean): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
@@ -103,6 +106,7 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
+  private summariesValue: Promise<ScriptSummaries> | null = null;
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
@@ -119,6 +123,8 @@ export class App implements ActionTarget {
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
   profileDir: string | null = null;
+  /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
+  readonly neighbors: NeighborService;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -185,16 +191,21 @@ export class App implements ActionTarget {
       pickUnused: (kind) => this.pickUnused(kind),
       placeTemplate: (x, y) => void this.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
+      summaries: () => this.eventSummaries(),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
+    this.neighbors = new NeighborService(state);
+    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) {
+      new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" });
+    }
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
         { id: "movement", title: ja.tabMovement, element: movementTab.element },
         { id: "event", title: ja.tabEvents, element: eventTab.element },
         { id: "wild", title: ja.tabWild, element: new WildTab(state).element },
-        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections(), scripts: this.scripts }).element },
+        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections(), openMap: (id) => void this.openMap(id), scripts: this.scripts }).element },
       ],
       (id) => state.setTab(id),
     );
@@ -407,6 +418,7 @@ export class App implements ActionTarget {
     const session = state.session;
     if (!session) return;
     const start = performance.now();
+    timings.lastMapSwitchStart = start;
     try {
       const map = await session.openMap(id);
       if (state.map && (state.map.id.bank !== id.bank || state.map.id.map !== id.map)) state.previousMap = state.map.id;
@@ -492,21 +504,29 @@ export class App implements ActionTarget {
     // 名前表を書き換えたら（取り消し・やり直しも）、AdvanceMap と同じく一覧の名前も変える
     else if (e.command && commandNames(e.command).includes(SET_MAP_NAME)) void this.refreshMapList();
     if (this.onTilesetCommand(e)) return;
-    const args = e.command?.args as { bank?: unknown; map?: unknown } | undefined;
-    if (typeof args?.bank !== "number" || typeof args.map !== "number") return;
-    const id = { bank: args.bank, map: args.map };
+    // 変わったマップ（group の中と targets も見る。2 枚のマップにまたがる操作でも両方に印を付ける）
+    const ids = affectedMaps(e.command);
+    if (ids.length === 0) return;
     const current = this.state.map;
-    if (current && current.id.bank === id.bank && current.id.map === id.map) {
-      const doc = current.doc;
-      // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
-      if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
-        void this.openMap(id);
-      } else {
-        this.state.mapImage?.update();
-        this.state.emit("cells");
-      }
+    const others: MapId[] = [];
+    for (const id of ids) {
+      if (current && current.id.bank === id.bank && current.id.map === id.map) {
+        const doc = current.doc;
+        // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
+        if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
+          void this.openMap(id);
+        } else {
+          this.state.mapImage?.update();
+          this.state.emit("cells");
+        }
+      } else others.push(id);
+      this.pendingDirty.set(`${id.bank}.${id.map}`, id);
     }
-    this.pendingDirty.set(`${id.bank}.${id.map}`, id);
+    // 表示中でないマップが変わったことを知らせる（隣の帯の描き直し用）
+    if (others.length > 0) {
+      this.state.changedMaps = others;
+      this.state.emit("otherMaps");
+    }
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
     this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
   }
@@ -697,6 +717,11 @@ export class App implements ActionTarget {
   }
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
+  /** イベントのスクリプトの要約（#226。初めてホバーしたときに読み込む）。 */
+  eventSummaries(): Promise<ScriptSummaries> {
+    return (this.summariesValue ??= import("../ui/event/ScriptSummaries").then(({ ScriptSummaries }) => new ScriptSummaries(this)));
+  }
+
   scriptHost(): Promise<ScriptHost> {
     return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
   }

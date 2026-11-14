@@ -11,6 +11,7 @@ import { describeSelection } from "./status";
  * - target: `map`（マップタブ）/ `movement`（移動エリア）/ `event`（イベント）/ `palette`（ブロックパレット）/ `border`（境界ブロック）/
  *   `movementPalette`（移動許可のパレット）。`id` を渡すと `data-auto-id`（か `field:<AdvanceMap の部品名>`）の部品の上（`px` だけ使える）。
  * - 位置: `cell: [x, y]`（マス。マスの中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）。古い形の `x`・`y`（マス）も読む。
+ *   マップのタブ（map / movement / event）の `cell` は主マップの左上が原点で、負の値や大きさを超える値で隣のマップの帯の上を指せる（Phase3）。
  * - action: `click` / `dblclick` / `rightClick` / `drag`（`to` / `toPx` まで `steps` 回（既定 8）に分けて動かす）/ `hover` /
  *   `down` / `move` / `up`（1 つずつ送る）。
  * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）。ctrl・shift: 修飾キー。
@@ -22,6 +23,14 @@ interface Target {
   readonly element: HTMLElement;
   /** 1 マスの表示上の大きさ（横・縦）。 */
   readonly cell: { readonly w: number; readonly h: number };
+  /** `cell` の原点の、部品の左上からの位置（マップのタブでは、隣のマップの帯の余白の分）。 */
+  readonly origin?: { readonly x: number; readonly y: number };
+}
+
+/** マップのタブの、主マップの左上の位置（ステージの中の画素。隣の帯の余白が無ければ 0）。 */
+function mapOrigin(stage: HTMLElement): { x: number; y: number } {
+  const base = stage.querySelector<HTMLElement>(".map-base");
+  return { x: parseFloat(base?.style.left ?? "") || 0, y: parseFloat(base?.style.top ?? "") || 0 };
 }
 
 export const MOUSE_TARGETS: Readonly<Record<string, string>> = {
@@ -45,11 +54,11 @@ function resolveTarget(app: App, req: AutomationRequest): Target {
   const zoom = (on: boolean): number => (on ? 32 : 16);
   switch (name) {
     case "map":
-      return { element, cell: { w: zoom(s.zoomMap), h: zoom(s.zoomMap) } };
+      return { element, cell: { w: zoom(s.zoomMap), h: zoom(s.zoomMap) }, origin: mapOrigin(element) };
     case "movement":
-      return { element, cell: { w: zoom(s.zoomMovement), h: zoom(s.zoomMovement) } };
+      return { element, cell: { w: zoom(s.zoomMovement), h: zoom(s.zoomMovement) }, origin: mapOrigin(element) };
     case "event":
-      return { element, cell: { w: zoom(s.zoomEvent), h: zoom(s.zoomEvent) } };
+      return { element, cell: { w: zoom(s.zoomEvent), h: zoom(s.zoomEvent) }, origin: mapOrigin(element) };
     case "palette":
       return { element, cell: { w: zoom(s.zoomBlockPalette), h: zoom(s.zoomBlockPalette) } };
     case "movementPalette":
@@ -73,10 +82,10 @@ function pointOf(req: AutomationRequest, t: Target, cellKey: string, pxKey: stri
   if (req[pxKey] !== undefined) return pair(req[pxKey], pxKey);
   if (req[cellKey] !== undefined) {
     const [x, y] = pair(req[cellKey], cellKey);
-    return [x * t.cell.w + t.cell.w / 2, y * t.cell.h + t.cell.h / 2];
+    return [(t.origin?.x ?? 0) + x * t.cell.w + t.cell.w / 2, (t.origin?.y ?? 0) + y * t.cell.h + t.cell.h / 2];
   }
   if (typeof req[xKey] === "number" && typeof req[yKey] === "number") {
-    return [num(req, xKey) * t.cell.w + t.cell.w / 2, num(req, yKey) * t.cell.h + t.cell.h / 2];
+    return [(t.origin?.x ?? 0) + num(req, xKey) * t.cell.w + t.cell.w / 2, (t.origin?.y ?? 0) + num(req, yKey) * t.cell.h + t.cell.h / 2];
   }
   return null;
 }

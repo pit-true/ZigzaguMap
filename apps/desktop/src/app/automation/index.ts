@@ -5,10 +5,12 @@ import { coreCommands } from "./core";
 import { dialogCommands, installNativeDialogs } from "./dialogs";
 import { eventCommands } from "./events";
 import { fieldCommands } from "./fields";
+import { hoverCommands } from "./hover";
 import { imageCommands } from "./images";
 import { linkCommands } from "./link";
 import { menuCommands } from "./menu";
 import { mouseCommands } from "./mouse";
+import { neighborCommands } from "./neighbors";
 import { processCommands } from "./process";
 import { scriptCommands } from "./script";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
@@ -38,6 +40,7 @@ const registry: CommandRegistry = new CommandRegistry([
   imageCommands,
   statusCommands,
   eventCommands,
+  hoverCommands,
   viewCommands,
   processCommands,
   scriptCommands,
@@ -46,6 +49,7 @@ const registry: CommandRegistry = new CommandRegistry([
   usageCommands,
   templateCommands,
   trainerCommands,
+  neighborCommands,
   { commands: () => registry.names() },
 ]);
 

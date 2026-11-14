@@ -1,3 +1,4 @@
+import { affectedMaps } from "@zigzagumap/core";
 import { openedUrls } from "../../util/externalLinks";
 import { jsHeapBytes } from "../../util/jsHeap";
 import type { App } from "../App";
@@ -57,6 +58,8 @@ async function command(app: App, req: AutomationRequest): Promise<unknown> {
   const bank = record.args["bank"];
   const map = record.args["map"];
   if (typeof bank === "number" && typeof map === "number") await session.openMap({ bank, map });
+  // 2 枚以上のマップにまたがる操作（group・targets）は、ほかのマップも読み込んでおく
+  for (const id of affectedMaps(record)) if (!session.isLoaded(id)) await session.project.load(id);
   session.bus.execute(session.registry.create(record));
   return null;
 }

@@ -24,6 +24,8 @@ export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
 export { TilesetTable } from "./map/TilesetTable.js";
+export { LayoutSharing } from "./map/LayoutSharing.js";
+export { BEHAVIOR_MASK, WARP_BEHAVIORS, isWarpBehavior } from "./map/behaviors.js";
 export {
   MAP_FOOTER,
   MAP_HEADER,
@@ -143,6 +145,25 @@ export {
 } from "./command/commands/project/AddRomEraseRangesCommand.js";
 export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
 
+// スタンプ（maps\stamps\、#224）
+export {
+  STAMP_FORMAT,
+  STAMP_MAX_SIDE,
+  checkStampShape,
+  createStamp,
+  formatStampPointer,
+  parseStamp,
+  stampCellValue,
+  stampFileBase,
+  stampFits,
+  stampPath,
+  stampUsesSecondary,
+  stringifyStamp,
+  type Stamp,
+  type StampCell,
+} from "./project/StampJson.js";
+export { StampLibrary, type StampLibraryOptions, type StampProblem } from "./stamp/StampLibrary.js";
+
 // タイルセットの編集
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
 export {
@@ -173,6 +194,23 @@ export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } fro
 export { CommandBus, type CommandEvent, type CommandEventType, type CommandListener, type ExecuteOptions } from "./command/CommandBus.js";
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
 export { CommandGroup, flattenCommandRecords } from "./command/CommandGroup.js";
+export { affectedMaps, mapTargets } from "./command/affectedMaps.js";
+export {
+  inverseOf,
+  isVertical,
+  layoutNeighbors,
+  oppositeDirection,
+  placeNeighbor,
+  resolveCell,
+  sideOf,
+  type CellRect,
+  type MapSize,
+  type Margins,
+  type NeighborLayoutResult,
+  type NeighborPlacement,
+  type NeighborRange,
+  type Side,
+} from "./connection/NeighborLayout.js";
 export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";
@@ -256,3 +294,4 @@ export * from "./script/link/index.js";
 export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
+export * from "./script/summary/index.js";

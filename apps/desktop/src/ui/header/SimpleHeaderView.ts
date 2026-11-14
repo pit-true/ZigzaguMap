@@ -7,6 +7,7 @@ import {
   SetMapNameCommand,
   SetTilesetsCommand,
   type Command,
+  type MapId,
 } from "@zigzagumap/core";
 import { FR_MUSIC } from "../../app/data/frMusic";
 import { tilesetGroupOf } from "../../app/data/frTilesets";
@@ -16,6 +17,7 @@ import { commit } from "../form/commit";
 import { selectIndex, setOptions } from "../form/controls";
 import { checkOnInput, readInteger, tryInteger } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
+import { LayoutSharedNote } from "./LayoutSharedNote";
 import { MapScriptPanel } from "../script/MapScriptPanel";
 import type { ScriptLink } from "../script/ScriptLink";
 
@@ -23,6 +25,8 @@ import type { ScriptLink } from "../script/ScriptLink";
 export interface SimpleHeaderHost {
   /** マップコネクションの窓を開く（ツール > マップコネクションと同じ）。 */
   openConnections(): void;
+  /** マップを開く（配置を共有しているマップの一覧から。#228）。 */
+  openMap(id: MapId): void;
   /** スクリプト連携（マップスクリプトのパネルが使う）。 */
   readonly scripts: ScriptLink;
 }
@@ -53,6 +57,8 @@ export class SimpleHeaderView {
   /** マップスクリプトの専用パネル（#208。オフセットの欄は出さない）。 */
   private readonly scripts: MapScriptPanel;
   private readonly connections: HTMLElement;
+  /** 配置を共有しているマップ（#228）。 */
+  private readonly layoutShared: LayoutSharedNote;
   private regionTexts: string[] = [];
 
   constructor(host: SimpleHeaderHost) {
@@ -150,6 +156,8 @@ export class SimpleHeaderView {
         row(t.borderSize, inline(this.borderWidth, document.createTextNode("×"), this.borderHeight, resizeBorder)),
       ]),
     );
+    this.layoutShared = new LayoutSharedNote("easy", (id) => host.openMap(id), true);
+    this.element.append(this.layoutShared.element);
 
     // マップスクリプト（専用のパネル。#208）
     this.element.append(section(t.scriptSection, [this.scripts.element]));
@@ -164,6 +172,7 @@ export class SimpleHeaderView {
 
   render(ctx: HeaderContext): void {
     this.ctx = ctx;
+    this.layoutShared.render(ctx);
     const { doc, session } = ctx;
     const project = session.project;
     const header = doc.header;

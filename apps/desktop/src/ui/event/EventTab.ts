@@ -33,6 +33,10 @@ import { WarpPanel } from "./panels/WarpPanel";
 import { scriptEntry } from "../script/ScriptEntry";
 import type { ScriptLabelSource } from "../script/ScriptLabelField";
 import type { ScriptFiles } from "../script/ScriptFiles";
+import { EventHover } from "./EventHover";
+import { eventHoverSource } from "./eventHoverSource";
+import { drawWarpWarnings, unusableWarps } from "./warpCheck";
+import type { ScriptSummaries } from "./ScriptSummaries";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -47,6 +51,8 @@ export interface EventTabHost {
   placeTemplate?(x: number, y: number): void;
   /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
   canPlaceTemplate?(): boolean;
+  /** スクリプトの要約（#226。ホバーの吹き出し）。 */
+  summaries?(): Promise<ScriptSummaries>;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -77,6 +83,8 @@ export class EventTab {
   private index = 0;
   private showCursor = true;
   private placed: PlacedEvent[] = [];
+  /** イベントの上にカーソルを止めたときの吹き出し（#226）。 */
+  readonly hoverTip: EventHover;
   private offsets: EventOffsets | null = null;
   private itemsLoaded = false;
   private unsubscribe: (() => void) | null = null;
@@ -146,6 +154,16 @@ export class EventTab {
       hover: (cell) => this.hover(cell),
       contextMenu: (cell, x, y) => this.contextMenu(cell, x, y),
     });
+    this.hoverTip = new EventHover(
+      this.view,
+      eventHoverSource({
+        state,
+        placed: () => this.placed,
+        summaries: () => host.summaries?.() ?? Promise.reject(new Error("summaries")),
+      }),
+    );
+    state.on("map", () => this.hoverTip.hide());
+    state.on("tab", () => this.hoverTip.hide());
 
     state.on("session", () => this.attachSession());
     state.on("map", () => {
@@ -272,6 +290,14 @@ export class EventTab {
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites);
+    // ワープできないブロックの上のワープに印（#240）
+    if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
+  }
+
+  /** ワープできないブロックの上にあるワープの番号（#240）。 */
+  warpWarnings(): number[] {
+    const map = this.state.map;
+    return map ? unusableWarps(map.doc, map.tiles) : [];
   }
 
   /**
