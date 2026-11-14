@@ -13,11 +13,14 @@ node scripts/automation-client.mjs 17891 '{"cmd":"state"}'
 node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 ```
 
-確かめるスクリプト（`tests/automation`。ポート 17990〜17999 を使い、自分が起動したプロセスだけを終わらせる）:
+確かめるスクリプト（`tests/automation`。ポート 17990〜17999 を使い（環境変数 `ZZM_PORTS=47810-47819` のように変えられる）、自分が起動したプロセスだけを終わらせる）:
 
 ```sh
 python tests/automation/profile_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>    # 通常の設定と WebView2 のデータが 1 バイトも変わらないこと
 python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>  # どのウィンドウも画面内に出ず、前面にならないこと
+python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
+    # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
+    # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -49,7 +52,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ）か `id`（部品。`field:RandBox` など） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |
-| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB） |
+| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB）、`openedUrls`（ヘルプのリンクなどで開こうとした外部の URL。新しい順。自動操作のときはブラウザを開かない） |
 | `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
 | `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
 | `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
@@ -62,7 +65,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、最後に起動したスクリプトエディター |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物 |
 | `commands` | | 登録されている命令の名前 |
 | `windows` | | 開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`） |
 | `exit` | | 確認なしで終了する |
@@ -70,10 +73,14 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 | `view.scroll` | `target` か `id` | スクロールの状態。`h`・`v`（横・縦のスクロールバーが出ていて使えるか）、`inside`（枠がウィンドウに収まっているか）、`scrollLeft`・`scrollTop`・`scrollWidth`・`scrollHeight`・`clientWidth`・`clientHeight` |
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
 | `resize` | `width`、`height`（論理ピクセル） | メインウィンドウの大きさを変える。返事は中の大きさ |
-| `drop` | `paths`（パスの配列）か `path` | ファイル・フォルダのドラッグ＆ドロップと同じ処理で開く（先頭の 1 つ。フォルダならプロジェクト、`.gba` なら ROM、ほかはステータスバーに案内）。返事は開いている ROM・プロジェクトとステータスバー |
+| `drop` | `paths`（パスの配列）か `path` | ファイル・フォルダのドラッグ＆ドロップと同じ処理で開く（先頭の 1 つ。フォルダならプロジェクト、`.gba` なら ROM、ほかはステータスバーに案内）。`.gba` は続けて組のフォルダを選ぶダイアログが出るので、ダイアログが出たところで返る（`queuePath` で答え、`null` でキャンセルすると ROM だけで開く）。返事は開いている ROM・プロジェクト、ステータスバー、開いているダイアログ |
 | （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`scroll` / `view.scroll`（`id` の部品の枠。ブロック一覧は `be.blocks`、引数はメインと同じ）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
 
 AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
+
+ROM を開くメニュー・ツールバー・ドラッグ＆ドロップ・組のフォルダが記録されていない最近開いたものでは、ROM を選んだあとに組のフォルダを選ぶダイアログ（`dialogs` の `kind: "native"`、`type: "folder"`）が出ます。`queuePath` にフォルダか `null`（キャンセル。ROM だけで開く）を渡します。`open` 命令はダイアログを出さずに、渡した ROM とプロジェクトで開きます。
+
+Phase1 のフィードバックで足した部品の ID: 透明度のスライダー `view.opacity.slider`（`setField` に 0〜100）・`view.opacity.value`（「30%」）・`view.opacity.close`、マップの外のイベントの帯 `outside.bar`（`getField` の `visible`）・`outside.fix`（マップの内側に戻す）、場所の設定タブの切り替え `header.mode.simple`・`header.mode.classic`（`click`）・`header.advanced`（高度なヘッダーを表示）、かんたん表示 `easy.region`・`easy.newName`・`easy.rename`・`easy.showName`・`easy.music`・`easy.musicNo`・`easy.weather`・`easy.mapType`・`easy.battleType`・`easy.cave`・`easy.bike`・`easy.run`・`easy.escape`・`easy.tileset1`・`easy.tileset2`・`easy.changeTilesets`・`easy.width`・`easy.height`・`easy.resize`・`easy.borderWidth`・`easy.borderHeight`・`easy.resizeBorder`・`easy.connections`・`easy.openConnections`（マップスクリプトは `easy.scriptNo` など、くわしく表示の `header.` を `easy.` にしたもの）、ヘルプの文書の窓 `help.doc`（開いている文書のパス）・`help.content`（本文。`view.scroll` の `id` に使える）・`help.back`・`help.close`・本文のリンク `help.link:<行き先>`（`help.link:#ショートカット`、`help.link:docs/automation.md` など。`click` で押す）、バージョン情報 `about.version`・`about.link`。
 
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 

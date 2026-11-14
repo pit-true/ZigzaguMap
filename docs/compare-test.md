@@ -4,7 +4,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 
 - AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
-- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。スクリプトエディタは両方とも `scriptEditorStub`（区切りは空白）にします。
+- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。ZigzaguMap の場所の設定タブは、AdvanceMap と同じ「くわしく（従来）」の表示にしてから比べます（初期の「かんたん（CFRU）」はユーザーの要望で足した ZigzaguMap だけの表示なので、`tests/automation/feedback_check.py` で確かめる）。
 
 ## 準備
 
@@ -17,7 +17,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 | `amSourceDir` | `ZZM_CMP_AM_SRC` | AdvanceMap のコピー（ここから `amWorkDir` を作る） |
 | `amWorkDir` | `ZZM_CMP_AM_DIR` | 比較テスト専用の AdvanceMap（Ini の表示設定は毎回戻す） |
 | `romOriginal` | `ZZM_CMP_ROM` | 素の BPRJ（読むだけ） |
-| `scriptEditorStub` | `ZZM_CMP_STUB` | スクリプトエディタの代わりの exe（省略可） |
+| `scriptEditorStub` | `ZZM_CMP_STUB` | AdvanceMap の Ini に書くスクリプトエディタの代わりの exe（省略可。ZigzaguMap には外部のスクリプトエディタの機能が無い） |
 | `zigzaguExe` | `ZZM_CMP_EXE` | ZigzaguMap の exe（既定は `apps/desktop/src-tauri/target/release/zigzagumap.exe`） |
 | `resultsDir` | `ZZM_CMP_RESULTS` | 結果の置き場（既定はリポジトリの隣の `compare-results`） |
 | `keepRuns` | | 残す結果の数（既定 5。実行の最後に、これより古い結果フォルダを消す。消せなかったものは summary に書く） |
@@ -76,6 +76,12 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 - `export` に `dir` を付けると、ZigzaguMap はその名前のフォルダ（結果フォルダの中）へ出力します。`output.files:<dir>` は ZigzaguMap が書いたファイルの一覧で、`only: "zigzagu"` と `expected` で確かめます（`S57_export_to_other_folder`）。
 
 入力欄の値は、全角・半角の空白、16 進の大文字小文字、先頭の `$` や `0x` をそろえてから比べます。
+
+Phase1 のフィードバック（issue #169〜#181）で AdvanceMap と違う動きにしたもの:
+
+- ZigzaguMap は見た目の項目を「設定」から「表示」へ移したので、`menu.state` では ZigzaguMap の「表示」の下の項目を「設定」の下として読み、同じ項目どうしを比べます（`lib/drivers.py` の `VIEW_MENU`）。シナリオのメニューは今までどおり AdvanceMap の言語ファイルのキーで書き、ZigzaguMap で文言の階層が見つからない項目は `zigzagu_menu.json` のアクション ID で実行します。
+- 消した機能のシナリオ（S17 スクリプトエディタの選択と起動、S51 マップの表示設定（ini の表示））は外しました。
+- 入力ダイアログをスライダーにした移動エリアの透明度（S09）などは、AdvanceMap だけの手順（`only: "advancemap"`）と ZigzaguMap だけの手順（`only: "zigzagu"`）に分け、理由「ユーザーの要望（Phase1 のフィードバック #番号）」を書いています。
 
 ## 結果の見方
 
