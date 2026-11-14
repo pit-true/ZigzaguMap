@@ -41,6 +41,13 @@ export class BlockPaletteView {
    * `cellOf` はブロックのパレット上の (列, 行)。
    */
   decorate: ((c: CanvasRenderingContext2D, size: number, blocks: number, cellOf: (block: number) => { col: number; row: number }) => void) | null = null;
+  /**
+   * グリッドの Canvas に描き足すもの（タイルセット 1・2 の境目の線と見出し。Phase4 #308。描き直すのはパレットを作り直すときだけ）。
+   * `width` は 1 行のブロック数。
+   */
+  readonly gridDecorators: ((c: CanvasRenderingContext2D, size: number, width: number) => void)[] = [];
+  /** マウスの下のブロックが変わったときに呼ぶもの（ブロックの情報の表示。Phase4 #308。外れたら null）。 */
+  readonly hoverListeners: ((block: number | null) => void)[] = [];
 
   constructor(private readonly host: BlockPaletteHost) {
     this.element = document.createElement("div");
@@ -79,6 +86,7 @@ export class BlockPaletteView {
       hover: (cell) => {
         const block = cell && this.tiles ? this.tiles.blockAt(cell.x, cell.y, this.width) : null;
         this.host.hover(block, block !== null && this.tiles ? this.tiles.blockOffset(block) : null);
+        for (const l of this.hoverListeners) l(block);
       },
     });
   }
@@ -153,6 +161,7 @@ export class BlockPaletteView {
     this.gridCanvas.width = dw;
     this.gridCanvas.height = dh;
     if (this.grid && dw > 0) drawGrid(this.gridCanvas, size);
+    if (tiles && dw > 0) for (const d of this.gridDecorators) d(this.gridCanvas.getContext("2d")!, size, this.width);
     this.drawSelection(null);
   }
 

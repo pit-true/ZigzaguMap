@@ -10,7 +10,8 @@ export class MovementTab {
   readonly element: HTMLElement;
   readonly view: MapView;
   private readonly layer: MovementLayer;
-  private readonly palette: MovementPaletteView;
+  /** 移動許可のパレット（Phase4 #308 の説明の表示が乗る）。 */
+  readonly palette: MovementPaletteView;
   /** マップのマウス操作（隣の帯は App が `painter.cells.neighbors` を入れる）。 */
   readonly painter: MovementPainter;
 
