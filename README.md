@@ -244,6 +244,7 @@ Phase2 で作っている途中の機能です。実装した分の仕様をこ�
 | `useGlobal` | 新しいラベルに `.global` を付けるか | `false` | `true` |
 | `lineMaxChars` / `linesPerPage` | 簡易の幅検査の、1 行の字数と 1 ページの行数 | 18 / 2 | 18 / 2 |
 | `commandsCsv` | 命令の説明を足す commands.csv。`null` なら使わない | `null` | `null` |
+| `widthRegistry` | 幅検査の追加の登録ファイル（`path`・`.string` のパスの頭 `prefix`・足すときの窓 `window`）。`null` なら書き足さない | `null` | `{ "path": "strings/text_width_registry.json", "prefix": "cfru/", "window": "field" }` |
 
 - `auto` のときは、プロジェクトフォルダの `xse_commands.s` の `loadpointer` マクロを見ます。引数が 3 つ（`destination, value, value_kanji`）なら ND、2 つなら Chronos です。`xse_commands.s` が無いときや `loadpointer` が見つからないときは、Chronos（素の CFRU と同じ 1 ポインタ）として扱います。
 - ND の既定のビルドは CFRU 側だけです。DPE 側へのコピーと DPE のビルドを既定に入れるかは、まだ決めていません（#198）。エミュレータの設定をどこに置くかも未定です（#199）。
@@ -439,6 +440,13 @@ Gen3 Script Assistant 改造版（VS Code の拡張）の色付け・ホバー�
 
 - 文字列の参照のホバーに「本文を編集」のボタンがあり、押すと小さな入力欄が出ます。入力中は文字数で幅を検査し（上限は zigzagumap.json の `lineMaxChars`・`linesPerPage`。既定は 1 行 18 字・1 ページ 2 行で ND も同じ）、行ごとの字数と、超えた行の印を出します。Enter か「反映」で `.string` のそのラベルの本文の行だけを書き換えます。その `.string` を開いていなければ裏でタブを開き、未保存にします（Ctrl+S か Ctrl+Shift+S で保存）。改行の文字は書けないので、改行は `\n`、改ページは `\p` と書きます。
 - `.string` を直接開いたときも、同じ幅検査の結果を波線で出します。ピクセルで数える幅検査のコマンド（`widthCheck`）があるプロジェクト（Chronos）では、字数の検査は目安なので「情報」の印（青）にします。`[BUFFER1]` を 8 字と数えるなど厳しめに出るため、実際の Chronos の文でも印が付くことがあります（ピクセルの検査は通る）。
+
+保存時の幅検査（#197）:
+
+- `.string` を保存したとき、zigzagumap.json に幅検査のコマンド（`widthCheck`）があれば動かします。Chronos は既定で `python tools/check_text_width.py --source`（作業フォルダは 1 つ上の `Chronos`）、ND は既定で無いので何もしません。動いている間にもう一度保存したら、終わってからもう 1 回だけ動かします。
+- 出力の `TEXT WIDTH ERROR: cfru/strings/x.string:21 gText_X (configured) page 1 line 2: 212 px > 208 px (...)` を拾い、`prefix`（Chronos は `cfru/`）を外したパスのファイルのその行に波線を出します。前の結果の波線は消します（直して保存すると消える）。`(configured)` と `(widest)` で同じ中身のものは 1 つにまとめます。ファイルや行の分からない誤りは、保存したファイルの 1 行目に出します。出力はエディタのウィンドウに覚えておきます（自動操作の `editor.widthCheck` の `log`。ビルドのログの欄ができたらそこに出します）。
+- Chronos は、検査するファイル（登録のあるファイル）のすべての `#org` が `tools/check_text_width.py` に登録されていないと、検査もビルドも止まります。そこで、検査の前に登録の一覧（`--list-registry`）を取り、保存した `.string` が登録のあるファイルなら、登録の無い新しい `#org` を追加の登録ファイル（`widthRegistry` の `path`、Chronos は `cfru/strings/text_width_registry.json`）に書き足します。窓は `window`（既定 `field` = 会話の窓）です。本文に `[BUFFER1]`〜`[BUFFER3]` があると入る値の種類が分からないので、`unresolved`（窓の幅を検査しない）で登録します。登録ファイルに書いた名前のうち `.string` から消えた `#org` の分は消します。Python の `REGISTRY` に書いたものには触りません。登録の無いファイル（新しく作った `.string` など）は、今までどおり検査されないので書き足しません。
+- 追加の登録ファイルを読む仕組みは Chronos 側（`tools/check_text_width.py`）に入れました（形は Chronos の `docs/TEXT_WIDTH.md`）。登録ファイルが無ければ、検査の結果もビルドも変更前と同じです。
 
 ### scripts.json の編集画面
 
