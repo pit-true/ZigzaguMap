@@ -102,6 +102,8 @@ export class EventLabelStore {
   private readonly files = new Map<string, { readonly file: MapLabelsFile; readonly text: string }>();
   private scripts: EventScriptsFile;
   private scriptsText: string;
+  /** マップを初めて読んだときのイベントの座標（ファイルの座標と合わなかったラベルの座標を、出力で上書きしないため）。 */
+  private readonly loadedPositions = new Map<string, EventPositions>();
 
   constructor(eventScriptsText: string, files: readonly { readonly path: string; readonly text: string }[] = []) {
     this.scriptsText = eventScriptsText;
@@ -255,6 +257,15 @@ export class EventLabelStore {
 
   // ---- 照合 ----
 
+  /**
+   * マップを読んだときのイベントの座標を覚える（2 回目からは何もしない）。読んだときにファイルの座標と合わなかったラベル
+   * （Bochi などで順を変えた）は、付け直すか付け替えるまで、出力でもファイルの座標を書き直さない（ずれの知らせを残す）。
+   */
+  noteLoaded(bank: number, map: number, positions: EventPositions): void {
+    const k = key(bank, map);
+    if (!this.loadedPositions.has(k)) this.loadedPositions.set(k, positions);
+  }
+
   /** ファイルに書いた座標と、今のイベントの座標が合わないラベル（ファイルの無いマップは空）。 */
   mismatches(bank: number, map: number, positions: EventPositions): EventLabelMismatch[] {
     const f = this.files.get(key(bank, map));
@@ -329,7 +340,7 @@ export class EventLabelStore {
       if (isEmpty(m)) {
         if (old) files.push({ path, text: null });
       } else {
-        const text = MapLabelsJson.stringify(toFile(bank, map, m, positions(bank, map), old?.file ?? null));
+        const text = MapLabelsJson.stringify(toFile(bank, map, m, positions(bank, map), old?.file ?? null, this.loadedPositions.get(k) ?? null));
         if (text !== old?.text) files.push({ path, text });
       }
       syncEventScripts(scripts, bank, map, m);
@@ -434,16 +445,29 @@ function renameInTable(table: MapScriptTableModel, from: string, to: string, hit
   };
 }
 
-function toFile(bank: number, map: number, m: MapLabels, positions: EventPositions | null, old: MapLabelsFile | null): MapLabelsFile {
-  const oldPos = (target: EventLabelTarget, index: number): EventPosition => {
+function toFile(
+  bank: number,
+  map: number,
+  m: MapLabels,
+  positions: EventPositions | null,
+  old: MapLabelsFile | null,
+  loaded: EventPositions | null,
+): MapLabelsFile {
+  const oldEntry = (target: EventLabelTarget, index: number): MapLabelEntry | undefined => {
     const list = target === "person" ? old?.persons : target === "sign" ? old?.signs : old?.traps;
-    const e = list?.find((x) => x.index === index);
-    return e ? { x: e.x, y: e.y } : { x: 0, y: 0 };
+    return list?.find((x) => x.index === index);
+  };
+  /** 読んだときにファイルの座標と合わず、まだ同じ番号に付いたままのラベルか。 */
+  const stale = (target: EventLabelTarget, index: number, label: string, e: MapLabelEntry | undefined): boolean => {
+    if (!e || !loaded || e.label !== label) return false;
+    const p = loaded[target][index];
+    return !p || p.x !== e.x || p.y !== e.y;
   };
   const entries = (target: EventLabelTarget): MapLabelEntry[] =>
     m[target].flatMap((l, index) => {
       if (!l) return [];
-      const p = positions?.[target][index] ?? oldPos(target, index);
+      const e = oldEntry(target, index);
+      const p = stale(target, index, l.label, e) ? { x: e!.x, y: e!.y } : (positions?.[target][index] ?? (e ? { x: e.x, y: e.y } : { x: 0, y: 0 }));
       return [{ index, x: p.x, y: p.y, kind: l.kind, label: l.label }];
     });
   return { bank, map, mapScripts: m.mapScripts, table: m.table, persons: entries("person"), signs: entries("sign"), traps: entries("tile") };

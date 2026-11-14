@@ -76,9 +76,10 @@ export class EventLabelProject {
     return new EventLabelProject(store);
   }
 
-  /** マップのイベントの数を覚える（マップを開いたとき）。 */
-  observe(map: MapId, counts: EventLabelCounts): void {
+  /** マップのイベントの数を覚える（マップを開いたとき）。`positions` は読んだときのイベントの座標（照合用。初めて開いたときだけ使う）。 */
+  observe(map: MapId, counts: EventLabelCounts, positions?: EventPositions): void {
     this.counts.set(mapKey(map), counts);
+    if (positions) this.store.noteLoaded(map.bank, map.map, positions);
   }
 
   /** CommandBus の出来事を見て、ラベルの番号を付け直す。戻り値で見るのをやめる。 */

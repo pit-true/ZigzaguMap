@@ -145,7 +145,7 @@ export class ProjectSession {
     this.tilesets.set(key, tiles);
     while (this.tilesets.size > TILESET_CACHE_SIZE) this.tilesets.delete(this.tilesets.keys().next().value!);
     this.opened.set(mapKey(id), id);
-    this.labels.observe(id, { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 });
+    this.labels.observe(id, { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 }, this.eventPositions(id.bank, id.map) ?? undefined);
     return { id, doc, tiles };
   }
 
