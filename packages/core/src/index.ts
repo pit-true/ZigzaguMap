@@ -178,6 +178,11 @@ export {
 } from "./project/StampJson.js";
 export { StampLibrary, type StampLibraryOptions, type StampProblem } from "./stamp/StampLibrary.js";
 
+// 自動ペンのパーツ（maps\autopen\、Phase4 #303）
+export * from "./autopen/index.js";
+export { AUTOPEN_FORMAT, PART_GRID_MAX_SIDE, autoPenFileBase, autoPenPath, parseAutoPenFile, stringifyAutoPenFile } from "./project/AutoPenJson.js";
+export { sha1 } from "./binary/sha1.js";
+
 // タイルセットの編集
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
 export {

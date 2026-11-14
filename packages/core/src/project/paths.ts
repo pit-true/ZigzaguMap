@@ -19,6 +19,8 @@ export const TILESET_IMAGE_FILE = "tiles.png";
 export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 /** スタンプのフォルダ（maps/stamps。1 つのスタンプが 1 ファイル）。 */
 export const STAMPS_DIR = `${MAPS_DIR}/stamps`;
+/** 自動ペンのパーツの定義のフォルダ（maps/autopen。タイルセット 1 つが 1 ファイル。Phase4 #303）。 */
+export const AUTOPEN_DIR = `${MAPS_DIR}/autopen`;
 /** ZigzaguMap で足した・変えたトレーナー（maps/trainers.json。Phase3 #245）。 */
 export const TRAINERS_JSON_PATH = `${MAPS_DIR}/trainers.json`;
 /** ROM のスクリプトを埋める範囲（maps/rom_erase.json。Phase2 #220）。 */
