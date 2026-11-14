@@ -1,0 +1,46 @@
+/* イベントタブのホバーの吹き出し（#226・#240）。 */
+.event-hover {
+  position: fixed;
+  z-index: 900;
+  max-width: 420px;
+  padding: 4px 6px;
+  color: var(--text);
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.event-hover[hidden] {
+  display: none;
+}
+
+.event-hover-title {
+  font-weight: bold;
+}
+
+.event-hover-line {
+  margin-top: 1px;
+}
+
+.event-hover-warn {
+  margin: 2px 0;
+  padding: 1px 4px;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+}
+
+.event-hover-rule {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--menu-separator);
+}
+
+.event-hover-image {
+  display: block;
+  margin-top: 4px;
+  image-rendering: pixelated;
+}
