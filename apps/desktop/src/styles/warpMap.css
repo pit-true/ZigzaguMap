@@ -1,0 +1,27 @@
+/* ワープの「行き先のマップを作る」の窓（#241）。 */
+.warp-map-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--field-border);
+  background: var(--window);
+}
+
+.warp-map-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+}
+
+.warp-map-item canvas {
+  margin-left: auto;
+  image-rendering: pixelated;
+  border: 1px solid var(--shadow);
+}
+
+.warp-map-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}

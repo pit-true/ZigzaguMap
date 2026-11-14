@@ -8,6 +8,7 @@ import { fieldCommands } from "./fields";
 import { historyCommands } from "./history";
 import { hoverCommands } from "./hover";
 import { stampCommands } from "./stamps";
+import { warpMapCommands } from "./warpMap";
 import { usageCommands } from "./usage";
 import { imageCommands } from "./images";
 import { linkCommands } from "./link";
@@ -47,6 +48,7 @@ const registry: CommandRegistry = new CommandRegistry([
   hoverCommands,
   historyCommands,
   stampCommands,
+  warpMapCommands,
   blockUsageCommands,
   viewCommands,
   processCommands,
