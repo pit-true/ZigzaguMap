@@ -4,7 +4,7 @@
 
 - 見ること: 索引を作り終え、素の ROM のスクリプトで使われているフラグ（0x28 など）・隠しアイテムの番号（1）・トレーナーの番号が使用中になり、
   未使用の最小のフラグが 0x21 で使っている場所が無い。トレーナーの一覧（743 件の表）が読め、自動生成は同じ種なら同じ結果。
-  プロジェクトフォルダが無いので「未使用」ボタンは出ず、右クリックに「ここにひな形を置く」は出ず、スクリプトを書くひな形は置けない。
+  プロジェクトフォルダが無いので「未使用」ボタンは出ず、右クリックに「ここにひな形を置く」は出ず（「ここに○○を追加」だけ）、スクリプトを書くひな形は置けない。
 - 写しでの置く・出力・ビルド・ROM の中身は `tests/realcopy/run.py --template` で確かめる。
 """
 from __future__ import annotations
@@ -68,7 +68,12 @@ def main() -> int:
         f = z.call({"cmd": "getField", "id": "event.person.flagUnused"})
         check(not f["visible"], "プロジェクトフォルダが無いと「未使用」ボタンは出ない")
         z.call({"cmd": "mouse", "target": "event", "cell": [1, 1], "action": "rightClick"})
-        check(z.call({"cmd": "contextMenu.state"}) is None, "プロジェクトフォルダが無いと空いたマスの右クリックのメニューは出ない")
+        # 空いたマスの右クリックは「ここに○○を追加」（#304）の 4 つだけ。プロジェクトフォルダが要る「ここにひな形を置く」と落とし物は出ない
+        menu = z.call({"cmd": "contextMenu.state"})
+        ids = [i["id"] for i in menu["items"]] if menu else []
+        check(ids == ["add.person", "add.sign", "add.trap", "add.warp"],
+              f"プロジェクトフォルダが無いと空いたマスの右クリックに「ここにひな形を置く」と落とし物は出ない（{ids}）")
+        z.call({"cmd": "key", "key": "Escape"})
         try:
             z.call({"cmd": "template.place", "kind": "person", "x": 1, "y": 1})
             check(False, "プロジェクトフォルダが無いとスクリプトを書くひな形は置けない")
