@@ -5,6 +5,7 @@ import { historyExtension } from "./history";
 import { keymapExtension } from "./keymap";
 import { lineNumbersExtension } from "./lineNumbers";
 import { plainThemeExtension } from "./theme";
+import { renameExtension } from "./rename";
 
 export type { EditorExtensionFactory, EditorFileContext } from "./context";
 
@@ -15,6 +16,7 @@ export type { EditorExtensionFactory, EditorFileContext } from "./context";
  */
 export const EDITOR_EXTENSIONS: readonly EditorExtensionFactory[] = [
   keymapExtension,
+  renameExtension,
   historyExtension,
   basicExtension,
   lineNumbersExtension,

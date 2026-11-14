@@ -14,6 +14,8 @@ export interface EditorFileContext {
   save(): void;
   /** 別のファイルを開く（定義へ移動など。行は 1 から）。 */
   openFile(path: string, line?: number): void;
+  /** ラベル名を変える（F2。プロジェクトの .s の定義と参照、イベントのラベルも。#203）。 */
+  renameLabel?(from: string): void;
 }
 
 /** 機能 1 つ分の拡張を作る関数。 */
