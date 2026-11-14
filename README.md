@@ -650,6 +650,8 @@ $env:ZIGZAGU_TEST_ROM = "C:\path\to\BPRJ.gba"; pnpm test
 
 ND のベース ROM と NeoDark-CFRU のフォルダを `ZIGZAGU_TEST_ND_ROM` と `ZIGZAGU_TEST_ND_PROJECT` に入れると、`maps\` の JSON を読むテストも実行されます（フォルダには書き込みません）。
 
+ND と Chronos の実フォルダの写しを使うテストは `tests/realcopy` にあります（ローカルだけで動かす）。実フォルダと写し先のパスを `tests/realcopy/local.config.json`（コミットしない。見本は `local.config.example.json`）に書いて、`python tests/realcopy/run.py --smoke` を実行します。実フォルダを写し先へ写し（`build/`・`.git`・ベース ROM 以外の `.gba` などは除く）、ZigzaguMap（`--automation`）で写しを開いて何もせずに出力し、写しでビルドします（ND は CFRU の `python scripts/make.py`、Chronos はルートの `python build.py`）。実行の前後で実フォルダのファイルの更新日時が 1 つも変わらないことも確かめます。`--reuse` で前の写しをそのまま使い、`--dpe` で ND の DPE のビルドまで動かします。写し・起動・出力・ビルドの部品（`tests/realcopy/lib`）は、ほかのテストからも使えます。
+
 コアライブラリを Node から使うときは `pnpm --filter @zigzagumap/core build` で `dist` を作ります（`@zigzagumap/core` と `@zigzagumap/core/node`）。マップを PNG に書いて確かめるには次のようにします。
 
 ```sh
