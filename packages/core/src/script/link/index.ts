@@ -33,4 +33,5 @@ export {
   type SetEventLabelArgs,
   type SetMapScriptTableArgs,
 } from "./EventLabelCommands.js";
+export { eventLabelCountsOf, eventPositionsOf, type LabeledEventLists } from "./eventLists.js";
 export { EventLabelProject, type AddedEvents, type EventLabelCounts, type EventLabelTrackHooks } from "./EventLabelProject.js";
