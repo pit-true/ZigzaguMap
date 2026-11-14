@@ -1,6 +1,8 @@
+import heroUrl from "../assets/toolbar-hero.png";
+
 /**
- * ツールバーのアイコン（32×32 の SVG）。AdvanceMap の絵と同じ意味のものを自作した。
- * 「オブジェクトの表示」はファイアレッドの主人公（赤い帽子の男の子）のドット絵にしている。
+ * ツールバーのアイコン（32×32）。AdvanceMap の絵と同じ意味のものを SVG で自作した。
+ * 「オブジェクトの表示」だけは主人公のドット絵の PNG。
  */
 
 const svg = (body: string): string =>
@@ -28,37 +30,11 @@ const house = (x: number): string => `
     <rect x="10" y="23" width="5" height="6" fill="#7a4a24"/>
   </g>`;
 
-/** ファイアレッドの主人公（16×16 のドット絵を 2 倍）。 */
-const hero = (() => {
-  // 各行を文字で描く。. = 透明、K = 黒、R = 赤、W = 白、S = 肌、B = 青、Y = 黄
-  const rows = [
-    "......KKKK......",
-    "....KKRRRRKK....",
-    "...KRRRRRRRRK...",
-    "..KRRWWRRRRRRK..",
-    "..KKKKKKKKKKKK..",
-    "..KKSSSSSSSSKK..",
-    "...KSKSSSSKSK...",
-    "...KSSSSSSSSK...",
-    "....KSSSSSSK....",
-    "...KRRKSSKRRK...",
-    "..KSRRRRRRRRSK..",
-    "..KSKRRYYRRKSK..",
-    "...KBBBBBBBBK...",
-    "...KBBBKKBBBK...",
-    "....KKK..KKK....",
-    "................",
-  ];
-  const colors: Record<string, string> = { K: "#202020", R: "#e03828", W: "#ffffff", S: "#f8c890", B: "#3858b8", Y: "#f8d838" };
-  let rects = "";
-  rows.forEach((row, y) =>
-    [...row].forEach((c, x) => {
-      const fill = colors[c];
-      if (fill) rects += `<rect x="${x * 2}" y="${y * 2}" width="2" height="2" fill="${fill}"/>`;
-    }),
-  );
-  return `<g shape-rendering="crispEdges">${rects}</g>`;
-})();
+/**
+ * 「オブジェクトの表示」は、ユーザーが用意した主人公の小さなドット絵（assets/hero-source.png）を、
+ * 背景を透過にして 2 倍にし、影を付けた PNG（scripts/make-hero-icon.py で作る。4KB 未満なので Vite が data URL にして埋め込む）。
+ */
+const hero = `<img class="toolbar-bitmap" src="${heroUrl}" width="32" height="32" alt="">`;
 
 /** アイコンの一覧（キーはツールバーの項目）。 */
 export const ICONS: Readonly<Record<string, string>> = {
@@ -71,7 +47,7 @@ export const ICONS: Readonly<Record<string, string>> = {
   previousMap: svg(
     `<rect x="3" y="2" width="18" height="18" rx="2" fill="#8a3fd0" stroke="#4b1a7a"/><text x="12" y="16" font-family="Arial Black,Arial" font-weight="bold" font-size="13" text-anchor="middle" fill="#f8e048" stroke="#6a4a00" stroke-width="0.6">W</text><path d="M10 27 C17 30 25 28 27 20" fill="none" stroke="#1f6fd1" stroke-width="2.6"/><polygon points="23,20 30,17 29,24" fill="#1f6fd1"/>`,
   ),
-  showObjects: svg(hero),
+  showObjects: hero,
   blockEditor: svg(
     `<path d="M5 9 H12 C11 4 18 4 17 9 H24 V15 C29 14 29 22 24 21 V28 H17 C18 23 11 23 12 28 H5 V21 C10 22 10 14 5 15 Z" fill="#9b2fc4" stroke="#4e0f6a" stroke-width="1"/>`,
   ),
