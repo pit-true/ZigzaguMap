@@ -1,5 +1,6 @@
 import { BLOCK_TILE_COUNT } from "../../../tileset/blockFormat.js";
 import type { TilesetDocument } from "../../../tileset/TilesetDocument.js";
+import { isTripleLayer } from "../../../tileset/tripleLayer.js";
 import { EditError, EditErrorCode, checkRange } from "../../EditError.js";
 import { argInt, argIntArray, argOptInt, compactArgs, type Args } from "../../jsonArgs.js";
 import { TilesetCommand, argTileset, type TilesetArgs, type TilesetPart } from "../base/TilesetCommand.js";
@@ -48,6 +49,10 @@ export class SetBlockCommand extends TilesetCommand<SetBlockArgs> {
       tiles.forEach((v) => checkRange("tiles", v, 0, 0xffff));
     }
     if (attribute !== undefined) checkRange("attribute", attribute, 0, 0xffffffff);
+    // 表の最後のブロックは 3 層にできない（3 層にする片付けは setTripleLayer が行う）
+    if (attribute !== undefined && isTripleLayer(attribute) && block === tileset.blockCount - 1) {
+      throw new EditError(EditErrorCode.TripleLayerNoNext, { index: block, count: tileset.blockCount });
+    }
     if (tiles !== undefined) tileset.blocks.set(tiles, block * BLOCK_TILE_COUNT);
     if (attribute !== undefined) tileset.attributes[block] = attribute;
   }
