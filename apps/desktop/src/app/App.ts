@@ -123,6 +123,7 @@ export class App implements ActionTarget {
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
   private summariesValue: Promise<ScriptSummaries> | null = null;
+  private warpMapCreatorValue: Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> | null = null;
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
@@ -222,6 +223,7 @@ export class App implements ActionTarget {
       scriptFiles: this.scripts.files,
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
       pickUnused: (kind) => this.pickUnused(kind),
+      createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
       placeTemplate: (x, y) => void this.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       summaries: () => this.eventSummaries(),
@@ -823,6 +825,11 @@ export class App implements ActionTarget {
   }
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
+  /** ワープの「行き先のマップを作る」（#241。初めて使うときに読み込む）。 */
+  warpMapCreator(): Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> {
+    return (this.warpMapCreatorValue ??= import("../ui/event/WarpMapCreator").then(({ WarpMapCreator }) => new WarpMapCreator(this)));
+  }
+
   /** イベントのスクリプトの要約（#226。初めてホバーしたときに読み込む）。 */
   eventSummaries(): Promise<ScriptSummaries> {
     return (this.summariesValue ??= import("../ui/event/ScriptSummaries").then(({ ScriptSummaries }) => new ScriptSummaries(this)));
