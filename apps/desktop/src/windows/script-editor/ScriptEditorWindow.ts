@@ -23,7 +23,7 @@ import { EDITOR_THEMES, currentEditorTheme, isEditorTheme, setCurrentEditorTheme
 import { WidthCheck } from "./extensions/widthCheck";
 import { ScriptProject } from "./ScriptProject";
 import { decodeScriptText, encodeScriptText, isEditableScriptPath, normalizeScriptPath, scriptFileKind, type DecodedText } from "./fileText";
-import type { ScriptEditorQuery, ScriptRomOpenRequest } from "./protocol";
+import type { MessageHandlers, ScriptEditorQueryMap, ScriptRomOpenRequest } from "./protocol";
 import { ScriptEditorClient } from "./ScriptEditorClient";
 
 /** 外部の変更を調べる間隔（ms）。 */
@@ -78,6 +78,13 @@ export class ScriptEditorWindow {
     navigate: (path, line, column) => this.navigate(path, line, column),
     back: () => this.back(),
     editStringBody: (label, body) => this.editStringBody(label, body),
+  };
+  /** メインからの問い合わせの答え方（種類ごとに 1 つ）。 */
+  private readonly queryHandlers: MessageHandlers<ScriptEditorQueryMap> = {
+    dirty: () => this.tabs.filter((x) => x.dirty).map((x) => x.path),
+    saveAll: () => this.saveAll(),
+    bufferText: (q) => this.findTab(q.path)?.state.doc.toString() ?? null,
+    setBufferText: (q) => this.setBufferText(q.path, q.text, q.save),
   };
 
   constructor(root: HTMLElement) {
@@ -144,10 +151,12 @@ export class ScriptEditorWindow {
       if (!(await this.confirmClose())) event.preventDefault();
     });
     await this.client.connect({
-      open: (req) => void this.open(req.path, req.line),
-      query: (q) => this.answer(q),
-      build: () => void this.build.run(),
-      openRom: (req) => this.openRom(req),
+      notices: {
+        open: (req) => void this.open(req.path, req.line),
+        build: () => void this.build.run(),
+        openRom: (req) => void this.openRom(req),
+      },
+      queries: this.queryHandlers,
     });
     const { startScriptEditorAutomation } = await import("./automation");
     await startScriptEditorAutomation(this);
@@ -240,7 +249,7 @@ export class ScriptEditorWindow {
     const chosen = rename ?? (await openRomImportDialog(rom));
     if (!chosen) return null;
     try {
-      const plan = (await this.client.request({ type: "importRom", pointer: rom.pointer, target: rom.target, rename: chosen })) as { entryLabel: string };
+      const plan = await this.client.request({ type: "importRom", pointer: rom.pointer, target: rom.target, rename: chosen });
       this.setMessage(jaRomScript.importDone(plan.entryLabel));
       return plan;
     } catch (e) {
@@ -519,19 +528,6 @@ export class ScriptEditorWindow {
     if (u.docChanged) this.project.updateBuffer(tab.path, u.state.doc);
     if (u.docChanged) this.render();
     else if (u.selectionSet) this.renderStatus();
-  }
-
-  private answer(query: ScriptEditorQuery): Promise<unknown> {
-    switch (query.type) {
-      case "dirty":
-        return Promise.resolve(this.tabs.filter((x) => x.dirty).map((x) => x.path));
-      case "saveAll":
-        return this.saveAll();
-      case "bufferText":
-        return Promise.resolve(this.findTab(query.path)?.state.doc.toString() ?? null);
-      case "setBufferText":
-        return this.setBufferText(query.path, query.text, query.save);
-    }
   }
 
   /** 開いているタブ（大文字小文字は区別しない）。 */
