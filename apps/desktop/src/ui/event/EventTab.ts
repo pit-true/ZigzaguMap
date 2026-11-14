@@ -378,7 +378,7 @@ export class EventTab {
     this.lastDrag = null;
     // 人を動かしたら、隣のマップのクローンを合わせる（#242。動かしたのと同じ 1 回の操作にまとめる）
     if (last && last.kind === "person") {
-      void this.editor.syncClones(last.command, last.id, last.key).finally(() => this.editor.endSession());
+      void this.editor.syncClones(last.command, last.id).finally(() => this.editor.endSession());
       return;
     }
     this.editor.endSession();

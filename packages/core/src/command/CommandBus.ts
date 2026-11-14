@@ -60,6 +60,11 @@ export class CommandBus {
     return true;
   }
 
+  /** 履歴の先頭（直前に実行した・やり直したコマンド。無ければ null）。 */
+  get last(): Command | null {
+    return this.done[this.done.length - 1] ?? null;
+  }
+
   /** アンドゥできるか。 */
   get canUndo(): boolean {
     return this.done.length > 0;

@@ -71,18 +71,37 @@ export class EventEditor {
   runWithClones(command: Command, id: MapId, key: string | null = null): boolean {
     const k = key ?? `clones.${++this.cloneKeys}`;
     if (!this.run(command, k)) return false;
-    void this.syncClones(command, id, k);
+    void this.syncClones(command, id);
     return true;
   }
 
   /**
-   * 直前に `key` で実行した `command` に、クローンを合わせるコマンドを足して実行し直す。
-   * そのあいだにほかの操作をしていたら（`command` が履歴の先頭でなければ）何もしない。
+   * 直前に実行した `command` に、クローンを合わせるコマンドを足して実行し直す（履歴の 1 件を置き換える）。
+   * そのあいだにほかの操作をしていたら（`command` が履歴の先頭でなければ）何もしない。続けての入力の途中なら、
+   * 次の入力はまとめたものを置き換える。
    */
-  async syncClones(command: Command, id: MapId, key: string): Promise<void> {
+  async syncClones(command: Command, id: MapId): Promise<void> {
     const sync = await cloneSyncFor(this.state, id);
-    if (!sync || this.top !== command || this.key !== key) return;
-    if (this.run(CommandGroup.of([command, sync]), key)) reportClones(this.state, sync.changes);
+    const bus = this.bus;
+    if (!sync || !bus || bus.last !== command || bus.canRedo) return;
+    const group = CommandGroup.of([command, sync]);
+    this.running = true;
+    try {
+      bus.undo();
+      try {
+        bus.execute(group);
+      } catch (e) {
+        bus.redo();
+        throw e;
+      }
+    } catch (e) {
+      this.report(e);
+      return;
+    } finally {
+      this.running = false;
+    }
+    if (this.top === command) this.top = group;
+    reportClones(this.state, sync.changes);
   }
 
   /** 続けての入力を区切る（欄からフォーカスが外れた、ドラッグを離した）。 */

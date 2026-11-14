@@ -578,6 +578,52 @@ CHECKS = {
 }
 
 
+def check_trainer_edit(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """トレーナーをあとから直す窓（#274。Chronos の写し、読むだけ。出力しない）。窓で名前と手持ちを直すと trainers.json に入り、
+    1 回の取り消しで戻る。「ROM の値に戻す」で消える。人の右クリックの「トレーナーを編集」は、スクリプトの番号で開く。"""
+    rom1 = z.call({"cmd": "trainer.get", "id": 1})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(bool(dlg) and "トレーナーを編集" in dlg[-1]["title"], f"トレーナーを直す窓が出る（{[d.get('title') for d in dlg]}）")
+    check(z.call({"cmd": "getField", "id": "trainerEdit.name"})["value"] == rom1["name"], "窓の名前の欄は ROM の値")
+    z.call({"cmd": "setField", "id": "trainerEdit.name", "value": "テスト"})
+    z.call({"cmd": "setField", "id": "trainerEdit.party", "value": "0x10 12, 0x13 11"})
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_trainer_edit.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    time.sleep(0.3)
+    j = z.call({"cmd": "trainer.json"})
+    t1 = next((t for t in j["trainers"] if t["id"] == 1), None)
+    check(t1 is not None and t1["name"] == "テスト" and [(m["species"], m["level"]) for m in t1["party"]] == [(0x10, 12), (0x13, 11)] and t1["trainerClass"] == rom1["trainerClass"],
+          f"直した値が trainers.json に入る（{t1 and (t1['name'], t1['party'])}）")
+    check(j["modified"], "trainers.json が未出力になる")
+    z.call({"cmd": "undo"})
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "1 回の取り消しで trainers.json から消える")
+    z.call({"cmd": "redo"})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    z.call({"cmd": "dialog", "press": "revert"})
+    time.sleep(0.3)
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "「ROM の値に戻す」で trainers.json から消える")
+    # 人のスクリプトから番号を探す（Chronos のテスト用のラベル。トレーナー 0x19E）
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "person", "index": 0, "label": "EventScript_TestFixture_Famicom", "kind": "npc"})
+    found = z.call({"cmd": "trainer.idForPerson", "index": 0})["id"]
+    check(found == 0x19E, f"人のスクリプトからトレーナーの番号が分かる（{found}）")
+    p = z.call({"cmd": "event.state"})["events"]["persons"][0]
+    z.call({"cmd": "mouse", "target": "event", "cell": [p["x"], p["y"]], "action": "rightClick"})
+    menu = z.call({"cmd": "contextMenu.state"}) or {}
+    check(any(i["id"] == "editTrainer" for i in menu.get("items", [])), "人の右クリックに「トレーナーを編集」がある")
+    z.call({"cmd": "contextMenu.press", "id": "editTrainer"})
+    time.sleep(1.0)
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(bool(dlg) and "0x19E" in dlg[-1]["title"], f"右クリックから、そのトレーナーの窓が開く（{[d.get('title') for d in dlg]}）")
+    z.call({"cmd": "dialog", "press": "cancel"})
+    z.call({"cmd": "undo"})
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -611,15 +657,17 @@ def main() -> int:
                     fn(z, shots, ctx)
                 except Exception as e:  # noqa: BLE001
                     check(False, f"{name}: 例外 {e}")
-    if args.chronos and (not args.only or "hoverAsm" in args.only):
+    for name, fn in (("hoverAsm", check_hover_asm), ("trainerEdit", check_trainer_edit)):
+        if not args.chronos or (args.only and name not in args.only):
+            continue
         root = pathlib.Path(args.chronos)
         with tempfile.TemporaryDirectory(prefix="zzm-p3view-", ignore_cleanup_errors=True) as profile, Zigzagu(args.exe, profile=profile, extra=["--mute-audio"]) as z:
             z.call({"cmd": "open", "rom": str(root / "base" / "BPRJ0.gba"), "project": str(root / "cfru")})
-            print("== hoverAsm")
+            print(f"== {name}")
             try:
-                check_hover_asm(z, shots, {})
+                fn(z, shots, {})
             except Exception as e:  # noqa: BLE001
-                check(False, f"hoverAsm: 例外 {e}")
+                check(False, f"{name}: 例外 {e}")
     work.cleanup()
     print(f"失敗 {len(failures)} 件")
     return 1 if failures else 0

@@ -34,4 +34,5 @@ export const jaTrainer = {
   saved: (id: number, name: string) => `トレーナー 0x${id.toString(16).toUpperCase()}（${name}）を直しました（出力で maps\\trainers.json に書きます）`,
   reverted: (id: number) => `トレーナー 0x${id.toString(16).toUpperCase()} を ROM の値に戻しました`,
   unchanged: "変わったところはありません",
+  needProject: "トレーナーを直すには、プロジェクトフォルダ（CFRU-JP のフォルダ）を開いてください（maps\\trainers.json に書くため）",
 };

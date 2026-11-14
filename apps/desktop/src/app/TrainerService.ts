@@ -163,6 +163,10 @@ export class TrainerService {
    * 窓を閉じるまで待つ。直したら true。
    */
   async editForPerson(index: number): Promise<boolean> {
+    if (!this.app.state.session?.projectDir) {
+      this.app.state.setStatus(jaTrainer.needProject, undefined, true);
+      return false;
+    }
     let id = await this.idForPerson(index).catch(() => null);
     if (id === null) {
       const answer = await inputDialog(jaTrainer.askIdTitle, jaTrainer.askId, hex(1));
@@ -184,6 +188,11 @@ export class TrainerService {
   async edit(id: number, answer?: TrainerEditResult | null): Promise<boolean> {
     const session = this.app.state.session;
     if (!session) return false;
+    // trainers.json はプロジェクトフォルダの maps\ に書くので、フォルダが要る
+    if (!session.projectDir) {
+      this.app.state.setStatus(jaTrainer.needProject, undefined, true);
+      return false;
+    }
     const table = this.rom();
     const base = table.get(id);
     const edited = session.trainers.get(id);
