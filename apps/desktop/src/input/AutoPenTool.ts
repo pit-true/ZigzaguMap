@@ -10,8 +10,11 @@ import type { FillCell } from "./paintPlans";
 export interface AutoPenHost {
   /** 画面のマスの値（u16。どのマップでもなければ null）。 */
   cellValue(cell: Cell): number | null;
-  /** マスの一覧を書く（`merge` はドラッグの続き。`ownMovements` は移動許可を持つマスだけ移動許可も書く）。 */
-  writeCells(list: readonly FillCell[], merge: boolean, ownMovements: boolean): void;
+  /**
+   * 書くマスを実行の直前に `plan` で決めて書く（`area` は読むか書くかもしれないマス。そこにかかる隣のマップを先に読み込む。
+   * `merge` はドラッグの続き。`ownMovements` は移動許可を持つマスだけ移動許可も書く）。
+   */
+  writePlanned(area: readonly Cell[], plan: () => readonly FillCell[], merge: boolean, ownMovements: boolean): void;
   /** カーソルに置く物を薄く重ねる（空なら消す）。 */
   showPreview(cells: readonly FillCell[]): void;
 }
@@ -133,13 +136,20 @@ export class AutoPenTool {
     return { get: (x, y) => this.host.cellValue({ x, y }) };
   }
 
+  /**
+   * 描く。中身（縁の選び方など）は、書く直前のマップから決める（隣のマップを読み込む間に並んだ前の書き込みを見るため。#335）。
+   */
   private paint(cells: readonly (readonly [number, number])[], merge: boolean): void {
     const s = this.stroke;
     const set = this.service.set;
     if (!s || !set || cells.length === 0) return;
-    const plan = s.part.kind === "piece" ? set.planner.placePiece(this.source(), s.block, cells[0]![0], cells[0]![1]) : set.planner.strokeWith(this.source(), s.part, s.block, cells);
-    if (!plan || plan.writes.length === 0) return;
-    this.host.writeCells(this.withMovements(plan.writes), merge, this.state.settings.data.autoPenMovement);
+    const piece = s.part.kind === "piece" ? s.part.slots["Body"] : null;
+    const area = areaAround(cells, AREA_MARGIN + Math.max(piece?.width ?? 0, piece?.height ?? 0));
+    const plan = (): readonly FillCell[] => {
+      const p = s.part.kind === "piece" ? set.planner.placePiece(this.source(), s.block, cells[0]![0], cells[0]![1]) : set.planner.strokeWith(this.source(), s.part, s.block, cells);
+      return p ? this.withMovements(p.writes) : [];
+    };
+    this.host.writePlanned(area, plan, merge, this.state.settings.data.autoPenMovement);
   }
 
   /** 書くマスに移動許可を付ける（オフなら付けない）。 */
@@ -155,6 +165,20 @@ export class AutoPenTool {
       return { x: w.x, y: w.y, block: w.block, movement: m };
     });
   }
+}
+
+/** 筆のマスのまわりで、自動ペンが縁を直すかもしれない幅（2 周目の縁と、重なって並ぶ木の 1 本分）。 */
+const AREA_MARGIN = 4;
+
+/** マスの一覧を囲む矩形を `margin` マス広げたもの（書く前に読み込む隣のマップを決める）。 */
+function areaAround(cells: readonly (readonly [number, number])[], margin: number): Cell[] {
+  const xs = cells.map((c) => c[0]);
+  const ys = cells.map((c) => c[1]);
+  const out: Cell[] = [];
+  for (let y = Math.min(...ys) - margin; y <= Math.max(...ys) + margin; y++) {
+    for (let x = Math.min(...xs) - margin; x <= Math.max(...xs) + margin; x++) out.push({ x, y });
+  }
+  return out;
 }
 
 /** 部品の本体を `cell` を左上に並べたもの（下見用）。 */
