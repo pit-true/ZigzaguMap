@@ -316,3 +316,4 @@ export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
+export { COMPOSITE_MAX_SIDE, compositeScale, layoutComposite, type CompositeLayout, type CompositeMap, type CompositeSource } from "./render/MapComposite.js";
