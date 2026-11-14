@@ -68,8 +68,10 @@ function key(_app: App, req: AutomationRequest): null {
   // キー操作をまねる（メニューの確認用）。押して離すまでを送る。
   const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
   const target = typeof req["id"] === "string" ? findField(req["id"]) : (document.activeElement ?? document.body);
-  target.dispatchEvent(new KeyboardEvent("keydown", init));
-  target.dispatchEvent(new KeyboardEvent("keyup", init));
+  // `type` に `down` / `up` を付けると押すだけ・離すだけを送る（Ctrl を押している間の表示の確認。#238）
+  const type = req["type"];
+  if (type !== "up") target.dispatchEvent(new KeyboardEvent("keydown", init));
+  if (type !== "down") target.dispatchEvent(new KeyboardEvent("keyup", init));
   return null;
 }
 

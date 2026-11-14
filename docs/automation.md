@@ -47,7 +47,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
 | `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |
 | `action` | `id` | メニューのアクションを ID で実行する（例: `view.grid`。有効かどうかは見ない） |
-| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など） |
+| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可）、`type`（省略可。`down` で押すだけ、`up` で離すだけ） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など）。Ctrl を押している間の表示（#238）は `{"cmd":"key","key":"Control","ctrl":true,"type":"down"}` で押し、`{"cmd":"key","key":"Control","type":"up"}` で離す |
 | `mouse` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`）か `id`、位置は `cell: [x, y]`（マス。中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）、`action`（`click`（既定）/ `dblclick` / `rightClick` / `drag` / `hover` / `down` / `move` / `up`）、`drag` は `to: [x, y]`（マス）か `toPx` と `steps`（既定 8）、`button`（`left` / `right` / `middle` / `back` / `forward`。`back`・`forward` はサイドボタンで、マップの履歴を戻る・進む #237）、`ctrl`、`shift` | マウス操作。実際のマウスは動かさず、部品へ pointer・mouse・click・dblclick・contextmenu の出来事を実際の操作と同じ順に送る（画面側は人の操作と同じ処理を通る）。拡大表示は設定から読む。返事は選択中のブロック・移動許可・イベントとステータスバー |
 | `pointer`（別名） | `target`、`type`（`down` / `move` / `up`）、`x`・`y`（画素）、`button`、`ctrl`、`shift` | `mouse` の `action`・`px` と同じ（古い名前） |
 | `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
@@ -229,6 +229,9 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - 戻る・進むは `action` の `view.back`・`view.forward`（`tools.previousMap` も戻る）。マウスのサイドボタンは `mouse` の `button: "back"` / `"forward"`（`click`。どの部品の上でもよい）。
 - マップ名で探して開く窓（`action` の `map.find`、Ctrl+F）: 題名「マップ名で探して開く」、入力欄 `mapFind.input`（`setField` で入れると候補を作り直す）、候補の一覧 `mapFind.list`・候補 `mapFind.item:<バンク>.<マップ>`、`dialog` の `press` は `ok`（先頭か選んだ候補を開く）・`cancel`。
 - マップ一覧の絞り込みの欄 `tree.filter`、× のボタン `tree.filterClear`。
+
+- Ctrl を押している間（#238）: 移動エリアタブとイベントタブの `canvasPng` は重ね描きを含まない。イベントタブの `mouse` の `rightClick` に `ctrl: true` を付けると、メニューを出さずにイベントの下のブロックを拾う（`selection` の `block`）。
+- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・右の順。
 
 ## Phase3 の部品と命令（接続・描画）
 

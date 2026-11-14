@@ -110,6 +110,16 @@ export class EditorState {
     this.emit("status");
   }
 
+  /** ステータスバーの補助の欄（#238。ブロックの情報・矩形の大きさ・隣のマップの座標。AdvanceMap に無い欄）。 */
+  statusInfo = "";
+
+  /** 補助の欄を変える。 */
+  setStatusInfo(text: string): void {
+    if (text === this.statusInfo) return;
+    this.statusInfo = text;
+    this.emit("status");
+  }
+
   /** ステータスバーの右欄だけを変える。 */
   setStatusRight(right: string): void {
     this.status = { ...this.status, right };

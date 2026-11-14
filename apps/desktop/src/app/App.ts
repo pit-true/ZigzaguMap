@@ -53,6 +53,7 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
+import { installViewExtras } from "../ui/map/viewExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -186,6 +187,7 @@ export class App implements ActionTarget {
     this.neighbors = new NeighborService(state);
     for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) {
       new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" });
+      installViewExtras(view, state, tab, this.neighbors);
     }
     const tabControl = new TabControl(
       [
@@ -218,7 +220,7 @@ export class App implements ActionTarget {
     this.outsideBar = new OutsideEventsBar(state);
     root.append(this.menu.element, this.toolbar.element, this.combo.element, this.outsideBar.element, body, this.statusBar.element);
 
-    state.on("status", () => this.statusBar.render(state.status));
+    state.on("status", () => this.statusBar.render(state.status, state.statusInfo));
     state.on("tab", () => {
       tabControl.show(state.tab);
       const last = state.settings.data.last;
