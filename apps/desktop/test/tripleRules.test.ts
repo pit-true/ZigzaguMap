@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropTripleChildren, paletteBlock, paletteRectSelection, tripleStatusSuffix, type TripleLookup } from "../src/input/tripleRules";
+import { dropTripleChildren, paletteBlock, paletteRectSelection, tripleChildFlags, tripleStatusSuffix, type TripleLookup } from "../src/input/tripleRules";
 
 /** 3 層のブロック（その次が 3 層の次の番号）。 */
 function lookup(triples: number[], unresolved: number[] = []): TripleLookup {
@@ -58,5 +58,21 @@ describe("3 層の次の番号を置かない（#301）", () => {
     ];
     expect(dropTripleChildren(list, (b) => t.isTripleChild(b))).toEqual({ kept: [list[0], list[2]], skipped: 1 });
     expect(dropTripleChildren(list, null)).toEqual({ kept: list, skipped: 0 });
+  });
+});
+
+describe("隣のマップのタイルセットでの判定（#337）", () => {
+  it("組ごとの印を作り、主マップと違う 3 層の置き方でもそのマップの番号で落とす", () => {
+    const main = lookup([0x10]);
+    const neighbor = tripleChildFlags(lookup([0x20]));
+    expect(neighbor.length).toBe(1024);
+    expect([...neighbor].flatMap((f, b) => (f ? [b] : []))).toEqual([0x21]);
+    const list = [
+      { x: 0, y: 0, block: 0x11 },
+      { x: 1, y: 0, block: 0x21 },
+    ];
+    // 隣のマップでは 0x11 は置け、0x21 は置けない（主マップの判定とは逆）
+    expect(dropTripleChildren(list, (b) => neighbor[b] === 1)).toEqual({ kept: [list[0]], skipped: 1 });
+    expect(dropTripleChildren(list, (b) => main.isTripleChild(b))).toEqual({ kept: [list[1]], skipped: 1 });
   });
 });

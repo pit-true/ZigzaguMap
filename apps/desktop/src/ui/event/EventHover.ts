@@ -16,7 +16,7 @@ export interface HoverSection {
 
 /** 吹き出しの中身を作るもの（イベントタブ）。 */
 export interface HoverSource {
-  /** そのマスのイベント（上に描くものから）。 */
+  /** そのマスのイベント（上に描くものから）。主マップの外のマスは、帯の上に描いているクローンだけ。 */
   eventsAt(cell: RawCell): readonly PlacedEvent[];
   /** すぐ出せる中身（見出しと、待たずに分かる行）。 */
   quick(e: PlacedEvent): HoverSection;
@@ -76,7 +76,8 @@ export class EventHover {
 
   private move(e: PointerEvent): void {
     if (e.buttons !== 0 || !this.source.enabled()) return this.hide();
-    const cell = this.view.cellAt(e);
+    // 隣のマップの帯の上（主マップの外）も見る（帯の上のクローン。#345）
+    const cell = this.view.cellAtAny(e);
     this.client = { x: e.clientX, y: e.clientY };
     if (cell && this.cell && cell.x === this.cell.x && cell.y === this.cell.y) return;
     this.hide();

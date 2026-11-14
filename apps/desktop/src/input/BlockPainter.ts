@@ -12,7 +12,7 @@ import { MapCells } from "./MapCells";
 import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost, type AutoPenTool } from "./AutoPenTool";
-import { dropTripleChildren } from "./tripleRules";
+import { dropTripleChildren, tripleStatusSuffix } from "./tripleRules";
 
 /** ドラッグ中の道具（Phase3 #233）。 */
 type Drag =
@@ -170,14 +170,17 @@ export class BlockPainter implements AutoPenHost {
    * （その間の操作は順に待たせる）。`forDrag` はドラッグで続けて描く操作（まとめて 1 回にする）。
    */
   private write(list: readonly FillCell[], forDrag: boolean, merge: boolean, fromBag = false): void {
-    // 3 層の次の番号は書かない（描き方ごとでなく、ここ 1 か所で落とす。#301）
-    const { kept, skipped } = this.dropUnplaceable(list);
-    if (kept.length === 0) {
+    // 3 層の次の番号は書かない（描き方ごとでなく、ここ 1 か所で落とす。#301）。マップごとにそのマップのタイルセットで見る（#337）
+    let skipped = 0;
+    const groups = this.cells.split(list).flatMap((g) => {
+      const r = dropTripleChildren(g.cells, this.cells.tripleChildOf(g.id));
+      skipped += r.skipped;
+      return r.kept.length > 0 ? [{ id: g.id, cells: r.kept }] : [];
+    });
+    if (groups.length === 0) {
       if (skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
       return;
     }
-    const groups = this.cells.split(kept);
-    if (groups.length === 0) return;
     // 袋から描くときは、移動許可を持つマス（自動で選んだもの）だけ移動許可も書く。それ以外は「移動許可も貼る」に従う
     const withMovements = fromBag || this.state.settings.data.pasteMovements;
     this.cells.run(
@@ -188,7 +191,7 @@ export class BlockPainter implements AutoPenHost {
     );
   }
 
-  /** 書くマスから 3 層の次の番号を落とす（主マップのタイルセットで見る）。 */
+  /** 主マップの座標のマス（境界ブロックなど）から 3 層の次の番号を落とす（主マップのタイルセットで見る）。 */
   dropUnplaceable(list: readonly FillCell[]): { kept: FillCell[]; skipped: number } {
     const triple = this.state.map?.tiles.triple ?? null;
     return dropTripleChildren(list, triple ? (b) => triple.isTripleChild(b) : null);
@@ -204,9 +207,10 @@ export class BlockPainter implements AutoPenHost {
     if (!ga || !gb) return;
     const va = ga.getCell(ra.x, ra.y);
     const vb = gb.getCell(rb.x, rb.y);
-    // 3 層の次の番号を動かすと片方だけ書かれてしまうので、入れ替えない（#301）
-    const triple = this.state.map?.tiles.triple;
-    if (triple && (triple.isTripleChild(va & 0x3ff) || triple.isTripleChild(vb & 0x3ff))) {
+    // 3 層の次の番号を動かすと片方だけ書かれてしまうので、入れ替えない（#301）。書く先のマップのタイルセットで見る（#337）
+    const childA = this.cells.tripleChildOf(ra.id);
+    const childB = this.cells.tripleChildOf(rb.id);
+    if (childB?.(va & 0x3ff) || childA?.(vb & 0x3ff)) {
       this.state.setStatus(jaPen.tripleChildSkipped(1), undefined, true);
       return;
     }
@@ -221,9 +225,33 @@ export class BlockPainter implements AutoPenHost {
     this.state.setStatus(jaPaint.swapped(a.x, a.y, b.x, b.y));
   }
 
-  /** 自動ペンが決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる）。 */
+  /** 決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる。マップ作成補助）。 */
   writeCells(list: readonly FillCell[], merge: boolean, ownMovements: boolean): void {
     this.write(list, true, merge, ownMovements);
+  }
+
+  /**
+   * 書くマスを実行の直前に決めて書く（自動ペン。#335）。`area` は読むか書くかもしれない画面のマスで、そこにかかる隣のマップを
+   * 先に読み込む。読み込みを待つ間に並んだ前の書き込みを済ませてから `plan` を呼ぶので、前の書き込みを見て中身を決められる。
+   */
+  writePlanned(area: readonly Cell[], plan: () => readonly FillCell[], merge: boolean, ownMovements: boolean): void {
+    const ids = this.cells.split(area).map((g) => g.id);
+    if (ids.length === 0) return;
+    const withMovements = ownMovements || this.state.settings.data.pasteMovements;
+    this.cells.run(
+      ids,
+      () => {
+        const { kept, skipped } = this.dropUnplaceable(plan());
+        if (kept.length === 0 && skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
+        // 編集用に読み込んだマップだけに書く（area の外の、まだ読んでいない隣のマップへはみ出した分は捨てる）
+        return this.cells
+          .split(kept)
+          .filter((g) => !this.cells.needsLoad([g.id]))
+          .flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []);
+      },
+      true,
+      merge,
+    );
   }
 
   /** カーソルに置く物を薄く重ねる（自動ペン。空なら消す）。 */
@@ -246,7 +274,8 @@ export class BlockPainter implements AutoPenHost {
     if (value === null) return;
     this.state.selectBlock(value & 0x3ff);
     const block = this.state.selection.blocks[0] ?? 0;
-    this.state.setStatus(ja.statusBlock(block));
+    // パレットで選んだときと同じく「3層」の印も出す（#339）
+    this.state.setStatus(ja.statusBlock(block) + tripleStatusSuffix(this.state.map?.tiles.triple ?? null, block));
     this.onPicked();
   }
 
