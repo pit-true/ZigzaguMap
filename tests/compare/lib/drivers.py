@@ -657,6 +657,11 @@ class AdvanceMapDriver(Driver):
 
 
 # ============================================================================ ZigzaguMap
+# ZigzaguMap の「表示」メニュー（AdvanceMap の「設定」から見た目の項目を移したもの）と「設定」の文言。
+VIEW_MENU = "表示"
+SETTINGS_MENU = "設定"
+
+
 class ZigzaguDriver(Driver):
     name = "zigzagu"
     label = "ZigzaguMap"
@@ -720,12 +725,20 @@ class ZigzaguDriver(Driver):
         raise RuntimeError(f"ポート {lo}〜{hi} がすべて使用中です")
 
     def call(self, obj, timeout=120):
-        req = urllib.request.Request(f"http://127.0.0.1:{self.port}/", data=json.dumps(obj).encode("utf-8"), method="POST")
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            reply = json.loads(r.read().decode("utf-8"))
-        if not reply.get("ok"):
-            raise AppError(reply.get("error", "不明なエラー"))
-        return reply.get("result")
+        # 別ウィンドウは開いてから画面側の準備ができるまで少しかかる（PC が混んでいると 0.3 秒では足りない）。
+        # 「画面の準備ができていません」のときだけ、10 秒まで待ってやり直す
+        deadline = time.time() + 10
+        while True:
+            req = urllib.request.Request(f"http://127.0.0.1:{self.port}/", data=json.dumps(obj).encode("utf-8"), method="POST")
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                reply = json.loads(r.read().decode("utf-8"))
+            if reply.get("ok"):
+                return reply.get("result")
+            error = reply.get("error", "不明なエラー")
+            if obj.get("window") and "画面の準備ができていません" in error and time.time() < deadline:
+                time.sleep(0.2)
+                continue
+            raise AppError(error)
 
     def start(self):
         exe = self.cfg.zigzaguExe
@@ -746,10 +759,9 @@ class ZigzaguDriver(Driver):
                 raise RuntimeError(f"ZigzaguMap がすぐに終了しました（終了コード {self.proc.returncode}）")
             try:
                 self.call({"cmd": "state"}, timeout=5)
-                if self.cfg.scriptEditorStub:
-                    # AdvanceMap の Ini と同じスクリプトエディタ（比較テスト用の代わりの exe、区切りは空白）にする
-                    self.call({"cmd": "setting", "key": "scriptEditor", "value": str(self.cfg.scriptEditorStub)})
-                    self.call({"cmd": "setting", "key": "scriptSpaceSeparator", "value": True})
+                # 場所の設定タブは AdvanceMap と同じ「くわしく（従来）」の表示で比べる（初期の「かんたん（CFRU）」は
+                # ユーザーの要望で足した ZigzaguMap だけの表示。tests/automation/feedback_check.py で確かめる）
+                self.call({"cmd": "setting", "key": "headerView", "value": "classic"})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e
@@ -1065,8 +1077,14 @@ class ZigzaguDriver(Driver):
         from .langmap import menu_norm
         out = {}
         for it in self.call({"cmd": "menu.list"}):
-            key = "/".join(menu_norm(p) for p in it["path"])
-            out[key] = ("" if it["enabled"] else "灰") + ("✓" if it["checked"] else "")
+            path = [menu_norm(p) for p in it["path"]]
+            # ユーザーの要望（Phase1 のフィードバック #172）で、AdvanceMap の「設定」にあった見た目の項目を「表示」へ移した。
+            # 同じ項目どうしを比べるため、「表示」の下の項目は AdvanceMap と同じ「設定」の下として読む
+            if path and path[0] == VIEW_MENU:
+                if len(path) == 1:
+                    continue
+                path = [SETTINGS_MENU, *path[1:]]
+            out["/".join(path)] = ("" if it["enabled"] else "灰") + ("✓" if it["checked"] else "")
         return out
 
     def field(self, fid, st):

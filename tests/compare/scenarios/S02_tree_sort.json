@@ -2,19 +2,19 @@
   "name": "S02_tree_sort",
   "title": "マップ一覧の並べ替え 5 種",
   "source": "S02",
-  "issues": [26, 27],
+  "issues": [26, 27, 169],
   "note": "最後に既定（4: マップとタイルセット）へ戻す。ZigzaguMap では並べ替えが個人設定に保存される",
   "steps": [
     {"op": "openRom"},
     {"op": "sortTree", "mode": 0},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"]},
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "ユーザーの要望（Phase1 のフィードバック） #169: マップ一覧の根の「iniファイル」とその中身を外したので、一覧の項目数が違う"}},
     {"op": "sortTree", "mode": 1},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"]},
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "ユーザーの要望（Phase1 のフィードバック） #169: マップ一覧の根の「iniファイル」とその中身を外したので、一覧の項目数が違う"}},
     {"op": "sortTree", "mode": 2},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "判断 #163（README「AdvanceMap と違う点」）: AdvanceMap は「Tileset 67」のあとに名前が空のグループを 1 つ出すが、AdvanceMap の不具合とみなして出さない"}},
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "判断 #163（README「AdvanceMap と違う点」）: AdvanceMap は「Tileset 67」のあとに名前が空のグループを 1 つ出すが、AdvanceMap の不具合とみなして出さない。ユーザーの要望（Phase1 のフィードバック） #169: マップ一覧の根の「iniファイル」とその中身を外したので、一覧の項目数が違う"}},
     {"op": "sortTree", "mode": 3},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"]},
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "ユーザーの要望（Phase1 のフィードバック） #169: マップ一覧の根の「iniファイル」とその中身を外したので、一覧の項目数が違う"}},
     {"op": "sortTree", "mode": 4},
-    {"op": "compareFields", "fields": ["tree.count", "tree.first60"]}
+    {"op": "compareFields", "fields": ["tree.count", "tree.first60"], "expectedDifference": {"tree.count": "ユーザーの要望（Phase1 のフィードバック） #169: マップ一覧の根の「iniファイル」とその中身を外したので、一覧の項目数が違う"}}
   ]
 }

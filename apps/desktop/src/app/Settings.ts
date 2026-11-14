@@ -29,8 +29,8 @@ export interface MapFileEntry {
   readonly path: string;
 }
 
-/** マップ一覧に出す根（設定 > マップの表示設定。両方 = 既定）。 */
-export type MapListSource = "both" | "header" | "ini";
+/** 場所の設定タブの表示。 */
+export type HeaderView = "simple" | "classic";
 
 /** 個人設定（AppData の settings.json）。項目名は保存形式なので変えないこと。 */
 export interface SettingsData {
@@ -60,20 +60,16 @@ export interface SettingsData {
   hideEventPanel: boolean;
   /** コンボボックス（左の一覧の代わりにコンボ 2 つを出す）。 */
   comboBox: boolean;
-  /** マップ一覧の根。 */
-  mapListSource: MapListSource;
   /** 自動的にオフセットを検索する（ROM へ書かないので設定として持つだけ）。 */
   autoSearch: boolean;
-  /** 高度なヘッダーを表示。 */
+  /** 高度なヘッダーを表示（場所の設定タブの「くわしく（従来）」の中の切り替え）。 */
   advancedHeader: boolean;
+  /** 場所の設定タブの表示（`simple` = かんたん（CFRU）、`classic` = くわしく（従来））。 */
+  headerView: HeaderView;
   /** 最後に開いた ROM のショートカットを作る（exe と同じフォルダ）。 */
   romShortcut: boolean;
   /** エクスプローラーの右クリックに登録したか。 */
   contextMenu: boolean;
-  /** スクリプトエディターの exe（未設定なら null）。 */
-  scriptEditor: string | null;
-  /** スクリプトエディターに渡すとき、ROM の名前とオフセットを空白で区切る（false なら「:」）。 */
-  scriptSpaceSeparator: boolean;
   /** 画像を保存したフォルダ（次の保存ダイアログの初期フォルダ）。 */
   imageDir: string | null;
   /** ウィンドウの位置と大きさ。 */
@@ -105,13 +101,11 @@ export const DEFAULT_SETTINGS: SettingsData = {
   showObjects: false,
   hideEventPanel: true,
   comboBox: false,
-  mapListSource: "both",
   autoSearch: true,
   advancedHeader: true,
+  headerView: "simple",
   romShortcut: false,
   contextMenu: false,
-  scriptEditor: null,
-  scriptSpaceSeparator: false,
   imageDir: null,
   window: null,
   mapFiles: [],
@@ -140,6 +134,11 @@ export class Settings {
   update(patch: Partial<SettingsData>): void {
     Object.assign(this.data, patch);
     this.scheduleSave();
+  }
+
+  /** 値を変えるが保存はしない（スライダーを動かしている間の描き直し用。離したときに `update` で保存する）。 */
+  preview(patch: Partial<SettingsData>): void {
+    Object.assign(this.data, patch);
   }
 
   /** 最近開いたものの先頭に加える（同じものは前から消す）。 */

@@ -14,9 +14,11 @@ import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
+import type { OpacityPopup } from "../ui/view/OpacityPopup";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
 import { EventTab } from "../ui/event/EventTab";
+import { OutsideEventsBar } from "../ui/event/OutsideEventsBar";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
 import { WildTab } from "../ui/wild/WildTab";
@@ -25,8 +27,7 @@ import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { FileDialogs, fileNameOf as fileName, writeFile } from "./FileDialogs";
-import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
+import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
@@ -75,6 +76,8 @@ export class App implements ActionTarget {
   private readonly hint: HTMLElement;
   readonly grosserBlock: GrosserBlockWindow;
   private readonly eventTab: EventTab;
+  /** マップの外のイベントの帯。 */
+  readonly outsideBar: OutsideEventsBar;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -88,6 +91,8 @@ export class App implements ActionTarget {
     exportMaps: () => this.exportMaps(false),
   });
   private connections: ConnectionManager | null = null;
+  /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
+  opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
   readonly newMaps: NewMapController;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
@@ -101,7 +106,7 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
-    this.system = new SystemSettings(state, this.files, () => this.automation);
+    this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
     this.newMaps = new NewMapController({
@@ -149,7 +154,7 @@ export class App implements ActionTarget {
         { id: "movement", title: ja.tabMovement, element: movementTab.element },
         { id: "event", title: ja.tabEvents, element: eventTab.element },
         { id: "wild", title: ja.tabWild, element: new WildTab(state).element },
-        { id: "header", title: ja.tabHeader, element: new HeaderTab(state).element },
+        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections() }).element },
       ],
       (id) => state.setTab(id),
     );
@@ -169,7 +174,9 @@ export class App implements ActionTarget {
     const body = document.createElement("main");
     body.className = "main-body";
     body.append(this.left, splitter.element, tabControl.element);
-    root.append(this.menu.element, this.toolbar.element, this.combo.element, body, this.statusBar.element);
+    // マップの外にイベントがあるときの帯（ツールバーの下。どのタブでも出す）
+    this.outsideBar = new OutsideEventsBar(state);
+    root.append(this.menu.element, this.toolbar.element, this.combo.element, this.outsideBar.element, body, this.statusBar.element);
 
     state.on("status", () => this.statusBar.render(state.status));
     state.on("tab", () => {
@@ -207,14 +214,41 @@ export class App implements ActionTarget {
     // 自動操作の入口のコードは、自動操作で起動したときだけ読み込む（通常の起動では読まない）。
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
-    if (args.rom) await this.openSession(args.rom, args.project);
+    // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
+    if (args.rom) await this.openSession(args.rom, args.project ?? this.recordedProject(args.rom));
   }
 
   // ---- 開く ----
 
   async openRomDialog(): Promise<void> {
     const path = await this.files.rom();
-    if (path) await this.openSession(path, null);
+    if (path) await this.openRomAskingFolder(path);
+  }
+
+  /**
+   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ツールバー・ドラッグ＆ドロップ・
+   * 組のフォルダが記録されていない最近開いたもの）。キャンセルなら ROM だけで開く。未出力の変更の確認は先に済ませる。
+   */
+  async openRomAskingFolder(rom: string): Promise<void> {
+    if (!(await this.confirmDiscard())) return;
+    // ROM でないファイルなら、フォルダを聞く前にエラーを出す（開いていたものはそのまま）
+    let bytes: Uint8Array;
+    try {
+      bytes = await ProjectSession.readRom(rom);
+    } catch (e) {
+      await this.showOpenError(e);
+      return;
+    }
+    const before = this.state.status;
+    this.state.setStatus(ja.choosePairFolder);
+    const project = await this.files.folder(ja.pairFolderTitle);
+    this.state.setStatus(before.left, before.right, before.error);
+    await this.openSession(rom, project, { confirmed: true, bytes });
+  }
+
+  /** 最近開いたものに記録した、その ROM と組のフォルダ（無ければ null）。 */
+  recordedProject(rom: string): string | null {
+    return this.state.settings.data.recent.find((r) => r.rom.toLowerCase() === rom.toLowerCase())?.project ?? null;
   }
 
   async openProjectDialog(): Promise<void> {
@@ -239,38 +273,40 @@ export class App implements ActionTarget {
     const path = paths[0];
     if (path === undefined) return;
     if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
-    else if (path.toLowerCase().endsWith(".gba")) await this.openSession(path, null);
+    else if (path.toLowerCase().endsWith(".gba")) await this.openRomAskingFolder(path);
     else this.state.setStatus(ja.unsupportedFile, undefined, true);
   }
 
   async openRecent(index: number): Promise<void> {
     const entry = this.state.settings.data.recent[index];
-    if (entry) await this.openSession(entry.rom, entry.project);
+    if (!entry) return;
+    if (entry.project) await this.openSession(entry.rom, entry.project);
+    else await this.openRomAskingFolder(entry.rom);
   }
 
   async reload(): Promise<void> {
     const s = this.state.session;
     // AdvanceMap と同じく、読み直したあとはマップを開かない（題名はアプリ名、ステータスは「マップを選択してください」）
-    if (s) await this.openSession(s.romPath, s.projectDir, true);
+    if (s) await this.openSession(s.romPath, s.projectDir, { reload: true });
   }
 
   /**
    * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
    * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
+   * `reload` は ROM の再読み込み（マップを開かない）、`confirmed` は未出力の確認が済んでいる、`bytes` は読み済みの ROM。
    */
-  async openSession(rom: string, project: string | null, reload = false): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
+  async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
+    const reload = options.reload ?? false;
+    if (!options.confirmed && !(await this.confirmDiscard())) return;
     const state = this.state;
     const previous = state.session;
     state.setStatus(ja.loading);
     let session: ProjectSession;
     try {
-      session = await ProjectSession.open(rom, project);
+      session = await ProjectSession.open(rom, project, options.bytes);
     } catch (e) {
       await previous?.reattach().catch(() => undefined);
-      state.setStatus(previous ? ja.statusRomLoaded : ja.statusOpenRom);
-      if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
-      else await showError(errorText(e));
+      await this.showOpenError(e);
       return;
     }
     try {
@@ -303,6 +339,13 @@ export class App implements ActionTarget {
     } catch (e) {
       this.showError(e);
     }
+  }
+
+  /** 開けなかったときのエラー（ステータスバーを元に戻してから出す）。 */
+  private async showOpenError(e: unknown): Promise<void> {
+    this.state.setStatus(this.state.session ? ja.statusRomLoaded : ja.statusOpenRom);
+    if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
+    else await showError(errorText(e));
   }
 
   // ---- マップ ----
@@ -365,6 +408,15 @@ export class App implements ActionTarget {
       this.connections = new ConnectionManager(this.state, (id) => this.openMap(id));
     }
     this.connections.show();
+  }
+
+  /** 表示 > 移動エリアの設定の透明度。スライダーの小窓を開く（初めて開くときに読み込む）。 */
+  async openOpacity(): Promise<void> {
+    if (!this.opacityPopup) {
+      const { OpacityPopup } = await import("../ui/view/OpacityPopup");
+      this.opacityPopup = new OpacityPopup(this.state);
+    }
+    this.opacityPopup.open();
   }
 
   // ---- 編集 ----
@@ -529,9 +581,7 @@ export class App implements ActionTarget {
   }
 
   changeSetting(patch: Partial<SettingsData>): void {
-    const rebuild = patch.mapListSource !== undefined && patch.mapListSource !== this.state.settings.data.mapListSource;
     this.state.settings.update(patch);
-    if (rebuild) this.rebuildTree();
     this.state.emit("view");
     this.state.emit("recent");
   }
@@ -540,18 +590,6 @@ export class App implements ActionTarget {
   async saveImage(kind: ImageKind): Promise<void> {
     const path = await new ImageExport(this.state, this.files, () => this.eventTab.exportOverlay()).save(kind);
     if (path) this.state.setStatus(ja.imageSaved(path));
-  }
-
-  /** 設定 > マップの表示設定 > ヘッダーから新たなIniファイルを作る。書き出し先のフォルダを選ばせる。 */
-  async createIniFromHeader(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const folder = await this.files.folder(ja.iniFolderTitle);
-    if (!folder) return;
-    const { main, maps } = buildNewIni(session.catalog);
-    await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
-    await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
-    this.state.setStatus(ja.iniCreated(folder));
   }
 
   /** 別ウィンドウ（ブロックエディタなど）を開く。窓口のコードは初めて開くときに読み込む。 */
@@ -582,7 +620,7 @@ export class App implements ActionTarget {
     const session = this.state.session;
     if (!session) return;
     const s = this.state.settings.data;
-    this.tree.show(buildMapTree(session.catalog, s.sortMode, s.mapListSource, s.mapFiles));
+    this.tree.show(buildMapTree(session.catalog, s.sortMode, s.mapFiles));
     if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
   }
 
@@ -602,7 +640,7 @@ export class App implements ActionTarget {
 
   private async setTitle(mapName: string | null): Promise<void> {
     const map = this.state.map;
-    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む。iniファイル側なら ini の名前）を使う。
+    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む）を使う。
     const item = map ? (this.tree.openedLabel() ?? (mapName ? ja.mapItem(mapName, "", map.id.bank, map.id.map) : null)) : null;
     await this.setRawTitle(item ? ja.windowTitle(item) : ja.appTitle);
   }

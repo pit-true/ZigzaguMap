@@ -5,7 +5,7 @@ import type { EditorState } from "./EditorState";
 import type { SettingsData } from "./Settings";
 
 /**
- * 数を入力して変える設定（設定メニューの入力ダイアログ）。
+ * 数を入力して変える設定（表示・設定メニューの入力ダイアログ）。
  * 数でない入力は AdvanceMap と同じ「'…' is not a valid integer value.」、範囲外は「無効な値が入力されました！…」を出す。
  */
 export class SettingPrompts {
@@ -15,7 +15,7 @@ export class SettingPrompts {
     private readonly change: (patch: Partial<SettingsData>) => void,
   ) {}
 
-  /** 設定 > マップブロックの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
+  /** 表示 > ブロックパレットの横幅（Ctrl+P）。0 は AdvanceMap では「Division by zero.」になるが、入力エラーにする。 */
   async paletteWidth(): Promise<void> {
     const text = await inputDialog(ja.blockWidthTitle, ja.blockWidthPrompt, String(this.state.settings.data.paletteWidth));
     if (text === null) return;
@@ -23,15 +23,6 @@ export class SettingPrompts {
     if (n === null) return void (await showError(ja.invalidInteger(text), ja.appTitle));
     if (n < 1 || n > 64) return void (await showError(ja.invalidInput));
     this.change({ paletteWidth: n });
-  }
-
-  /** 設定 > 移動エリアの設定の透明度。 */
-  async opacity(): Promise<void> {
-    const text = await inputDialog(ja.movementOpacity, ja.opacityPrompt, String(this.state.settings.data.movementOpacity));
-    if (text === null) return;
-    const n = Number(text.trim().replace(",", "."));
-    if (text.trim() === "" || !Number.isFinite(n) || n < 0 || n > 1) return void (await showError(ja.invalidInput));
-    this.change({ movementOpacity: n });
   }
 
   /** 設定 > 最近開いたファイルの設定 > 最近開いたファイルリストの最大数の変更。 */

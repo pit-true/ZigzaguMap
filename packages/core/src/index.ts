@@ -168,7 +168,7 @@ export { type TilesetArgs } from "./command/commands/base/TilesetCommand.js";
 export { EVENT_FIELD_NAMES, EVENT_KINDS, MAX_EVENTS_PER_KIND, type EventKind } from "./command/commands/event/eventFields.js";
 export { AddEventCommand, type AddEventArgs } from "./command/commands/event/AddEventCommand.js";
 export { RemoveEventCommand, type RemoveEventArgs } from "./command/commands/event/RemoveEventCommand.js";
-export { MoveEventCommand, eventsOutsideMap, type MoveEventArgs } from "./command/commands/event/MoveEventCommand.js";
+export { MoveEventCommand, eventsOutsideMap, moveEventsInsideCommands, nearestInside, type MoveEventArgs } from "./command/commands/event/MoveEventCommand.js";
 export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/commands/event/SetEventFieldsCommand.js";
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
 export { SetItemBallCommand, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";

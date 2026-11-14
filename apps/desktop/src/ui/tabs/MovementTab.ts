@@ -39,6 +39,7 @@ export class MovementTab {
     });
     state.on("movement", () => this.palette.showSelection(state.movement, false));
     state.on("view", () => this.configure());
+    state.on("opacity", () => this.resetLayer());
     this.configure();
     this.palette.showSelection(state.movement, false);
   }

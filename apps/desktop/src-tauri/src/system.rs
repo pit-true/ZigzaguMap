@@ -93,10 +93,22 @@ pub fn file_exists(path: String) -> bool {
     Path::new(&path).is_file()
 }
 
-/// 外部のプログラム（スクリプトエディター）を起動する。終わるのは待たない。
+/// URL を既定のブラウザで開く（http・https だけ。ヘルプのリンク用）。
+/// 自動操作で起動したときは開かない（画面にウィンドウを出さないため。画面側が開こうとした URL を覚えておく）。
 #[tauri::command]
-pub fn launch_program(program: String, args: Vec<String>) -> Result<(), String> {
-    std::process::Command::new(&program).args(&args).spawn().map(|_| ()).map_err(|e| e.to_string())
+pub fn open_url(url: String, args: State<'_, StartupArgs>) -> Result<(), String> {
+    let allowed = url.starts_with("https://") || url.starts_with("http://");
+    if !allowed || url.chars().any(|c| c.is_control() || c == '"' || c == ' ') {
+        return Err(format!("開けない URL です: {url}"));
+    }
+    if args.automation_requested {
+        return Ok(());
+    }
+    std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", &url])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// exe のパス。

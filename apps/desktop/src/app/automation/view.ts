@@ -2,6 +2,7 @@ import { LogicalSize, getCurrentWindow } from "@tauri-apps/api/window";
 import { MOUSE_TARGETS } from "./mouse";
 import { int, nextFrame, settle, str, type AutomationRequest, type CommandTable } from "./registry";
 import { describeScroll, scrollBy, scrollContainerOf } from "./scroll";
+import { listDialogs } from "./dialogs";
 import { findField } from "./ui";
 
 /**
@@ -10,7 +11,7 @@ import { findField } from "./ui";
  * - `view.scroll`: スクロールの状態（スクロールバーが出ているか、枠がウィンドウに収まっているか）
  * - `splitter`: 左の欄の幅（分割バーをドラッグして離したときと同じ処理）
  * - `resize`: メインウィンドウの大きさ
- * - `drop`: ファイル・フォルダのドラッグ＆ドロップ（ドロップの出来事と同じ処理）
+ * - `drop`: ファイル・フォルダのドラッグ＆ドロップ（ドロップの出来事と同じ処理。.gba ならフォルダを選ぶダイアログが出たところで返る）
  */
 
 /** `target`（マウスと同じ名前）か `id` の部品の、スクロールの枠。 */
@@ -42,7 +43,19 @@ export const viewCommands: CommandTable = {
     if (!Array.isArray(paths) || paths.length === 0 || !paths.every((p) => typeof p === "string")) {
       throw new Error("paths（パスの配列）か path を指定してください");
     }
-    await app.drop(paths as string[]);
-    return { rom: app.state.session?.romPath ?? null, project: app.state.session?.projectDir ?? null, status: app.state.status };
+    // .gba を落とすと、続けてフォルダを選ぶダイアログが出る。開き終わるか、ダイアログが出るまで待つ
+    // （ダイアログには queuePath で答える。答えたあとの状態は state で読む）。
+    const before = listDialogs().length;
+    let finished = false;
+    const done = app.drop(paths as string[]).finally(() => (finished = true));
+    while (!finished && listDialogs().length <= before) await settle(30);
+    if (finished) await done;
+    else done.catch(() => undefined);
+    return {
+      rom: app.state.session?.romPath ?? null,
+      project: app.state.session?.projectDir ?? null,
+      status: app.state.status,
+      dialogs: listDialogs(),
+    };
   },
 };

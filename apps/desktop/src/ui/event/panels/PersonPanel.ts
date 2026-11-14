@@ -1,3 +1,4 @@
+import { showIfScriptEntry } from "../../script/ScriptEntry";
 import type { PersonEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
 import { formLabel, pushButton } from "../../form/valueControls";
@@ -81,9 +82,11 @@ export class PersonPanel extends ListKindPanel<PersonEvent> {
       this.hex("unknown5", 2, 25, (e) => e.padding3 & 0xff, (e, v) => ({ padding3: withByte(e.padding3, v, false) }), { bits: 8 }),
       this.hex("unknown6", 2, 25, (e) => e.padding3 >> 8, (e, v) => ({ padding3: withByte(e.padding3, v, true) }), { bits: 8 }),
     );
-    this.script = pushButton("event.person.openScript", ja.event.openScript, () => {
-      if (this.current) host.openScript(this.current.event.script);
-    }, "wide-button");
+    this.script = showIfScriptEntry(
+      pushButton("event.person.openScript", ja.event.openScript, () => {
+        if (this.current) host.openScript(this.current.event.script);
+      }, "wide-button"),
+    );
     this.element.append(this.script);
   }
 }

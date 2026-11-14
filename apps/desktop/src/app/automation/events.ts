@@ -36,7 +36,6 @@ export const eventCommands: CommandTable = {
       fly: tab.count("fly") > 0,
       events: map?.doc.events ?? null,
       itemBalls: map?.doc.itemBalls ?? [],
-      lastLaunch: tab.launcher.last,
     };
   },
 };

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   BPRJ_OFFSETS,
@@ -7,6 +8,7 @@ import {
   MapSourceConverter,
   MapSourceJson,
   MemoryProjectFs,
+  ND_CHARMAP_TBL,
   Rom,
   RomMapSource,
   SetItemBallCommand,
@@ -170,5 +172,31 @@ describe("CfruProject の保存（マップ以外）", () => {
     const p = await CfruProject.open(rom, fs);
     expect(p.textCodec.decode(Uint8Array.from([0x6f, 0x5b, 0x77, 0xff]))).toBe("まさら");
     expect((await p.load(M00)).mapNameText(p.textCodec)).toBe("まさら");
+  });
+
+  it("漢字を含むマップ名（ND の charmap.tbl。漢字は FC xx yy）を書いて読み直せる", async () => {
+    // NeoDark-CFRU の charmap.tbl があればそれを、無ければ同梱の写し（同じ内容）を使う。
+    const nd = process.env.ZIGZAGU_TEST_ND_PROJECT;
+    const charmap = nd ? readFileSync(`${nd}/charmap.tbl`, "utf-8") : ND_CHARMAP_TBL;
+    const fs = new MemoryProjectFs();
+    await fs.writeText("charmap.tbl", charmap);
+    const p = await CfruProject.open(rom, fs);
+    await p.load(M00);
+    const name = "漢字の森町あ洞";
+    new CommandBus(p.editorContext()).execute(new SetMapNameCommand({ regionId: 0x58, text: name }));
+    expect((await p.save()).written).toContain("maps/00/00.json");
+    // JSON の MapName は ROM の文字コード（漢字は FC xx yy の 3 バイト、終端 FF）
+    const json = JSON.parse(await fs.readText("maps/00/00.json")) as { MapName: string };
+    const bytes = Uint8Array.from(Buffer.from(json.MapName, "base64"));
+    expect([...bytes.subarray(0, 6)]).toEqual([0xfc, 0x8a, 0xbf, 0xfc, 0x8e, 0x9a]);
+    expect(bytes[bytes.length - 1]).toBe(0xff);
+    // 開き直すと同じ文字列になる（一覧の名前も同じ）
+    const again = await CfruProject.open(rom, fs);
+    expect((await again.load(M00)).mapNameText(again.textCodec)).toBe(name);
+    expect((await again.load({ bank: 1, map: 0 })).mapNameText(again.textCodec)).toBe(name);
+    // 変えずにもう一度出力しても同じ内容
+    const text = await fs.readText("maps/00/00.json");
+    await again.save();
+    expect(await fs.readText("maps/00/00.json")).toBe(text);
   });
 });

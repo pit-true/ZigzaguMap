@@ -20,8 +20,14 @@
   justify-content: center;
 }
 
-.toolbar-button svg {
+.toolbar-button svg,
+.toolbar-button .toolbar-bitmap {
   display: block;
+}
+
+/* ドット絵は拡大してもぼかさない。 */
+.toolbar-bitmap {
+  image-rendering: pixelated;
 }
 
 .toolbar-button:hover:not(.disabled) {

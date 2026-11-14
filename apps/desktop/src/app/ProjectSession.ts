@@ -58,10 +58,20 @@ export class ProjectSession {
   }
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
-  static async open(romPath: string, projectDir: string | null): Promise<ProjectSession> {
+  static async open(romPath: string, projectDir: string | null, romBytes?: Uint8Array): Promise<ProjectSession> {
     const start = performance.now();
-    const bytes = await readFile(romPath);
     // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
+    const bytes = romBytes ?? (await ProjectSession.readRom(romPath));
+    const fs = new TauriProjectFs();
+    await fs.setRoot(projectDir);
+    const project = await CfruProject.open(bytes, fs);
+    const catalog = await MapCatalog.build(project);
+    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start);
+  }
+
+  /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
+  static async readRom(romPath: string): Promise<Uint8Array> {
+    const bytes = await readFile(romPath);
     let supported = false;
     try {
       supported = detectGame(new Rom(bytes)).offsets !== null;
@@ -69,11 +79,7 @@ export class ProjectSession {
       supported = false;
     }
     if (!supported) throw new UnknownRomError(romPath);
-    const fs = new TauriProjectFs();
-    await fs.setRoot(projectDir);
-    const project = await CfruProject.open(bytes, fs);
-    const catalog = await MapCatalog.build(project);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start);
+    return bytes;
   }
 
   /** マップ一覧用の情報。 */

@@ -1,7 +1,7 @@
 """確認用に ZigzaguMap を自動操作の入口つきで起動し、命令を送る小さな道具（tests/automation の各スクリプトが使う）。
 
 - 起動したプロセスだけを終わらせる（プロセス ID で区別。ほかの作業者の exe には触れない）。
-- ポートは 17990〜17999 の空き（比較テストの 17930〜17939 と分ける）。
+- ポートは 17990〜17999 の空き（比較テストの 17930〜17939 と分ける）。環境変数 `ZZM_PORTS`（`47810-47819` の形）で変えられる。
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import time
 import urllib.request
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-PORTS = (17990, 17999)
+PORTS = tuple(int(p) for p in os.environ.get("ZZM_PORTS", "17990-17999").split("-", 1))
 
 
 def default_exe() -> pathlib.Path:

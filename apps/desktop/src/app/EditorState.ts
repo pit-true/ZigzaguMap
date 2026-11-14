@@ -34,6 +34,7 @@ export interface StatusText {
  * - dirty: 未出力の印が変わった
  * - status: ステータスバー
  * - recent: 最近開いたもの
+ * - opacity: 移動エリアの透明度（スライダーを動かしている間も出る）
  */
 export type StateTopic =
   | "session"
@@ -47,7 +48,8 @@ export type StateTopic =
   | "view"
   | "dirty"
   | "status"
-  | "recent";
+  | "recent"
+  | "opacity";
 
 type Listener = () => void;
 

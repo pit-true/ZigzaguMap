@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { isTableType } from "@zigzagumap/core";
 import { hex, ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
@@ -7,6 +6,7 @@ import { button, combo, edit, group, label, selectIndex, setEnabled, spin } from
 import type { DraftList } from "../form/DraftList";
 import { offsetText } from "../form/inputErrors";
 import { checkOnInput, tryInteger } from "../form/integerInput";
+import { scriptEntry, showIfScriptEntry } from "../script/ScriptEntry";
 import { scriptTypeChoices, type HeaderContext } from "./HeaderContext";
 import { newScriptDraftList, offsetToPointer, scriptDrafts, pointerToOffset, scriptOps, type ScriptDraft } from "./MapScriptDraft";
 
@@ -30,19 +30,21 @@ export class MapScriptGroup {
   private index = 0;
   private ctx: HeaderContext | null = null;
 
-  constructor() {
+  /** `idPrefix` は自動操作の ID の頭（場所の設定のかんたん表示は "easy"）。`x`・`y` は枠の位置。 */
+  constructor(idPrefix = "header", x = 8, y = 352) {
     const h = ja.header;
-    this.element = group(h.scripts, 8, 352, 465, 153);
-    this.number = spin("header.scriptNo", 16, 32, 57, (d) => this.select(this.index + d));
-    this.type = combo("header.scriptType", scriptTypeChoices(), 80, 32, 265);
-    this.offset = edit("header.scriptOffset", 352, 32, 97);
-    this.flag = edit("header.flag", 152, 72, 97);
-    this.flagValue = edit("header.flagValue", 256, 72, 89);
-    this.flagOffset = edit("header.flagOffset", 352, 72, 97);
-    this.remove = button("header.removeScript", h.removeScript, 16, 64, 129, 17, () => this.removeSelected());
-    this.open = button("header.openScript", h.openScript, 16, 104, 193, 33, () => this.openScript());
-    const add = button("header.addScript", h.addScript, 16, 80, 129, 17, () => this.add());
-    const save = button("header.saveScripts", h.saveScripts, 256, 104, 193, 33, () => this.save());
+    const id = (name: string): string => `${idPrefix}.${name}`;
+    this.element = group(h.scripts, x, y, 465, 153);
+    this.number = spin(id("scriptNo"), 16, 32, 57, (d) => this.select(this.index + d));
+    this.type = combo(id("scriptType"), scriptTypeChoices(), 80, 32, 265);
+    this.offset = edit(id("scriptOffset"), 352, 32, 97);
+    this.flag = edit(id("flag"), 152, 72, 97);
+    this.flagValue = edit(id("flagValue"), 256, 72, 89);
+    this.flagOffset = edit(id("flagOffset"), 352, 72, 97);
+    this.remove = button(id("removeScript"), h.removeScript, 16, 64, 129, 17, () => this.removeSelected());
+    this.open = showIfScriptEntry(button(id("openScript"), h.openScript, 16, 104, 193, 33, () => this.openScript()));
+    const add = button(id("addScript"), h.addScript, 16, 80, 129, 17, () => this.add());
+    const save = button(id("saveScripts"), h.saveScripts, 256, 104, 193, 33, () => this.save());
     this.element.append(
       label(h.scriptNo, 16, 16),
       this.number.root,
@@ -197,22 +199,10 @@ export class MapScriptGroup {
     }
   }
 
-  /**
-   * 「スクリプトを開く」: 設定 > スクリプトエディターの選択 で選んだ exe に、ベース ROM のパスとオフセット（16 進）を渡して起動する
-   * （AdvanceMap と同じく、区切りは空白か「:」）。エディターを選んでいなければステータスバーに出す。
-   */
+  /** 「スクリプトを開く」（入口が使えるときだけ見える。Phase2 の内蔵スクリプトエディタ用）。 */
   private openScript(): void {
     const d = this.current;
-    const c = this.ctx;
-    if (!d || !c) return;
-    const pointer = isTableType(d.type) ? d.flagOffset : d.pointer;
-    const offset = hex(pointerToOffset(pointer), 6);
-    const s = c.state.settings.data;
-    if (!s.scriptEditor) {
-      c.state.setStatus(ja.header.noScriptEditor(offset));
-      return;
-    }
-    const args = s.scriptSpaceSeparator ? [c.session.romPath, offset] : [`${c.session.romPath}:${offset}`];
-    invoke("launch_program", { program: s.scriptEditor, args }).catch((e: unknown) => c.state.setStatus(ja.error(String(e)), undefined, true));
+    if (!d) return;
+    scriptEntry.open(isTableType(d.type) ? d.flagOffset : d.pointer);
   }
 }

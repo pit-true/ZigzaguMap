@@ -1,6 +1,9 @@
 import { formatHex } from "@zigzagumap/core";
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
+import { jaHelpViewer, jaShortcuts } from "./ja.help";
+import { jaHeaderSimple } from "./ja.headerSimple";
+import { jaView } from "./ja.view";
 import { jaWild } from "./ja.wild";
 import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
 
@@ -20,6 +23,8 @@ export const ja = {
 
   // [Menue] トップ
   menuFile: M["11"],
+  /** 表示（ZigzaguMap 独自。見た目の項目を「設定」から移した）。 */
+  menuView: "表示",
   menuSettings: M["12"],
   menuTools: M["13"],
   menuHelp: M["14"],
@@ -52,27 +57,20 @@ export const ja = {
   zoomMovementPalette: M["1264"],
   comboBox: M["121"],
   mapDisplay: M["127"],
-  mapHeader: M["1270"],
-  showIni: M["1271"],
   headerSort: M["1272"],
-  createIniFromHeader: M["1273"],
   blockPaletteWidth: M["122"],
   movementOpacity: M["1217"],
   showToolbar: M["1211"],
-  language: M["125"],
   rememberLast: M["128"],
   autoSearchOffset: M["1210"],
   advancedHeader: M["129"],
   backupOnOpen: M["1212"],
   createRomShortcut: M["1213"],
   addContextMenu: M["1214"],
-  chooseScriptEditor: M["1215"],
   recentSettings: M["1218"],
   recentMax: M["1216"],
   recentClear: M["12180"],
   recentShowPath: M["12181"],
-  /** 設定 > 言語（画面は日本語だけなので Japanese の 1 項目）。 */
-  languageJapanese: ini["INI-Version"].Sprache,
 
   // [Menue] ヘッダーのソート
   sortModes: [M["12720"], M["12721"], M["12722"], M["12723"], M["12724"]],
@@ -99,34 +97,17 @@ export const ja = {
   about: M["141"],
   aboutApp: "ZigzaguMapについて",
   eula: M["142"],
-  /** ZigzaguMapについて（[AboutBox] の並び）。 */
+  /** ZigzaguMapについて（アプリ名・バージョン・リポジトリへのリンクだけ）。 */
   help: {
     aboutTitle: ini.AboutBox.Title,
-    credits: ini.AboutBox["11"],
-    sections: [
-      [
-        ini.AboutBox["20"],
-        [
-          [ini.AboutBox["21"], "pit-true"],
-          [ini.AboutBox["23"], "https://github.com/pit-true/ZigzaguMap"],
-          [ini.AboutBox["25"], "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\\ の JSON に出力します。"],
-        ],
-      ],
-      [
-        "元にしたソフト:",
-        [
-          [ini.AboutBox["21"], "Advance Map 1.92 (LU-HO Poké)"],
-          [
-            ini.AboutBox["30"],
-            `${ini["INI-Version"].Sprache} ${ini["INI-Version"].Version} (${ini["INI-Version"].Ersteller})`,
-          ],
-        ],
-      ],
-    ] as readonly (readonly [string, readonly (readonly [string, string])[]])[],
-    version: (v: string) => `ZigzaguMap バージョン: ${v}`,
-    license: "ライセンス: MIT",
-    copyright: "Copyright (c) 2026 pit-true",
+    version: (v: string) => `バージョン ${v}`,
+    repositoryUrl: "https://github.com/pit-true/ZigzaguMap",
   },
+
+  /** ヘルプ > ショートカット一覧。 */
+  shortcutListMenu: "ショートカット一覧",
+  shortcuts: jaShortcuts,
+  helpViewer: jaHelpViewer,
 
   // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）
   saveAsTitle: "名前を付けて保存",
@@ -134,12 +115,7 @@ export const ja = {
   allFiles: "All files (*.*)",
   allFilesGerman: "Alle Dateien (*.*)",
   imageSaved: (path: string) => `画像を保存しました: ${path}`,
-  // ファイルを開く・PC の設定（[Menue] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
-  openFileTitle: "ファイルを開く",
-  programFilter: "Programme (*.exe)",
-  notExeFile: M["12150"],
-  scriptSeparatorQuestion: M["12151"],
-  scriptEditorSet: (path: string) => `スクリプトエディタ: ${path}`,
+  // PC の設定（[Menue] 12130、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
   romShortcutName: M["12130"],
   romShortcutQuestion:
     "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか？",
@@ -150,8 +126,6 @@ export const ja = {
   contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか？",
   skippedInAutomation: "自動操作で起動しているため、PC の設定は変えませんでした",
   notNeededWithoutRomWrite: "ZigzaguMap は ROM へ書き込まないため、この機能は不要です",
-  iniFolderTitle: "iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
-  iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
   // [Toolbar]（改訂版は番号の並びが 1.92 と違うので、ボタンの役割で対応させる）
   toolbar: {
@@ -196,6 +170,9 @@ export const ja = {
   exportFolderTitle: "出力先のフォルダ（CFRU-JP のフォルダ）を選んでください",
   projectFolderTitle: "CFRU-JP のフォルダを選んでください",
   needRomForProject: "先にベースROMを選んでください",
+  /** ROM を開いた直後のフォルダ選択（ダイアログの題名とステータスバー）。 */
+  pairFolderTitle: "ROM と組にする CFRU-JP のフォルダを選んでください（キャンセルすると ROM だけで開きます）",
+  choosePairFolder: "ROM と組にする CFRU-JP のフォルダを選んでください",
   projectOpened: (folder: string) => `プロジェクト: ${folder}`,
   undone: "元に戻しました",
   redone: "やり直しました",
@@ -215,7 +192,6 @@ export const ja = {
   mapNotFound: A["100"],
   blockWidthTitle: A["45"],
   blockWidthPrompt: A["46"],
-  opacityPrompt: M["12170"],
   recentMaxPrompt: M["12161"],
   ok: ini.EndnutzerForm["13"],
   /** Delphi の入力ダイアログのボタン（ini に無い）。 */
@@ -231,7 +207,6 @@ export const ja = {
 
   // [Allgemein] マップ一覧
   rootHeader: A["60"],
-  rootIni: A["61"],
   rootMapFiles: A["62"],
   noName: A["63"],
   tilesetGroup: (n: number) => `${A["14"]} ${n}`,
@@ -274,8 +249,12 @@ export const ja = {
   movementNames: hexRecord(ini.GehDaten) as Readonly<Record<number, string>>,
   movementUnknown: "???",
 
+  // 表示メニュー（ZigzaguMap 独自。別ファイル）
+  view: jaView,
+
   // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
   header: jaHeader,
+  headerSimple: jaHeaderSimple,
   conn: jaConnection,
   wild: jaWild,
 } as const;

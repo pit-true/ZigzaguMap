@@ -34,7 +34,8 @@ const ctrl = (key: string): Shortcut => ({ key, ctrl: true, text: `Ctrl+${key}` 
 const fkey = (key: string): Shortcut => ({ key, text: key });
 
 /**
- * メニューの全項目（AdvanceMap 1.92 日本語版と同じ階層・アクセスキー・ショートカット）。
+ * メニューの全項目（AdvanceMap 1.92 日本語版のアクセスキー・ショートカットをもとにした）。
+ * ユーザーの要望で「表示」を足し、「設定」にあった見た目の項目を移した（ファイル・表示・設定・ツール・ヘルプ）。
  * 最近開いたもの（`recent.N`）は `recentItems` で差し込む。
  * 「オブジェクトの表示」の Ctrl+Z はアンドゥに使うため外した。
  */
@@ -70,12 +71,12 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       ],
     },
     {
-      label: ja.menuSettings,
-      accel: "Y",
+      // 表示（ZigzaguMap 独自。AdvanceMap の「設定」にあった見た目の項目をここへ移した）
+      label: ja.menuView,
+      accel: "V",
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
-        { id: "view.hideEventPanel", label: ja.hideEventPanel, accel: "L" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -87,31 +88,30 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
             { id: "zoom.movementPalette", label: ja.zoomMovementPalette },
           ],
         },
+        { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
+        { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
         sep,
+        { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
         { id: "view.combobox", label: ja.comboBox, accel: "N" },
         {
           label: ja.mapDisplay,
           accel: "O",
           enable: "rom",
-          children: [
-            { id: "display.header", label: ja.mapHeader },
-            { id: "display.ini", label: ja.showIni },
-            { label: ja.headerSort, children: ja.sortModes.map((label, i) => ({ id: `sort.${i}`, label })) },
-            { id: "display.createIni", label: ja.createIniFromHeader },
-          ],
+          children: [{ label: ja.headerSort, children: ja.sortModes.map((label, i) => ({ id: `sort.${i}`, label })) }],
         },
-        { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
-        { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
-        { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
-        { label: ja.language, accel: "T", children: [{ id: "lang.ja", label: ja.languageJapanese }] },
-        sep,
+        { id: "view.hideEventPanel", label: ja.hideEventPanel, accel: "L" },
+        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", shortcut: ctrl("H"), enable: "rom" },
+      ],
+    },
+    {
+      label: ja.menuSettings,
+      accel: "Y",
+      children: [
         { id: "opt.rememberLast", label: ja.rememberLast, accel: "U" },
         { id: "opt.autoSearch", label: ja.autoSearchOffset, accel: "V" },
-        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", shortcut: ctrl("H"), enable: "rom" },
         { id: "opt.backupOnOpen", label: ja.backupOnOpen, accel: "X" },
         { id: "opt.romShortcut", label: ja.createRomShortcut, accel: "R" },
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
-        { id: "opt.scriptEditor", label: ja.chooseScriptEditor, accel: "Y" },
         {
           label: ja.recentSettings,
           accel: "Z",
@@ -157,6 +157,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       accel: "W",
       children: [
         { id: "help.readme", label: ja.readMe, accel: "R" },
+        { id: "help.shortcuts", label: ja.shortcutListMenu, accel: "S" },
         { id: "help.about", label: ja.aboutApp, accel: "A", shortcut: fkey("F1") },
         { id: "help.eula", label: ja.eula, accel: "Z", shortcut: fkey("F2") },
       ],

@@ -22,8 +22,9 @@ export interface ActionTarget {
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
+  /** 表示 > 移動エリアの透明度（スライダーの小窓）。 */
+  openOpacity(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
-  createIniFromHeader(): Promise<void>;
   openToolWindow(kind: "block-editor"): Promise<void>;
   openWorldMap(): Promise<void>;
 }
@@ -74,7 +75,6 @@ export class Actions {
     // 確認してから切り替えるもの（TOGGLES の既定の動作を上書きする）。
     h.set("opt.romShortcut", () => target.system.toggleRomShortcut());
     h.set("opt.contextMenu", () => target.system.toggleContextMenu());
-    h.set("opt.scriptEditor", () => target.system.chooseScriptEditor());
     h.set("tools.desktopShortcut", () => target.system.createDesktopShortcut());
     // ROM へ書き込まないので意味の無いもの。
     for (const id of ["opt.backupOnOpen", "tools.find", "dummy.bankHeader", "dummy.bank", "dummy.connections", "dummy.wildHeader", "dummy.manage"]) {
@@ -82,21 +82,18 @@ export class Actions {
     }
     // バックアップの作成は「出力先を指定して出力」に読み替える。
     h.set("file.backup", () => target.exportMaps(true));
-    h.set("lang.ja", () => undefined);
     h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
     h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
     h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
+    h.set("help.shortcuts", async () => (await import("../ui/help/HelpWindows")).openShortcuts());
     h.set("view.paletteWidth", () => target.prompts.paletteWidth());
-    h.set("view.opacity", () => target.prompts.opacity());
+    h.set("view.opacity", () => target.openOpacity());
     h.set("recent.max", () => target.prompts.recentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
     h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
-    h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
-    h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));
-    h.set("display.createIni", () => target.createIniFromHeader());
     h.set("image.map", () => target.saveImage("map"));
     h.set("image.mapEvent", () => target.saveImage("mapEvent"));
     h.set("image.palette", () => target.saveImage("palette"));
@@ -142,9 +139,6 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
-    if (id === "display.header") return this.state.settings.data.mapListSource === "header";
-    if (id === "display.ini") return this.state.settings.data.mapListSource === "ini";
-    // 言語（日本語だけ）は、AdvanceMap と同じく選んでいる言語にもチェックを付けない
     return false;
   }
 }

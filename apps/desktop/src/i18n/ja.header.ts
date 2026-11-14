@@ -40,9 +40,6 @@ export const jaHeader = {
   flagOffset: H["958"],
   removeScript: H["9510"],
   addScript: H["9511"],
-  /** 「スクリプトを開く」でスクリプトエディタを選んでいないとき。 */
-  noScriptEditor: (offset: string) =>
-    `スクリプトエディタが選ばれていません（${ini.Menue["12"]} > ${ini.Menue["1215"]}）。${ini.Allgemein["34"]} ${offset}`,
   /** 種類 0 のまま保存しようとしたとき。 */
   scriptTypeUnset: (index: number) => `スクリプトNo.${index} の種類が「${ini.MapScripts["00"]}」です。種類を選んでから保存してください`,
   /** 名前表の項目（Cbo_Name）の表記。 */

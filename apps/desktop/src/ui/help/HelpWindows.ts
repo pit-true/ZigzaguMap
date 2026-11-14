@@ -1,13 +1,17 @@
 import { getVersion } from "@tauri-apps/api/app";
 import license from "../../../../../LICENSE?raw";
+import automationDoc from "../../../../../docs/automation.md?raw";
+import compareDoc from "../../../../../docs/compare-test.md?raw";
 import readme from "../../../../../README.md?raw";
+import { shortcutMarkdown } from "../../app/shortcutList";
 import { ja } from "../../i18n/ja";
 import { createDialog, dialogButton, type DialogFrame } from "../Dialog";
-import { ICONS } from "../icons";
+import { openExternal } from "../../util/externalLinks";
+import { HelpViewer } from "./HelpViewer";
 
 /**
- * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me）。
- * このモジュールはメニューで初めて開いたときに読み込む（README と LICENSE の本文を含むため）。
+ * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me、ショートカット一覧）。
+ * このモジュールはメニューで初めて開いたときに読み込む（README・docs・LICENSE の本文と Markdown の変換を含むため）。
  */
 
 /** OK だけの窓を出し、閉じるまで待つ。 */
@@ -34,53 +38,28 @@ function okWindow(title: string, className: string, build: (frame: DialogFrame) 
   });
 }
 
-/** ヘルプ > ZigzaguMapについて（F1）。AdvanceMap の About と同じ並び（黒い帯の見出し、クレジット、バージョン）。 */
+/** ヘルプ > ZigzaguMapについて（F1）。アプリ名、バージョン、GitHub のリポジトリへのリンク（既定のブラウザで開く）だけを出す。 */
 export async function openAbout(): Promise<void> {
   const version = await getVersion().catch(() => "0.0.0");
   const h = ja.help;
   await okWindow(h.aboutTitle, "about-window", (frame) => {
-    const band = document.createElement("div");
-    band.className = "about-band";
-    const icon = document.createElement("span");
-    icon.className = "about-icon";
-    icon.innerHTML = ICONS["showObjects"] ?? "";
-    const name = document.createElement("span");
+    const name = document.createElement("div");
+    name.className = "about-name";
     name.textContent = ja.appTitle;
-    band.append(icon, name);
-
-    const credits = document.createElement("fieldset");
-    credits.className = "group-box about-credits";
-    const legend = document.createElement("legend");
-    legend.textContent = h.credits;
-    credits.append(legend);
-    for (const [heading, rows] of h.sections) {
-      const head = document.createElement("div");
-      head.className = "about-heading";
-      head.textContent = heading;
-      const table = document.createElement("div");
-      table.className = "about-table";
-      for (const [label, value] of rows) {
-        const l = document.createElement("span");
-        l.textContent = label;
-        const v = document.createElement("span");
-        v.textContent = value;
-        if (/^https?:/.test(value)) v.className = "about-link";
-        table.append(l, v);
-      }
-      credits.append(head, table);
-    }
-
-    const foot = document.createElement("div");
-    foot.className = "about-foot";
-    const left = document.createElement("div");
-    left.textContent = h.version(version);
-    const right = document.createElement("div");
-    right.textContent = h.license;
-    foot.append(left, right);
-    const copy = document.createElement("div");
-    copy.className = "about-copy";
-    copy.textContent = h.copyright;
-    frame.body.append(band, credits, foot, copy);
+    const ver = document.createElement("div");
+    ver.className = "about-version";
+    ver.dataset["autoId"] = "about.version";
+    ver.textContent = h.version(version);
+    const link = document.createElement("a");
+    link.className = "about-link";
+    link.href = h.repositoryUrl;
+    link.textContent = h.repositoryUrl;
+    link.dataset["autoId"] = "about.link";
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      void openExternal(h.repositoryUrl);
+    });
+    frame.body.append(name, ver, link);
   });
 }
 
@@ -89,9 +68,29 @@ export function openEula(): Promise<void> {
   return okWindow(ja.eula, "eula-window", (frame) => frame.body.append(memo(license)));
 }
 
-/** ヘルプ > Read me。README.md の本文を出す。 */
-export function openReadme(): Promise<void> {
-  return okWindow(ja.readMe, "readme-window", (frame) => frame.body.append(memo(readme)));
+/** ショートカット一覧の文書の名前（ヘルプの中だけの文書）。 */
+export const SHORTCUTS_DOC = "shortcuts.md";
+
+/** ヘルプの中で開ける文書（README からリンクしているもの）。 */
+const DOCS = {
+  "README.md": readme,
+  "docs/automation.md": automationDoc,
+  "docs/compare-test.md": compareDoc,
+  LICENSE: license,
+  [SHORTCUTS_DOC]: shortcutMarkdown(),
+};
+
+/** 文書の窓（1 つを使い回す）。 */
+export const helpViewer = new HelpViewer(DOCS);
+
+/** ヘルプ > Read me。README.md を Markdown として描いて出す。 */
+export function openReadme(): void {
+  helpViewer.open("README.md");
+}
+
+/** ヘルプ > ショートカット一覧。 */
+export function openShortcuts(): void {
+  helpViewer.open(SHORTCUTS_DOC);
 }
 
 function memo(text: string): HTMLElement {

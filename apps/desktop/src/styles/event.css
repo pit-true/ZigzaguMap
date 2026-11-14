@@ -73,3 +73,23 @@
   width: 153px;
   margin-top: 12px;
 }
+
+/* マップの外にイベントがあるときの帯（ツールバーの下）。 */
+.outside-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: #fff4c2;
+  border-bottom: 1px solid #d8c070;
+}
+
+.outside-bar[hidden] {
+  display: none;
+}
+
+.outside-bar button {
+  height: 23px;
+  padding: 0 12px;
+}
