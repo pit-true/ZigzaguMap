@@ -76,7 +76,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
@@ -257,7 +257,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
 
-- クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置。主マップの左上が原点で負もある）と `clonesShown`（帯の上に印を描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
+- クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置 `x`・`y`（主マップの左上が原点で負もある）、人の番号 `index`、描く画像番号 `graphicsId`。#298）と `clonesShown`（帯の上にクローンを描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
 
 ## Phase3 の部品と命令（接続・描画）
 
