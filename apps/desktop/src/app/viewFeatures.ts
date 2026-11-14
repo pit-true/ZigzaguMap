@@ -96,8 +96,8 @@ export class ViewFeatures {
       const tiles = state.map?.tiles;
       state.setStatusInfo(block !== null && tiles ? blockInfoText(blockInfoSource(tiles), block) : "");
     });
-    palette.gridDecorators.push((c, size, width) => {
-      if (state.settings.data.paletteBoundary) drawPaletteBoundary(c, size, width);
+    palette.addLayer("grid", (c, g) => {
+      if (state.settings.data.paletteBoundary) drawPaletteBoundary(c, g.size, g.width);
     });
     let boundary = state.settings.data.paletteBoundary;
     state.on("view", () => {
