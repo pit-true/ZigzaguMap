@@ -7,6 +7,7 @@ import { ja } from "../../i18n/ja";
 import { BlockPaletteView } from "../map/BlockPaletteView";
 import { BorderView } from "../map/BorderView";
 import { MapView } from "../map/MapView";
+import { StampPanel } from "../stamp/StampPanel";
 
 /** マップタブ（左にマップ、右に境界ブロックとブロックパレット）。 */
 export class MapTab {
@@ -19,6 +20,8 @@ export class MapTab {
   readonly painter: BlockPainter;
   /** Ctrl+C / Ctrl+V（Phase3 #225）。 */
   readonly clipboard: StampClipboard;
+  /** スタンプの一覧（Phase3 #239）。 */
+  readonly stamps: StampPanel;
 
   constructor(private readonly state: EditorState) {
     this.element = document.createElement("div");
@@ -57,7 +60,8 @@ export class MapTab {
     this.selected = document.createElement("div");
     this.selected.className = "selected-block";
     borderBox.append(borderLabel, this.border.element, this.selected);
-    side.append(borderBox, pasteMovementsToggle(state), this.palette.element);
+    this.stamps = new StampPanel(state);
+    side.append(borderBox, pasteMovementsToggle(state), this.stamps.element, this.palette.element);
     this.element.append(this.view.element, side);
 
     state.on("map", () => this.showMap());

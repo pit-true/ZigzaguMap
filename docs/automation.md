@@ -233,6 +233,16 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - Ctrl を押している間（#238）: 移動エリアタブとイベントタブの `canvasPng` は重ね描きを含まない。イベントタブの `mouse` の `rightClick` に `ctrl: true` を付けると、メニューを出さずにイベントの下のブロックを拾う（`selection` の `block`）。
 - ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・右の順。
 
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `stamps.list` | | スタンプ（#239）。`all`（全部。`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`secondaryUsed`・`withMovements`・`path`（書いたファイル。メモリだけなら null）・`fits`（今のマップに貼れるか））、`fitting`（今のマップに貼れるものの名前）、`shown`（マップタブの一覧に出ている名前）、`memoryOnly`（出力先のフォルダが無くメモリだけか）、`pending`（まだ書いていない数）、`problems`（読めなかったファイル） |
+| `stamps.save` | `name`、`overwrite`（true で同じ名前を上書き） | 今の選択をスタンプにする（「選択を保存」と同じ。名前は聞かない）。返事は `ok` と `stamps.list` |
+| `stamps.select` | `name` | 一覧の項目を押すのと同じ（選択にする）。返事は `ok` と `selection` |
+| `stamps.rename` | `name`、`to` | 名前を変える（ファイル名も変わる）。返事は `ok` と `stamps.list` |
+| `stamps.remove` | `name` | 消す（確かめない。ファイルも消す）。返事は `ok` と `stamps.list` |
+
+- スタンプの部品の ID: 欄 `stamp.panel`、「選択を保存」`stamp.save`、一覧 `stamp.list`、項目 `stamp.item:<名前>`（`click` で選ぶ）、一覧の下の知らせ `stamp.note`。右クリックのメニューの項目は `stampRename`・`stampOverwrite`・`stampRemove`（`contextMenu.press`）。
+
 ## Phase3 の部品と命令（接続・描画）
 
 - 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。
