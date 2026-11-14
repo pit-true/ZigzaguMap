@@ -56,6 +56,7 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import type { MixingBag } from "./MixingBag";
 import { MapExtras } from "./mapExtras";
+import { registerEventKindActions } from "../ui/event/eventVisibility";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -150,6 +151,8 @@ export class App implements ActionTarget {
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
+    // 表示 > イベントの種類（#304）
+    registerEventKindActions(this.actions, state, (patch) => this.changeSetting(patch));
     this.newMaps = new NewMapController({
       state,
       files: this.files,
@@ -199,6 +202,7 @@ export class App implements ActionTarget {
       editTrainer: (index) => void this.trainers.editForPerson(index),
       placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
+      placeItemBall: (x, y) => void events.placeItemBall(x, y),
       summaries: () => events.eventSummaries(),
     });
     this.eventTab = eventTab;

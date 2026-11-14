@@ -95,21 +95,27 @@ export function drawEvents(
   cellSize: number,
   selected: PlacedEvent | null,
   sprites: SpriteSource | null = null,
+  opacity = 1,
 ): void {
   const c = canvas.getContext("2d")!;
   c.clearRect(0, 0, canvas.width, canvas.height);
-  drawEventsOn(c, events, cellSize, selected, sprites);
+  drawEventsOn(c, events, cellSize, selected, sprites, opacity);
 }
 
-/** `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。 */
+/**
+ * `drawEvents` の中身（画像の書き出しでも使えるよう、描く先を受け取る）。
+ * `opacity` はイベントの濃さ（#304。0.1〜1）。箱は AdvanceMap と同じ 50% にさらに掛け、OW 画像はそのまま掛ける。選択の枠には掛けない。
+ */
 export function drawEventsOn(
   c: CanvasRenderingContext2D,
   events: readonly PlacedEvent[],
   cellSize: number,
   selected: PlacedEvent | null,
   sprites: SpriteSource | null = null,
+  opacity = 1,
 ): void {
   const scale = cellSize / 16;
+  const alpha = clampOpacity(opacity);
   c.imageSmoothingEnabled = false;
   for (const e of events) {
     const x = e.x * cellSize;
@@ -121,11 +127,13 @@ export function drawEventsOn(
       if (image) {
         const w = image.width * scale;
         const h = image.height * scale;
+        c.globalAlpha = alpha;
         c.drawImage(image, x + (cellSize - w) / 2, y + cellSize - h, w, h);
+        c.globalAlpha = 1;
         continue;
       }
     }
-    drawBox(c, e.kind, x, y, cellSize);
+    drawBox(c, e.kind, x, y, cellSize, alpha);
   }
   if (selected) {
     c.globalAlpha = 1;
@@ -142,14 +150,19 @@ export function drawEventsOn(
 /** 種別・大きさごとの箱の画像（不透明で描いておき、重ねるときに 50% にする）。 */
 const boxCache = new Map<string, HTMLCanvasElement>();
 
-function drawBox(c: CanvasRenderingContext2D, kind: EventKind, x: number, y: number, size: number): void {
+/** イベントの濃さを 0.1〜1 に収める（数でなければ 1）。 */
+export function clampOpacity(opacity: number): number {
+  return Number.isFinite(opacity) ? Math.min(1, Math.max(0.1, opacity)) : 1;
+}
+
+function drawBox(c: CanvasRenderingContext2D, kind: EventKind, x: number, y: number, size: number, alpha = 1): void {
   const key = `${kind}:${size}`;
   let image = boxCache.get(key);
   if (!image) {
     image = renderBox(STYLE[kind], size);
     boxCache.set(key, image);
   }
-  c.globalAlpha = BOX_ALPHA;
+  c.globalAlpha = BOX_ALPHA * alpha;
   c.drawImage(image, x, y);
   c.globalAlpha = 1;
 }

@@ -48,6 +48,7 @@ export { WarpCodec, warpCodec } from "./event/WarpCodec.js";
 export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
+export { DEFAULT_ITEM_BALL_STYLE, ItemBallStyleCounter, isRomItemBallScript, type ItemBallStyle } from "./event/ItemBallStyle.js";
 export {
   CLONE_RANGE,
   CloneSyncCommand,

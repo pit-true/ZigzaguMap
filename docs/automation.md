@@ -33,6 +33,9 @@ python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagum
     # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直す窓（trainerEdit）も確かめる
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
+python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
+    # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
+    # --project を付けると「ここに落とし物を追加」も確かめる
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -80,7 +83,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
-| `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
+| `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
 | `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |
 | `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
 | `commands` | | 登録されている命令の名前 |
@@ -285,6 +288,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 ## Phase3 の部品と命令（未使用の番号・ひな形・トレーナー）
 
+- イベントの種類ごとの表示（#304）: `action` か `menu.run` の `view.eventKind.person`・`view.eventKind.sign`・`view.eventKind.trap`・`view.eventKind.warp`（個人設定 `hiddenEventKinds` に隠す種類が入る）。イベントの濃さは、表示 > 移動エリアの設定の透明度（`view.opacity`）の窓のスライダー `view.eventOpacity.slider`（`setField` に 10〜100）と値 `view.eventOpacity.value`（個人設定 `eventOpacity`、0.1〜1）。比較テストは `setting` で `hiddenEventKinds` を `[]`、`eventOpacity` を 1 にしてから比べる（既定のまま）。
 - 「未使用」ボタン（#227。プロジェクトフォルダを開いているときだけ出る）: `event.person.flagUnused`・`event.trap.variableUnused`・`event.sign.hiddenIdUnused`（`click` で押す。欄を変えるコマンドを実行する）。
 - イベントタブの右クリックのメニューの「ここにひな形を置く」は項目 `placeTemplate`（`mouse` の `rightClick` で開き、`contextMenu.press`）。窓の部品は `template.kind`（種類のコンボ。項目の文字で選ぶ）、`template.graphics`・`template.flag`・`template.variable`・`template.hiddenId`・`template.item`・`template.amount`・`template.ball`・`template.martItems`（複数選択）・`template.trainer`・`template.sight`・`template.facing`・`template.text.<文の名前>`（`text` / `before` / `after` / `intro` / `defeat`）、未使用のボタン `template.flagUnused` など、新しいトレーナーの `template.newTrainer`（チェック）・`template.newTrainer.id`・`.name`・`.class`・`.pic`・`.seed`・`.generate`・`.party`、「置く」`template.place`・「キャンセル」`template.cancel`（`dialog` の `ok` / `cancel` でも押せる）。
 

@@ -6,6 +6,8 @@ import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
+import { jaEventView } from "../i18n/ja.eventView";
+import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -84,6 +86,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
+        // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
+        { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
         {
           // 隣のマップの帯（Phase3。ZigzaguMap 独自）
           label: jaNeighbors.menu,

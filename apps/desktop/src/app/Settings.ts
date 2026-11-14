@@ -107,6 +107,10 @@ export interface SettingsData {
   rememberRomProject: boolean;
   /** ROM のパス（小文字）→ 前回いっしょに開いたプロジェクトフォルダ（最近開いたものの件数に関係なく残す）。 */
   romProjects: Record<string, string>;
+  /** イベントタブで隠すイベントの種類（表示メニュー。`person`・`sign`・`trap`・`warp`。隠した種類は描かず、クリックでも選ばない。#304）。 */
+  hiddenEventKinds: string[];
+  /** イベントの印の濃さ（0.1〜1.0。移動エリアの透明度とは別の値。1.0 で今までと同じ見た目。#304）。 */
+  eventOpacity: number;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -150,6 +154,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   showClones: false,
   rememberRomProject: true,
   romProjects: {},
+  hiddenEventKinds: [],
+  eventOpacity: 1,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
