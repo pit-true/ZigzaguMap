@@ -1,0 +1,32 @@
+import { ini } from "./ini";
+
+/** スタンプ（#239。マップタブの右の欄）の文言（ZigzaguMap 独自）。 */
+export const jaStamp = {
+  title: "スタンプ",
+  save: "選択を保存",
+  saveHint: "今の選択（ブロックと移動許可）を名前を付けてスタンプにする（maps\stamps\ にすぐ書く）",
+  saveTitle: "スタンプとして保存",
+  savePrompt: (w: number, h: number) => `${w}×${h} の選択をスタンプにします。名前を入れてください。`,
+  renameTitle: "スタンプの名前の変更",
+  renamePrompt: "新しい名前を入れてください。",
+  removeTitle: "スタンプの削除",
+  removeConfirm: (name: string) => `スタンプ「${name}」を削除します（ファイルも消します。元に戻せません）。`,
+  overwriteTitle: "スタンプの上書き",
+  overwriteConfirm: (name: string) => `スタンプ「${name}」はもうあります。今の選択で上書きしますか？`,
+  menuRename: "名前の変更",
+  menuRemove: ini.WildePokemon["67"],
+  menuOverwrite: "今の選択で上書き",
+  empty: "このマップに貼れるスタンプはありません",
+  hidden: (n: number) => `ほかのタイルセットの組のスタンプ ${n} 個は出していません`,
+  memoryOnly: "出力先のフォルダが決まるまで、スタンプはメモリだけに持ちます",
+  item: (name: string, w: number, h: number) => `${name}（${w}×${h}）`,
+  saved: (name: string, path: string | null) => (path ? `スタンプ「${name}」を ${path} に保存しました` : `スタンプ「${name}」を保存しました（出力先を選んだときに書きます）`),
+  selected: (name: string, w: number, h: number) => `スタンプ「${name}」（${w}×${h}）を選びました`,
+  renamed: (name: string) => `スタンプの名前を「${name}」にしました`,
+  removed: (name: string) => `スタンプ「${name}」を削除しました`,
+  notFit: (name: string) => `選んでいるスタンプ「${name}」は、このマップのタイルセットの組で作ったものではありません（違うブロックになります）`,
+  hasHoles: "四角でないスタンプ（貼らないマスを含むもの）は、まだ貼れません",
+  emptyName: "名前が空です",
+  failed: (message: string) => `スタンプを書けませんでした: ${message}`,
+  problems: (n: number) => `読めないスタンプのファイルが ${n} 個あります`,
+} as const;

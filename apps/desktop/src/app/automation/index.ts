@@ -7,6 +7,7 @@ import { eventCommands } from "./events";
 import { fieldCommands } from "./fields";
 import { historyCommands } from "./history";
 import { hoverCommands } from "./hover";
+import { stampCommands } from "./stamps";
 import { imageCommands } from "./images";
 import { linkCommands } from "./link";
 import { menuCommands } from "./menu";
@@ -40,6 +41,7 @@ const registry: CommandRegistry = new CommandRegistry([
   eventCommands,
   hoverCommands,
   historyCommands,
+  stampCommands,
   viewCommands,
   processCommands,
   scriptCommands,
