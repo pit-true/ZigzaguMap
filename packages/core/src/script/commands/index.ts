@@ -20,11 +20,13 @@ export {
 } from "./MacroFile.js";
 export {
   buildMacroLayout,
+  findMissingMacroCalls,
   type MacroCondition,
   type MacroField,
   type MacroLayout,
   type MacroLayoutContext,
   type MacroLayoutResult,
+  type MacroMissingCall,
   type MacroVariant,
 } from "./MacroLayout.js";
 export {
