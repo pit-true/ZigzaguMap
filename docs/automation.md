@@ -22,6 +22,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
 python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、ビルドの手順の copy
+python tests/automation/usage_template_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>]   # 使われている番号の索引・トレーナーの一覧と自動生成、プロジェクトフォルダが無いときのひな形と「未使用」ボタン（#227・#243〜#245）
 python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタのテーマ 4 つで、ウィンドウの部品（帯・検索の欄・補完・ホバー・ビルドの欄・波線の一覧・ダイアログ・スクロールバー）が同じテーマの色になること
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
