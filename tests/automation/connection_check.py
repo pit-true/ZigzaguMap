@@ -13,6 +13,8 @@
 - 230: 辺のつまみの右クリックのメニュー。右の辺から新しいマップを作ってつなぐ（両側の接続、1 回の取り消しでマップも消える、
   出力して開き直しても残る）、左の辺に既存のマップ（3.1）をつなぐ（ずれは中央）、上の接続を消す（相手の逆の接続も）、
   ダイブ先をつなぐ（2 つ目はできない）。
+- 225: マップの 3×2 を Ctrl＋右ドラッグで拾うと移動許可も持ち、左クリックで貼るとブロックと移動許可の両方が写る。
+  「移動許可も貼る」を外すとブロックだけ写る。1 回の取り消しで戻る。Ctrl+C / Ctrl+V で貼る。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -364,7 +366,54 @@ def check_230(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
           "出力して開き直しても、新しいマップと両側の接続が残る")
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230}
+def cells_of(z: Zigzagu) -> tuple[int, list[int]]:
+    c = z.call({"cmd": "cells"})
+    return c["width"], c["cells"]
+
+
+def region(width: int, cells: list[int], x0: int, y0: int, w: int, h: int) -> list[int]:
+    return [cells[(y0 + y) * width + x0 + x] for y in range(h) for x in range(w)]
+
+
+def check_225(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "tab", "name": "map"})
+    width, before = cells_of(z)
+    # 家の角（移動許可 0x01 と 0x0C が混ざる）
+    src = region(width, before, 3, 5, 3, 2)
+    r = z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [3, 5], "to": [5, 6]})
+    sel = r["block"]
+    check(sel["width"] == 3 and sel["height"] == 2 and sel.get("movements") == [c >> 10 for c in src], f"Ctrl＋右ドラッグで 3×2 を拾うと移動許可も持つ {sel}")
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    _, after = cells_of(z)
+    check(region(width, after, 10, 10, 3, 2) == src, "左クリックで貼るとブロックと移動許可の両方が写る")
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "undo"})
+    _, undone = cells_of(z)
+    check(undone == before and z.call({"cmd": "state"})["history"] == hist - 1, "1 回の取り消しで戻る")
+    if shots:
+        shot(z, shots, "p3c_225_paste_movements.png")
+    z.call({"cmd": "setField", "id": "map.pasteMovements", "value": False})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    _, off = cells_of(z)
+    got = region(width, off, 10, 10, 3, 2)
+    old = region(width, before, 10, 10, 3, 2)
+    check([c & 0x3FF for c in got] == [c & 0x3FF for c in src] and [c >> 10 for c in got] == [c >> 10 for c in old], "「移動許可も貼る」を外すとブロックだけ写る")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "setField", "id": "map.pasteMovements", "value": True})
+    # Ctrl+C / Ctrl+V（マウスの位置に貼る）
+    z.call({"cmd": "key", "key": "c", "ctrl": True})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [2, 14]})
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    _, pasted = cells_of(z)
+    check(region(width, pasted, 2, 14, 3, 2) == src, "Ctrl+C でコピーし、Ctrl+V でマウスの位置に移動許可ごと貼る")
+    z.call({"cmd": "undo"})
+    # パレットから選んだものは移動許可を持たない（ブロックだけ貼る）
+    r = z.call({"cmd": "mouse", "target": "palette", "action": "click", "cell": [1, 0]})
+    check("movements" not in r["block"], "パレットから選んだものは移動許可を持たない")
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225}
 
 
 def main() -> int:
