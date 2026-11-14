@@ -1,0 +1,25 @@
+## マップのスクリプト（手書きの見本）
+#include "src/config.h"
+
+# 1 番道路
+map 3 19 MapScript_Route1
+npc 3 19 0 EventScript_Route1_Npc0
+NPC	3  19   1   EventScript_Route1_Npc1
+trainer 3 19 2 Route1_Trainer
+item 3 19 3 Route1_Potion
+npc 3 19 4 EventScript_Route1_Npc4
+sign 3 19 0 EventScript_Route1_Sign0
+tile 3 19 0 EventScript_Route1_Tile0
+
+#ifdef DEBUG_MENU
+npc 3 19 05 EventScript_Route1_Debug
+#else
+npc 3 19 05 EventScript_Route1_Release
+#endif
+
+#define UNUSED_HERE 1
+# npc 3 19 6 EventScript_Disabled
+npc 3 19 EventScript_NoIndex
+sign 1 0 0 EventScript_Moegi_Sign0   # 行末のコメントは insert.py では読めない
+sign 1 0 0 EventScript_Moegi_Sign0
+npc 1 0 2 EventScript_Moegi_Last
