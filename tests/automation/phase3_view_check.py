@@ -11,6 +11,8 @@
   - history: マップの履歴（#237）。サイドボタン・view.back・Alt+Shift+BkSp で戻る・進む、マップ名で探して開く（Ctrl+F）、一覧の絞り込み。
   - ctrl: Ctrl を押している間の重ね描きの隠し（#238）、Ctrl＋右クリックでイベントの下のブロック、ステータスバーの補助の欄
     （ブロックの番号・移動許可・挙動、矩形選択の大きさ、隣のマップの帯の座標）。
+  - stamps: スタンプ（#239）。2×3 の木を保存して主タイルセットが同じ街で貼る、副タイルセットを含むものは組が違うと出ない、
+    名前の変更。続けて別の起動で開き直し・削除・素の ROM だけのときのメモリと出力（作業フォルダは一時フォルダ）。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -257,6 +259,87 @@ def check_ctrl(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "selectBlock", "block": 1})
 
 
+def check_stamps(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """スタンプ（#239）。プロジェクトフォルダは一時フォルダ（空）を使う。"""
+    work = pathlib.Path(ctx["work"])
+    folder = work / "stamp-project"
+    folder.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "open", "rom": ctx["rom"], "project": str(folder)})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    # 左の端の木（2×3）をマップから拾う
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [0, 4], "to": [1, 6]})
+    sel = z.call({"cmd": "selection"})["block"]
+    check(sel["width"] == 2 and sel["height"] == 3 and "movements" in sel, f"Ctrl＋右ドラッグで 2×3 を拾う（{sel['width']}×{sel['height']}）")
+    r = z.call({"cmd": "stamps.save", "name": "大きな木"})
+    tree = next((s for s in r["all"] if s["name"] == "大きな木"), None)
+    check(r["ok"] and tree and (folder / "maps" / "stamps" / "大きな木.json").exists(), "「大きな木」を保存すると maps/stamps/大きな木.json に書く")
+    check((folder / "maps" / "project.json").exists(), "スタンプを書く前に maps/project.json を作る")
+    check(tree is not None and not tree["secondaryUsed"], "木は主タイルセットのブロックだけ")
+    # 副タイルセットのブロックを含む 2×2 を探して保存する
+    cells = z.call({"cmd": "cells"})
+    w = cells["width"]
+    spot = None
+    for y in range(cells["height"] - 1):
+        for x in range(w - 1):
+            if all((cells["cells"][(y + dy) * w + x + dx] & 0x3FF) >= 0x280 for dx in (0, 1) for dy in (0, 1)):
+                spot = (x, y)
+                break
+        if spot:
+            break
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": list(spot), "to": [spot[0] + 1, spot[1] + 1]})
+    r = z.call({"cmd": "stamps.save", "name": "家の一部"})
+    house = next((s for s in r["all"] if s["name"] == "家の一部"), None)
+    check(house is not None and house["secondaryUsed"], f"副タイルセットのブロックを含むスタンプ（{spot}）")
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_stamp_panel.png")
+        save_png(z.call({"cmd": "ui.shot", "id": "stamp.panel"}), shots / "p3_stamp_panel_part.png")
+    # 主タイルセットが同じ別の街（トキワシティ 3.1）
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    lst = z.call({"cmd": "stamps.list"})
+    check("大きな木" in lst["shown"] and "家の一部" not in lst["shown"], f"トキワシティでは木だけが一覧に出る（{lst['shown']}）")
+    before = z.call({"cmd": "cells"})["cells"]
+    z.call({"cmd": "stamps.select", "name": "大きな木"})
+    z.call({"cmd": "mouse", "target": "map", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    tw = z.call({"cmd": "cells"})["width"]
+    pasted = [after[(10 + dy) * tw + 10 + dx] for dy in range(3) for dx in range(2)]
+    want = [sel["blocks"][i] | (sel["movements"][i] << 10) for i in range(6)]
+    check(pasted == want and before != after, "選んで左クリックすると木（ブロックと移動許可）を貼れる")
+    z.call({"cmd": "undo"})
+    # 名前の変更と削除
+    r = z.call({"cmd": "stamps.rename", "name": "家の一部", "to": "家"})
+    check(r["ok"] and (folder / "maps" / "stamps" / "家.json").exists() and not (folder / "maps" / "stamps" / "家の一部.json").exists(), "名前を変えるとファイル名も変わる")
+    ctx["stampFolder"] = str(folder)
+
+
+def check_stamps_reopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    folder = ctx.get("stampFolder")
+    if not folder:
+        return
+    z.call({"cmd": "open", "rom": ctx["rom"], "project": folder})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    names = [s["name"] for s in z.call({"cmd": "stamps.list"})["all"]]
+    check(names == ["家", "大きな木"] or sorted(names) == sorted(["家", "大きな木"]), f"開き直しても一覧が残る（{names}）")
+    r = z.call({"cmd": "stamps.remove", "name": "家"})
+    check(r["ok"] and not (pathlib.Path(folder) / "maps" / "stamps" / "家.json").exists(), "削除するとファイルも消える")
+    # 素の ROM だけで開いたときはメモリに持ち、出力先を選ぶと書く
+    z.call({"cmd": "open", "rom": ctx["rom"]})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [0, 4], "to": [1, 6]})
+    r = z.call({"cmd": "stamps.save", "name": "メモリの木"})
+    check(r["memoryOnly"] and r["pending"] == 1, "素の ROM だけではメモリに持つ")
+    out = pathlib.Path(ctx["work"]) / "stamp-export"
+    out.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "export", "dir": str(out)})
+    check((out / "maps" / "stamps" / "メモリの木.json").exists(), "出力先を選んで出力するとスタンプも書く")
+
+
+CHECKS_RESTART = {"stampsReopen": check_stamps_reopen}
+
+
 def check_hover_asm(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     """Chronos の写し（読むだけ）で、.s のラベルを付けたイベントの要約。ラベルはメモリの上だけで変え、出力しない。"""
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
@@ -284,6 +367,7 @@ CHECKS = {
     "warp": check_warp,
     "history": check_history,
     "ctrl": check_ctrl,
+    "stamps": check_stamps,
 }
 
 
@@ -301,15 +385,25 @@ def main() -> int:
     if shots:
         shots.mkdir(parents=True, exist_ok=True)
     names = [n for n in (args.only or list(CHECKS)) if n in CHECKS]
+    work = tempfile.TemporaryDirectory(prefix="zzm-p3work-", ignore_cleanup_errors=True)
+    ctx: dict = {"rom": args.rom, "work": work.name}
     with tempfile.TemporaryDirectory(prefix="zzm-p3view-", ignore_cleanup_errors=True) as profile, Zigzagu(args.exe, profile=profile, extra=["--mute-audio"]) as z:
         z.call({"cmd": "open", "rom": args.rom})
-        ctx: dict = {"rom": args.rom}
         for name in names:
             print(f"== {name}")
             try:
                 CHECKS[name](z, shots, ctx)
             except Exception as e:  # noqa: BLE001
                 check(False, f"{name}: 例外 {e}")
+    if "stampFolder" in ctx:
+        # 開き直し（別の起動）
+        with tempfile.TemporaryDirectory(prefix="zzm-p3view-", ignore_cleanup_errors=True) as profile, Zigzagu(args.exe, profile=profile, extra=["--mute-audio"]) as z:
+            for name, fn in CHECKS_RESTART.items():
+                print(f"== {name}")
+                try:
+                    fn(z, shots, ctx)
+                except Exception as e:  # noqa: BLE001
+                    check(False, f"{name}: 例外 {e}")
     if args.chronos and (not args.only or "hoverAsm" in args.only):
         root = pathlib.Path(args.chronos)
         with tempfile.TemporaryDirectory(prefix="zzm-p3view-", ignore_cleanup_errors=True) as profile, Zigzagu(args.exe, profile=profile, extra=["--mute-audio"]) as z:
@@ -319,6 +413,7 @@ def main() -> int:
                 check_hover_asm(z, shots, {})
             except Exception as e:  # noqa: BLE001
                 check(False, f"hoverAsm: 例外 {e}")
+    work.cleanup()
     print(f"失敗 {len(failures)} 件")
     return 1 if failures else 0
 

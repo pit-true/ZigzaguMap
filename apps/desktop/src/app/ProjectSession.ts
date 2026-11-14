@@ -8,6 +8,7 @@ import {
   Rom,
   ScriptsTableProject,
   SpeciesNameTable,
+  StampLibrary,
   createDefaultRegistry,
   detectGame,
   eventLabelCountsOf,
@@ -57,6 +58,8 @@ export class ProjectSession {
   private sprites: OverworldSprites | null | undefined;
   /** タウンマップ（ワールドマップエディターを開いたときに読む）。 */
   private regionMapValue: RegionMapProject | null = null;
+  /** スタンプの一覧（#239。初めて使うときに maps\stamps\ を読む）。 */
+  private stampsValue: Promise<StampLibrary> | null = null;
 
   private constructor(
     readonly romPath: string,
@@ -306,11 +309,25 @@ export class ProjectSession {
     if (labels.plan.tables.length > 0 && this.writeTables) parts.push(await this.writeTables(labels.plan.tables));
     // ビルドで 0xFF で埋める範囲（maps\rom_erase.json。イベントの削除 #220）
     parts.push(await this.romErase.save(this.fs));
+    // スタンプ（#239）: 出力先を選んだとき（素の ROM だけで開いていた・別のフォルダへ出力した）は、今のスタンプをその先へ書く
+    if (dir !== undefined && this.stampsValue) parts.push({ written: await (await this.stampsValue).relocate(this.fs), removed: [] });
     return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };
   }
 
   /** 出力のときに .s のマップスクリプトの表を書き直す（App が入れる。エディタで開いていればエディタの本文を書き換える）。 */
   writeTables: ((tables: EventLabelSavePlan["tables"]) => Promise<{ written: string[]; removed: string[] }>) | null = null;
+
+  /**
+   * スタンプの一覧（#239）。初めて使うときに maps\stamps\ を読む。保存・名前の変更・削除はすぐファイルに書く
+   * （書く前に maps\project.json が無ければ作る）。素の ROM だけで開いているときはメモリに持ち、出力先を選んだときに書く。
+   */
+  stamps(): Promise<StampLibrary> {
+    const opened = (this.stampsValue ??= StampLibrary.open(this.fs.root ? this.fs : null, { beforeWrite: () => this.project.ensureManifest() }));
+    opened.catch(() => {
+      if (this.stampsValue === opened) this.stampsValue = null;
+    });
+    return opened;
+  }
 
   /** プロジェクトフォルダのファイルの読み書き（ひな形を書くときなど）。 */
   get files(): TauriProjectFs {
