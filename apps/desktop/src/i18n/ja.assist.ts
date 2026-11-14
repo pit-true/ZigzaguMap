@@ -50,4 +50,8 @@ export const jaAssist = {
   painted: (n: number) => (n === 0 ? "変えるマスはありませんでした" : `${n} マスを書きました（メインの Ctrl+Z で戻せます）`),
   noPart: "パーツを選んでください",
   error: (m: string) => `エラー: ${m}`,
+  /** ショートカット一覧（ヘルプ）。 */
+  shortcutPickKeys: "左ドラッグ",
+  shortcutPick: "パーツに入れる範囲を選ぶ（マップからは移動許可も入る。3 層の次の番号を 1 つだけ押すと 3 層のブロックを選ぶ）",
+  shortcutPickWhere: "マップ作成補助のブロック一覧・マップ",
 };

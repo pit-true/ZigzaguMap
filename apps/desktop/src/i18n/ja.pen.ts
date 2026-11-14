@@ -36,6 +36,9 @@ export const jaPen = {
   /** ショートカット一覧。 */
   shortcutAutoPen: "自動ペンの切り替え",
   shortcutAutoPenWhere: "マップタブ",
+  shortcutPalettePickKeys: "Ctrl＋右ドラッグ",
+  shortcutPalettePick: "矩形を選ぶ（右端が 3 層のブロックなら 1 マス広げ、入った 3 層の次の番号は書かないマスにする）",
+  shortcutPalettePickWhere: "マップタブのブロックパレット",
   /** 種類と役割の名前。 */
   kinds: { fill: "面", edge: "縁つき", piece: "部品", repeat: "くり返し" } as Record<string, string>,
   roles: {
