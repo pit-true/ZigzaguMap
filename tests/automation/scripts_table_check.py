@@ -237,6 +237,10 @@ def check_fixture(fx: Fixture, exe: pathlib.Path | None, build: bool, shot: path
         ok, why = run_build(fx, log)
         check(ok, f"写しでビルドが通る（{why}）")
         text = log.read_text(encoding="utf-8", errors="replace")
+        # Chronos の build.py は、ファイルごとのアセンブルを build/logs/*.log にだけ書く（標準出力には出さない）
+        for extra in sorted((fx.build_cwd / "build" / "logs").glob("*.log")):
+            if extra.stat().st_mtime >= log.stat().st_mtime - 3600:
+                text += extra.read_text(encoding="utf-8", errors="replace")
         check(NEW_NAME in text, f"ビルドが新しい .s をアセンブルする（ログに {NEW_NAME}）")
 
 
