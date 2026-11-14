@@ -88,6 +88,16 @@ export class MapView {
     this.drawnVersion = image.version;
   }
 
+  /** 重ね描き（イベントの箱・移動許可）を隠しているか（#238。Ctrl を押している間）。 */
+  get overlayHidden(): boolean {
+    return this.layer.style.visibility === "hidden";
+  }
+
+  /** 重ね描きを隠す・出す（#238）。画像に撮るとき（toPng）も隠したまま撮る。 */
+  setOverlayHidden(hidden: boolean): void {
+    this.layer.style.visibility = hidden ? "hidden" : "";
+  }
+
   /** 主マップの大きさ（マス。マップが無ければ 0）。 */
   get mapSize(): { width: number; height: number } {
     return { width: this.image?.width ?? 0, height: this.image?.height ?? 0 };
@@ -171,7 +181,7 @@ export class MapView {
       }
     }
     c.drawImage(this.base, o.x, o.y, this.layer.width, this.layer.height);
-    c.drawImage(this.layer, o.x, o.y);
+    if (!this.overlayHidden) c.drawImage(this.layer, o.x, o.y);
     c.drawImage(this.gridCanvas, o.x, o.y);
     if (withNeighbors && !this.frame.hidden) {
       c.strokeStyle = FRAME_COLOR;

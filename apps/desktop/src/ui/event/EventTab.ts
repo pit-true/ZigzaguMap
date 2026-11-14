@@ -35,6 +35,7 @@ import type { ScriptFiles } from "../script/ScriptFiles";
 import { EventHover } from "./EventHover";
 import { eventHoverSource } from "./eventHoverSource";
 import { drawWarpWarnings, unusableWarps } from "./warpCheck";
+import { ctrlPeek } from "../map/ctrlPeek";
 import type { ScriptSummaries } from "./ScriptSummaries";
 
 /** タブの外の機能（App が渡す）。 */
@@ -155,6 +156,9 @@ export class EventTab {
     );
     state.on("map", () => this.hoverTip.hide());
     state.on("tab", () => this.hoverTip.hide());
+    ctrlPeek.on((held) => {
+      if (held) this.hoverTip.hide();
+    });
 
     state.on("session", () => this.attachSession());
     state.on("map", () => {
@@ -285,6 +289,15 @@ export class EventTab {
     if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
   }
 
+  /** マスのブロックを拾う（Ctrl＋右クリック。マップタブで描くブロックになる。#238）。 */
+  private pickBlock(cell: RawCell): void {
+    const doc = this.state.map?.doc;
+    if (!doc || cell.x < 0 || cell.y < 0 || cell.x >= doc.width || cell.y >= doc.height) return;
+    const block = doc.grid.getBlock(cell.x, cell.y);
+    this.state.selectBlock(block);
+    this.state.setStatus(ja.statusBlock(block));
+  }
+
   /** ワープできないブロックの上にあるワープの番号（#240）。 */
   warpWarnings(): number[] {
     const map = this.state.map;
@@ -318,7 +331,8 @@ export class EventTab {
 
   /** マスを押した。イベントがあれば選んでつかむ。 */
   press(cell: RawCell): boolean {
-    const hit = eventAt(this.placed, cell.x, cell.y);
+    // Ctrl を押している間はイベントをつかまない（重ね描きを隠して下のブロックを見るため。#238）
+    const hit = ctrlPeek.held ? null : eventAt(this.placed, cell.x, cell.y);
     if (!hit) {
       this.hover(cell);
       return false;
@@ -464,6 +478,8 @@ export class EventTab {
 
   /** 右クリック: イベントの上なら選んで、「イベントを削除」と「スクリプトを開く」のメニューを出す。 */
   contextMenu(cell: RawCell, x: number, y: number): void {
+    // Ctrl を押している間はイベントを無いものとして、下のブロックを拾う（#238）
+    if (ctrlPeek.held) return this.pickBlock(cell);
     const hit = eventAt(this.placed, cell.x, cell.y);
     if (!hit) return;
     this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);

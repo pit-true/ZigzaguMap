@@ -1,3 +1,4 @@
+import { MapHistory } from "./MapHistory";
 import type { MapId } from "@zigzagumap/core";
 import type { MapImage } from "../ui/map/MapImage";
 import type { OpenMap, ProjectSession } from "./ProjectSession";
@@ -72,13 +73,18 @@ export class EditorState {
   selection: BlockSelection = { width: 1, height: 1, blocks: [0] };
   movement = 0;
   status: StatusText;
-  /** 1 つ前に開いていたマップ（以前開いたマップを開く用）。 */
-  previousMap: MapId | null = null;
+  /** 開いたマップの履歴（#237。戻る・進む。以前開いたマップを開くも戻るになった）。 */
+  readonly history = new MapHistory();
   /** 未出力のマップ（"バンク.マップ"）。 */
   dirty = new Set<string>();
   /** 直前の操作で変わった、表示中でないマップ（"otherMaps" の知らせのとき）。 */
   changedMaps: readonly MapId[] = [];
   private readonly listeners = new Map<StateTopic, Set<Listener>>();
+
+  /** 1 つ前に開いていたマップ（戻る先。無ければ null）。 */
+  get previousMap(): MapId | null {
+    return this.history.previous;
+  }
 
   constructor(
     readonly settings: Settings,
@@ -103,6 +109,16 @@ export class EditorState {
   /** ステータスバーの左欄（と、指定があれば右欄）を変える。 */
   setStatus(left: string, right?: string, error = false): void {
     this.status = { left, right: right ?? this.status.right, error };
+    this.emit("status");
+  }
+
+  /** ステータスバーの補助の欄（#238。ブロックの情報・矩形の大きさ・隣のマップの座標。AdvanceMap に無い欄）。 */
+  statusInfo = "";
+
+  /** 補助の欄を変える。 */
+  setStatusInfo(text: string): void {
+    if (text === this.statusInfo) return;
+    this.statusInfo = text;
     this.emit("status");
   }
 

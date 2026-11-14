@@ -5,6 +5,7 @@ import { coreCommands } from "./core";
 import { dialogCommands, installNativeDialogs } from "./dialogs";
 import { eventCommands } from "./events";
 import { fieldCommands } from "./fields";
+import { historyCommands } from "./history";
 import { hoverCommands } from "./hover";
 import { imageCommands } from "./images";
 import { linkCommands } from "./link";
@@ -38,6 +39,7 @@ const registry: CommandRegistry = new CommandRegistry([
   statusCommands,
   eventCommands,
   hoverCommands,
+  historyCommands,
   viewCommands,
   processCommands,
   scriptCommands,

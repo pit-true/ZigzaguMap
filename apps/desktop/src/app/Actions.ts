@@ -26,6 +26,10 @@ export interface ActionTarget {
   exit(): Promise<void>;
   openMapByNumber(): Promise<void>;
   openPreviousMap(): Promise<void>;
+  /** 進む（#237）。 */
+  openNextMap(): Promise<void>;
+  /** マップ名で探して開く（#237）。 */
+  findMap(): Promise<void>;
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
@@ -102,6 +106,9 @@ export class Actions {
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());
     h.set("tools.previousMap", () => target.openPreviousMap());
+    h.set("view.back", () => target.openPreviousMap());
+    h.set("view.forward", () => target.openNextMap());
+    h.set("map.find", () => target.findMap());
     h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
     h.set("image.map", () => target.saveImage("map"));

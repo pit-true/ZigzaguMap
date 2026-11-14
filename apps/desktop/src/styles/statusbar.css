@@ -31,3 +31,13 @@
 .status-left.error {
   color: var(--error-text);
 }
+
+/* 補助の欄（#238）。空なら隠す。 */
+.status-info {
+  flex: none;
+  max-width: 460px;
+}
+
+.status-info[hidden] {
+  display: none;
+}
