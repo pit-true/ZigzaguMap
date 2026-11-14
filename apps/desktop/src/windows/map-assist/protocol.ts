@@ -39,6 +39,8 @@ export interface AssistData {
   readonly palette: AssistImage;
   /** 副タイルセットのブロック数。 */
   readonly secondaryCount: number;
+  /** 3 層の次の番号（単独では置けないブロック。一覧で薄くして斜線を引き、押すと 1 つ前を選ぶ。#338）。 */
+  readonly tripleChildren: readonly number[];
   /** マップの大きさと配置（u16）。 */
   readonly map: { readonly width: number; readonly height: number; readonly cells: readonly number[] };
   /** 今の組のパーツ（保存したもの、無ければ同梱の既定かマップから作った候補）。 */
