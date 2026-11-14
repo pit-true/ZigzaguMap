@@ -22,6 +22,7 @@ import {
 import type { App } from "../../app/App";
 import { jaTemplate as t } from "../../i18n/ja.template";
 import { ProcessRunner } from "../../util/processRunner";
+import { disasmTools } from "../script/disasmTools";
 
 /** ひな形を置く指定。 */
 export interface TemplatePlaceRequest {
@@ -126,12 +127,14 @@ export class TemplatePlacer {
     const trainerId = request.kind === "trainer" ? (values.newTrainer?.id ?? values.trainerId ?? 0) : 0;
     const uses = trainerId > 0 && !values.newTrainer ? await app.usage.find("trainer", trainerId) : [];
     const warnings = uses.length > 0 ? [t.trainerUsed(`0x${trainerId.toString(16).toUpperCase()}`, uses.slice(0, 3).map((u) => u.where).join("、"))] : [];
+    // アイテムをくれる人は、プロジェクトの xse_commands.s で obtainitem が組めるときだけマクロで書く
+    const commandTable = hasScript && request.kind === "itemGiver" ? ((await disasmTools(session).catch(() => null))?.table ?? null) : null;
     if (config) {
       app.scripts.expectTemplate(command, {
         nameKind: spec.nameKind,
         labelKind: spec.labelKind ?? "npc",
         labelName: (base) => templateLabelName(request.kind, base),
-        script: hasScript ? (label) => templateScript(request.kind, label, values, { dialect: config.dialect, useGlobal: config.useGlobal }) : null,
+        script: hasScript ? (label) => templateScript(request.kind, label, values, { dialect: config.dialect, useGlobal: config.useGlobal, commands: commandTable }) : null,
       });
     }
     if (!app.scripts.execute(command)) throw new Error(t.failed(app.state.status.left));

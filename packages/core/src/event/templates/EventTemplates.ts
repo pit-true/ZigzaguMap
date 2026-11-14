@@ -1,4 +1,5 @@
 import { formatHex } from "../../binary/bytes.js";
+import type { ScriptCommandTable } from "../../script/commands/ScriptCommandTable.js";
 import type { ScriptDialect } from "../../script/config/ScriptDialect.js";
 import { scriptTextLabel } from "../../script/edit/LabelNaming.js";
 import { SCRIPT_TEMPLATE_TEXTS, type ScriptTemplate } from "../../script/edit/ScriptTemplates.js";
@@ -259,12 +260,30 @@ export function templateLabelName(id: EventTemplateId, base: string): string {
 export interface TemplateScriptOptions {
   readonly dialect: ScriptDialect;
   readonly useGlobal: boolean;
+  /**
+   * プロジェクトの xse_commands.s の命令表。アイテムをくれる人は、これで `obtainitem`（無ければ `giveitem`）が組めると分かったときだけ
+   * マクロで書く。省くか、組めなければ同じ命令を直接書く。
+   */
+  readonly commands?: Pick<ScriptCommandTable, "canAssemble" | "get"> | null;
+}
+
+/**
+ * アイテムを渡す行。プロジェクトの `obtainitem item amount` か `giveitem item amount MSG_OBTAIN` が組めればそれを使い、
+ * どちらも組めなければ、中身と同じ `setvarifnotzero 0x8000` / `0x8001` と `callstd MSG_OBTAIN` を直接書く
+ * （ND・Chronos とも、今は `copyvarifnotzero` の呼ぶ `setorcopyvar` が無くて組めない。足されれば何も変えずにマクロになる）。
+ */
+export function templateGiveItemLines(item: number, amount: number, commands?: TemplateScriptOptions["commands"]): string[] {
+  const usable = (name: string, params: number): boolean => commands?.canAssemble(name) === true && commands.get(name)!.args.length === params;
+  if (usable("obtainitem", 2)) return [`\tobtainitem ${hex(item)} ${hex(amount)}`];
+  if (usable("giveitem", 3)) return [`\tgiveitem ${hex(item)} ${hex(amount)} MSG_OBTAIN`];
+  return [`\tsetvarifnotzero 0x8000 ${hex(item)}`, `\tsetvarifnotzero 0x8001 ${hex(amount)}`, "\tcallstd MSG_OBTAIN"];
 }
 
 /**
  * ひな形の `.s` と `.string`。
  * - 人・看板・スクリプトタイル: Phase2 のひな形（文だけ入力で変えられる）。
  * - アイテムをくれる人: `checkflag` で渡したあとなら別の文。渡したら `setflag`（バッグがいっぱいなら立てない）。
+ *   渡す行は templateGiveItemLines（組めれば `obtainitem` マクロ）。
  * - ショップ: `mart` と品物の表（`.hword` の並び、0 で終わる。`.align 1`）。
  * - トレーナー: `trainer 0x0 <番号> 0x0 <戦闘前> <負けたとき>` と戦闘後の `msgbox`（`trainer` は ND も 1 ポインタ。Q4）。
  */
@@ -312,10 +331,7 @@ export function templateScript(id: EventTemplateId, label: string, v: TemplateVa
         `\tcheckflag ${flag}`,
         `\tif 0x1 _goto ${after}`,
         msg("before", "MSG_NORMAL"),
-        // giveitem マクロは ND・Chronos とも中の setorcopyvar が無くて組めないので、同じ命令を直接書く
-        `\tsetvarifnotzero 0x8000 ${hex(v.item ?? 0)}`,
-        `\tsetvarifnotzero 0x8001 ${hex(v.amount ?? 1)}`,
-        "\tcallstd MSG_OBTAIN",
+        ...templateGiveItemLines(v.item ?? 0, v.amount ?? 1, options.commands),
         "\tcompare LASTRESULT 0x0",
         `\tif 0x1 _goto ${end}`,
         `\tsetflag ${flag}`,

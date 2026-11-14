@@ -69,6 +69,8 @@ export const jaScriptEditorAssist = {
     undefinedLabel: (name: string, role: string) => `${name} の定義が見つかりません${role ? `（${role}）` : ""}`,
     missingArgs: (name: string, missing: string) => `${name} の必須の引数が足りません: ${missing}`,
     tooManyArgs: (name: string, max: number, given: number) => `${name} の引数が多すぎます（${max} 個まで、${given} 個あります）`,
+    unassemblableMacro: (name: string, missing: string, via: string) =>
+      `このマクロは、定義の無い ${missing} を呼んでいるため組めません（${name === via ? name : via} → ${missing.split(", ")[0]}）`,
     duplicateString: (label: string, line: number) => `ラベル ${label} はこのファイルの ${line} 行目にもあります`,
     duplicateStringOther: (label: string, path: string, line: number) => `ラベル ${label} は ${path} の ${line} 行目にもあります`,
     textWidthColumns: (label: string, page: number, line: number, columns: number, limit: number) =>

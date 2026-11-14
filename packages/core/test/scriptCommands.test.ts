@@ -10,6 +10,7 @@ import {
   ScriptCommandTable,
   splitMacroCallArgs,
 } from "../src/index.js";
+import { GIVE_ITEM_MACROS, SETORCOPYVAR } from "./helpers/giveItemMacros.js";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/script/commands/${name}`, import.meta.url), "utf8");
@@ -397,5 +398,73 @@ describe("定数", () => {
   it("自分を参照する定数でも止まらない", () => {
     const t = ScriptCommandTable.build({ xseCommands: ".equ A, B\n.equ B, A\n" });
     expect(t.resolveConstant("A")).toBeNull();
+  });
+});
+
+describe("マクロの中のマクロの呼び出し（giveitem → copyvarifnotzero → setorcopyvar）", () => {
+  const missing = () => ScriptCommandTable.build({ xseCommands: GIVE_ITEM_MACROS });
+  const complete = () => ScriptCommandTable.build({ xseCommands: GIVE_ITEM_MACROS + SETORCOPYVAR });
+
+  it("呼び先が欠けていれば、たどった道つきで組めないと分かる", () => {
+    const t = missing();
+    for (const name of ["copyvarifnotzero", "giveitem", "obtainitem", "finditem"]) {
+      expect(t.canAssemble(name), name).toBe(false);
+      expect(t.get(name)!.missingCalls.map((m) => m.name), name).toEqual(["setorcopyvar"]);
+    }
+    expect(t.get("obtainitem")!.missingCalls[0]!.via).toEqual(["obtainitem", "giveitem", "copyvarifnotzero"]);
+    expect(t.get("giveitem")!.missingCalls[0]!.via).toEqual(["giveitem", "copyvarifnotzero"]);
+    expect(t.get("obtainitem")!.layout).toBeNull();
+    // 欠けていないマクロ（switch / case のように別のマクロを呼ぶものも）は組める
+    for (const name of ["setvarifnotzero", "callstd", "switch", "case", "compare"]) expect(t.canAssemble(name), name).toBe(true);
+    expect(t.get("case")!.layout).toMatchObject({ size: 11, composition: "compound" });
+    expect(t.get("switch")!.layout).toMatchObject({ size: 5, opcode: 0x19, composition: "alias", aliasOf: "copyvar" });
+    // 知らない名前と CSV だけの名前は組めない扱い
+    expect(t.canAssemble("nosuch")).toBe(false);
+  });
+
+  it("呼び先がそろえば組めて、展開後のバイトの並びと長さが出る", () => {
+    const t = complete();
+    for (const name of ["copyvarifnotzero", "giveitem", "obtainitem", "finditem"]) {
+      expect(t.canAssemble(name), name).toBe(true);
+      expect(t.get(name)!.missingCalls, name).toEqual([]);
+    }
+    const layout = t.get("obtainitem")!.layout!;
+    expect(layout).toMatchObject({ size: 12, opcode: 0x1a, composition: "alias", aliasOf: "giveitem" });
+    expect(layout.variants[0]!.fields).toEqual([
+      { kind: "const", size: 1, value: 0x1a },
+      { kind: "const", size: 2, value: 0x8000 },
+      { kind: "arg", size: 2, param: "item", paramIndex: 0 },
+      { kind: "const", size: 1, value: 0x1a },
+      { kind: "const", size: 2, value: 0x8001 },
+      { kind: "arg", size: 2, param: "amount", paramIndex: 1 },
+      { kind: "const", size: 1, value: 0x09 },
+      { kind: "const", size: 1, value: 0x00 },
+    ]);
+    expect(t.get("finditem")!.layout!.variants[0]!.fields.at(-1)).toEqual({ kind: "const", size: 1, value: 0x01 });
+    expect(t.get("giveitem")!.layout!.size).toBe(12);
+  });
+
+  it(".ifb / .ifnb のどちらの分岐の呼び先も調べ、同じ名前は 1 回だけ数える", () => {
+    const text = [
+      ".macro a x, y",
+      ".ifb \\y",
+      "\tnosuch1 \\x",
+      ".else",
+      "\tnosuch2 \\x",
+      "\tnosuch1 \\y",
+      ".endif",
+      ".endm",
+      ".macro b x",
+      "\ta \\x",
+      "\tb2",
+      ".endm",
+      ".macro b2",
+      "\tb",
+      ".endm",
+    ].join("\n");
+    const t = ScriptCommandTable.build({ xseCommands: text });
+    expect(t.get("a")!.missingCalls.map((m) => m.name)).toEqual(["nosuch1", "nosuch2"]);
+    // 自分を呼び返すマクロでも止まる
+    expect(t.get("b")!.missingCalls.map((m) => `${m.via.join(">")}>${m.name}`)).toEqual(["b>a>nosuch1", "b>a>nosuch2"]);
   });
 });

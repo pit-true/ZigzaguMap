@@ -17,6 +17,7 @@ export {
   eventTemplate,
   templateDefaults,
   templateFields,
+  templateGiveItemLines,
   templateHasScript,
   templateItemBall,
   templateLabelName,

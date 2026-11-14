@@ -72,6 +72,19 @@ describe.skipIf(!ndDir)("ND の xse_commands.s（ZIGZAGU_ND_DIR）", () => {
     expect(t.problems.find((p) => p.name === "setescape")!.reason).toContain("マクロ map が見つかりません");
   });
 
+  it("giveitem / obtainitem / finditem は setorcopyvar が無くて組めず、switch / case は組める", () => {
+    const t = load(ndDir!);
+    for (const name of ["giveitem", "obtainitem", "finditem"]) {
+      expect(t.canAssemble(name), name).toBe(false);
+      expect(t.get(name)!.missingCalls.map((m) => m.name), name).toEqual(["setorcopyvar"]);
+    }
+    expect(t.get("obtainitem")!.missingCalls[0]!.via).toEqual(["obtainitem", "giveitem", "copyvarifnotzero"]);
+    for (const name of ["switch", "case", "msgbox"]) expect(t.canAssemble(name), name).toBe(true);
+    // 組めない命令は、呼び先の欠けた MISSING_CALLEES（自分を呼ぶ setobjectxyperm は呼び先があるので入らない）
+    const absent = t.commands.filter((c) => c.missingCalls.length > 0).map((c) => c.name);
+    expect(absent.sort()).toEqual([...MISSING_CALLEES].sort());
+  });
+
   it("loadpointer は 10 バイトの 2 ポインタ、msgbox・customchoice の文字列の引数は 2 つと 4 つ", () => {
     const t = load(ndDir!);
     expect(t.get("loadpointer")!.layout).toMatchObject({ opcode: 0x0f, size: 10, composition: "direct" });

@@ -109,6 +109,50 @@ function referencedParams(text: string): string[] {
   return names;
 }
 
+/** 呼び出しをたどった先で、定義の無いマクロ。 */
+export interface MacroMissingCall {
+  /** 定義の無いマクロの名前（呼んでいる行に書いてあるとおり）。 */
+  name: string;
+  /** たどった道。調べたマクロから、そのマクロを呼んでいるマクロまで（例 `giveitem → copyvarifnotzero`）。 */
+  via: string[];
+  /** 呼んでいる行（1 始まり）。 */
+  line: number;
+}
+
+/**
+ * マクロの本文から呼ぶマクロを、`.ifb` / `.ifnb` のどちらの分岐も中までたどり、定義の無いものを集める（同じ名前は 1 回だけ）。
+ * 空なら、呼び先はすべて定義されている。本文の読めない呼び先は、その先を調べない（定義はあるので数えない）。
+ */
+export function findMissingMacroCalls(macro: MacroDefinition, findMacro: (name: string) => MacroDefinition | undefined): MacroMissingCall[] {
+  const missing: MacroMissingCall[] = [];
+  const seenMissing = new Set<string>();
+  const visited = new Set<string>([macro.name.toLowerCase()]);
+  const walk = (stmts: readonly MacroStatement[], via: string[]): void => {
+    for (const s of stmts) {
+      if (s.type === "data") continue;
+      if (s.type === "ifBlank") {
+        walk(s.then, via);
+        walk(s.else, via);
+        continue;
+      }
+      const key = s.name.toLowerCase();
+      const callee = findMacro(s.name);
+      if (!callee) {
+        if (!seenMissing.has(key)) {
+          seenMissing.add(key);
+          missing.push({ name: s.name, via, line: s.line });
+        }
+        continue;
+      }
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (callee.body) walk(callee.body, [...via, callee.name]);
+    }
+  };
+  if (macro.body) walk(macro.body, [macro.name]);
+  return missing;
+}
+
 /** マクロ 1 つのバイトの並びを作る。 */
 export function buildMacroLayout(macro: MacroDefinition, context: MacroLayoutContext): MacroLayoutResult {
   if (!macro.body) return { error: macro.error ?? "本文が読めません" };

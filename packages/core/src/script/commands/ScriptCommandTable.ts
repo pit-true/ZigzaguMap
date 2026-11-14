@@ -12,7 +12,7 @@ import {
 import { type CommandCsvEntry, parseCommandCsv } from "./CommandCsv.js";
 import { evaluateMacroExpression } from "./macroExpression.js";
 import { type MacroDataSize, type MacroDefinition, parseMacroFile } from "./MacroFile.js";
-import { buildMacroLayout, type MacroLayout, type MacroVariant } from "./MacroLayout.js";
+import { buildMacroLayout, findMissingMacroCalls, type MacroLayout, type MacroMissingCall, type MacroVariant } from "./MacroLayout.js";
 
 /** 命令の引数 1 つ。 */
 export interface CommandArgument extends CommandArgumentRole {
@@ -42,6 +42,11 @@ export interface ScriptCommand {
   layout: MacroLayout | null;
   /** マクロが読めなかった理由。読めたか CSV だけなら null。 */
   error: string | null;
+  /**
+   * 呼び出しをたどった先で定義の無いマクロ（`giveitem` → `copyvarifnotzero` → `setorcopyvar` なら setorcopyvar）。
+   * 1 つでもあれば、この命令は GNU as で組めない。CSV だけなら空。
+   */
+  missingCalls: readonly MacroMissingCall[];
   /** 同じ名前の CSV の行（CSV の順）。 */
   csv: CommandCsvEntry[];
   /** 命令番号の合う CSV の行の detail（無ければ最初の行、CSV に無ければ空）。 */
@@ -156,6 +161,7 @@ export class ScriptCommandTable {
         args: buildArguments(macro, layout),
         layout,
         error,
+        missingCalls: findMissingMacroCalls(macro, context.findMacro),
         csv: entries,
         detail: best?.detail ?? "",
         hover: best?.hover ?? "",
@@ -174,6 +180,7 @@ export class ScriptCommandTable {
         args: [],
         layout: null,
         error: null,
+        missingCalls: [],
         csv: entries,
         detail: first.detail,
         hover: first.hover,
@@ -191,6 +198,15 @@ export class ScriptCommandTable {
   /** 命令番号から、その番号で始まる命令と型を引く（ファイルの順。別名のマクロも全部入る）。 */
   findByOpcode(opcode: number): readonly ScriptCommandMatch[] {
     return this.byOpcode.get(opcode) ?? [];
+  }
+
+  /**
+   * 組めると分かっている命令か。xse_commands.s のマクロで、呼び先がすべて定義されていて、バイトの並びまで展開できたもの。
+   * 長さは `get(name).layout` の size（型で違えば minSize / maxSize）。
+   */
+  canAssemble(name: string): boolean {
+    const c = this.get(name);
+    return c !== undefined && c.source === "macro" && c.layout !== null && c.missingCalls.length === 0;
   }
 
   /** 読めた（バイトの並びの分かる）マクロの数。 */

@@ -70,6 +70,8 @@ export function diagnosticMessage(d: ScriptDiagnostic): string {
       return t.lint.missingArgs(s("name"), s("missing"));
     case "tooManyArgs":
       return t.lint.tooManyArgs(s("name"), n("max"), n("given"));
+    case "unassemblableMacro":
+      return t.lint.unassemblableMacro(s("name"), s("missing"), s("via"));
     case "duplicateString":
       return t.lint.duplicateString(s("label"), n("line"));
     case "duplicateStringOther":

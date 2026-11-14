@@ -541,7 +541,7 @@ Gen3 Script Assistant 改造版（VS Code の拡張）の色付け・ホバー�
 
 波線（#195）:
 
-- `.s`: 知らない命令（命令表・ARM / Thumb の命令・同じファイルの `.macro` のどれでもない）、必須の引数が足りない（マクロの `:req`）、引数が多すぎる、どこにも定義の無いラベル（命令の引数のうち、ラベル・移動データ・文字列を指すもの）。ラベルは、索引・文字列の索引・`.equ`・リンカのスクリプト（BPRJ.ld の `gStringVar4 = 0x…;` など）・同じ本文の定義を探します。`callasm` などの C の関数を指す引数、`.if 0` の中、マクロの本文は調べません。マクロで作るラベル（`EventScript_X\num:`）は、頭の名前で始まれば定義済みとみなします。
+- `.s`: 知らない命令（命令表・ARM / Thumb の命令・同じファイルの `.macro` のどれでもない）、組めないマクロ（中から呼ぶマクロをたどった先に定義の無いものがある。例: `giveitem` → `copyvarifnotzero` → `setorcopyvar`。警告で、補完とホバーには出したまま）、必須の引数が足りない（マクロの `:req`）、引数が多すぎる、どこにも定義の無いラベル（命令の引数のうち、ラベル・移動データ・文字列を指すもの）。ラベルは、索引・文字列の索引・`.equ`・リンカのスクリプト（BPRJ.ld の `gStringVar4 = 0x…;` など）・同じ本文の定義を探します。`callasm` などの C の関数を指す引数、`.if 0` の中、マクロの本文は調べません。マクロで作るラベル（`EventScript_X\num:`）は、頭の名前で始まれば定義済みとみなします。
 - `.string`: 同じファイルに同じラベルが 2 つ以上（エラー）、別の `.string` に同じラベル（警告）、簡易の幅検査（下）。
 - 打つのを止めて 0.5 秒で調べ直します。行番号の横に印、F8 で次の波線、Ctrl+Shift+M で一覧。ND と Chronos の写しの overworld_scripts の `.s` をすべて開いて、誤った波線が出ないことを確かめています。
 - ビルドのエラーや保存時の幅検査の結果は、外から波線を足す入口（`extensions/lint.ts` の `setExternalDiagnostics`。ファイルと行で指定）で出します。
@@ -945,7 +945,7 @@ EventScript_Moegi_Trainer6:
 	end
 ```
 
-- アイテムをくれる人は、`giveitem` マクロを使わず、同じ命令（`setvarifnotzero 0x8000`・`0x8001` と `callstd MSG_OBTAIN`）を直接書きます。ND と Chronos の `xse_commands.s` の `giveitem` は、中の `copyvarifnotzero` が無いマクロ `setorcopyvar` を呼ぶので組めないためです。バッグがいっぱいで渡せなかったときはフラグを立てません。
+- アイテムをくれる人は、プロジェクトの `xse_commands.s` で `obtainitem`（無ければ `giveitem … MSG_OBTAIN`）が組めるときはそのマクロで書き、組めないときだけ同じ命令（`setvarifnotzero 0x8000`・`0x8001` と `callstd MSG_OBTAIN`）を直接書きます。今の ND と Chronos は、`giveitem` の中の `copyvarifnotzero` が定義の無い `setorcopyvar` を呼ぶので直接書きになり、`setorcopyvar` を足せば何も変えずに `obtainitem` で書くようになります。バッグがいっぱいで渡せなかったときはフラグを立てません。
 - ショップの `pokemart` の画面は、ゲームが「いらっしゃいませ」などの文を出すので、ひな形には文を書きません。
 
 `.string`（ND の形。Chronos は `_k` がありません）:

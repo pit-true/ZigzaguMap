@@ -13,6 +13,7 @@ import {
   planStringBodyEdit,
   stringBodyOf,
 } from "../src/index.js";
+import { GIVE_ITEM_MACROS, SETORCOPYVAR } from "./helpers/giveItemMacros.js";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/script/commands/${name}`, import.meta.url), "utf8");
 
@@ -132,6 +133,22 @@ describe("波線", () => {
     const text = ["Start:", "\tnosuch 1", "\tgoto", "\tgoto Start Start", "\tgoto Missing", "\tgoto LocalLabel", "LocalLabel:", "\tpush {lr}"].join("\n");
     const found = lintAsmText(nd, text).map((d) => `${d.code}:${text.slice(d.from, d.to)}`);
     expect(found).toEqual(["unknownCommand:nosuch", "missingArgs:goto", "tooManyArgs:Start", "undefinedLabel:Missing"]);
+  });
+
+  it("呼び先の定義が無くて組めないマクロの行に警告を出す（補完とホバーには出したまま）", () => {
+    const missing = new ScriptAssist({ commands: ScriptCommandTable.build({ xseCommands: GIVE_ITEM_MACROS }) });
+    const text = ["\tobtainitem 0xD 0x1", "\tsetvarifnotzero 0x8000 0xD", "\tswitch 0x8000", "\tcase 0x1 Start", "Start:", "\tend"].join("\n");
+    const found = lintAsmText(missing, text).filter((d) => d.code === "unassemblableMacro");
+    expect(found.map((d) => text.slice(d.from, d.to))).toEqual(["obtainitem"]);
+    expect(found[0]).toMatchObject({ severity: "warning", params: { name: "obtainitem", missing: "setorcopyvar", via: "obtainitem → giveitem → copyvarifnotzero" } });
+    expect(completionLabels(asmCompletionAt(missing, missing.analyze("\tobtain"), 7))).toContain("obtainitem");
+    expect(asmHoverAt(missing, missing.analyze("\tobtainitem 0xD 0x1"), 3)).not.toBeNull();
+    // 同じファイルで setorcopyvar を定義していれば出さない
+    const local = [".macro setorcopyvar a, b", "\tsetvarifnotzero \\a, \\b", ".endm", text].join("\n");
+    expect(lintAsmText(missing, local).filter((d) => d.code === "unassemblableMacro")).toEqual([]);
+    // xse_commands.s に足されれば出さない
+    const complete = new ScriptAssist({ commands: ScriptCommandTable.build({ xseCommands: GIVE_ITEM_MACROS + SETORCOPYVAR }) });
+    expect(lintAsmText(complete, text).filter((d) => d.code === "unassemblableMacro")).toEqual([]);
   });
 
   it("`.if 0` の中とマクロの本文は調べない", () => {
