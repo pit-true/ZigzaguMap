@@ -18,6 +18,7 @@ import type { OpacityPopup } from "../ui/view/OpacityPopup";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
 import { EventTab } from "../ui/event/EventTab";
+import { OutsideEventsBar } from "../ui/event/OutsideEventsBar";
 import { MapTab } from "../ui/tabs/MapTab";
 import { MovementTab } from "../ui/tabs/MovementTab";
 import { WildTab } from "../ui/wild/WildTab";
@@ -75,6 +76,8 @@ export class App implements ActionTarget {
   private readonly hint: HTMLElement;
   readonly grosserBlock: GrosserBlockWindow;
   private readonly eventTab: EventTab;
+  /** マップの外のイベントの帯。 */
+  readonly outsideBar: OutsideEventsBar;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -171,7 +174,9 @@ export class App implements ActionTarget {
     const body = document.createElement("main");
     body.className = "main-body";
     body.append(this.left, splitter.element, tabControl.element);
-    root.append(this.menu.element, this.toolbar.element, this.combo.element, body, this.statusBar.element);
+    // マップの外にイベントがあるときの帯（ツールバーの下。どのタブでも出す）
+    this.outsideBar = new OutsideEventsBar(state);
+    root.append(this.menu.element, this.toolbar.element, this.combo.element, this.outsideBar.element, body, this.statusBar.element);
 
     state.on("status", () => this.statusBar.render(state.status));
     state.on("tab", () => {

@@ -5,6 +5,7 @@ import {
   AddMapScriptCommand,
   AddMapScriptConditionCommand,
   CommandBus,
+  CommandGroup,
   CreateMapCommand,
   EditErrorCode,
   MoveEventCommand,
@@ -39,6 +40,8 @@ import {
   createDefaultRegistry,
   encodeBase64,
   eventsOutsideMap,
+  moveEventsInsideCommands,
+  nearestInside,
   maxMapHeight,
   packTileRef,
   parseHexInput,
@@ -128,6 +131,34 @@ describe("イベントの編集コマンド", () => {
         expect(eventsOutsideMap(p.loaded(M00)!)).toContainEqual({ kind: "warp", index: 0 });
       },
     );
+  });
+
+  it("マップの内側に戻す: 外の全イベントをいちばん近い内側へ寄せ、1 回のアンドゥで全部戻る", async () => {
+    expect(nearestInside(3, 10)).toBe(3);
+    expect(nearestInside(10, 10)).toBe(9);
+    expect(nearestInside(0x7fff, 10)).toBe(9);
+    expect(nearestInside(0xffff, 10)).toBe(0);
+    expect(nearestInside(0x8000, 10)).toBe(0);
+    const p = await open();
+    const doc = p.loaded(M00)!;
+    const bus = new CommandBus(p.editorContext());
+    expect(moveEventsInsideCommands(doc, M00)).toHaveLength(eventsOutsideMap(doc).length);
+    const before = fingerprint(p);
+    bus.execute(new MoveEventCommand({ ...M00, kind: "warp", index: 0, x: doc.width + 5, y: 0xfffe }));
+    bus.execute(new MoveEventCommand({ ...M00, kind: "person", index: 0, x: 1, y: doc.height }));
+    const moved = fingerprint(p);
+    const commands = moveEventsInsideCommands(doc, M00);
+    expect(commands).toHaveLength(eventsOutsideMap(doc).length);
+    expect(commands.length).toBeGreaterThanOrEqual(2);
+    bus.execute(CommandGroup.of(commands));
+    expect(eventsOutsideMap(doc)).toEqual([]);
+    expect(doc.events!.warps[0]).toMatchObject({ x: doc.width - 1, y: 0 });
+    expect(doc.events!.persons[0]).toMatchObject({ x: 1, y: doc.height - 1 });
+    bus.undo();
+    expect(fingerprint(p)).toEqual(moved);
+    bus.undo();
+    bus.undo();
+    expect(fingerprint(p)).toEqual(before);
   });
 
   it("各項目の変更（人・ワープ・スクリプトタイル）", async () => {

@@ -32,6 +32,8 @@ export const jaEvent = {
   noteOk: ini.Allgemein["38"],
   noteOutside: ini.Allgemein["37"],
   noteNoEvents: ini.Allgemein["36"],
+  /** マップの外のイベントの帯のボタン（ZigzaguMap 独自）。 */
+  moveInside: "マップの内側に戻す",
 
   /** 座標の欄（種別ごとの 400・413・420・430・460 は同じ文言）。 */
   position: E["400"],
