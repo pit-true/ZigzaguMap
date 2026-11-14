@@ -31,6 +31,11 @@ export class BlockRenderer {
     }
   }
 
+  /** 描いて持っているブロックの数。 */
+  get cachedCount(): number {
+    return this.cache.size;
+  }
+
   /** ブロック番号の RGBA（16×16×4 バイト）を返す。定義が無い番号は背景色だけになる。 */
   render(blockId: number): Uint8ClampedArray {
     let image = this.cache.get(blockId);
@@ -41,9 +46,12 @@ export class BlockRenderer {
     return image;
   }
 
-  /** ブロックを `dest`（幅 `destWidth` ピクセル）の (x, y) ピクセル位置へ写す。 */
-  blit(blockId: number, dest: Uint8ClampedArray, destWidth: number, x: number, y: number): void {
-    const src = this.render(blockId);
+  /**
+   * ブロックを `dest`（幅 `destWidth` ピクセル）の (x, y) ピクセル位置へ写す。
+   * `keep` が false なら、まだ描いていないブロックを描いても覚えない（ブロックパレットのように全部を 1 回だけ描くとき）。
+   */
+  blit(blockId: number, dest: Uint8ClampedArray, destWidth: number, x: number, y: number, keep = true): void {
+    const src = keep ? this.render(blockId) : (this.cache.get(blockId) ?? this.draw(blockId));
     const rowBytes = BLOCK_PIXELS * 4;
     for (let row = 0; row < BLOCK_PIXELS; row++) {
       const s = row * rowBytes;

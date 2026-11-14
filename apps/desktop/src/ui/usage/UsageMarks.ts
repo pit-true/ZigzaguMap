@@ -64,14 +64,17 @@ export class UsageMarks {
     c.style.top = layer.style.top;
     c.style.width = layer.style.width;
     c.style.height = layer.style.height;
-    if (c.width !== layer.width || c.height !== layer.height) {
-      c.width = layer.width;
-      c.height = layer.height;
+    this.marked = this.state.tab === this.tab && !ctrlPeek.held ? this.cells() : [];
+    // 印が無いときは領域を持たない（主マップと同じ大きさの Canvas を、隠れているタブの分まで持たないため）
+    const w = this.marked.length === 0 ? 0 : layer.width;
+    const h = this.marked.length === 0 ? 0 : layer.height;
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
     }
+    if (this.marked.length === 0) return;
     const ctx = c.getContext("2d")!;
     ctx.clearRect(0, 0, c.width, c.height);
-    this.marked = this.state.tab === this.tab && !ctrlPeek.held ? this.cells() : [];
-    if (this.marked.length === 0) return;
     const size = this.view.cellSize;
     ctx.strokeStyle = this.tab === "movement" ? MOVEMENT_COLOR : MISMATCH_COLOR;
     ctx.lineWidth = 2;

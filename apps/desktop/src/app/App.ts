@@ -229,6 +229,11 @@ export class App implements ActionTarget {
       (id) => state.setTab(id),
     );
     tabControl.show(state.tab);
+    // 隠れているタブのマップ表示は、画素の領域を持たない（出たときに描き直す。Phase4 #318）
+    const wakeVisibleTab = (): void => {
+      for (const id of ["map", "movement", "event"] as const) this.tabs[id].view.setDormant(id !== state.tab);
+    };
+    wakeVisibleTab();
 
     this.left = document.createElement("aside");
     this.left.className = "left-panel";
@@ -265,6 +270,7 @@ export class App implements ActionTarget {
     state.on("status", () => this.statusBar.render(state.status, state.statusInfo));
     state.on("tab", () => {
       tabControl.show(state.tab);
+      wakeVisibleTab();
       const last = state.settings.data.last;
       if (last && state.map) state.settings.update({ last: { ...last, tab: state.tab } });
     });

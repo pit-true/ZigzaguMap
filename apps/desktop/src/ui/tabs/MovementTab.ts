@@ -39,8 +39,10 @@ export class MovementTab {
     });
     state.on("cells", () => {
       this.view.sync();
-      this.layer.update();
+      if (!this.view.dormant) this.layer.update();
     });
+    // 隠れている間は重ね描きを描かない。出たら描き直す（Phase4 #318）
+    this.view.wakeListeners.push(() => this.resetLayer());
     state.on("movement", () => this.palette.showSelection(state.movement, false));
     state.on("view", () => this.configure());
     state.on("opacity", () => this.resetLayer());
@@ -56,6 +58,7 @@ export class MovementTab {
   }
 
   private resetLayer(): void {
+    if (this.view.dormant) return;
     this.layer.reset(this.state.map?.doc.grid ?? null, this.view.cellSize, this.state.settings.data.movementOpacity);
   }
 }

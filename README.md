@@ -1786,8 +1786,10 @@ node scripts/measure-startup.mjs --exe <zigzagumap.exe> --rom <素の BPRJ> [--p
 待機時メモリ（目標 150MB 以下、WebView2 込み）は `scripts\measure-memory.ps1` で測ります。exe を `--automation` と一時フォルダの `--profile` で起動し（画面外・非アクティブ。通常の設定には触れない）、起動直後／ROM を開いた後（3.0）／マップを 10 枚切り替えた後／イベントタブを開いて使われている番号の索引を作った後／ブロックエディタを開いた後／閉じた後の 6 場面で、それぞれ 10 秒待ってから測ります。`-Project <CFRU-JP のフォルダの写し>` を付けると ROM と一緒に開き、スクリプトエディタを開いた後／閉じた後の 2 場面も測ります（開くファイルは `-ScriptFile`、省略で `assembly\overworld_scripts` の最初の `.s`。フォルダには書き込みません）。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Port 17995] [-Out result.json]
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Port 17995] [-Out result.json] [-Stages all]
 ```
+
+`-Stages` に場面の名前（`,` 区切り。`all` で全部）を渡すと、索引を作った後に次の場面を足して測ります: `zoom8`（マップタブを Ctrl＋ホイールで 8 倍にした後。測ったあと 1 倍に戻す）、`assist`（マップ作成補助の窓を開いて閉じた後）、`transplant`（別の ROM からの取り込みの窓を開いて閉じた後）、`pointers`（ポインタ一覧で 3.0 のヘッダーの参照元を探して閉じた後）、`triple`（3.0 のブロック 0x010 を 3 層にした状態。メモリの上だけ）、`autopen`（自動ペンで 3.0 に 1 回描いた後。メモリの上だけ）。どれも出力はしません。
 
 - exe とその子孫（WebView2 のブラウザ・レンダラー・GPU・ユーティリティ・crashpad）を、種類ごとに「専用ワーキングセット」「プライベート（コミット）」「ワーキングセット」で出します。目標は **専用ワーキングセットの合計** で判定します（タスクマネージャーの「メモリ」の列と同じ値。ワーキングセットは共有ページを二重に数えるので合計に向かない）。メインの JavaScript のヒープ（`state` の `jsHeap`）、入口が応答するまでの時間、マップ切り替えの時間も出します。
 - `-Baseline -Exe <webview-baseline.exe> -BrowserArgs "<引数>"` で、WebView2 の空のウィンドウだけの値（下限）を同じ方法で測ります（`tools\webview-baseline` を `CARGO_TARGET_DIR` を設定してから `build.cmd` でビルド）。

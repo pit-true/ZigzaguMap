@@ -206,6 +206,7 @@ export class EventTab {
     state.on("view", () => this.configure());
     // イベントの濃さ（#304。濃さの窓のスライダーを動かしている間も）
     state.on("opacity", () => this.draw());
+    this.view.wakeListeners.push(() => this.draw());
     state.on("tab", () => {
       if (state.tab === "event") this.showNote();
     });
@@ -337,6 +338,8 @@ export class EventTab {
   }
 
   private draw(): void {
+    // 隠れている間は描かない（出たときに描き直す。Phase4 #318）
+    if (this.view.dormant) return;
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites, this.state.settings.data.eventOpacity);
