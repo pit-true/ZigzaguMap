@@ -14,3 +14,6 @@ apps/desktop/src-tauri/gen/schemas/
 tests/compare/local.config.json
 __pycache__/
 .venv/
+
+# 実フォルダの写しのテスト（tests/realcopy）
+tests/realcopy/local.config.json
