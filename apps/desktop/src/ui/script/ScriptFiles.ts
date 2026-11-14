@@ -1,5 +1,6 @@
 import { appendBlock, indexAsmFile, removeBlock } from "@zigzagumap/core";
 import type { App } from "../../app/App";
+import { jaScriptLink as t } from "../../i18n/ja.scriptLink";
 
 /** 本文の読み先（エディタで開いていればエディタの本文、無ければディスク）。 */
 interface Loaded {
@@ -79,16 +80,16 @@ export class ScriptFiles {
   change(path: string, edit: (text: string) => string | null, options: { create?: string; save?: boolean } = {}): Promise<boolean> {
     const job = this.queue.then(async () => {
       const loaded = await this.read(path);
-      if (!loaded && options.create === undefined) throw new Error(`${path} がありません`);
+      if (!loaded && options.create === undefined) throw new Error(t.fileMissing(path));
       const before = loaded?.text ?? options.create!;
       const after = edit(before);
       if (after === null) return false;
       if (loaded?.inEditor) {
         const host = await this.app.scriptHostIfLoaded();
-        if (!host || !(await host.setBufferText(path, after, options.save === true))) throw new Error(`${path} をエディタで書き換えられませんでした`);
+        if (!host || !(await host.setBufferText(path, after, options.save === true))) throw new Error(t.editorWriteFailed(path));
       } else {
         const fs = this.app.state.session?.files;
-        if (!fs?.root) throw new Error("プロジェクトフォルダが開かれていません");
+        if (!fs?.root) throw new Error(t.noProjectFolder);
         if (after !== before || !loaded) await fs.writeText(path, after);
         const host = await this.app.scriptHostIfLoaded();
         await host?.fileChanged(path);

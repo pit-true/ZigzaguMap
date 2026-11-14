@@ -420,7 +420,7 @@ export class ScriptHost {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.waiting.delete(id);
-        reject(new Error("スクリプトエディタが応答しません"));
+        reject(new Error(t.noReply));
       }, QUERY_TIMEOUT_MS);
       const done = (fn: () => void): void => {
         clearTimeout(timer);

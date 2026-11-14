@@ -25,6 +25,7 @@ import { readFile } from "./FileDialogs";
 import { MapCatalog } from "./MapCatalog";
 import { TauriProjectFs } from "./TauriProjectFs";
 import { TilesetView } from "./TilesetView";
+import { jaScriptLink } from "../i18n/ja.scriptLink";
 
 /** 開いているマップ。 */
 export interface OpenMap {
@@ -196,7 +197,7 @@ export class ProjectSession {
   }
 
   private requireLabels() {
-    if (!this.fs.root) throw new Error("イベントのラベルを付けるには、プロジェクトフォルダ（CFRU-JP のフォルダ）を開いてください");
+    if (!this.fs.root) throw new Error(jaScriptLink.labelsNeedProject);
     return this.labels.store;
   }
 
@@ -211,7 +212,7 @@ export class ProjectSession {
 
   private requireScriptsTable(): ScriptsTableProject {
     const error = this.scriptsTable.loadError;
-    if (error !== null) throw new Error(`maps/scripts.json を読めないため編集できません: ${error}`);
+    if (error !== null) throw new Error(jaScriptLink.scriptsJsonBroken(error));
     return this.scriptsTable;
   }
 
