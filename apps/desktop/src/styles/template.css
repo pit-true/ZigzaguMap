@@ -34,3 +34,7 @@
   padding: 0 6px;
 }
 .tp-note { color: var(--gray-text); font-size: 11px; }
+
+/* トレーナーを直す窓の持ち物 4 つ（#274） */
+.tp-items { display: flex; gap: 4px; }
+.tp-cell .tp-items input[type="text"] { width: 64px; min-width: 0; }

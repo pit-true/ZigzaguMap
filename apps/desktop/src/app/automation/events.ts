@@ -29,7 +29,7 @@ async function deletePlan(app: App, req: AutomationRequest) {
   const id = app.state.map?.id;
   const k = kind(req);
   if (!id || k === "fly") throw new Error("イベントタブで消せるイベント（人・看板・ワープ・スクリプト）を指定してください");
-  const plan = await (await app.eventDeleter()).plan(id, k, int(req, "index"));
+  const plan = await (await app.events.eventDeleter()).plan(id, k, int(req, "index"));
   const { eventDeleteLines } = await import("../../ui/event/EventDeleteDialog");
   const span = (s: RomEraseSpan) => ({ address: s.offset + ROM_BASE, length: s.length, type: s.type, label: s.label });
   return {
@@ -64,12 +64,12 @@ export const eventCommands: CommandTable = {
     const tab = eventTab(app);
     tab.select(k, index);
     if (req["confirm"] === false) {
-      const ok = await app.deleteEvent(k, index, false);
+      const ok = await app.events.deleteEvent(k, index, false);
       await app.scripts.settle();
       return { ok, status: app.state.status.left, selection: tab.selection, counts: tab.counts() };
     }
     // 確認のダイアログを出したまま返す（`dialog` で「削除」か「キャンセル」を押す）
-    void app.deleteEvent(k, index, true);
+    void app.events.deleteEvent(k, index, true);
     for (let i = 0; i < 200 && !openDialogs.some((d) => d.title === jaEventDelete.title); i++) await settle(25);
     return { dialogs: openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons })) };
   },

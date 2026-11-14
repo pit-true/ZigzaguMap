@@ -3,6 +3,7 @@ import { neighborRange } from "../neighbors/NeighborService";
 import type { Side } from "@zigzagumap/core";
 import { openContextMenu } from "../../ui/ContextMenu";
 import { settle, str, type AutomationRequest, type CommandTable } from "./registry";
+import { outsideClones } from "../../ui/map/NeighborLayer";
 
 /**
  * 隣のマップの帯（Phase3 #223）。
@@ -11,10 +12,10 @@ import { settle, str, type AutomationRequest, type CommandTable } from "./regist
  *   `wait: true` なら描き終えるまで待ってから返す。
  */
 async function state(app: App, req: AutomationRequest): Promise<unknown> {
-  const service = app.neighbors;
+  const service = app.extras.neighbors;
   if (req["wait"] === true) {
     await service.settle();
-    for (const d of app.diveOverlays) await d.settle();
+    for (const d of app.extras.diveOverlays) await d.settle();
   }
   const view = app.state.settings.data.neighborView;
   const frame = service.frame;
@@ -26,15 +27,18 @@ async function state(app: App, req: AutomationRequest): Promise<unknown> {
     done: service.done,
     neighborsMs: Math.round(service.lastMs * 10) / 10,
     // Space で重ねているダイブ先・浮上先（#232。重ねていなければ null）
-    dive: app.diveOverlays.map((d) => d.target).find((t) => t !== null) ?? null,
+    dive: app.extras.diveOverlays.map((d) => d.target).find((t) => t !== null) ?? null,
     buildMs: Math.round(service.lastBuildMs * 10) / 10,
     margins: current?.layout.margins ?? { left: 0, top: 0, right: 0, bottom: 0 },
     connectedSides: current?.layout.connectedSides ?? [],
+    // このマップの外にあるクローン（#242。表示 > クローンがオンならイベントタブの帯の上に印を描く）
+    clones: main ? outsideClones(main.doc) : [],
+    clonesShown: app.state.settings.data.showClones,
     // 主マップの接続の全部（ダイブ・浮上も。帯に出ないものも含む）
     connections: (main?.doc.connections ?? []).map((c, index) => ({ index, direction: c.direction, offset: c.offset, bank: c.bank, map: c.map })),
     neighbors: (current?.bands ?? []).map((b) => {
       const p = b.placement;
-      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt, clones: b.clones };
+      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt };
     }),
   };
 }
@@ -44,8 +48,8 @@ async function state(app: App, req: AutomationRequest): Promise<unknown> {
  * つまみの中心のマス `at`（主マップの左上が原点））。つまみは `mouse` の `target: "connectionHandle"`・`handle: <id>` でドラッグする。
  */
 function handles(app: App): unknown {
-  const edges = app.edgeHandles.list().map((h) => ({ id: h.id, side: h.side, at: h.at }));
-  return [...edges, ...app.connectionHandles.list().map((h) => ({
+  const edges = app.extras.edgeHandles.list().map((h) => ({ id: h.id, side: h.side, at: h.at }));
+  return [...edges, ...app.extras.connectionHandles.list().map((h) => ({
     id: h.id,
     end: h.end,
     index: h.placement.index,
@@ -62,14 +66,14 @@ function handles(app: App): unknown {
 async function menu(app: App, req: AutomationRequest): Promise<unknown> {
   const side = str(req, "side");
   if (!["up", "down", "left", "right"].includes(side)) throw new Error(`side は up / down / left / right のどれかです: ${side}`);
-  app.edgeHandles.openMenu(side as Side);
+  app.extras.edgeHandles.openMenu(side as Side);
   await settle();
   return (openContextMenu()?.items ?? []).map((i) => ({ id: i.id, label: i.label, enabled: i.enabled !== false }));
 }
 
 /** `resize.refs`: 最後の辺のつまみのリサイズ（左・上）で見つけた、直していない `.s` の座標の行（#231）。 */
 function refs(app: App): unknown {
-  return app.edgeResize.lastRefs;
+  return app.extras.edgeResize.lastRefs;
 }
 
 export const neighborCommands: CommandTable = {

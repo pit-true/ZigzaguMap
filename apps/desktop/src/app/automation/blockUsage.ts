@@ -8,7 +8,7 @@ import type { CommandTable } from "./registry";
  */
 export const blockUsageCommands: CommandTable = {
   blockUsage: async (app: App, req) => {
-    const usage = await app.blockUsage.build();
+    const usage = await app.extras.blockUsage.build();
     const map = app.state.map;
     if (!usage || !map) throw new Error("マップが開かれていません");
     const s = app.state.selection;
@@ -33,7 +33,7 @@ export const blockUsageCommands: CommandTable = {
       mostMovement: most,
       mismatches,
       selectedMovement: app.state.movement,
-      marks: { map: app.usageMarks.map.marked.length, movement: app.usageMarks.movement.marked.length },
+      marks: { map: app.extras.usageMarks.map.marked.length, movement: app.extras.usageMarks.movement.marked.length },
     };
   },
 };

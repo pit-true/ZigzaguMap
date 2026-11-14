@@ -478,15 +478,14 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     clones = clones_in(z, 3, 0)
     check(len(clones) == before + 1 and clones[-1]["target"] == {"bank": 3, "map": 19, "localId": p["localId"]}, f"1 番道路の南の端に人を動かすとマサラタウンにクローン（{clones}）")
     check("クローンを作りました" in status, f"ステータスバーで知らせる（{status}）")
-    # 1 番道路の帯（マサラタウン）にクローンの印が出る
-    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
-    z.call({"cmd": "tab", "name": "event"})
+    # マサラタウンを開くと、上の帯（1 番道路）の上にクローンの印が出る
     ns = z.call({"cmd": "neighbors.state", "wait": True})
-    shown = [c for n in ns["neighbors"] if n["bank"] == 3 and n["map"] == 0 for c in n.get("clones", [])]
-    check(len(shown) >= 1, f"隣の帯にこのマップのクローンを見せる（{shown}）")
+    check(ns["clonesShown"] and len(ns["clones"]) >= 1 and all(c["y"] < 0 for c in ns["clones"]), f"マップの外のクローンを帯の上に見せる（{ns['clones']}）")
     if shots:
         save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "p3_clone_band.png")
         save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": south, "to": [10, cells["height"] - 12]})
     time.sleep(1.0)
     check(len(clones_in(z, 3, 0)) == before, "北へ 8 マスより外へ動かすとクローンが消える")
@@ -506,30 +505,22 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     check(len(clones_in(z, 3, 0)) == before + 1, "削除を取り消すとクローンも戻る")
     z.call({"cmd": "undo"})
-    # 座標の欄に入れて動かしても合わせる
+    # 座標の欄に入れて動かしても合わせる（最後の人を使う。続けてイベント数を減らして消す）
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
-    z.call({"cmd": "event.select", "kind": "person", "index": 0})
+    n0 = len(z.call({"cmd": "event.state"})["events"]["persons"])
+    z.call({"cmd": "event.select", "kind": "person", "index": n0 - 1})
     z.call({"cmd": "setField", "id": "event.person.x", "value": f"{south[0]:X}"})
     z.call({"cmd": "setField", "id": "event.person.y", "value": f"{south[1]:X}"})
     time.sleep(1.0)
     check(len(clones_in(z, 3, 0)) == before + 1, "座標の欄の入力で境界へ動かすとクローンができる")
-    z.call({"cmd": "undo"})
-    z.call({"cmd": "undo"})
-    check(len(clones_in(z, 3, 0)) == before, "欄の入力を取り消すとクローンも消える")
-    # ひな形で境界の近くに置いても合わせる
+    # イベント数を減らして人を消しても合わせる
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
-    n0 = len(z.call({"cmd": "event.state"})["events"]["persons"])
-    z.call({"cmd": "template.place", "kind": "person", "x": 6, "y": cells["height"] - 1})
-    time.sleep(1.0)
-    check(len(clones_in(z, 3, 0)) == before + 1, "ひな形で境界の近くに置くとクローンができる")
-    # イベント数を減らして消しても合わせる（置いた人は最後の番号）
-    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
-    z.call({"cmd": "tab", "name": "event"})
-    z.call({"cmd": "setField", "id": "event.manager.persons", "value": str(n0)})
+    z.call({"cmd": "setField", "id": "event.manager.persons", "value": str(n0 - 1)})
     z.call({"cmd": "click", "id": "event.manager.apply"})
-    for d in z.call({"cmd": "dialogs"}) or []:
+    time.sleep(0.3)
+    for d in z.call({"cmd": "dialogs"})["dialogs"]:
         if d.get("kind") == "app":
             z.call({"cmd": "dialog", "press": "yes"})
     time.sleep(1.0)
@@ -537,7 +528,8 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     check(len(clones_in(z, 3, 0)) == before + 1, "イベント数の変更を取り消すとクローンも戻る")
     z.call({"cmd": "undo"})
-    check(len(clones_in(z, 3, 0)) == before, "ひな形を取り消すとクローンも消える")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before, "欄の入力を取り消すとクローンも消える")
     # 印を外すと作らない
     z.call({"cmd": "action", "id": "view.clones"})
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
@@ -585,6 +577,52 @@ CHECKS = {
 }
 
 
+def check_trainer_edit(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """トレーナーをあとから直す窓（#274。Chronos の写し、読むだけ。出力しない）。窓で名前と手持ちを直すと trainers.json に入り、
+    1 回の取り消しで戻る。「ROM の値に戻す」で消える。人の右クリックの「トレーナーを編集」は、スクリプトの番号で開く。"""
+    rom1 = z.call({"cmd": "trainer.get", "id": 1})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(bool(dlg) and "トレーナーを編集" in dlg[-1]["title"], f"トレーナーを直す窓が出る（{[d.get('title') for d in dlg]}）")
+    check(z.call({"cmd": "getField", "id": "trainerEdit.name"})["value"] == rom1["name"], "窓の名前の欄は ROM の値")
+    z.call({"cmd": "setField", "id": "trainerEdit.name", "value": "テスト"})
+    z.call({"cmd": "setField", "id": "trainerEdit.party", "value": "0x10 12, 0x13 11"})
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_trainer_edit.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    time.sleep(0.3)
+    j = z.call({"cmd": "trainer.json"})
+    t1 = next((t for t in j["trainers"] if t["id"] == 1), None)
+    check(t1 is not None and t1["name"] == "テスト" and [(m["species"], m["level"]) for m in t1["party"]] == [(0x10, 12), (0x13, 11)] and t1["trainerClass"] == rom1["trainerClass"],
+          f"直した値が trainers.json に入る（{t1 and (t1['name'], t1['party'])}）")
+    check(j["modified"], "trainers.json が未出力になる")
+    z.call({"cmd": "undo"})
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "1 回の取り消しで trainers.json から消える")
+    z.call({"cmd": "redo"})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    z.call({"cmd": "dialog", "press": "revert"})
+    time.sleep(0.3)
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "「ROM の値に戻す」で trainers.json から消える")
+    # 人のスクリプトから番号を探す（Chronos のテスト用のラベル。トレーナー 0x19E）
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "person", "index": 0, "label": "EventScript_TestFixture_Famicom", "kind": "npc"})
+    found = z.call({"cmd": "trainer.idForPerson", "index": 0})["id"]
+    check(found == 0x19E, f"人のスクリプトからトレーナーの番号が分かる（{found}）")
+    p = z.call({"cmd": "event.state"})["events"]["persons"][0]
+    z.call({"cmd": "mouse", "target": "event", "cell": [p["x"], p["y"]], "action": "rightClick"})
+    menu = z.call({"cmd": "contextMenu.state"}) or {}
+    check(any(i["id"] == "editTrainer" for i in menu.get("items", [])), "人の右クリックに「トレーナーを編集」がある")
+    z.call({"cmd": "contextMenu.press", "id": "editTrainer"})
+    time.sleep(1.0)
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(bool(dlg) and "0x19E" in dlg[-1]["title"], f"右クリックから、そのトレーナーの窓が開く（{[d.get('title') for d in dlg]}）")
+    z.call({"cmd": "dialog", "press": "cancel"})
+    z.call({"cmd": "undo"})
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -618,15 +656,17 @@ def main() -> int:
                     fn(z, shots, ctx)
                 except Exception as e:  # noqa: BLE001
                     check(False, f"{name}: 例外 {e}")
-    if args.chronos and (not args.only or "hoverAsm" in args.only):
+    for name, fn in (("hoverAsm", check_hover_asm), ("trainerEdit", check_trainer_edit)):
+        if not args.chronos or (args.only and name not in args.only):
+            continue
         root = pathlib.Path(args.chronos)
         with tempfile.TemporaryDirectory(prefix="zzm-p3view-", ignore_cleanup_errors=True) as profile, Zigzagu(args.exe, profile=profile, extra=["--mute-audio"]) as z:
             z.call({"cmd": "open", "rom": str(root / "base" / "BPRJ0.gba"), "project": str(root / "cfru")})
-            print("== hoverAsm")
+            print(f"== {name}")
             try:
-                check_hover_asm(z, shots, {})
+                fn(z, shots, {})
             except Exception as e:  # noqa: BLE001
-                check(False, f"hoverAsm: 例外 {e}")
+                check(False, f"{name}: 例外 {e}")
     work.cleanup()
     print(f"失敗 {len(failures)} 件")
     return 1 if failures else 0

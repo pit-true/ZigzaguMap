@@ -3,6 +3,7 @@ import type { CommandBus, CommandEvent } from "../../command/CommandBus.js";
 import { flattenCommandRecords } from "../../command/CommandGroup.js";
 import type { MapId } from "../../map/types.js";
 import { readTextIfExists, type ProjectFs } from "../../project/ProjectFs.js";
+import { MAPS_DIR, isNumericName } from "../../project/paths.js";
 import { EVENT_SCRIPTS_PATH } from "../project/EventScriptsFile.js";
 import { EventLabelStore, type EventLabelSavePlan, type EventLabelSnapshot, type EventLabelTarget, type EventPositions } from "./EventLabelStore.js";
 import { parseMapLabelsPath } from "./MapLabelsJson.js";
@@ -61,10 +62,10 @@ export class EventLabelProject {
     if (!fs) return new EventLabelProject(new EventLabelStore(""));
     const scripts = (await readTextIfExists(fs, EVENT_SCRIPTS_PATH)) ?? "";
     const files: { path: string; text: string }[] = [];
-    for (const bank of await fs.list("maps")) {
-      if (!/^[0-9]+$/.test(bank)) continue;
-      for (const name of await fs.list(`maps/${bank}`)) {
-        const path = `maps/${bank}/${name}`;
+    for (const bank of await fs.list(MAPS_DIR)) {
+      if (!isNumericName(bank)) continue;
+      for (const name of await fs.list(`${MAPS_DIR}/${bank}`)) {
+        const path = `${MAPS_DIR}/${bank}/${name}`;
         if (parseMapLabelsPath(path)) files.push({ path, text: await fs.readText(path) });
       }
     }

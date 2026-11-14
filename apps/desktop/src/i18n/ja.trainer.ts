@@ -1,3 +1,5 @@
+import { ini } from "./ini";
+
 /** トレーナー（#244・#245）の文言（ZigzaguMap 独自）。 */
 export const jaTrainer = {
   choice: (id: number, className: string, name: string, party: number, uses: number, edited: boolean) =>
@@ -16,4 +18,23 @@ export const jaTrainer = {
   partyHint: "例: 0x10 9, 0x13 8",
   badParty: (text: string) => `手持ちが読めません: ${text}（「種族 レベル」をカンマで区切って 1〜6 匹）`,
   defaultName: "タロウ",
+  // ---- トレーナーを直す窓（#274）----
+  menuEdit: "トレーナーを編集",
+  editTitle: (id: number) => `トレーナーを編集（0x${id.toString(16).toUpperCase()}）`,
+  editIntroRom: "ROM の表の値です。直して「OK」を押すと maps\\trainers.json に書きます（出力のとき）。",
+  editIntroEdited: "maps\\trainers.json の値です。「ROM の値に戻す」で trainers.json から消します。",
+  items: "持ち物（4 つ）",
+  doubleBattle: "ダブルバトル",
+  aiFlags: "AI",
+  revert: "ROM の値に戻す",
+  removeEntry: "trainers.json から消す",
+  ok: ini.EndnutzerForm["13"],
+  cancel: ini.EndnutzerForm["12"],
+  askId: "直すトレーナーの番号（このイベントのスクリプトからは見つかりませんでした）",
+  askIdTitle: "トレーナーを編集",
+  outOfRange: (id: number) => `トレーナーの番号 0x${id.toString(16).toUpperCase()} は表にありません`,
+  saved: (id: number, name: string) => `トレーナー 0x${id.toString(16).toUpperCase()}（${name}）を直しました（出力で maps\\trainers.json に書きます）`,
+  reverted: (id: number) => `トレーナー 0x${id.toString(16).toUpperCase()} を ROM の値に戻しました`,
+  unchanged: "変わったところはありません",
+  needProject: "トレーナーを直すには、プロジェクトフォルダ（CFRU-JP のフォルダ）を開いてください（maps\\trainers.json に書くため）",
 };

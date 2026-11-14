@@ -14,6 +14,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import AppError, Zigzagu  # noqa: E402
@@ -58,6 +59,11 @@ def main() -> int:
         g1 = z.call({"cmd": "trainer.generate", "bank": 3, "map": 19, "seed": 7})
         g2 = z.call({"cmd": "trainer.generate", "bank": 3, "map": 19, "seed": 7})
         check(g1["party"] == g2["party"] and 1 <= len(g1["party"]) <= 3, f"自動生成は同じ種なら同じ（{g1['party']}）")
+        z.call({"cmd": "trainer.edit", "id": 1})
+        time.sleep(0.3)
+        st2 = z.call({"cmd": "status"})
+        check(st2["error"] and "プロジェクトフォルダ" in st2["left"] and not z.call({"cmd": "dialogs"})["dialogs"],
+              f"プロジェクトフォルダが無いとトレーナーを直す窓は出さず知らせる（{st2['left']}）")
         z.call({"cmd": "event.select", "kind": "person", "index": 0})
         f = z.call({"cmd": "getField", "id": "event.person.flagUnused"})
         check(not f["visible"], "プロジェクトフォルダが無いと「未使用」ボタンは出ない")

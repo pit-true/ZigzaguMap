@@ -23,4 +23,17 @@ export const trainerCommands: CommandTable = {
     const t = app.state.session?.trainers;
     return t ? { trainers: t.trainers, modified: t.isModified(), loadError: t.loadError } : null;
   },
+  // トレーナーを直す窓（#274）。`id` か、表示中のマップの人 `person`（スクリプトから番号を探す）。窓を出したまま返す
+  // （`setField` の `trainerEdit.*` と `dialog` の `ok` / `cancel` / `revert` で答える）。
+  "trainer.edit": async (app: App, req) => {
+    if (typeof req["person"] === "number") {
+      const found = await app.trainers.idForPerson(req["person"]);
+      void app.trainers.editForPerson(req["person"]);
+      return { id: found };
+    }
+    const id = int(req, "id");
+    void app.trainers.edit(id);
+    return { id };
+  },
+  "trainer.idForPerson": async (app: App, req) => ({ id: await app.trainers.idForPerson(int(req, "index")) }),
 };

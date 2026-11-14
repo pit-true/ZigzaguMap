@@ -1,8 +1,8 @@
-import { writeIndentedJson, type BochiJsonValue } from "../project/BochiJson.js";
-import { asRecord, parseJsonObject, readInt } from "../project/jsonRead.js";
-import { ProjectFormatError } from "../project/ProjectFormatError.js";
-import { readTextIfExists, type ProjectFs } from "../project/ProjectFs.js";
-import { PARTY_FLAG_CUSTOM_MOVES, PARTY_FLAG_HAS_ITEM, TRAINER_ID_MAX, type TrainerData, type TrainerMon } from "./TrainerTable.js";
+import { writeIndentedJson, type BochiJsonValue } from "./BochiJson.js";
+import { asRecord, parseJsonObject, readInt } from "./jsonRead.js";
+import { ProjectFormatError } from "./ProjectFormatError.js";
+import { readTextIfExists, type ProjectFs } from "./ProjectFs.js";
+import { PARTY_FLAG_CUSTOM_MOVES, PARTY_FLAG_HAS_ITEM, TRAINER_ID_MAX, type TrainerData, type TrainerMon } from "../trainer/TrainerTable.js";
 
 /**
  * `maps\trainers.json`: ZigzaguMap で足した・変えたトレーナー（#245）。ZigzaguMap は ROM へ書かないので、
@@ -21,7 +21,8 @@ import { PARTY_FLAG_CUSTOM_MOVES, PARTY_FLAG_HAS_ITEM, TRAINER_ID_MAX, type Trai
  * - `Label` は記録用（そのトレーナーを置いたスクリプト）。知らない項目は残す。
  */
 
-export const TRAINERS_JSON_PATH = "maps/trainers.json";
+export { TRAINERS_JSON_PATH } from "./paths.js";
+import { TRAINERS_JSON_PATH } from "./paths.js";
 export const TRAINERS_JSON_FORMAT = 1;
 /** 手持ちの数の上限。 */
 export const TRAINER_PARTY_MAX = 6;

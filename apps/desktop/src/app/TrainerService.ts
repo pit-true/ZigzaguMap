@@ -1,4 +1,5 @@
 import {
+  RemoveTrainerCommand,
   SetTrainerCommand,
   TRAINER_CLASS_COUNT,
   TrainerTable,
@@ -16,6 +17,11 @@ import type { App } from "./App";
 import type { TemplatePlaceRequest } from "../ui/event/TemplatePlacer";
 import type { NewTrainerSource } from "../ui/event/TemplatePicker";
 import { jaTrainer } from "../i18n/ja.trainer";
+import { inputDialog } from "../ui/InputDialog";
+import { showError } from "../ui/MessageBox";
+import type { TrainerEditResult } from "../ui/trainer/TrainerEditDialog";
+import { hex, parseNumber } from "../ui/trainer/trainerText";
+import { errorText } from "../util/errors";
 
 /** 一覧の 1 行（trainers.json で変えたか、ほかで使っているか）。 */
 export interface TrainerListItem extends TrainerSummary {
@@ -133,8 +139,106 @@ export class TrainerService {
         const g = await this.generate(map, seed);
         return { party: g.party, note: jaTrainer.generated(g.maps.map((m) => `${m.bank}.${m.map}`).join("・"), g.party.length) };
       },
-      speciesName: (n) => this.app.state.session?.speciesNames?.name(n, this.app.state.session.project.textCodec) ?? `#${n}`,
+      speciesName: (n) => this.speciesName(n),
     };
+  }
+
+  /**
+   * 表示中のマップの人 `index` のスクリプトが使っているトレーナーの番号（`trainer`・`trainerbattle*` の番号。#226 の要約から）。
+   * 見つからなければ null。
+   */
+  async idForPerson(index: number): Promise<number | null> {
+    const map = this.app.state.map;
+    const person = map?.doc.events?.persons[index];
+    if (!map || !person) return null;
+    const summaries = await this.app.events.eventSummaries();
+    const result = await summaries.summarize({ map: map.id, kind: "person", index }, person.script);
+    if (result.kind !== "summary") return null;
+    for (const e of result.summary.entries) if (e.type === "trainer" && e.id !== null) return e.id;
+    return null;
+  }
+
+  /**
+   * イベントタブの右クリック「トレーナーを編集」（#274）: 人のスクリプトのトレーナーを直す窓を出す。番号が見つからなければ聞く。
+   * 窓を閉じるまで待つ。直したら true。
+   */
+  async editForPerson(index: number): Promise<boolean> {
+    if (!this.app.state.session?.projectDir) {
+      this.app.state.setStatus(jaTrainer.needProject, undefined, true);
+      return false;
+    }
+    let id = await this.idForPerson(index).catch(() => null);
+    if (id === null) {
+      const answer = await inputDialog(jaTrainer.askIdTitle, jaTrainer.askId, hex(1));
+      if (answer === null) return false;
+      try {
+        id = parseNumber(answer);
+      } catch (e) {
+        await showError(errorText(e));
+        return false;
+      }
+    }
+    return this.edit(id);
+  }
+
+  /**
+   * トレーナー `id` を直す窓を出し、答えを書く（`setTrainer`。ROM の表と同じに戻したら `removeTrainer`）。`answer` を渡すと窓を出さない（自動操作）。
+   * 元に戻せる。書いたら true。
+   */
+  async edit(id: number, answer?: TrainerEditResult | null): Promise<boolean> {
+    const session = this.app.state.session;
+    if (!session) return false;
+    // trainers.json はプロジェクトフォルダの maps\ に書くので、フォルダが要る
+    if (!session.projectDir) {
+      this.app.state.setStatus(jaTrainer.needProject, undefined, true);
+      return false;
+    }
+    const table = this.rom();
+    const base = table.get(id);
+    const edited = session.trainers.get(id);
+    const current = edited ?? base;
+    if (!current) {
+      this.app.state.setStatus(jaTrainer.outOfRange(id), undefined, true);
+      return false;
+    }
+    const result =
+      answer !== undefined
+        ? answer
+        : await (await import("../ui/trainer/TrainerEditDialog")).openTrainerEditDialog({
+            current,
+            edited: !!edited,
+            inRom: !!base,
+            classes: this.classNames(),
+            speciesName: (n) => this.speciesName(n),
+          });
+    if (!result) return false;
+    let command: Command | null = null;
+    let status: string;
+    if (result.kind === "revert" || (base && sameTrainer(result.trainer, base))) {
+      command = edited ? new RemoveTrainerCommand({ id }) : null;
+      status = command ? jaTrainer.reverted(id) : jaTrainer.unchanged;
+    } else if (edited && sameTrainer(result.trainer, edited)) {
+      status = jaTrainer.unchanged;
+    } else {
+      command = new SetTrainerCommand({ trainer: result.trainer });
+      status = jaTrainer.saved(id, result.trainer.name);
+    }
+    if (command) {
+      try {
+        session.bus.execute(command);
+      } catch (e) {
+        await showError(errorText(e));
+        return false;
+      }
+    }
+    this.syncUsage();
+    this.app.state.setStatus(status);
+    return command !== null;
+  }
+
+  /** 種族名（無ければ `#番号`）。 */
+  speciesName(n: number): string {
+    return this.app.state.session?.speciesNames?.name(n, this.app.state.session.project.textCodec) ?? `#${n}`;
   }
 
   /** ひな形の拡張: 新しいトレーナーがあれば setTrainer を足す。 */
@@ -142,4 +246,10 @@ export class TrainerService {
     const t: TrainerEntry | undefined = request.values.newTrainer;
     return request.kind === "trainer" && t ? [new SetTrainerCommand({ trainer: t, bank: map.bank, map: map.map })] : [];
   }
+}
+
+/** トレーナーの中身が同じか（番号・記録用のラベル・知らない項目は見ない）。 */
+function sameTrainer(a: TrainerData, b: TrainerData): boolean {
+  const pick = (t: TrainerData) => [t.partyFlags, t.trainerClass, t.music, t.female, t.pic, t.name, t.items, t.doubleBattle, t.aiFlags >>> 0, t.party];
+  return JSON.stringify(pick(a)) === JSON.stringify(pick(b));
 }
