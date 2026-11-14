@@ -117,7 +117,8 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     z.call({"cmd": "undo"})
 
-    # マップ作成補助の窓のブロック一覧（#338）: 0x011 を押すと 0x010 を選び、矩形に入った 0x011 は空き
+    # マップ作成補助の窓のブロック一覧（#338）: 0x011 を押すと 0x010 を選び、矩形に入った 0x011 は空き（上の取り消しで 3 層も戻ったので、もう一度）
+    make_triple(z, 0x10)
     open_assist(z)
     win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
     win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
@@ -130,6 +131,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     if shots:
         save_png(win(z, {"cmd": "canvasPng", "id": "assist.source"}), shots / "pen_triple_assist.png")
     win(z, {"cmd": "close"})
+    z.call({"cmd": "undo"})
 
 
 def block_at(cells: list[int], w: int, x: int, y: int) -> int:
@@ -317,7 +319,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     win(z, {"cmd": "click", "id": "assist.put"})
     win(z, {"cmd": "setField", "id": "assist.name", "value": "テストの面"})
     shot_w = win(z, {"cmd": "state"})
-    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
+    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1, "blocks": [0x001]} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
     if shots:
         save_png(z.call({"cmd": "screenshot", "window": "map-assist"}), shots / "pen_assist_window.png")
     win(z, {"cmd": "click", "id": "assist.save"})
