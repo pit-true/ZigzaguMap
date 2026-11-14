@@ -2,6 +2,7 @@
 
 mod automation;
 mod capture;
+mod clipboard;
 mod files;
 mod offscreen;
 mod pick;
@@ -168,6 +169,7 @@ pub fn run() {
             pick::cursor_color,
             pick::window_pixel,
             automation::automation_capture,
+            clipboard::clipboard_write_image,
         ])
         .build(tauri::generate_context!())
         .expect("ZigzaguMap の起動に失敗しました");
