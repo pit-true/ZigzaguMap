@@ -7,7 +7,12 @@ import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
+import { jaEventView } from "../i18n/ja.eventView";
+import { jaTownMini } from "../i18n/ja.townMini";
+import { jaPointers } from "../i18n/ja.pointers";
+import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
+import { jaAssist } from "../i18n/ja.assist";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -86,6 +91,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
+        // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
+        { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
         {
           // 隣のマップの帯（Phase3。ZigzaguMap 独自）
           label: jaNeighbors.menu,
@@ -100,8 +107,12 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
         // 3 層の次の番号が置かれているマスの印（Phase4 #301。ZigzaguMap 独自）
         { id: "view.tripleChildMarks", label: jaPen.tripleChildMarks },
+        // 自動ペンで描けるブロックの色（Phase4 #310。ZigzaguMap 独自）
+        { id: "view.autoPenTint", label: jaPen.autoPenTint },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
+        // タウンマップの小窓（#306。ZigzaguMap 独自）
+        { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -168,6 +179,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.blockEditor", label: ja.blockEditor, accel: "R", shortcut: ctrl("B"), enable: "map" },
         { id: "tools.connections", label: ja.connections, accel: "S", shortcut: ctrl("A"), enable: "map" },
         { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", shortcut: ctrl("W"), enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #312）。自動ペンのパーツを作る・直す、範囲を塗る・整える。
+        { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
         // ZigzaguMap 独自（Phase4 #314）。別の ROM のタイルセットを新しいタイルセットとして取り込む。
@@ -182,6 +195,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", shortcut: ctrl("M"), enable: "rom" },
         // ZigzaguMap 独自（Phase3 #237）。マップ名の一部で探して開く（HexManiacAdvance の Ctrl+G。ZigzaguMap の Ctrl+G はグリッド）。
         { id: "map.find", label: jaMapFind.find, shortcut: ctrl("F"), enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #307）。今のマップのポインタと、ROM の参照元の検索（読むだけの調査の道具）
+        { id: "tools.pointers", label: jaPointers.menu, shortcut: { key: "P", ctrl: true, shift: true, text: "Ctrl+Shift+P" }, enable: "map" },
         {
           label: ja.dummyData,
           accel: "X",

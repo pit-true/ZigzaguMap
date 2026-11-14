@@ -1,5 +1,6 @@
 import { SCRIPT_EDITOR_WINDOW } from "./script-editor/protocol";
 import { WORLD_MAP_WINDOW } from "./world-map/protocol";
+import { MAP_ASSIST_WINDOW } from "./map-assist/protocol";
 
 /** 別ウィンドウの中身を組み立てる関数（そのウィンドウのコードは、ここで初めて読み込む）。 */
 type ToolWindowStarter = (label: string, root: HTMLElement) => Promise<void>;
@@ -23,6 +24,11 @@ const TOOL_WINDOWS: Readonly<Record<string, ToolWindowStarter>> = {
   "palette-editor": startBlockTool,
   "block-adjust": startBlockTool,
   transplant: startBlockTool,
+  // マップ作成補助（Phase4 #312）
+  [MAP_ASSIST_WINDOW]: async (_label, root) => {
+    const { MapAssistWindow } = await import("./map-assist/MapAssistWindow");
+    await new MapAssistWindow(root).start();
+  },
   // CodeMirror はここで初めて読み込む（メインの index.html の束には入れない）
   [SCRIPT_EDITOR_WINDOW]: async (_label, root) => {
     const { ScriptEditorWindow } = await import("./script-editor/ScriptEditorWindow");

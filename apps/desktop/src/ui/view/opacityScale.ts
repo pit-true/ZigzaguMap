@@ -6,6 +6,9 @@
 /** スライダーの目盛りの数（0〜100 の 101 段）。 */
 export const OPACITY_STEPS = 100;
 
+/** イベントの濃さ（設定の `eventOpacity`。#304）のいちばん薄い値（10%）。 */
+export const EVENT_OPACITY_MIN = 0.1;
+
 /** 設定の値 → スライダーの位置（範囲外は端に丸める）。 */
 export function sliderFromOpacity(opacity: number): number {
   if (!Number.isFinite(opacity)) return 0;

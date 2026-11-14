@@ -1,0 +1,75 @@
+/* ツール > ポインタ一覧と参照元の検索（#307）。 */
+.pointer-dialog {
+  width: 620px;
+}
+
+.pointer-note {
+  color: var(--note-text);
+  white-space: normal;
+}
+
+.pointer-table {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  font-variant-numeric: tabular-nums;
+}
+
+.pointer-results {
+  max-height: 160px;
+}
+
+.pointer-row {
+  display: grid;
+  gap: 8px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.pointer-row.cols-4 {
+  grid-template-columns: 1fr 70px 80px 100px;
+}
+
+.pointer-row.cols-2 {
+  grid-template-columns: 70px 1fr;
+}
+
+.pointer-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pointer-row.head {
+  position: sticky;
+  top: 0;
+  background: var(--face);
+  font-weight: bold;
+}
+
+.pointer-row.selected {
+  background: var(--select);
+  color: var(--select-text);
+}
+
+.pointer-search {
+  margin: 8px 0 0;
+  padding: 4px 8px 8px;
+}
+
+.pointer-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.pointer-search-row input {
+  width: 110px;
+}
+
+.pointer-status {
+  min-height: 16px;
+  margin-bottom: 4px;
+}

@@ -11,6 +11,7 @@ import { attachCellPointer } from "./CellPointer";
 import { MapCells } from "./MapCells";
 import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
+import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost, type AutoPenTool } from "./AutoPenTool";
 import { dropTripleChildren } from "./tripleRules";
 
 /** ドラッグ中の道具（Phase3 #233）。 */
@@ -40,7 +41,7 @@ const PREVIEW_ALPHA = 0.75;
  * 3 層の次の番号（#301）: どの描き方でも書かない（そのマスは今のまま）。1 つも書けなかったときはステータスバーに理由を出す。
  * 拾ったブロックが 3 層の次の番号なら、1 つ前の 3 層のブロックを選ぶ（パレットと同じ）。
  */
-export class BlockPainter {
+export class BlockPainter implements AutoPenHost {
   private drag: Drag | null = null;
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
   hoverCell: Cell | null = null;
@@ -51,6 +52,10 @@ export class BlockPainter {
   bag: MixingBag | null = null;
   /** ブロックの使用回数（袋から描くときの移動許可。App が入れる）。 */
   usage: BlockUsageService | null = null;
+  /** 自動ペン（Phase4 #310。PenExtras が入れる）。オンでパーツのブロックを選んでいれば、左ボタンの描画を受ける。 */
+  autoPen: AutoPenTool | null = null;
+  /** 最後に Ctrl＋右ドラッグで選んだ矩形（主マップとその座標。マップ作成補助の「範囲」。#312）。 */
+  lastPick: { readonly id: { bank: number; map: number }; readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -67,11 +72,13 @@ export class BlockPainter {
         else if (g.button === 0) {
           // ダブルクリックで隣のマップを開くとき、この押下で描いた分を取り消せるよう覚える
           this.cells.pressStart();
+          if (this.autoPen?.begin(cell)) return;
           this.paint(cell, false);
         } else if (g.ctrl) this.startDrag({ tool: "pick", anchor: cell, cancelled: false }, cell);
       },
       move: (cell, g) => {
         const d = this.drag;
+        if (!d && g.button === 0 && this.autoPen?.drag(cell)) return;
         if (d && !d.cancelled) {
           if (d.tool !== "pick") d.last = cell;
           this.drawPreview(d, cell);
@@ -79,6 +86,7 @@ export class BlockPainter {
       },
       up: (cell, g) => {
         this.cells.pressEnd();
+        this.autoPen?.end();
         const d = this.drag;
         this.drag = null;
         if (d) {
@@ -92,7 +100,10 @@ export class BlockPainter {
         }
         if (g.button === 2 && cell) this.pick(cell);
       },
-      hover: (cell) => this.hover(cell),
+      hover: (cell) => {
+        this.hover(cell);
+        if (!this.drag) this.autoPen?.hover(cell);
+      },
     });
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape" || !this.drag || this.drag.cancelled) return;
@@ -210,8 +221,21 @@ export class BlockPainter {
     this.state.setStatus(jaPaint.swapped(a.x, a.y, b.x, b.y));
   }
 
+  /** 自動ペンが決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる）。 */
+  writeCells(list: readonly FillCell[], merge: boolean, ownMovements: boolean): void {
+    this.write(list, true, merge, ownMovements);
+  }
+
+  /** カーソルに置く物を薄く重ねる（自動ペン。空なら消す）。 */
+  showPreview(cells: readonly FillCell[]): void {
+    if (this.drag) return;
+    if (cells.length === 0) return this.preview.end();
+    const p = this.preview.begin();
+    this.drawBlocks(p, cells.filter((c) => this.cells.resolve(c)), AUTOPEN_PREVIEW_ALPHA);
+  }
+
   /** 画面のマスのブロックと移動許可（どのマップでもなければ null）。 */
-  private cellValue(cell: Cell): number | null {
+  cellValue(cell: Cell): number | null {
     const ref = this.cells.resolve(cell);
     const grid = ref ? this.cells.gridOf(ref.id) : null;
     return ref && grid ? grid.getCell(ref.x, ref.y) : null;
@@ -238,6 +262,7 @@ export class BlockPainter {
         movements.push(v >> 10);
       }
     }
+    this.lastPick = { id: { ...this.state.map.id }, x: r.x, y: r.y, width: r.width, height: r.height };
     this.state.selectStamp({ width: r.width, height: r.height, blocks, movements });
     this.onPicked();
   }
@@ -264,7 +289,7 @@ export class BlockPainter {
   }
 
   /** ブロックを下見の Canvas に半透明で描く（矩形塗りの下見。主マップのタイルセットで描く）。 */
-  private drawBlocks(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, cells: readonly FillCell[]): void {
+  private drawBlocks(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, cells: readonly FillCell[], alpha = PREVIEW_ALPHA): void {
     const map = this.state.map;
     if (!map || cells.length === 0) return;
     const minX = Math.min(...cells.map((c) => c.x));
@@ -279,7 +304,7 @@ export class BlockPainter {
     tmp.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
     p.c.save();
     p.c.imageSmoothingEnabled = false;
-    p.c.globalAlpha = PREVIEW_ALPHA;
+    p.c.globalAlpha = alpha;
     p.c.drawImage(tmp, p.ox + minX * p.size, p.oy + minY * p.size, w * p.size, h * p.size);
     p.c.restore();
   }

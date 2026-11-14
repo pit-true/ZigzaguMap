@@ -1,4 +1,5 @@
-import type { UsageKind } from "@zigzagumap/core";
+import { ItemBallStyleCounter, type ItemBallStyle, type UsageKind } from "@zigzagumap/core";
+import { jaEventView } from "../i18n/ja.eventView";
 import { jaUsage } from "../i18n/ja.usage";
 import type { ScriptSummaries } from "../ui/event/ScriptSummaries";
 import { errorText } from "../util/errors";
@@ -10,6 +11,8 @@ export class EventActions {
   private warpMapCreatorValue: Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> | null = null;
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
+  /** 落とし物の見た目（#304。開いているセッションごとに 1 回だけ数える）。 */
+  private itemBallStyleValue: { session: unknown; style: Promise<ItemBallStyle> } | null = null;
 
   /** 窓の中身（未使用の番号・トレーナーの一覧など）。#244・#245 が足す。 */
   readonly templateSource: import("../ui/event/TemplatePicker").TemplatePickerSource;
@@ -64,6 +67,46 @@ export class EventActions {
       this.app.showError(e);
       return false;
     }
+  }
+
+  /**
+   * 「ここに落とし物を追加」（#304）: ひな形「落とし物」を見えるボール（人）で置く。道具は 1（モンスターボール）・数 1、
+   * フラグは未使用の最小、見た目と向きは全マップの落とし物でいちばん多いもの。
+   */
+  async placeItemBall(x: number, y: number): Promise<boolean> {
+    try {
+      const flag = await this.pickUnused("flag");
+      if (flag === null) return false;
+      await (await this.templatePlacer()).place({ kind: "hiddenItem", x, y, values: { ball: true, item: 1, amount: 1, flag } });
+      return true;
+    } catch (e) {
+      this.app.showError(e);
+      return false;
+    }
+  }
+
+  /**
+   * 落とし物の見た目と向きの既定（#304）。ROM と `maps\` の全マップの落とし物（ROM の finditem のスクリプトを指す人と、
+   * `maps\` の落とし物の人）を数え、いちばん多いもの。初めて使うときに数え、同じセッションの間は覚えておく。
+   */
+  itemBallStyle(): Promise<ItemBallStyle> {
+    const session = this.app.state.session;
+    if (!session) return Promise.resolve(new ItemBallStyleCounter(null).mostCommon());
+    if (this.itemBallStyleValue?.session === session) return this.itemBallStyleValue.style;
+    const style = (async () => {
+      this.app.state.setStatus(jaEventView.scanning);
+      const counter = new ItemBallStyleCounter(session.project.rom);
+      let n = 0;
+      for (const id of session.project.mapIds()) {
+        const doc = session.project.loaded(id) ?? (await session.project.peek(id).catch(() => null));
+        if (doc) counter.addMap(doc.events, new Set(doc.itemBalls.map((b) => b.personIndex)));
+        // 画面を止めないよう、ときどき待ち時間をはさむ
+        if (++n % 32 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      return counter.mostCommon();
+    })();
+    this.itemBallStyleValue = { session, style };
+    return style;
   }
 
   /** イベントの削除（#220。初めて使うときに読み込む）。 */

@@ -1,0 +1,26 @@
+/* タウンマップの小窓（#306）。 */
+.town-mini .dialog-body {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.town-mini select {
+  align-self: flex-start;
+}
+
+.town-mini-canvas {
+  width: 240px;
+  height: 160px;
+  image-rendering: pixelated;
+  background: #000;
+}
+
+.town-mini-label {
+  width: 240px;
+  min-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

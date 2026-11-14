@@ -30,6 +30,8 @@ export interface NeighborLayerOptions {
 export class NeighborLayer {
   private canvases: HTMLCanvasElement[] = [];
   private frame: NeighborFrame | null = null;
+  /** 帯の上に描き足すもの（接続の境目の注意の枠など。#305）。 */
+  private readonly decorators: ((c: CanvasRenderingContext2D, bandAt: { x: number; y: number; width: number; height: number }, cellSize: number) => void)[] = [];
   /** クローンの元のマップを読み終えたら描き直す（#298。同じ関数を渡して 1 回だけ呼ばせる）。 */
   private readonly onCloneOrigin = (): void => this.draw();
 
@@ -70,6 +72,11 @@ export class NeighborLayer {
     this.frame = frame && main && frame.main.bank === main.id.bank && frame.main.map === main.id.map ? frame : null;
     if (this.frame || !frame) this.view.setMargins(this.frame?.layout.margins ?? { left: 0, top: 0, right: 0, bottom: 0 });
     this.draw();
+  }
+
+  /** 帯の上に描き足すものを登録する（帯を描くたびに、暗くしたあとで呼ぶ。座標は主マップの左上が原点）。 */
+  addDecorator(draw: (c: CanvasRenderingContext2D, bandAt: { x: number; y: number; width: number; height: number }, cellSize: number) => void): void {
+    this.decorators.push(draw);
   }
 
   /** つまみのドラッグ中の下見: 接続の番号 `index` の帯を (dx, dy) マスずらして見せる（0, 0 で元へ）。 */
@@ -123,6 +130,7 @@ export class NeighborLayer {
       if (clones.length > 0) drawClones(c, clones, at, size, graphics, sprites);
       c.fillStyle = `rgba(0, 0, 0, ${NEIGHBOR_SHADE})`;
       c.fillRect(0, 0, w, h);
+      for (const d of this.decorators) d(c, at, size);
     });
   }
 }

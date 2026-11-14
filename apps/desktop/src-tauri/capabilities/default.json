@@ -9,7 +9,8 @@
     "palette-editor",
     "block-adjust",
     "transplant",
-    "script-editor"
+    "script-editor",
+    "map-assist"
   ],
   "permissions": [
     "core:default",

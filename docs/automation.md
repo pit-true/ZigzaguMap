@@ -43,6 +43,9 @@ python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り
     # report（変わることの一覧の行）・conversion（主・副のタイル数とブロック数、変換の結果）・target。部品は tp.pickRom・tp.maps・
     # tp.parts（0 両方 / 1 主だけ / 2 副だけ）・tp.copyLayout・tp.import・tp.close・tp.preview・tp.primaryInfo・tp.secondaryInfo・tp.report。
     # 元の ROM は queuePath で積んでから tp.pickRom を押す
+python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
+    # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
+    # --project を付けると「ここに落とし物を追加」も確かめる
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -89,7 +92,7 @@ python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り
 | `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
-| `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
+| `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
 | `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |
 | `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
 | `commands` | | 登録されている命令の名前 |
@@ -259,6 +262,10 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `blockUsage` | `block`（省略で選んでいるブロック） | ブロックの使用回数（#235）。索引ができるまで待つ。`count`（全マップ）、`here`（表示中のマップ）、`movements`（移動許可 → 数）、`mostMovement`、`mismatches`（表示中のマップで移動許可がいちばん多い値と違うマス `x`・`y`・`movement`）、`selectedMovement`（選んでいる移動許可）、`marks`（今付けている印の数。`map`・`movement`） |
 | `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
 | `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
+| `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
+| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
+| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
+| （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 
@@ -296,6 +303,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 ## Phase3 の部品と命令（未使用の番号・ひな形・トレーナー）
 
+- イベントの種類ごとの表示（#304）: `action` か `menu.run` の `view.eventKind.person`・`view.eventKind.sign`・`view.eventKind.trap`・`view.eventKind.warp`（個人設定 `hiddenEventKinds` に隠す種類が入る）。イベントの濃さは、表示 > 移動エリアの設定の透明度（`view.opacity`）の窓のスライダー `view.eventOpacity.slider`（`setField` に 10〜100）と値 `view.eventOpacity.value`（個人設定 `eventOpacity`、0.1〜1）。比較テストは `setting` で `hiddenEventKinds` を `[]`、`eventOpacity` を 1 にしてから比べる（既定のまま）。
 - 「未使用」ボタン（#227。プロジェクトフォルダを開いているときだけ出る）: `event.person.flagUnused`・`event.trap.variableUnused`・`event.sign.hiddenIdUnused`（`click` で押す。欄を変えるコマンドを実行する）。
 - イベントタブの右クリックのメニューの「ここにひな形を置く」は項目 `placeTemplate`（`mouse` の `rightClick` で開き、`contextMenu.press`）。窓の部品は `template.kind`（種類のコンボ。項目の文字で選ぶ）、`template.graphics`・`template.flag`・`template.variable`・`template.hiddenId`・`template.item`・`template.amount`・`template.ball`・`template.martItems`（複数選択）・`template.trainer`・`template.sight`・`template.facing`・`template.text.<文の名前>`（`text` / `before` / `after` / `intro` / `defeat`）、未使用のボタン `template.flagUnused` など、新しいトレーナーの `template.newTrainer`（チェック）・`template.newTrainer.id`・`.name`・`.class`・`.pic`・`.seed`・`.generate`・`.party`、「置く」`template.place`・「キャンセル」`template.cancel`（`dialog` の `ok` / `cancel` でも押せる）。
 
@@ -320,3 +328,22 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
 - 画像のコピー（#246）: `{"cmd":"image.composite","whole":true,"events":"none","png":true}` で接続している全マップ（`whole: false` なら今のマップ）の画像を作る。`events` は `none` / `persons` / `all`、`scale` で縮める割合（省くと辺が 16,384 画素を超えるときは収まるまで縮める。ダイアログは出さない）。返事は `width`・`height`・`scale`・`bounds`・`maps`（並べたマップと置き場所。最初のマップの左上が原点のマス）・`heapMb`（作っている間の JavaScript のヒープ）と、`png: true` なら PNG（Base64）。`clipboard: true` のときだけクリップボードへ渡す（既定は渡さない。テストでユーザーのクリップボードを汚さないため）。メニューは アクション `image.copyMap.<none|persons|all>`・`image.copyWhole.<none|persons|all>`。
 
+
+## Phase4 の表示・一覧・調査（列 3）
+
+命令は `apps/desktop/src/app/automation/viewTools.ts` にまとめています。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `seams.state` | `wait`（true で調べ終えるまで待つ） | 接続の境目の注意（#305）。点検した主マップ `map`、調べ終えたか `done`、崩れるマスのある接続 `issues`（接続の番号 `index`・`side`・相手 `id`・マスの数 `count`・マス `cells`（主マップの左上が原点））、ステータスバーの注意の文 `status`（出ていなければ null）、主マップのタイルセット `tilesets` と上下左右の接続の相手のタイルセット `connections`（`index`・`bank`・`map`・`primary`・`secondary`。ポインタの値） |
+| `town.state` | `wait`（true で読み込みを待つ） | タウンマップの小窓（#306）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、赤い枠 `frame`（タウンマップのマス `x`・`y`・`width`・`height`。無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。小窓を作っていなければ `open: false` だけ |
+| `town.pick` | `x`、`y`（タウンマップのマス） | 小窓のマスを押したのと同じ（地名があれば一覧を `場所:<番号>` で絞る）。返事は `region` と絞り込みの欄の文 `filter` |
+| `pointers.state` | | ポインタ一覧（#307）。開いているか `open`、上の説明 `note`、一覧 `rows`（`kind`・`index`・`location`・`value`・`bytes`）、選んでいる行 `selected`（無ければ -1）、最後の検索 `last`（`value`・`rom`・`hits`（`offset`・`place`）・`ms`・`chunks`）、最後にコピーした文字 `lastCopied`（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
+| `pointers.search` | `address`（ROM の上の位置かポインタの値。数）、`rom`（ほかの ROM のパス。省略で開いているベース ROM） | 窓を開いて参照元を探す。返事は `last` と同じ形と、探している間のいちばん長い画面の止まり `maxGapMs` |
+| `pointers.select` | `row` | 一覧の行を押したのと同じ（イベントの行ならイベントタブで選ぶ）。返事は `selected` |
+| `catalog.get` | `bank`、`map` | マップ一覧の情報（地名の番号 `region`・配置の番号 `layoutId`・名前 `name`・タイルセットの番号）。無ければ null |
+
+- ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
+- マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。
+- タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。
+- ポインタ一覧（#307）: `action` か `menu.run` の `tools.pointers`（Ctrl+Shift+P）。窓の ID は `pointers`（`ui.shot` で撮れる）、一覧 `pointers.list`・行 `pointers.row.<番号>`（`mouse` の `rightClick` で右クリックのメニュー。項目 `copyValue`・`copyBytes`・`copyLocation`）、アドレス `pointers.address`、ROM の選び方 `pointers.rom`（`base` / `other`。`other` はファイルのダイアログを出す）、「探す」`pointers.search`、結果の文 `pointers.status`・一覧 `pointers.results`（行 `pointers.result.<番号>`）、「閉じる」`pointers.close`。
