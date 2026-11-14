@@ -1,5 +1,6 @@
 import type { App } from "../App";
-import { ScriptsTableDialog, ensureScriptFile, openNewScriptDialog, scriptsTableView } from "../../ui/script/ScriptsTableDialog";
+import { ensureScriptFile, openNewScriptDialog } from "../../ui/script/NewScriptDialog";
+import { ScriptsTableDialog, scriptsTableView } from "../../ui/script/ScriptsTableDialog";
 import { listDialogs } from "./dialogs";
 import { int, settle, type AutomationRequest, type CommandTable } from "./registry";
 

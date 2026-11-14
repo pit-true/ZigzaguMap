@@ -272,7 +272,7 @@ export class MapScriptPanel {
     const resolved = ctx.session.scriptsTable.document.resolve(bank, map);
     if (!resolved) {
       ctx.state.setStatus(t.noScriptFile(bank, map), undefined, true);
-      void import("./ScriptsTableDialog").then(({ ensureScriptFile }) => ensureScriptFile(ctx.state, bank, map));
+      void import("./NewScriptDialog").then(({ ensureScriptFile }) => ensureScriptFile(ctx.state, bank, map));
       return false;
     }
     const config = this.link.configNow();
