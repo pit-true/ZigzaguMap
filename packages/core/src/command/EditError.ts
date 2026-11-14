@@ -69,6 +69,8 @@ export const EditErrorCode = {
   InvalidRawBytes: "invalidRawBytes",
   /** ブロック番号が範囲外。引数: index, count。 */
   BlockIndexOutOfRange: "blockIndexOutOfRange",
+  /** 表の最後のブロックは 3 層にできない（次のブロックが無い）。引数: index（タイルセットの中の番号）, count。 */
+  TripleLayerNoNext: "tripleLayerNoNext",
   /** タイル番号が範囲外。引数: index, count。 */
   TileIndexOutOfRange: "tileIndexOutOfRange",
   /** パレットファイルの形式が違う。引数: length。 */

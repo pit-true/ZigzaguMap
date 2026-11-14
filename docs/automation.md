@@ -33,6 +33,10 @@ python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagum
     # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直す窓（trainerEdit）も確かめる
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
+python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>]
+    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタで 3 層にする・3 層目の 4 マス・確かめの窓・1 回の取り消し・
+    # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
+    # third（3 層目の 4 タイル）・triple・thirdVisible が出る。3 層の保存は `setTripleLayer` コマンド
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。

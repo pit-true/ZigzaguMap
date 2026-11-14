@@ -1,11 +1,11 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { attributeBytes, attributeFromBytes, packTileRef, unpackTileRef } from "@zigzagumap/core";
+import { THIRD_LAYER_TILE_COUNT, attributeBytes, attributeFromBytes, isTripleLayer, packTileRef, unpackTileRef } from "@zigzagumap/core";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
-import { showError } from "../../ui/MessageBox";
+import { askYesNo, showError } from "../../ui/MessageBox";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
 import { TilesetModel } from "../TilesetModel";
-import { AttributePanel } from "./AttributePanel";
+import { AttributePanel, type AttributeBytes } from "./AttributePanel";
 import { BlockEditPanel } from "./BlockEditPanel";
 import { createBlockEditorMenu } from "./BlockEditorMenu";
 import { BlockListView } from "./BlockListView";
@@ -19,12 +19,17 @@ import { errorText } from "../../util/errors";
  * - ブロックを選ぶと、その 8 タイルと属性を手元に写して編集する（ブロック一覧とメインには「変更を保存」まで出ない）。
  * - 「変更を保存」で setBlock コマンドをメインの CommandBus で実行する（AdvanceMap は ROM へ直接書く）。
  * - メインから写しが届いたら描き直す。選んでいるブロックの確定した中身が変わったとき（アンドゥなど）だけ、手元の編集を捨てて読み直す。
+ * - 3 層のブロック（属性のビット 28〜30 が 3）は、3 層目の 4 マス（次のブロック N+1 の下層）も編集する。保存は setTripleLayer で、
+ *   N+1 の属性と上層を 0 にする（消える値があれば先に確かめる）。表の最後のブロックは 3 層にできない。
+ *   一覧で N+1 を押すと N を選ぶ。
  */
 export class BlockEditorWindow {
   private model: TilesetModel;
   private block: number | null = null;
   /** 手元で編集中の 8 タイル。 */
   private tiles: number[] | null = null;
+  /** 手元で編集中の 3 層目の 4 タイル（次のブロックの下層。次のブロックが無ければ null）。 */
+  private third: number[] | null = null;
   /** 読み込んだときの確定した中身（変わったら読み直す）。 */
   private loaded = "";
   private tile: number | null = null;
@@ -55,7 +60,10 @@ export class BlockEditorWindow {
       },
       this.sheet,
     );
-    this.attributes = new AttributePanel();
+    this.attributes = new AttributePanel({
+      accept: (next, prev) => this.acceptAttribute(next, prev),
+      changed: () => this.renderPanel(),
+    });
     const self = this;
     this.io = new TilesetIo({
       client,
@@ -102,12 +110,16 @@ export class BlockEditorWindow {
 
   // ---- 操作 ----
 
-  /** ブロックを選ぶ（8 タイルと属性を読み込む。編集中の値は捨てる）。 */
-  private selectBlock(block: number): void {
+  /** ブロックを選ぶ（8 タイルと属性を読み込む。編集中の値は捨てる）。3 層の次の番号なら 1 つ前の 3 層のブロックを選ぶ。 */
+  private selectBlock(picked: number): void {
+    const block = this.model.triple?.parentOf(picked) ?? picked;
     const tiles = this.model.blockTiles(block);
     if (!tiles) return;
     this.block = block;
     this.tiles = tiles;
+    // 3 層目は同じタイルセットの次のブロック（主の 639 番の次は副の 640 番ではない）
+    const sameTable = this.model.owner(block + 1)?.data === this.model.owner(block)?.data;
+    this.third = sameTable ? (this.model.blockTiles(block + 1)?.slice(0, THIRD_LAYER_TILE_COUNT) ?? null) : null;
     this.loaded = this.committedKey(block);
     this.attributes.show(attributeBytes(this.model.attribute(block)));
     this.renderPanel();
@@ -118,17 +130,25 @@ export class BlockEditorWindow {
     this.renderPanel();
   }
 
-  /** 8 マスの `cell` に、選んでいるタイル・反転・パレットを置く。 */
+  /** マス `cell`（0〜7 は 8 マス、8〜11 は 3 層目）の入れ物と位置。 */
+  private cellSlot(cell: number): { list: number[]; index: number } | null {
+    if (cell < 8) return this.tiles ? { list: this.tiles, index: cell } : null;
+    return this.third && this.tripleEditing() ? { list: this.third, index: cell - 8 } : null;
+  }
+
+  /** マス `cell` に、選んでいるタイル・反転・パレットを置く。 */
   private placeTile(cell: number): void {
-    if (!this.tiles || this.tile === null) return;
-    this.tiles[cell] = packTileRef({ tile: this.tile, hflip: this.panel.xflip.checked, vflip: this.panel.yflip.checked, palette: this.client.ui.palette });
+    const slot = this.cellSlot(cell);
+    if (!slot || this.tile === null) return;
+    slot.list[slot.index] = packTileRef({ tile: this.tile, hflip: this.panel.xflip.checked, vflip: this.panel.yflip.checked, palette: this.client.ui.palette });
     this.renderPanel();
   }
 
-  /** 8 マスの `cell` のタイル・反転・パレットを拾う。 */
+  /** マス `cell` のタイル・反転・パレットを拾う。 */
   private pickTile(cell: number): void {
-    if (!this.tiles) return;
-    const ref = unpackTileRef(this.tiles[cell] ?? 0);
+    const slot = this.cellSlot(cell);
+    if (!slot) return;
+    const ref = unpackTileRef(slot.list[slot.index] ?? 0);
     this.tile = ref.tile;
     this.panel.xflip.checked = ref.hflip;
     this.panel.yflip.checked = ref.vflip;
@@ -136,22 +156,50 @@ export class BlockEditorWindow {
     this.renderPanel();
   }
 
-  /** 変更を保存（選んでいるブロックの 8 タイルと属性を setBlock コマンドにする）。 */
+  /**
+   * 変更を保存（選んでいるブロックの 8 タイルと属性を setBlock コマンドにする）。
+   * 3 層にするときは setTripleLayer（3 層目の 4 マスを N+1 の下層へ書き、N+1 の属性と上層を 0 にする）。
+   */
   private async save(): Promise<void> {
     if (this.block === null || !this.tiles) return;
     const owner = this.model.owner(this.block);
     if (!owner) return;
+    const attribute = attributeFromBytes(this.attributes.bytes());
+    const base = { tileset: owner.data.pointer, secondary: owner.data.secondary, block: owner.local, tiles: [...this.tiles], attribute };
     try {
-      await this.client.execute("setBlock", {
-        tileset: owner.data.pointer,
-        secondary: owner.data.secondary,
-        block: owner.local,
-        tiles: [...this.tiles],
-        attribute: attributeFromBytes(this.attributes.bytes()),
-      });
+      if (isTripleLayer(attribute)) {
+        if (!this.third) {
+          await showError(t.tripleNoNext);
+          return;
+        }
+        if (this.nextHasData() && !(await askYesNo(t.tripleCleanup(this.block + 1)))) return;
+        await this.client.execute("setTripleLayer", { ...base, third: [...this.third] });
+      } else {
+        await this.client.execute("setBlock", base);
+      }
     } catch (e) {
       await showError(errorText(e));
     }
+  }
+
+  /** 編集中の属性が 3 層か。 */
+  private tripleEditing(): boolean {
+    return isTripleLayer(attributeFromBytes(this.attributes.bytes()));
+  }
+
+  /** 属性の欄の変更を受け付けるか（表の最後のブロックは 3 層にできない）。 */
+  private acceptAttribute(next: AttributeBytes, prev: AttributeBytes): boolean {
+    if (this.block === null || !isTripleLayer(attributeFromBytes(next)) || isTripleLayer(attributeFromBytes(prev))) return true;
+    if (this.third) return true;
+    void showError(t.tripleNoNext);
+    return false;
+  }
+
+  /** N+1 に、3 層にすると消える値（属性か上層）があるか。 */
+  private nextHasData(): boolean {
+    if (this.block === null) return false;
+    const next = this.model.blockTiles(this.block + 1);
+    return this.model.attribute(this.block + 1) !== 0 || (next?.slice(THIRD_LAYER_TILE_COUNT).some((v) => v !== 0) ?? false);
   }
 
   /** ブロックの再読み込み（写しを取り直し、選んでいるブロックを読み直す）。 */
@@ -171,6 +219,7 @@ export class BlockEditorWindow {
       if (!this.model.owner(this.block)) {
         this.block = null;
         this.tiles = null;
+        this.third = null;
         this.attributes.show([0, 0, 0, 0]);
       } else if (this.committedKey(this.block) !== this.loaded) {
         this.selectBlock(this.block);
@@ -195,13 +244,14 @@ export class BlockEditorWindow {
       block: this.block,
       offset: this.block === null ? null : this.model.blockOffset(this.block),
       tiles: this.tiles,
+      third: this.block !== null && this.third && this.tripleEditing() ? { block: this.block + 1, tiles: this.third } : null,
       palette: this.client.ui.palette,
     });
   }
 
-  /** ブロックの確定した中身（読み直すかを決める）。 */
+  /** ブロックの確定した中身（読み直すかを決める。3 層目に使う次のブロックも含める）。 */
   private committedKey(block: number): string {
-    return `${this.model.blockTiles(block)?.join(",")}|${this.model.attribute(block)}`;
+    return `${this.model.blockTiles(block)?.join(",")}|${this.model.attribute(block)}|${this.model.blockTiles(block + 1)?.join(",")}`;
   }
 
   private describe(): unknown {
@@ -213,6 +263,9 @@ export class BlockEditorWindow {
       block: this.block,
       tile: this.tile,
       tiles: this.tiles,
+      third: this.third,
+      triple: this.tripleEditing(),
+      thirdVisible: !this.panel.thirdBox.hidden,
       attribute: this.attributes.bytes(),
       palette: this.client.ui.palette,
       preview: Object.keys(this.client.ui.preview).map(Number),

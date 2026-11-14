@@ -15,6 +15,16 @@ function comboItems(names: Readonly<Record<number, string>>): string[] {
   return Array.from({ length: 256 }, (_, i) => names[i] ?? hex(i, 2));
 }
 
+/**
+ * [Hintergrund_FRLG] に無い重ね方の名前（CFRU の Triple Layer Blocks で使う値。ZigzaguMap だけの文言）。
+ * Japanese.ini に無い番号は overrides.ini に書けないので、ここで足す。
+ */
+const EXTRA_BACKGROUNDS: Readonly<Record<number, string>> = {
+  0x10: "10-通常と同じ（改造後）",
+  0x30: "30-トリプルレイヤー（次のブロックの下層を3枚目に使う）",
+  0x40: "40-下層を一番下、上層を主人公より手前に置く",
+};
+
 export const jaBlockEditor = {
   // [BlockEditorForm]
   title: B["130"],
@@ -98,7 +108,13 @@ export const jaBlockEditor = {
   /** [Verhalten_FRLG]（挙動。名前の無い値は 16 進 2 桁だけ）。 */
   behaviors: comboItems(hexRecord(ini.Verhalten_FRLG)),
   /** [Hintergrund_FRLG]（背景）。 */
-  backgrounds: comboItems(hexRecord(ini.Hintergrund_FRLG)),
+  backgrounds: comboItems({ ...hexRecord(ini.Hintergrund_FRLG), ...EXTRA_BACKGROUNDS }),
+
+  /** トリプルレイヤー（ZigzaguMap だけの文言）。 */
+  tripleHeading: (next: number) => `3層目（ブロック ${hex(next, 3)} の下層）`,
+  tripleNoNext: "次のブロックが無いため、トリプルレイヤーに設定できません。",
+  tripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3 層目に使われます。属性と上層を消します。`,
+  undrawnLayer: "実機ではこのマスは描かれません",
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */

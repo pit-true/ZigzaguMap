@@ -47,6 +47,17 @@
   font-size: 11px;
 }
 
+/* 重ね方が実機で描かれない値（5〜7）のときの注意 */
+.be-warning {
+  color: var(--error-text);
+}
+
+/* 3 層のブロックの 3 枚目（次のブロックの下層）の見出し */
+.be-third-label {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* ---- パレットエディタ ---- */
 .palette-editor {
   height: 186px;
