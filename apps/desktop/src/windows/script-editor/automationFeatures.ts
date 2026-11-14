@@ -31,6 +31,7 @@ import type { Command } from "@codemirror/view";
 import { highlightTree, tagHighlighter, tags } from "@lezer/highlight";
 import { asmSemanticTokens, parseAsmLine } from "@zigzagumap/core";
 import { settle, str } from "../../app/automation/registry";
+import { jsHeapBytes } from "../../util/jsHeap";
 import { completionAt } from "./extensions/completion";
 import { definitionAt, goToDefinition } from "./extensions/definition";
 import { BlockCommentTracker, SEMANTIC_CLASS } from "./extensions/highlight";
@@ -181,8 +182,8 @@ async function measureTyping(w: ScriptEditorWindow, at: number, count: number): 
 }
 
 function heapMb(): number | null {
-  const m = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
-  return m ? Math.round((m.usedJSHeapSize / 1048576) * 10) / 10 : null;
+  const m = jsHeapBytes();
+  return m ? Math.round((m.used / 1048576) * 10) / 10 : null;
 }
 
 const COMMAND_BY_NAME: Readonly<Record<string, Command>> = {
