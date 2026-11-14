@@ -69,6 +69,11 @@ export class ScriptEditorClient {
     return this.send(request);
   }
 
+  /** エディタの個人設定を変えたことを知らせる（メインが settings.json に残す。返事は待たない）。 */
+  setting(key: "scriptEditorTheme", value: string): void {
+    void this.send({ type: "setting", key, value }).catch(() => undefined);
+  }
+
   private send(request: ScriptEditorRequest): Promise<unknown> {
     const id = this.nextId++;
     const envelope: ScriptEditorEnvelope = { id, request };

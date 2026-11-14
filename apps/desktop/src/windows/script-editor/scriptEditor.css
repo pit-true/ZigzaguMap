@@ -113,6 +113,7 @@
 
 .se-position {
   flex: none;
+  margin-left: auto;
   color: var(--gray-text);
 }
 
@@ -251,4 +252,11 @@
 
 .rom-import-row input.invalid {
   background: #ffe0e0;
+}
+
+.se-theme {
+  flex: none;
+  height: 18px;
+  margin-top: 2px;
+  font-size: 12px;
 }

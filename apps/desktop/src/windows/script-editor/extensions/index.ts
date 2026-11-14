@@ -1,5 +1,17 @@
 import type { Extension } from "@codemirror/state";
 import { basicExtension } from "./basic";
+import { completionExtension } from "./completion";
+import { definitionExtension } from "./definition";
+import { editingExtension } from "./editing";
+import { semanticHighlightExtension } from "./highlight";
+import { hoverExtension } from "./hover";
+import { languageExtension } from "./language";
+import { lintExtension } from "./lint";
+import { phrasesExtension } from "./phrases";
+import { pinnedExtension } from "./pinned";
+import { searchExtension } from "./search";
+import { stringEditExtension } from "./stringEdit";
+import { themesExtension } from "./themes";
 import type { EditorExtensionFactory, EditorFileContext } from "./context";
 import { historyExtension } from "./history";
 import { keymapExtension } from "./keymap";
@@ -17,10 +29,22 @@ export type { EditorExtensionFactory, EditorFileContext } from "./context";
 export const EDITOR_EXTENSIONS: readonly EditorExtensionFactory[] = [
   keymapExtension,
   renameExtension,
+  definitionExtension,
+  searchExtension,
+  completionExtension,
+  lintExtension,
   historyExtension,
   basicExtension,
+  editingExtension,
+  languageExtension,
+  semanticHighlightExtension,
+  hoverExtension,
+  pinnedExtension,
+  stringEditExtension,
   lineNumbersExtension,
+  phrasesExtension,
   plainThemeExtension,
+  themesExtension,
 ];
 
 /** ファイル 1 つ分の拡張を作る。 */

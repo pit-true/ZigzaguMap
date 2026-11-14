@@ -408,6 +408,9 @@ export class ScriptHost {
         const store = this.app.state.session?.labels.store;
         return store ? store.usesOf(request.label).length + tableUses(store, request.label) : 0;
       }
+      case "setting":
+        this.app.state.settings.update({ [request.key]: request.value });
+        return null;
     }
   }
 

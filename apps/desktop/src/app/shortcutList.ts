@@ -1,4 +1,5 @@
 import { ja } from "../i18n/ja";
+import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
 /** ショートカットの一覧の 1 行。 */
@@ -29,7 +30,38 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "↑↓", action: ja.shortcuts.spin, where: ja.shortcuts.inSpin },
   { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
   { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
+  ...scriptEditorKeys(),
 ];
+
+/** スクリプトエディタ（別ウィンドウ）のキー（`windows/script-editor/` の ScriptEditorWindow.ts と extensions/ で受けているもの）。 */
+function scriptEditorKeys(): ShortcutRow[] {
+  const s = jaScriptEditorAssist.shortcuts;
+  const rows: [string, string][] = [
+    ["Ctrl+S", s.save],
+    ["Ctrl+Shift+S", s.saveAll],
+    ["Ctrl+W", s.closeTab],
+    ["Ctrl+Tab、Ctrl+Shift+Tab", s.cycleTab],
+    ["Ctrl+Space", s.complete],
+    ["F12", s.definition],
+    ["Ctrl+クリック", s.ctrlClick],
+    ["Alt+←", s.back],
+    ["Ctrl+F", s.find],
+    ["Ctrl+H", s.replace],
+    ["F3、Shift+F3", s.findNext],
+    ["Ctrl+D", s.nextOccurrence],
+    ["Ctrl+Shift+L", s.allOccurrences],
+    ["Alt+ドラッグ", s.rectangle],
+    ["Ctrl+Alt+↑↓", s.addCursor],
+    ["Alt+↑↓", s.moveLine],
+    ["Shift+Alt+↑↓", s.copyLine],
+    ["Ctrl+/", s.comment],
+    ["F8", s.nextDiagnostic],
+    ["Ctrl+Shift+M", s.diagnostics],
+    ["Ctrl+Alt+G", s.gotoLine],
+    ["Tab", s.indent],
+  ];
+  return rows.map(([keys, action]) => ({ keys, action, where: s.where }));
+}
 
 /** メニューの全項目から、ショートカットを持つものを「メニュー > 項目」の形で集める。 */
 function menuRows(items: readonly MenuItem[], path: readonly string[]): ShortcutRow[] {

@@ -55,7 +55,9 @@ export type ScriptEditorRequest =
   /** エディタでラベル名を変えた（#203。メインはイベントと eventscripts の側を変えるコマンドを実行する）。返事は変えた数。 */
   | { readonly type: "labelRenamed"; readonly from: string; readonly to: string; readonly path: string }
   /** そのラベルを使っているイベントとマップスクリプトの数（手で名前を変えて保存したときに聞く）。 */
-  | { readonly type: "labelUses"; readonly label: string };
+  | { readonly type: "labelUses"; readonly label: string }
+  /** エディタの個人設定を変えた（メインが settings.json に残す。今はテーマ `scriptEditorTheme` だけ）。 */
+  | { readonly type: "setting"; readonly key: "scriptEditorTheme"; readonly value: string };
 
 /** `hello` の返事。 */
 export interface ScriptEditorHello {

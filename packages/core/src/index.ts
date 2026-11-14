@@ -230,3 +230,4 @@ export * from "./script/disasm/index.js";
 export * from "./script/edit/index.js";
 export * from "./script/link/index.js";
 export * from "./script/build/index.js";
+export * from "./script/assist/index.js";
