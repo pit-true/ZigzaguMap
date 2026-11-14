@@ -1,0 +1,91 @@
+/* 場所の設定タブの表示の切り替えと、「かんたん（CFRU）」表示。 */
+.header-mode {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #c8c8c8;
+}
+
+.header-mode label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-mode .header-mode-advanced[hidden] {
+  display: none;
+}
+
+.header-simple {
+  width: 520px;
+  padding: 4px 10px 16px;
+}
+
+.header-simple-section {
+  margin: 8px 0 0;
+  padding: 4px 10px 8px;
+  border: 1px solid #b8b8b8;
+}
+
+.header-simple-section legend {
+  padding: 0 4px;
+  font-weight: bold;
+}
+
+.header-simple-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: 26px;
+  padding: 2px 0;
+}
+
+.header-simple-label {
+  flex: none;
+  width: 150px;
+  padding-top: 3px;
+}
+
+.header-simple-control {
+  flex: 1;
+}
+
+.header-simple-control select {
+  max-width: 330px;
+}
+
+.header-simple-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.header-simple-short {
+  width: 56px;
+}
+
+.header-simple-note {
+  margin-top: 2px;
+  color: #555;
+  font-size: 11px;
+}
+
+.header-simple-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* マップスクリプトは従来の表示と同じ部品（座標で並べる枠）をそのまま置く。 */
+.header-simple-scripts {
+  position: relative;
+  width: 465px;
+  height: 153px;
+  margin-top: 10px;
+}
+
+.header-simple-connections {
+  margin: 2px 0 6px;
+  padding-left: 18px;
+}

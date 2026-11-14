@@ -2,6 +2,7 @@ import { formatHex } from "@zigzagumap/core";
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
 import { jaHelpViewer, jaShortcuts } from "./ja.help";
+import { jaHeaderSimple } from "./ja.headerSimple";
 import { jaView } from "./ja.view";
 import { jaWild } from "./ja.wild";
 import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
@@ -255,6 +256,7 @@ export const ja = {
 
   // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
   header: jaHeader,
+  headerSimple: jaHeaderSimple,
   conn: jaConnection,
   wild: jaWild,
 } as const;

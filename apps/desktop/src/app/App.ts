@@ -154,7 +154,7 @@ export class App implements ActionTarget {
         { id: "movement", title: ja.tabMovement, element: movementTab.element },
         { id: "event", title: ja.tabEvents, element: eventTab.element },
         { id: "wild", title: ja.tabWild, element: new WildTab(state).element },
-        { id: "header", title: ja.tabHeader, element: new HeaderTab(state).element },
+        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections() }).element },
       ],
       (id) => state.setTab(id),
     );

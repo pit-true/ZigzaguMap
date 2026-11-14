@@ -29,6 +29,9 @@ export interface MapFileEntry {
   readonly path: string;
 }
 
+/** 場所の設定タブの表示。 */
+export type HeaderView = "simple" | "classic";
+
 /** 個人設定（AppData の settings.json）。項目名は保存形式なので変えないこと。 */
 export interface SettingsData {
   grid: boolean;
@@ -59,8 +62,10 @@ export interface SettingsData {
   comboBox: boolean;
   /** 自動的にオフセットを検索する（ROM へ書かないので設定として持つだけ）。 */
   autoSearch: boolean;
-  /** 高度なヘッダーを表示。 */
+  /** 高度なヘッダーを表示（場所の設定タブの「くわしく（従来）」の中の切り替え）。 */
   advancedHeader: boolean;
+  /** 場所の設定タブの表示（`simple` = かんたん（CFRU）、`classic` = くわしく（従来））。 */
+  headerView: HeaderView;
   /** 最後に開いた ROM のショートカットを作る（exe と同じフォルダ）。 */
   romShortcut: boolean;
   /** エクスプローラーの右クリックに登録したか。 */
@@ -98,6 +103,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   comboBox: false,
   autoSearch: true,
   advancedHeader: true,
+  headerView: "simple",
   romShortcut: false,
   contextMenu: false,
   imageDir: null,
