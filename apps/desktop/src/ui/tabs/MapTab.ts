@@ -76,6 +76,11 @@ export class MapTab {
     this.showSelection();
   }
 
+  /** 右の欄のブロックパレットの上に部品を足す（使用回数など。#235）。 */
+  insertSide(element: HTMLElement): void {
+    this.palette.element.before(element);
+  }
+
   private showMap(): void {
     const map = this.state.map;
     this.view.setImage(this.state.mapImage);

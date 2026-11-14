@@ -8,6 +8,7 @@ import { fieldCommands } from "./fields";
 import { historyCommands } from "./history";
 import { hoverCommands } from "./hover";
 import { stampCommands } from "./stamps";
+import { usageCommands } from "./usage";
 import { imageCommands } from "./images";
 import { linkCommands } from "./link";
 import { menuCommands } from "./menu";
@@ -20,7 +21,7 @@ import { scriptsCommands } from "./scripts";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
 import { viewCommands } from "./view";
-import { usageCommands } from "./usage";
+import { blockUsageCommands } from "./blockUsage";
 import { templateCommands } from "./templates";
 import { trainerCommands } from "./trainers";
 import { errorText } from "../../util/errors";
@@ -45,6 +46,7 @@ const registry: CommandRegistry = new CommandRegistry([
   hoverCommands,
   historyCommands,
   stampCommands,
+  blockUsageCommands,
   viewCommands,
   processCommands,
   scriptCommands,

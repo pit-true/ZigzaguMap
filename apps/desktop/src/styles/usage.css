@@ -1,0 +1,22 @@
+/* マップタブの右の欄の使用回数と移動許可の自動選択（#235）。 */
+.block-usage {
+  flex: none;
+  padding: 2px 3px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.block-usage-auto {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.block-usage-count,
+.block-usage-most {
+  color: var(--note-text);
+}
+
+.usage-marks {
+  position: absolute;
+  pointer-events: none;
+}

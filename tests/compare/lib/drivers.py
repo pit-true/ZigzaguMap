@@ -766,6 +766,10 @@ class ZigzaguDriver(Driver):
                 self.call({"cmd": "setting", "key": "neighborView", "value": "off"})
                 # コネクションマネージャーでずれを変えても相手のマップを変えない（AdvanceMap と同じ。Phase3 の既定はそろえる）
                 self.call({"cmd": "setting", "key": "alignConnections", "value": False})
+                # ブロックを選んだときに移動許可を自動で選ばない・使用の印を描かない（AdvanceMap に無い。Phase3 #235。
+                # tests/automation/phase3_view_check.py で確かめる）
+                self.call({"cmd": "setting", "key": "autoMovement", "value": False})
+                self.call({"cmd": "setting", "key": "usageMarks", "value": False})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e
