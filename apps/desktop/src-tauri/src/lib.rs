@@ -5,6 +5,7 @@ mod capture;
 mod files;
 mod offscreen;
 mod pick;
+mod process;
 mod profile;
 mod project_fs;
 mod system;
@@ -16,6 +17,7 @@ use serde::Serialize;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use automation::Automation;
+use process::Processes;
 use profile::Profile;
 use project_fs::ProjectRoot;
 
@@ -100,6 +102,7 @@ pub fn run() {
         .manage(profile)
         .manage(automation)
         .manage(ProjectRoot::default())
+        .manage(Arc::new(Processes::default()))
         .setup(|app| {
             let args = app.state::<StartupArgs>().inner().clone();
             let profile = app.state::<Profile>().inner().clone();
@@ -150,6 +153,12 @@ pub fn run() {
             project_fs::fs_exists,
             project_fs::fs_remove,
             project_fs::fs_list,
+            project_fs::fs_stat,
+            process::process_spawn,
+            process::process_kill,
+            process::process_running,
+            process::process_launch,
+            process::process_launched,
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
@@ -163,6 +172,7 @@ pub fn run() {
         .expect("ZigzaguMap の起動に失敗しました");
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {
+            process::kill_all(handle.state::<Arc<Processes>>().inner());
             handle.state::<Profile>().cleanup();
         }
     });
