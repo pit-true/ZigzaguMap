@@ -1,4 +1,8 @@
-/* スクリプトエディタ（別ウィンドウ）。上にタブの帯、真ん中にエディタ、下にカーソルの位置とお知らせ。 */
+/*
+ * スクリプトエディタ（別ウィンドウ）。上にタブの帯、真ん中にエディタ、下にカーソルの位置とお知らせ。
+ * 色はテーマ（extensions/palettes.ts の `ui`）の CSS 変数。themes.ts の setCurrentEditorTheme が <html> に付ける
+ * （共通の `--face` などを上書きし、エディタだけの `--se-*` を足す。メインのテーマ light / dark とは別）。
+ */
 #app.script-editor {
   display: flex;
   flex-direction: column;
@@ -11,7 +15,7 @@
   min-height: 26px;
   overflow-x: auto;
   overflow-y: hidden;
-  background: var(--face);
+  background: var(--se-tab-inactive, var(--face));
   border-bottom: 1px solid var(--border);
   scrollbar-width: thin;
 }
@@ -33,8 +37,8 @@
 }
 
 .se-tab.active {
-  background: var(--window);
-  box-shadow: inset 0 2px 0 var(--select);
+  background: var(--se-tab-active, var(--window));
+  box-shadow: inset 0 2px 0 var(--se-accent, var(--select));
 }
 
 .se-tab.missing .se-tab-name {
@@ -102,6 +106,8 @@
   height: 22px;
   padding: 0 8px;
   border-top: 1px solid var(--border);
+  background: var(--se-status, var(--face));
+  color: var(--se-status-text, var(--text));
   line-height: 22px;
   white-space: nowrap;
 }
@@ -114,7 +120,7 @@
 .se-position {
   flex: none;
   margin-left: auto;
-  color: var(--gray-text);
+  opacity: 0.8;
 }
 
 /* ビルドの欄（BuildPanel.ts）。エディタの下に出す。 */
@@ -171,7 +177,7 @@
 }
 
 .se-build-problem.error {
-  color: #c00000;
+  color: var(--error-text);
 }
 
 .se-build-problem.openable {
@@ -250,8 +256,8 @@
   min-width: 0;
 }
 
-.rom-import-row input.invalid {
-  background: #ffe0e0;
+:root .rom-import-row input.invalid {
+  background: var(--error-bg);
 }
 
 .se-theme {
@@ -259,4 +265,62 @@
   height: 18px;
   margin-top: 2px;
   font-size: 12px;
+}
+
+/* 標準の部品（ボタン・入力欄・選択欄・スクロールバー）もテーマの色にする（画面内のダイアログ・ビルドの欄・下の帯）。 */
+:root[data-se-theme] button:not(.se-tab-close):not(.dialog-close) {
+  border: 1px solid var(--se-button-border);
+  border-radius: 2px;
+  background: var(--se-button);
+  color: var(--se-button-text);
+}
+
+:root[data-se-theme] button:not(.se-tab-close):not(.dialog-close):hover:not(:disabled) {
+  background: var(--se-button-hot);
+}
+
+:root[data-se-theme] button:disabled {
+  opacity: 0.5;
+}
+
+:root[data-se-theme] button:focus-visible,
+:root[data-se-theme] input:focus-visible,
+:root[data-se-theme] select:focus-visible,
+:root[data-se-theme] textarea:focus-visible {
+  outline: 1px solid var(--se-accent);
+  outline-offset: -1px;
+}
+
+:root[data-se-theme] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-se-theme] select,
+:root[data-se-theme] textarea {
+  border: 1px solid var(--se-field-border);
+  background: var(--se-field);
+  color: var(--se-field-text);
+}
+
+:root[data-se-theme] option {
+  background: var(--se-field);
+  color: var(--se-field-text);
+}
+
+:root[data-se-theme] input[type="checkbox"],
+:root[data-se-theme] input[type="radio"] {
+  accent-color: var(--se-accent);
+}
+
+:root[data-se-theme] * {
+  scrollbar-color: var(--se-scroll-thumb) var(--se-scroll-track);
+}
+
+:root[data-se-theme] .se-tab-close:hover {
+  background: var(--se-button-hot);
+}
+
+:root[data-se-theme] input::selection,
+:root[data-se-theme] textarea::selection,
+:root[data-se-theme] .se-build-log::selection,
+:root[data-se-theme] .se-build-log *::selection {
+  background: var(--select);
+  color: var(--select-text);
 }
