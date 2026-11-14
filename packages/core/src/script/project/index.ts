@@ -25,3 +25,17 @@ export {
   type EventScriptsLineType,
   type EventScriptsRemapResult,
 } from "./EventScriptsFile.js";
+export {
+  SCRIPTS_JSON_FORMAT,
+  SCRIPTS_JSON_PATH,
+  ScriptsJsonFile,
+  defaultScriptsJsonStringsPath,
+  findScriptsJsonDuplicates,
+  loadScriptsJson,
+  resolveScriptsJson,
+  saveScriptsJson,
+  type ScriptsJson,
+  type ScriptsJsonEntry,
+  type ScriptsJsonExtra,
+  type ScriptsJsonResolution,
+} from "./ScriptsJson.js";
