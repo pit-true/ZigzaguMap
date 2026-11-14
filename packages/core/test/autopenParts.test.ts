@@ -216,3 +216,21 @@ describe("ブロック → パーツの表（PartIndex）", () => {
     expect(idx.slotsIn(idx.partOf(0x104)!, 0x104)).toEqual(["C"]);
   });
 });
+
+describe("同梱の既定のパーツ（#313）", () => {
+  it("素の BPRJ の主タイルセットで、ファイルが無ければ既定を使い、保存するとファイルになる", async () => {
+    const { DEFAULT_PART_FILES } = await import("../src/autopen/defaults/bprj.js");
+    const def = DEFAULT_PART_FILES[0]!;
+    const fs = new MemoryProjectFs();
+    const lib = await AutoPenLibrary.open(fs);
+    const bprj = { ...def.tileset, fingerprint: "ffff" };
+    expect(lib.partsFor(bprj, S).map((p) => p.name)).toContain("池（岩の岸）");
+    expect(lib.usesDefaults(bprj)).toBe(true);
+    // 中身は形式として正しく、主タイルセットのブロックだけ
+    expect(parseAutoPenFile(stringifyAutoPenFile(def))).toEqual(def);
+    for (const p of def.parts) for (const g of Object.values(p.slots)) for (const c of g.cells) if (c) expect(c.block).toBeLessThan(0x280);
+    await lib.save(bprj, S, lib.partsFor(bprj, S).slice(0, 1));
+    expect(lib.usesDefaults(bprj)).toBe(false);
+    expect(lib.partsFor(bprj, S).map((p) => p.name)).toEqual(["池（岩の岸）"]);
+  });
+});
