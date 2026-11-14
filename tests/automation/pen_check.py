@@ -578,6 +578,7 @@ def main() -> None:
         shots.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="zzm-penw-", ignore_cleanup_errors=True) as tmpwork:
         work = pathlib.Path(a.work) if a.work else pathlib.Path(tmpwork)
+        work.mkdir(parents=True, exist_ok=True)  # 無いフォルダを開くとダイアログが出て open が返らない（#372）
         ctx = {"rom": a.rom, "work": work}
         for name, fn in CHECKS.items():
             if a.only and name not in a.only:
