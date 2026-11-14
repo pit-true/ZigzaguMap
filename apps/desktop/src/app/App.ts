@@ -126,6 +126,8 @@ export class App implements ActionTarget {
     this.actions.register("map.saveCreatedAs", () => this.newMaps.saveAs());
     this.actions.register("map.insert", () => this.newMaps.insert());
     this.actions.register("dummy.manage", () => this.newMaps.bankHeader());
+    // ツール > スクリプトファイルの対応表（maps\scripts.json）。画面のコードは初めて開くときに読み込む。
+    this.actions.register("tools.scriptsTable", async () => (await import("../ui/script/ScriptsTableDialog")).ScriptsTableDialog.get(this).open());
     this.menu = new MenuBar({
       items: () => this.menuItems(),
       isEnabled: (item) => this.actions.isEnabled(item),

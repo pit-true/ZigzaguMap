@@ -39,3 +39,33 @@ export {
   type ScriptsJsonExtra,
   type ScriptsJsonResolution,
 } from "./ScriptsJson.js";
+export {
+  ScriptsTableDocument,
+  isScriptsTableContext,
+  scriptsTableContext,
+  withScriptsTable,
+  type ScriptsTableContext,
+  type ScriptsTableRow,
+  type ScriptsTableSnapshot,
+} from "./ScriptsTableDocument.js";
+export {
+  AddScriptsTableEntryCommand,
+  MoveScriptsTableEntryCommand,
+  OVERWORLD_SCRIPTS_DIR,
+  RemoveScriptsTableEntryCommand,
+  SCRIPTS_TABLE_COMMANDS,
+  STRINGS_DIR,
+  SetScriptsTableEntryCommand,
+  entryArgs,
+  newScriptPath,
+  normalizeScriptPath,
+  registerScriptsTableCommands,
+  scriptPathProblem,
+  type AddScriptsTableEntryArgs,
+  type MoveScriptsTableEntryArgs,
+  type RemoveScriptsTableEntryArgs,
+  type ScriptPathProblem,
+  type ScriptsTableEntryArgs,
+  type SetScriptsTableEntryArgs,
+} from "./ScriptsTableCommands.js";
+export { NEW_SCRIPT_FILE_TEXT, NEW_STRINGS_FILE_TEXT, ScriptsTableProject } from "./ScriptsTableProject.js";

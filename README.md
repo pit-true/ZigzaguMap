@@ -306,7 +306,7 @@ Phase2 で作っている途中の機能です。実装した分の仕様をこ�
 
 ### eventscripts と maps\scripts.json
 
-読み書きは core の `script/project/` にあります（画面はまだありません）。
+読み書きは core の `script/project/` にあります。scripts.json の画面は「[scripts.json の編集画面](#scriptsjson-の編集画面)」です。
 
 - eventscripts は 1 行 1 件で `種別 バンク マップ [番号] シンボル` と書きます。種別は `map` / `npc` / `trainer` / `item` / `tile` / `sign` で、大文字小文字は区別しません。行の見分け方は CFRU の `scripts/insert.py` に合わせています。トークンの数が違う行や、`npc` などで番号が無い行は「読めない行」として残します（insert.py も使いません）。
 - コメント（`#` で始まる行）、空行、`#include` / `#define` / `#ifdef` / `#ifndef` / `#else` / `#endif` の行、読めない行は、どれも元の位置にそのまま残します。改行（LF / CRLF / CR）も行ごとに覚えるので、読んで書き戻すと 1 バイトも変わりません。編集で変わるのは、足す・変える・消す行だけです。
@@ -398,7 +398,21 @@ ROM のスクリプトのバイト列を、`xse_commands.s` の書き方の文�
 
 ### scripts.json の編集画面
 
-<!-- #201 -->
+ツール > スクリプトファイルの対応表 で開きます（CFRU-JP のフォルダを開いているときだけ）。開いたままマップを切り替えられます。
+
+- 表の 1 行は、バンク・マップ・マップ名・`.s`・`.string` です。マップを空欄にするとバンク全体の行になります。同じバンク・マップを指す行が複数あると、前の行だけが使われます（後ろの行は灰色にし、下に警告を出します）。「上へ」「下へ」で並びを変えられます。
+- `.string` の欄には、`.s` を入れると `strings/overworld_strings_<.s の名前>.string` が自動で入ります。手で書き換えたら、そのまま残します。既定の名前のままなら、scripts.json の `Strings` は省いて書きます（読むときは同じ名前になります）。
+- パスはプロジェクトフォルダからの相対パスで、`\` で入れても `/` にそろえます。`..` や絶対パスは使えません。拡張子は `.s` と `.string` です。
+- 行の追加・「変更を保存」・削除・並べ替えは、どれもアンドゥできます（Ctrl+Z / Ctrl+Y）。削除しても `.s` と `.string` のファイルは消しません。
+- maps\scripts.json に書くのは出力（Ctrl+S）のときだけです。表を変えていなければ、scripts.json には触りません（手で書いた整形もそのまま残ります）。scripts.json の形式が不正なときは、表を出さずに理由を出し、編集も上書きもしません。
+
+`.s` を新しく作る:
+
+- 「新しい .s を作る」を押すと、ファイル名の入力が出ます。ファイル名（例 `03_00_masara`。`.s` は付けても付けなくてもよい）・バンク・マップ・マップ名・`.string` を入れて「作成」を押すと、対応表に行が足されます。マップにスクリプトが要るのに対応する `.s` が無いとき（イベントを置いたときなど）も、同じ入力が出ます。
+- 作る場所は `assembly/overworld_scripts/<ファイル名>.s` と、`strings` の下の `.string` です。ファイル名に使えるのは半角の英数字と `_` `-` `.` だけです。
+- `.s` の中身は、ND と Chronos の既存の `.s` と同じ先頭（`.text`、`.thumb`、`.align 2`、空行、`.include "../xse_commands.s"`、`.include "../xse_defines.s"`、`.include "../asm_defines.s"`）と空行 1 つです（UTF-8・LF）。`.string` は空のファイルです。
+- ファイルを作るのも出力（Ctrl+S）のときです。出力の前にアンドゥで行を消せば、ファイルは作りません。出力のときに同じ名前のファイルが既にあれば、書き換えずにそのまま使います。入力のときに `.s` が既にあれば、作らずに表に足すだけにするかを聞きます。
+- ビルド（ND の `python scripts/make.py`、Chronos の `python build.py`）は `assembly/` の `.s` と `strings/` の `.string` をすべて拾うので、作ったファイルはそのままビルドに入ります。
 
 ### 外部コマンドの実行（Rust）
 
@@ -634,6 +648,8 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 | `maps\project.json` | 何か書くときに無ければ作る | `{"Format":1,"BaseBankCounts":[…]}`（ベース ROM のバンクごとのマップ数。字下げなし） |
 | `maps\tilesets\<primary\|secondary>_<ヘッダーの位置 6 桁>\tileset.json` と `tiles.png` | ブロックエディタなどで変えたタイルセット。ベース ROM と同じに戻ったら消す | Bochi と同じ。`tileset.json` は `Format`・`HeaderAddress`・`Secondary`・`New`・`Header`・`TileCount`・`BlockCount`・`BlockBytes`・`BehaviorBytes`・`Compressed`・`ImageSha256`・`Palettes`・`Blocks`・`Behaviors`、`tiles.png` はタイルのインデックス PNG |
 | `assembly\overworld_scripts\HiddenItem.s` | 落とし物（人の ItemBalls）が変わったとき | `@ BBE-BEGIN <識別子>`〜`@ BBE-END <識別子>` の生成範囲だけを作り直す（手書き部分は残す。Bochi と同じ）。ラベルは `HiddenItem_BB_MM_<識別子>` |
+| `maps\scripts.json` | ツール > スクリプトファイルの対応表で表を変えたとき（変えていなければ触らない） | 「[eventscripts と maps\scripts.json](#eventscripts-と-mapsscriptsjson)」 |
+| `assembly\overworld_scripts\<名前>.s` と `strings\<名前>.string` | 対応表の「新しい .s を作る」で足した行があるとき。既にあるファイルは書き換えない | `.s` は決まった先頭（「[scripts.json の編集画面](#scriptsjson-の編集画面)」）、`.string` は空 |
 | `maps\regionmap.json` | タウンマップ・フライトポジションを変えたとき。全部ベース ROM と同じに戻ったら消す | 「[maps\regionmap.json](#mapsregionmapjson)」 |
 
 JSON はどれも Bochi（.NET の System.Text.Json）と同じ整形です。2 空白の字下げ、改行は CRLF、末尾に改行 1 つ、バイト列は base64、文字列は ASCII の表示文字以外と `"` `&` `'` `+` `<` `>` と逆引用符を `\uXXXX` にします（`\` は `\\`）。同じタイルセットを使うマップはどれも、次に開いたときから `maps\tilesets` の内容で読みます。

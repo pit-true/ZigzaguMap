@@ -75,6 +75,10 @@ export const EditErrorCode = {
   DuplicatePaletteColors: "duplicatePaletteColors",
   /** 画像の形式が違う。引数: reason。 */
   InvalidImage: "invalidImage",
+  /** scripts.json の対応表の行の番号が範囲外。引数: index, count。 */
+  ScriptsTableIndexOutOfRange: "scriptsTableIndexOutOfRange",
+  /** 対応表の `.s` / `.string` のパスが使えない。引数: field（script / strings）, path, reason（empty / absolute / parent / extension / folder / chars）。 */
+  InvalidScriptPath: "invalidScriptPath",
 } as const;
 
 /** 編集コマンドの入力エラーの種類。 */

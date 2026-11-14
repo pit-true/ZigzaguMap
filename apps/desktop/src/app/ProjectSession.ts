@@ -4,10 +4,12 @@ import {
   OverworldSprites,
   RegionMapProject,
   Rom,
+  ScriptsTableProject,
   SpeciesNameTable,
   createDefaultRegistry,
   detectGame,
   withRegionMap,
+  withScriptsTable,
   type CommandRegistry,
   type MapDocument,
   type MapId,
@@ -53,8 +55,11 @@ export class ProjectSession {
     private catalogValue: MapCatalog,
     /** 開くのにかかった時間（ミリ秒）。 */
     readonly loadMs: number,
+    /** maps\scripts.json の対応表（開いたときに読む。小さなファイル 1 つだけ）。 */
+    readonly scriptsTable: ScriptsTableProject,
   ) {
-    this.bus = new CommandBus(withRegionMap(project.editorContext(), () => this.requireRegionMap().document));
+    const context = withRegionMap(project.editorContext(), () => this.requireRegionMap().document);
+    this.bus = new CommandBus(withScriptsTable(context, () => this.requireScriptsTable().document));
   }
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
@@ -66,7 +71,8 @@ export class ProjectSession {
     await fs.setRoot(projectDir);
     const project = await CfruProject.open(bytes, fs);
     const catalog = await MapCatalog.build(project);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start);
+    const scripts = await ScriptsTableProject.open(fs.root ? fs : null);
+    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts);
   }
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
@@ -161,6 +167,17 @@ export class ProjectSession {
     return this.regionMapValue;
   }
 
+  private requireScriptsTable(): ScriptsTableProject {
+    const error = this.scriptsTable.loadError;
+    if (error !== null) throw new Error(`maps/scripts.json を読めないため編集できません: ${error}`);
+    return this.scriptsTable;
+  }
+
+  /** プロジェクトフォルダのファイルがあるか（フォルダが無ければ false）。 */
+  async fileExists(path: string): Promise<boolean> {
+    return this.fs.root !== null && (await this.fs.exists(path));
+  }
+
   /** そのマップが読み込み済みか。 */
   isLoaded(id: MapId): boolean {
     return this.project.loaded(id) !== undefined;
@@ -171,9 +188,9 @@ export class ProjectSession {
     return this.project.isModified(id);
   }
 
-  /** 未出力の変更があるか（マップ・タイルセット・マップ名）。 */
+  /** 未出力の変更があるか（マップ・タイルセット・マップ名・scripts.json の対応表）。 */
   hasUnsavedChanges(): boolean {
-    return this.project.hasUnsavedChanges();
+    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified();
   }
 
   /**
@@ -216,11 +233,15 @@ export class ProjectSession {
     if (dir !== undefined) await this.fs.setRoot(dir);
     if (!this.fs.root) throw new Error("出力先のフォルダが決まっていません");
     const result = await this.project.save();
+    const parts = [result];
     // フライトポジションは maps\regionmap.json の HealLocations に書くので、タウンマップを開いていなくても読んで書く。
-    if (!this.regionMapValue && !this.project.isFlyPositionsModified()) return result;
-    const region = await (await this.openRegionMap()).save(this.fs);
-    this.project.markFlyPositionsSaved();
-    return { written: [...result.written, ...region.written], removed: [...result.removed, ...region.removed] };
+    if (this.regionMapValue || this.project.isFlyPositionsModified()) {
+      parts.push(await (await this.openRegionMap()).save(this.fs));
+      this.project.markFlyPositionsSaved();
+    }
+    // scripts.json と、対応表で新しく作った .s・.string（既にあるファイルは書き換えない）。
+    parts.push(await this.scriptsTable.save(this.fs));
+    return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };
   }
 
   /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */
