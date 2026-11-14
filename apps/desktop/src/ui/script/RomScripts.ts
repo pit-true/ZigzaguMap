@@ -10,6 +10,7 @@ import {
   asmBlockText,
   disassembleScripts,
   findImportedLabels,
+  formatHex,
   mapScriptTableFromEntries,
   mapScriptTargetLabel,
   mapScriptTypeOfAddress,
@@ -31,8 +32,8 @@ import type { ScriptTarget } from "./ScriptEntry";
 const LABEL_TARGET = { person: "person", sign: "sign", trap: "tile" } as const;
 
 /** 16 進 8 桁（`08160A8E`）。 */
-export function hex8(n: number): string {
-  return (n >>> 0).toString(16).toUpperCase().padStart(8, "0");
+function hex8(n: number): string {
+  return formatHex(n >>> 0, 8);
 }
 
 /** 取り込みの計画（マップスクリプトなら、行き先を取り込んだ入口にした表も持つ）。 */

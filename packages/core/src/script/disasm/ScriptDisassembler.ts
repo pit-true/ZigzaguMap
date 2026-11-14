@@ -10,6 +10,7 @@
  * 引数の種類（#185）と、ゲームの命令番号（0x04〜0x07・0x5C・0x86〜0x88 など。ND と Chronos で同じ）で決める。
  */
 
+import { formatHex } from "../../binary/bytes.js";
 import type { CommandArgumentKind } from "../commands/argumentKinds.js";
 import { ROM_BASE, type Rom } from "../../rom/Rom.js";
 import type { DisasmCommandSet, DisasmVariant } from "./DisasmCommandSet.js";
@@ -144,8 +145,7 @@ const TRAINER_SCRIPT_POINTER: ReadonlyMap<number, number> = new Map([
 ]);
 const END_MOVEMENT = 0xfe;
 
-export const defaultDisasmLabel = (pointer: number): string =>
-  `ROM_${(pointer >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
+export const defaultDisasmLabel = (pointer: number): string => `ROM_${hex(pointer)}`;
 
 /** ROM のスクリプトを逆アセンブルする。例外は投げず、読めない箇所は problems に出す。 */
 export function disassembleScripts(rom: Rom, entries: readonly DisasmEntry[], options: DisassembleOptions): Disassembly {
@@ -455,5 +455,5 @@ function sortByOffset<T extends { offset: number }>(list: T[]): T[] {
 }
 
 function hex(value: number, digits = 8): string {
-  return (value >>> 0).toString(16).toUpperCase().padStart(digits, "0");
+  return formatHex(value >>> 0, digits);
 }
