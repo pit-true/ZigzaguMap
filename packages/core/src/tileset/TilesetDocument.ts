@@ -222,6 +222,17 @@ export class TilesetDocument {
     });
   }
 
+  /**
+   * 新しいタイルセット（New）を作る（別の ROM からの移植など。#309）。`headerAddress` は maps\tilesets のフォルダ名に使う
+   * ROM の外の位置（DocumentContext.newTilesetAddress）。ビルドはヘッダーを空きへ置き直す。配列はそのまま持つ。
+   */
+  static createNew(init: Omit<TilesetDocumentInit, "pointer" | "isNew" | "romBlocksOffset">): TilesetDocument {
+    const header = init.header.slice();
+    for (const field of HEADER_POINTER_FIELDS) header.fill(0, field, field + 4);
+    header[1] = init.secondary ? 1 : 0;
+    return new TilesetDocument({ ...init, header, pointer: ROM_BASE + init.headerAddress, isNew: true });
+  }
+
   /** maps\tilesets の tileset.json と tiles.png から作る。 */
   static fromSource(source: TilesetSource, png: Uint8Array, inflate?: InflateFunction): TilesetDocument {
     const tileset = TilesetSourceJson.toTileset(source, png, inflate);

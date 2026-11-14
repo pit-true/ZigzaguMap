@@ -42,6 +42,8 @@ import { SetPaletteColorsCommand } from "./commands/tileset/SetPaletteColorsComm
 import { SetTilesCommand } from "./commands/tileset/SetTilesCommand.js";
 import { SetTilesetHeaderCommand } from "./commands/tileset/SetTilesetHeaderCommand.js";
 import { SetTripleLayerCommand } from "./commands/tileset/SetTripleLayerCommand.js";
+import { AddTilesetCommand } from "./commands/tileset/AddTilesetCommand.js";
+import { SetLayoutCommand } from "./commands/layout/SetLayoutCommand.js";
 import { SetWildAreasCommand } from "./commands/wild/SetWildAreasCommand.js";
 import { SetWildRateCommand } from "./commands/wild/SetWildRateCommand.js";
 import { SetWildSlotCommand } from "./commands/wild/SetWildSlotCommand.js";
@@ -102,6 +104,8 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   RemapBlockPalettesCommand,
   SetTilesetHeaderCommand,
   SetTripleLayerCommand,
+  AddTilesetCommand,
+  SetLayoutCommand,
 ].map((c) => ({ name: c.NAME, fromJson: c.fromJson as CommandFactory }));
 
 /** 編集コマンドを表に登録する。 */
