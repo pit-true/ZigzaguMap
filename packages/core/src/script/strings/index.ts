@@ -16,3 +16,24 @@ export {
   type StringLineEnding,
   type StringLineKind,
 } from "./StringFile.js";
+export {
+  formatStringText,
+  splitStringPages,
+  tokenizeStringText,
+  type StringTextLine,
+  type StringTextPage,
+  type StringToken,
+  type StringTokenKind,
+} from "./StringText.js";
+export {
+  TEXT_WIDTH_DEFAULT_COLUMNS,
+  TEXT_WIDTH_DEFAULT_LINES,
+  TEXT_WIDTH_DEFAULT_PLACEHOLDERS,
+  checkStringFileWidth,
+  checkTextWidth,
+  type StringFileWidthIssue,
+  type TextWidthIssue,
+  type TextWidthLine,
+  type TextWidthOptions,
+  type TextWidthResult,
+} from "./TextWidth.js";
