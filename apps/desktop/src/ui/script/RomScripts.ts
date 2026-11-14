@@ -162,15 +162,15 @@ export class RomScripts {
     if (!plan.reused && plan.asm.length === 0) throw new Error(t.nothingToImport(plan.problems.join(" / ")));
     const edits: { path: string; block: string; create: string; added: string }[] = [];
     const files = this.app.scripts.files;
+    /** ファイルの改行の形（CRLF が 1 つでもあれば CRLF）で書き足し、元に戻すための控えを残す。 */
+    const append = async (path: string, lines: readonly string[], create: string): Promise<void> => {
+      const newline = (await files.read(path))?.text.includes("\r\n") ? "\r\n" : "\n";
+      const block = asmBlockText(lines, newline);
+      edits.push({ path, block, create, added: await files.append(path, block, create) });
+    };
     if (!plan.reused) {
-      const newline = (await files.read(plan.scriptPath))?.text.includes("\r\n") ? "\r\n" : "\n";
-      const asm = asmBlockText(plan.asm, newline);
-      edits.push({ path: plan.scriptPath, block: asm, create: NEW_SCRIPT_FILE_TEXT, added: await files.append(plan.scriptPath, asm, NEW_SCRIPT_FILE_TEXT) });
-      if (plan.strings.length > 0) {
-        const nl = (await files.read(plan.stringsPath))?.text.includes("\r\n") ? "\r\n" : "\n";
-        const block = asmBlockText(plan.strings, nl);
-        edits.push({ path: plan.stringsPath, block, create: NEW_STRINGS_FILE_TEXT, added: await files.append(plan.stringsPath, block, NEW_STRINGS_FILE_TEXT) });
-      }
+      await append(plan.scriptPath, plan.asm, NEW_SCRIPT_FILE_TEXT);
+      if (plan.strings.length > 0) await append(plan.stringsPath, plan.strings, NEW_STRINGS_FILE_TEXT);
     }
     const { bank, map } = target.map;
     const command =
