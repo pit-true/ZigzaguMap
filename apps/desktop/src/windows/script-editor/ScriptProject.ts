@@ -5,6 +5,7 @@ import {
   ScriptCommandTable,
   buildScriptIndex,
   isScriptSourcePath,
+  listProjectFiles,
   listScriptSourcePaths,
   loadScriptConfig,
   readTextIfExists,
@@ -182,19 +183,7 @@ function sameStat(a: FileStat | null, b: FileStat | null): boolean {
   return a.modifiedMs === b.modifiedMs && a.size === b.size;
 }
 
-/** フォルダの下の `.string`（`.` を含まない名前はフォルダとみなして中も見る）。 */
-async function listStringFiles(fs: TauriProjectFs, dir: string): Promise<string[]> {
-  const out: string[] = [];
-  let names: string[];
-  try {
-    names = [...(await fs.list(dir))].sort();
-  } catch {
-    return out;
-  }
-  for (const name of names) {
-    const path = `${dir}/${name}`;
-    if (/\.string$/i.test(name)) out.push(path);
-    else if (!name.includes(".")) out.push(...(await listStringFiles(fs, path)));
-  }
-  return out;
+/** フォルダの下の `.string`（`.` を含まない名前はフォルダとみなして中も見る）。読めなければ空。 */
+function listStringFiles(fs: TauriProjectFs, dir: string): Promise<string[]> {
+  return listProjectFiles(fs, dir, /\.string$/i).catch(() => []);
 }

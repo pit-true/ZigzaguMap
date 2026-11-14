@@ -14,6 +14,7 @@ export {
   SCRIPT_INDEX_ROOT_FILES,
   buildScriptIndex,
   isScriptSourcePath,
+  listProjectFiles,
   listScriptSourcePaths,
   reloadScriptIndexFile,
 } from "./buildScriptIndex.js";
