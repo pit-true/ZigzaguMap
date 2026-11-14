@@ -117,6 +117,22 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     z.call({"cmd": "undo"})
 
+    # マップ作成補助の窓のブロック一覧（#338）: 0x011 を押すと 0x010 を選び、矩形に入った 0x011 は空き（上の取り消しで 3 層も戻ったので、もう一度）
+    make_triple(z, 0x10)
+    open_assist(z)
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
+    p = win(z, {"cmd": "state"})["picked"]
+    check(p == {"x": 0, "y": 2, "width": 1, "height": 1, "blocks": [0x10]}, f"窓のブロック一覧で 0x011 を押すと 0x010 が選ばれる（{p}）")
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": 8, "y": 2 * 32 + 8})
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": 2 * 32 + 8, "y": 2 * 32 + 8})
+    p = win(z, {"cmd": "state"})["picked"]
+    check(p is not None and p["blocks"] == [0x10, None, 0x12], f"窓の矩形に入った 0x011 は空き（{p}）")
+    if shots:
+        save_png(win(z, {"cmd": "canvasPng", "id": "assist.source"}), shots / "pen_triple_assist.png")
+    win(z, {"cmd": "close"})
+    z.call({"cmd": "undo"})
+
 
 def block_at(cells: list[int], w: int, x: int, y: int) -> int:
     return cells[y * w + x] & 0x3FF
@@ -248,6 +264,20 @@ def win(z: Zigzagu, cmd: dict):
     return z.call({**cmd, "window": "map-assist"})
 
 
+def open_assist(z: Zigzagu, need_parts: bool = True) -> dict:
+    """ツール > マップ作成補助 を開き、窓が答えるまで待つ（`need_parts` ならパーツの一覧が届くまで）。"""
+    r = z.call({"cmd": "action", "id": "tools.mapAssist"})
+    for _ in range(100):
+        try:
+            st = win(z, {"cmd": "state"})
+            if st["parts"] or not need_parts:
+                return st
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(0.2)
+    raise SystemExit(f"マップ作成補助の窓が開きません（{r}）")
+
+
 def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     work = ctx["work"]
     z.call({"cmd": "open", "rom": ctx["rom"], "project": str(work)})
@@ -264,18 +294,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     broken = z.call({"cmd": "cells"})["cells"]
     # メインで範囲を選ぶ（Ctrl＋右ドラッグ）
     z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [7, 11], "to": [15, 15]})
-    r = z.call({"cmd": "action", "id": "tools.mapAssist"})
-    st = None
-    for _ in range(100):
-        try:
-            st = win(z, {"cmd": "state"})
-            if st["parts"]:
-                break
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(0.2)
-    if st is None:
-        raise SystemExit(f"マップ作成補助の窓が開きません（{r}）")
+    st = open_assist(z)
     check("池（岩の岸）" in [p["name"] for p in st["parts"]], "マップ作成補助の窓にパーツの一覧が出る")
     check(st["range"] == {"x": 7, "y": 11, "width": 9, "height": 5}, f"メインで選んだ範囲が出る（{st['range']}）")
     hist = z.call({"cmd": "state"})["history"]
@@ -317,7 +336,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     win(z, {"cmd": "click", "id": "assist.put"})
     win(z, {"cmd": "setField", "id": "assist.name", "value": "テストの面"})
     shot_w = win(z, {"cmd": "state"})
-    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
+    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1, "blocks": [0x001]} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
     if shots:
         save_png(z.call({"cmd": "screenshot", "window": "map-assist"}), shots / "pen_assist_window.png")
     win(z, {"cmd": "click", "id": "assist.save"})

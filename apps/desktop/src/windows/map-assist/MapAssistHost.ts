@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { BLOCK_PIXELS, createImage, encodeBase64, type AutoPenPart, type PenSource } from "@zigzagumap/core";
 import type { App } from "../../app/App";
+import type { TilesetView } from "../../app/TilesetView";
 import { readFile } from "../../app/FileDialogs";
 import { jaAssist as t } from "../../i18n/ja.assist";
 import type { FillCell } from "../../input/paintPlans";
@@ -22,6 +23,13 @@ import {
 
 /** パレットの 1 行のブロック数。 */
 const PALETTE_WIDTH = 8;
+
+/** パレットに並ぶブロックのうち、3 層の次の番号。 */
+function tripleChildrenOf(tiles: TilesetView): number[] {
+  const out: number[] = [];
+  for (let b = 0; b < tiles.paletteBlockCount; b++) if (tiles.triple.isTripleChild(b)) out.push(b);
+  return out;
+}
 
 /**
  * メインウィンドウ側の、マップ作成補助（#312）の窓口。ツール > マップ作成補助 を初めて選んだときに読み込む。
@@ -148,6 +156,7 @@ export class MapAssistHost {
       mapName: map.doc.mapNameText() ?? `${map.id.bank}.${map.id.map}`,
       palette: { width: image.width, height: image.height, rgba: encodeBase64(new Uint8Array(image.data.buffer, image.data.byteOffset, image.data.byteLength)) },
       secondaryCount: tiles.secondaryCount,
+      tripleChildren: tripleChildrenOf(tiles),
       map: { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells] },
       parts: set?.parts ?? [],
       unsaved: set ? set.candidates || (lib?.usesDefaults(set.primary) ?? false) : false,

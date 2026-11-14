@@ -3,6 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { PART_ROLES, decodeBase64, slotNamesOf, type AutoPenPart, type PartCell, type PartGrid, type PartKind, type PartRole } from "@zigzagumap/core";
 import { jaAssist as t } from "../../i18n/ja.assist";
 import { jaPen } from "../../i18n/ja.pen";
+import { shadeTripleChild } from "../../ui/tripleLayerShade";
 import { errorText } from "../../util/errors";
 import { startToolWindowAutomation } from "../world-map/toolWindowAutomation";
 import "../../styles/mapAssist.css";
@@ -100,7 +101,14 @@ export class MapAssistWindow {
   private setData(data: AssistData): void {
     const changed = this.data?.key !== data.key;
     this.data = data;
-    this.atlas = imageCanvas(data.palette);
+    // 3 層の次の番号は、メインのパレットと同じく薄くして斜線を引く（#338）
+    const children = new Set(data.tripleChildren);
+    this.atlas = imageCanvas(data.palette, (rgba, width) => {
+      for (const b of children) {
+        const p = palettePos(b);
+        shadeTripleChild(rgba, width, p.col * BLOCK, p.row * BLOCK);
+      }
+    });
     if (changed || !this.dirty) {
       this.parts = data.parts.map(clonePart);
       this.dirty = data.unsaved;
@@ -271,11 +279,22 @@ export class MapAssistWindow {
     const x1 = Math.max(a.x, b.x);
     const y1 = Math.max(a.y, b.y);
     const cells: (PartCell | null)[] = [];
+    const children = new Set(data.tripleChildren);
+    if (this.tab === "blocks" && x0 === x1 && y0 === y1) {
+      // 3 層の次の番号を 1 つ押したら、1 つ前の 3 層のブロックを選ぶ（メインのパレットと同じ。#338）
+      const block = paletteBlock(x0, y0, data.secondaryCount);
+      if (block !== null && children.has(block)) {
+        const p = palettePos(block - 1);
+        this.picked = { x: p.col, y: p.row, grid: { width: 1, height: 1, cells: [{ block: block - 1, movement: null }] } };
+        return this.renderSource();
+      }
+    }
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         if (this.tab === "blocks") {
           const block = paletteBlock(x, y, data.secondaryCount);
-          cells.push(block === null ? null : { block, movement: null });
+          // 矩形に入った次の番号は空き（書かないマス）にする
+          cells.push(block === null || children.has(block) ? null : { block, movement: null });
         } else {
           const v = x < data.map.width && y < data.map.height ? data.map.cells[y * data.map.width + x] : undefined;
           cells.push(v === undefined ? null : { block: v & 0x3ff, movement: v >> 10 });
@@ -443,7 +462,9 @@ export class MapAssistWindow {
       parts: this.parts.map((p) => ({ name: p.name, kind: p.kind, role: p.role, slots: Object.keys(p.slots) })),
       selected: part?.name ?? null,
       slot: this.selectedSlot,
-      picked: this.picked ? { x: this.picked.x, y: this.picked.y, width: this.picked.grid.width, height: this.picked.grid.height } : null,
+      picked: this.picked
+        ? { x: this.picked.x, y: this.picked.y, width: this.picked.grid.width, height: this.picked.grid.height, blocks: this.picked.grid.cells.map((c) => c?.block ?? null) }
+        : null,
       range: this.data?.range ?? null,
       dirty: this.dirty,
       status: this.status.textContent,
@@ -466,12 +487,13 @@ function palettePos(block: number): { col: number; row: number } {
   return { col: i % PALETTE_WIDTH, row: PRIMARY / PALETTE_WIDTH + Math.floor(i / PALETTE_WIDTH) };
 }
 
-function imageCanvas(image: AssistImage): HTMLCanvasElement {
+function imageCanvas(image: AssistImage, edit?: (rgba: Uint8ClampedArray, width: number) => void): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = image.width;
   c.height = image.height;
-  const bytes = decodeBase64(image.rgba);
-  c.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(bytes), image.width, image.height), 0, 0);
+  const rgba = new Uint8ClampedArray(decodeBase64(image.rgba));
+  edit?.(rgba, image.width);
+  c.getContext("2d")!.putImageData(new ImageData(rgba, image.width, image.height), 0, 0);
   return c;
 }
 
