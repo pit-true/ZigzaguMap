@@ -176,6 +176,7 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
         z.call({"cmd": "editor.stringEdit", "label": text_label, "text": LONG_WRAPPED, **ED})
         script_text = z.call({"cmd": "editor.text", "path": SCRIPT, **ED})["text"].split("\n")
         z.call({"cmd": "editor.activate", "path": SCRIPT, **ED})
+        time.sleep(2)  # 編集中の本文が文字列の索引に入るまで待つ
         line = next(i for i, t in enumerate(script_text) if text_label in t and "msgbox" in t)
         col = script_text[line].index(text_label) + 2
         z.call({"cmd": "editor.stringEdit", "line": line + 1, "column": col, "label": text_label, "open": True, **ED})
