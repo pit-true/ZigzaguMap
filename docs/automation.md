@@ -250,6 +250,13 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `warp.samples` | `index`（表示中のマップのワープ） | 「行き先のマップを作る」（#241）の見本の一覧（`source`・`sourceWarp`・`map`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`entry`） |
+| `warp.createMap` | `index`、`sample`（見本の番号か null で見本なし）、`copyLayout`（既定 true）、`bank`（省略でバンクを聞く窓を出す） | 窓を出さずに行き先のマップを作り、ワープを向け合って新しいマップを開く。返事は `target`（作ったマップ。取り消し・失敗なら null）・`map`・`status` |
+
+- 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
+
 ## Phase3 の部品と命令（接続・描画）
 
 - 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。

@@ -14,6 +14,7 @@
   - stamps: スタンプ（#239）。2×3 の木を保存して主タイルセットが同じ街で貼る、副タイルセットを含むものは組が違うと出ない、
     名前の変更。続けて別の起動で開き直し・削除・素の ROM だけのときのメモリと出力（作業フォルダは一時フォルダ）。
   - usage: 移動許可の自動選択・使用回数・移動許可だけ違うマスの印（#235）。
+  - warpMap: ワープの右クリックから行き先のマップを作る（#241）。見本の窓、バンク、新しいマップの戻りのワープ、1 回の取り消し、見本なしの 9×9。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -387,6 +388,62 @@ def check_usage(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(after2 == 0x0C, f"移動許可を持つ選択（マップから拾ったもの）では移動許可を変えない（{after2}）")
 
 
+def wait_dialog(z: Zigzagu, title: str, timeout: float = 15) -> dict | None:
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        for d in z.call({"cmd": "dialogs"})["dialogs"]:
+            if d.get("title") == title:
+                return d
+        time.sleep(0.2)
+    return None
+
+
+def check_warp_map(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """ワープの右クリックから行き先のマップを作る（#241）。素の ROM のメモリの上だけで作って、元に戻す。"""
+    z.call({"cmd": "resize", "width": 1280, "height": 900})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    samples = z.call({"cmd": "warp.samples", "index": 0})["samples"]
+    check(len(samples) >= 1, f"マサラタウンの家のドアの見本が見つかる（{[(s['map']['bank'], s['map']['map']) for s in samples]}）")
+    st = z.call({"cmd": "event.state"})
+    w = st["events"]["warps"][0]
+    z.call({"cmd": "mouse", "target": "event", "cell": [w["x"], w["y"]], "action": "rightClick"})
+    menu = z.call({"cmd": "contextMenu.state"}) or {}
+    ids = [i["id"] for i in menu.get("items", [])]
+    check("createWarpMap" in ids, f"ワープの右クリックに「行き先のマップを作る」（{ids}）")
+    z.call({"cmd": "contextMenu.press", "id": "createWarpMap"})
+    d = wait_dialog(z, "行き先のマップを作る")
+    check(d is not None, "見本を選ぶ窓が出る")
+    time.sleep(0.5)
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_warp_map_dialog.png")
+    z.call({"cmd": "dialog", "title": "行き先のマップを作る", "press": "ok"})
+    b = wait_dialog(z, "新しいマップのバンク")
+    check(b is not None, "バンクを聞く")
+    counts_before = z.call({"cmd": "state"})
+    z.call({"cmd": "dialog", "title": "新しいマップのバンク", "press": "ok"})
+    time.sleep(1.0)
+    st = z.call({"cmd": "state"})
+    m = st.get("map") or {}
+    check(m.get("bank") == 3 and m.get("map") not in (0, None), f"新しいマップを開く（{m.get('bank')}.{m.get('map')}）")
+    ev = z.call({"cmd": "event.state"})
+    back = ev["events"]["warps"][0] if ev["events"]["warps"] else {}
+    check(back.get("bank") == 3 and back.get("map") == 0 and back.get("warpId") == 0, f"新しいマップのワープ 0 は元のワープへ戻る（{back}）")
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_warp_map_created.png")
+    z.call({"cmd": "undo"})
+    time.sleep(0.5)
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    w2 = z.call({"cmd": "event.state"})["events"]["warps"][0]
+    check(w2 == w, "1 回の取り消しで新しいマップも元のワープも戻る")
+    # 見本を使わない（9×9）
+    r = z.call({"cmd": "warp.createMap", "index": 0, "sample": None, "bank": 3})
+    cells = z.call({"cmd": "cells"})
+    check(r["target"] is not None and cells["width"] == 9 and cells["height"] == 9, f"見本を使わないと 9×9（{cells['width']}×{cells['height']}）")
+    z.call({"cmd": "undo"})
+
+
 CHECKS_RESTART = {"stampsReopen": check_stamps_reopen}
 
 
@@ -419,6 +476,7 @@ CHECKS = {
     "ctrl": check_ctrl,
     "stamps": check_stamps,
     "usage": check_usage,
+    "warpMap": check_warp_map,
 }
 
 

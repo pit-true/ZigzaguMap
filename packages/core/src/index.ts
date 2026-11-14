@@ -267,6 +267,7 @@ export { ShiftConnectionCommand, type ShiftConnectionArgs } from "./command/comm
 export { ConnectMapsCommand, isDiveDirection, type ConnectMapsArgs } from "./command/commands/connection/ConnectMapsCommand.js";
 export { DisconnectMapsCommand, type DisconnectMapsArgs } from "./command/commands/connection/DisconnectMapsCommand.js";
 export { FillLayoutCommand, createConnectedMap, type ConnectedMapPlan, type FillLayoutArgs } from "./command/commands/connection/createConnectedMap.js";
+export { WARP_MAP_SIZE, createMapForWarp, findWarpSamples, type WarpMapPlan, type WarpSample } from "./command/commands/project/CreateMapForWarp.js";
 export {
   MIN_SLOT,
   NEW_CONNECTED_MAP_CELL,

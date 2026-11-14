@@ -14,6 +14,7 @@ import { jaTemplate } from "../../i18n/ja.template";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaEventDelete } from "../../i18n/ja.eventDelete";
+import { jaWarpMap } from "../../i18n/ja.warpMap";
 import { showContextMenu } from "../ContextMenu";
 import { showError } from "../MessageBox";
 import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
@@ -54,6 +55,8 @@ export interface EventTabHost {
   canPlaceTemplate?(): boolean;
   /** スクリプトの要約（#226。ホバーの吹き出し）。 */
   summaries?(): Promise<ScriptSummaries>;
+  /** ワープの行き先のマップを作る（#241。右クリックのメニュー）。 */
+  createWarpMap?(index: number): void;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -511,6 +514,8 @@ export class EventTab {
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
+      // 「行き先のマップを作る」（#241。ワープだけ）
+      ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
       ...templates,
     ]);
   }
