@@ -50,6 +50,17 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   // ミキシングバッグ（Phase3 #236。ui/map/BlockPaletteView.ts・MixingBagView.ts）
   { keys: "Ctrl＋左クリック", action: jaPaint.shortcutBag, where: jaPaint.shortcutBagWhere },
   { keys: "Ctrl＋クリック", action: jaPaint.shortcutBagClear, where: jaPaint.shortcutBagClearWhere },
+  // 矩形の選択（移動許可も拾う。#225）と、Ctrl を押している間の表示（#238。ui/map/ctrlPeek.ts）
+  { keys: "Ctrl＋右ドラッグ", action: jaPaint.shortcutPick, where: jaPaint.shortcutPickWhere },
+  { keys: "Ctrl（押している間）", action: jaPaint.shortcutPeek, where: jaPaint.shortcutPeekWhere },
+  { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
+  // 接続のつまみと隣の帯（#223・#229〜#231。ui/map/ConnectionHandles.ts・EdgeHandles.ts・NeighborLayer.ts）
+  { keys: jaNeighbors.shortcutCornerKeys, action: jaNeighbors.shortcutCorner, where: jaNeighbors.shortcutCornerWhere },
+  { keys: jaNeighbors.shortcutEdgeMenuKeys, action: jaNeighbors.shortcutEdgeMenu, where: jaNeighbors.shortcutEdgeWhere },
+  { keys: jaNeighbors.shortcutEdgeDragKeys, action: jaNeighbors.shortcutEdgeDrag, where: jaNeighbors.shortcutEdgeWhere },
+  { keys: jaNeighbors.shortcutBandKeys, action: jaNeighbors.shortcutBand, where: jaNeighbors.shortcutBandWhere },
+  // イベントタブの右クリックのメニュー（ui/event/EventTab.ts）
+  { keys: "右クリック", action: jaEventDelete.shortcutMenu, where: jaEventDelete.shortcutWhere },
   ...scriptEditorKeys(),
 ];
 
