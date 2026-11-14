@@ -16,6 +16,7 @@ import type { NeighborView } from "../Settings";
 import { TilesetView } from "../TilesetView";
 import { timings } from "../timings";
 import { scheduleIdleGc } from "../../util/idleGc";
+import { tripleChildFlags } from "../../input/tripleRules";
 
 /** 境界から見せる帯の幅（マス）。実機で境界に立ったとき向こう側に見えるのが 7〜8 ブロック（research.md 4.2）。 */
 export const NEIGHBOR_BAND = 8;
@@ -31,6 +32,8 @@ export interface NeighborBand {
   readonly bitmap: ImageBitmap;
   /** 隣のマップの配置（移動許可の重ね描きに使う。読み取り専用）。 */
   readonly grid: BlockGrid;
+  /** そのマップのタイルセットで、3 層の次の番号か（帯の上に描くときに落とす。#337）。 */
+  readonly isTripleChild: (block: number) => boolean;
 }
 
 /** 表示中のマップの隣の帯の一式。 */
@@ -77,6 +80,8 @@ export class NeighborService {
   lastBuildMs = 0;
   private readonly bands = new Map<string, ImageBitmap>();
   private readonly peeked = new Map<string, MapDocument>();
+  /** 主マップと違うタイルセットの組の、3 層の次の番号の印（組とタイルセットの編集の回数が鍵。組そのものは持たない）。 */
+  private readonly tripleFlags = new Map<string, Uint8Array>();
   /** タイルセットを編集した回数（帯の画像の鍵に入れる）。 */
   private tilesetGeneration = 0;
   private token = 0;
@@ -145,6 +150,7 @@ export class NeighborService {
     for (const b of this.bands.values()) b.close();
     this.bands.clear();
     this.peeked.clear();
+    this.tripleFlags.clear();
     this.frame = null;
     this.done = true;
     const session = this.state.session;
@@ -187,24 +193,34 @@ export class NeighborService {
       const b = p.band;
       const key = `${p.id.bank}.${p.id.map}|${tilesKey}|${this.tilesetGeneration}|${b.x},${b.y},${b.width},${b.height}|${bandHash(nd.grid, b)}`;
       let bitmap = this.bands.get(key);
-      if (bitmap) {
-        this.bands.delete(key);
-      } else {
-        let tiles = main.tiles.key === tilesKey ? main.tiles : (session.cachedTiles(tilesKey) ?? temporary.get(tilesKey));
+      if (bitmap) this.bands.delete(key);
+      const same = main.tiles.key === tilesKey;
+      const flagKey = `${tilesKey}|${this.tilesetGeneration}`;
+      let flags = same ? null : (this.tripleFlags.get(flagKey) ?? null);
+      if (!bitmap || (!same && !flags)) {
+        let tiles = same ? main.tiles : (session.cachedTiles(tilesKey) ?? temporary.get(tilesKey));
         if (!tiles) {
           const t = await session.project.peekTilesets(nd);
-          if (token !== this.token) return;
+          if (token !== this.token) {
+            if (bitmap) this.bands.set(key, bitmap);
+            return;
+          }
           tiles = new TilesetView(tilesKey, t.primary, t.secondary);
           temporary.set(tilesKey, tiles);
         }
-        bitmap = await renderBand(nd.grid, b, tiles);
-        if (token !== this.token) {
-          bitmap.close();
-          return;
+        if (!same && !flags) flags = this.rememberFlags(flagKey, tripleChildFlags(tiles.triple));
+        if (!bitmap) {
+          bitmap = await renderBand(nd.grid, b, tiles);
+          if (token !== this.token) {
+            bitmap.close();
+            return;
+          }
         }
       }
       this.bands.set(key, bitmap);
-      bands.push({ placement: p, bitmap, grid: nd.grid });
+      const mainTiles = main.tiles;
+      const isTripleChild = flags ? flagLookup(flags) : (block: number) => mainTiles.triple.isTripleChild(block);
+      bands.push({ placement: p, bitmap, grid: nd.grid, isTripleChild });
     }
     // 主マップと違うタイルセットの組（帯のために作ったもの）は捨て、落ち着いたら空いた領域も OS へ返す
     if (temporary.size > 0) scheduleIdleGc(true);
@@ -241,6 +257,13 @@ export class NeighborService {
     return doc;
   }
 
+  /** 3 層の次の番号の印を覚える（16 組まで）。 */
+  private rememberFlags(key: string, flags: Uint8Array): Uint8Array {
+    this.tripleFlags.set(key, flags);
+    while (this.tripleFlags.size > BAND_CACHE_SIZE) this.tripleFlags.delete(this.tripleFlags.keys().next().value!);
+    return flags;
+  }
+
   /** 古い帯の画像を捨てる（今使っているものは残す）。 */
   private trimBands(inUse: Set<ImageBitmap>): void {
     for (const [k, b] of this.bands) {
@@ -262,4 +285,8 @@ export async function renderBand(grid: BlockGrid, band: { x: number; y: number; 
     }
   }
   return createImageBitmap(new ImageData(image.data, image.width, image.height));
+}
+
+function flagLookup(flags: Uint8Array): (block: number) => boolean {
+  return (block) => flags[block] === 1;
 }

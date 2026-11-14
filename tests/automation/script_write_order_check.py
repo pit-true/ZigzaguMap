@@ -8,6 +8,8 @@
 - 293: エディタで開いている `.s` にひな形を置くと、エディタの本文に入り、未保存の変更が無ければそのまま保存される（ディスクにも入る）。
   エディタを閉じた直後（待たずに）ひな形を置いても、`.s` にスクリプトが書かれる（閉じかけのエディタへ渡して消えない）。
   タブを閉じた直後に置いても書かれる。
+- cancel: 未保存の変更があるエディタを × で閉じ、確認で「キャンセル」を押す。確認が出ている間に置いたひな形は待たされ
+  （.s に書かない）、キャンセルすると窓が残り、未保存の変更を失わずにエディタの本文へ入る。保存すると両方がディスクに入る。
 - 294: 「.s を新しく作る」の入力が出ている間に `template.place` を送ると、すぐにエラーが返り、アプリは落ちない。入力に答えれば置ける。
 """
 from __future__ import annotations
@@ -17,6 +19,7 @@ import os
 import pathlib
 import shutil
 import sys
+import threading
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -169,6 +172,62 @@ def check_294(z: Zigzagu, proj: pathlib.Path) -> None:
     check(bool(res.get("label")), f"そのあとの template.place は置ける（{res.get('label')}）")
 
 
+def check_cancel(z: Zigzagu, proj: pathlib.Path) -> None:
+    """× で閉じて、未保存の確認で「キャンセル」を押す（#293 の書き込みの列。閉じるのをやめたら列を解く）。"""
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "scripts.table", "action": "add", "entry": {"bank": 3, "map": 0, "name": "zz", "script": SCRIPT}, "create": True})
+    first = place(z, "person", 12, 12)
+    z.call({"cmd": "script.settle"})
+    z.call({"cmd": "script.open", "bank": 3, "map": 0, "kind": "person", "index": first["event"]["index"]})
+    check(wait_editor(z), "エディタが開く")
+    time.sleep(1)
+    # 未保存の変更を作る（末尾に 1 行）
+    z.call({"cmd": "editor.activate", "path": SCRIPT, **W})
+    body = z.call({"cmd": "editor.text", "path": SCRIPT, **W})["text"]
+    mark = "@ zz_cancel_mark"
+    z.call({"cmd": "editor.type", "text": "\n" + mark, "offset": len(body), **W})
+    before_disk = disk(proj)
+    r = z.call({"cmd": "close", **W})
+    asked = [d for d in r.get("dialogs", []) if "cancel" in str(d.get("buttons", "")).lower() or "キャンセル" in str(d.get("buttons", ""))]
+    check(r.get("closing") is False and bool(asked), f"未保存があると × で確認が出る（{r}）")
+    # 確認が出ている間に置く（メインは書き込みを待たせる。キャンセルで解く）
+    result: dict = {}
+
+    def run() -> None:
+        try:
+            result["placed"] = place(z, "sign", 14, 12, timeout=60)
+        except Exception as e:  # noqa: BLE001
+            result["error"] = e
+
+    th = threading.Thread(target=run)
+    th.start()
+    time.sleep(1.5)
+    check(disk(proj) == before_disk, "確認が出ている間は .s に書かない")
+    z.call({"cmd": "dialog", "press": "cancel", **W})
+    th.join(60)
+    check(not th.is_alive() and "placed" in result, f"キャンセルすると待っていたひな形が置ける（{result.get('error')}）")
+    z.call({"cmd": "script.settle"})
+    time.sleep(0.5)
+    check(wait_editor(z) and any(w["label"] == "script-editor" for w in windows(z)), "キャンセルすると窓が残る")
+    st = z.call({"cmd": "editor.state", **W})
+    text = z.call({"cmd": "editor.text", "path": SCRIPT, **W})["text"]
+    label = (result.get("placed") or {}).get("label")
+    check(mark in text and st["dirty"], f"キャンセルしても未保存の変更が残る（未保存 {st['dirty']}）")
+    check(bool(label) and f"{label}:" in text, f"待っていたひな形はエディタの本文に入る（{label}）")
+    check(mark not in disk(proj), "未保存の変更はディスクに書かれない")
+    # そのあとの保存で両方がディスクに入る
+    z.call({"cmd": "editor.save", **W})
+    d = disk(proj)
+    check(mark in d and bool(label) and f"{label}:" in d, "保存すると変更とひな形の両方がディスクに入る")
+    # 列が解けている: もう 1 つ置ける（エディタの本文に入り、保存される）
+    third = place(z, "person", 12, 14, timeout=30)
+    z.call({"cmd": "script.settle"})
+    check(f"{third['label']}:" in disk(proj), f"キャンセルのあとの書き込みも止まらない（{third['label']}）")
+    z.call({"cmd": "close", **W})
+    check(wait_editor(z, ready=False), "未保存が無ければ × で閉じる")
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -180,13 +239,13 @@ def main() -> int:
     ap.add_argument("--only", help="確かめる issue の番号（カンマ区切り）")
     args = ap.parse_args()
     work = pathlib.Path(args.work)
-    only = args.only.split(",") if args.only else ["293", "294"]
+    only = args.only.split(",") if args.only else ["293", "294", "cancel"]
     for number in only:
         print(f"== #{number}")
         proj = prepare(pathlib.Path(args.project), work)
         with Zigzagu(args.exe, profile=work / f"profile{number}", extra=["--mute-audio"]) as z:
             z.call({"cmd": "open", "rom": args.rom, "project": str(proj)})
-            {"293": check_293, "294": check_294}[number](z, proj)
+            {"293": check_293, "294": check_294, "cancel": check_cancel}[number](z, proj)
     print(f"\n失敗 {len(failures)} 件")
     return 1 if failures else 0
 

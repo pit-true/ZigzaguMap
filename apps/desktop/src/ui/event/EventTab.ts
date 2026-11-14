@@ -106,6 +106,8 @@ export class EventTab {
   private lastDrag: { command: Command; id: MapId; key: string; kind: string } | null = null;
   /** イベントの上にカーソルを止めたときの吹き出し（#226）。 */
   readonly hoverTip: EventHover;
+  /** 画面のマスが隣のマップの帯の上か（帯の上のクローンの吹き出し。#345。MapExtras が入れる）。 */
+  onBand: ((cell: RawCell) => boolean) | null = null;
   private offsets: EventOffsets | null = null;
   private itemsLoaded = false;
   private unsubscribe: (() => void) | null = null;
@@ -187,6 +189,7 @@ export class EventTab {
       eventHoverSource({
         state,
         placed: () => this.placed,
+        onBand: (cell) => this.onBand?.(cell) ?? false,
         summaries: () => host.summaries?.() ?? Promise.reject(new Error("summaries")),
       }),
     );

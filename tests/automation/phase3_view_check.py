@@ -95,6 +95,15 @@ def hover_text(z: Zigzagu, kind: str, index: int) -> str:
     return z.call({"cmd": "event.hover", "kind": kind, "index": index})["text"]
 
 
+def hover_text_in(z: Zigzagu, bank: int, map_: int, index: int) -> str:
+    """ほかのマップの人の吹き出しの文（そのマップを開いて出す）。"""
+    z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+    z.call({"cmd": "tab", "name": "event"})
+    text = hover_text(z, "person", index)
+    z.call({"cmd": "event.hover.hide"})
+    return text
+
+
 def check_hover(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "resize", "width": 1280, "height": 900})
     z.call({"cmd": "selectMap", "bank": 5, "map": 3})
@@ -462,6 +471,32 @@ def check_clone_look(z: Zigzagu, shots: pathlib.Path | None, p: dict) -> None:
     if not mine:
         return
     index = mine[0]["index"]
+    # 帯の上のクローンにカーソルを止めると、吹き出しに元の人と、元の人（1 番道路の人 0）のスクリプトの要約が出る（#345）
+    ns = z.call({"cmd": "neighbors.state", "wait": True})
+    on_band = next((c for c in ns["clones"] if c["index"] == index), None)
+    if on_band:
+        z.call({"cmd": "event.hover.hide"})
+        z.call({"cmd": "mouse", "target": "event", "action": "hover", "cell": [on_band["x"], on_band["y"]]})
+        hv: dict = {}
+        t0 = time.time()
+        while time.time() - t0 < 10:
+            hv = z.call({"cmd": "event.hover.state"})
+            if hv["visible"] and "読み込み中" not in hv["text"]:
+                break
+            time.sleep(0.2)
+        lines = hv.get("text", "").splitlines()
+        check(hv.get("visible") and hv.get("cell") == [on_band["x"], on_band["y"]] and "クローン（元: マップ 3.19 の人 0）" in lines,
+              f"帯の上のクローンにカーソルを止めると吹き出しが出る（{hv.get('cell')}、{hv.get('text')!r}）")
+        if shots:
+            save_png(z.call({"cmd": "screenshot"}), shots / "fb3_band_hover.png")
+        origin = hover_text_in(z, 3, 19, 0)
+        extra = [l for l in lines if l not in ("人 %d" % index, "クローン（元: マップ 3.19 の人 0）")]
+        check(bool(extra) and all(l in origin for l in extra), f"クローンの吹き出しに元の人のスクリプトの要約を出す（{extra}、元 {origin!r}）")
+        z.call({"cmd": "event.hover.hide"})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        z.call({"cmd": "tab", "name": "event"})
+    else:
+        check(False, f"クローンが帯の上にある（{ns['clones']}）")
     other = (p["graphicsId"] + 1) % 0x98
     z.call({"cmd": "event.select", "kind": "person", "index": index})
     z.call({"cmd": "setField", "id": "event.person.graphics", "value": str(other)})

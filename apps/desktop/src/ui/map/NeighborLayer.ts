@@ -66,6 +66,14 @@ export class NeighborLayer {
     return hit?.neighbor ? hit.id : null;
   }
 
+  /** 画面のマス（主マップの左上が原点）が、描いている帯の上か（帯の上のクローンの吹き出し。#345）。 */
+  bandContains(cell: { x: number; y: number }): boolean {
+    return (this.frame?.bands ?? []).some((b) => {
+      const at = b.placement.bandAt;
+      return cell.x >= at.x && cell.y >= at.y && cell.x < at.x + at.width && cell.y < at.y + at.height;
+    });
+  }
+
   private show(frame: NeighborFrame | null): void {
     const main = this.state.map;
     // 別のマップの帯（作り直しの途中）は出さない

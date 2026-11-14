@@ -26,6 +26,9 @@ export const BPRJ_PRIMARY_DEFAULTS: AutoPenFile = {
         SE: singleGrid(0x134),
         INW: singleGrid(0x131),
         INE: singleGrid(0x130),
+        // 南の内角（#333）。岩の筋が片側を通って下で終わる絵。全マップで斜めの南西・南東だけが外のマスに使われている
+        ISW: singleGrid(0x129),
+        ISE: singleGrid(0x128),
       },
     },
     { name: "草むら", kind: "fill", role: "grass", order: 1, slots: { Blocks: singleGrid(0x00d) } },
