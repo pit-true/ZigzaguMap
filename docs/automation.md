@@ -74,7 +74,6 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `menu.run` | `path`（`"設定 > グリッドの表示"` か `["設定", "グリッドの表示"]`）か `id`、`wait`（ms、既定 100） | メニューの項目を実行する。メニューバーで選んだときと同じく、無効な項目とサブメニューは実行しない（失敗）。返事はステータスバーと開いているダイアログ |
 | `tree.list` | `visibleOnly`（省略可） | マップ一覧の全項目（`text`: 未出力の印 ` *` を含む文字列、`depth`、`hasChildren`、`expanded`、`selected`、`opened`（開いているマップ）、`dirty`、`mapId`、`key`）。`visibleOnly: true` で開いている枝の中だけ |
 | `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
-| `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
 | `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |

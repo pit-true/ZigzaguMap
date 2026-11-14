@@ -219,12 +219,6 @@ export const ja = {
     suffix ? `${name} ${suffix} (${bank}.${map})` : `${name} (${bank}.${map})`,
   modifiedMark: " *",
 
-  // [RomInfos]
-  romInfoName: ini.RomInfos["10"],
-  romInfoType: ini.RomInfos["11"],
-  romInfoLanguage: ini.RomInfos["12"],
-  romInfoVersion: ini.RomInfos["13"],
-
   // マップタブ
   /** スタンプの窓の題名（AdvanceMap でも日本語化されていない）。 */
   grosserBlock: "Grosser Block",
