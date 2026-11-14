@@ -14,6 +14,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import AppError, Zigzagu  # noqa: E402
@@ -25,6 +26,43 @@ def check(cond: bool, what: str) -> None:
     print(("OK   " if cond else "失敗 ") + what)
     if not cond:
         failures.append(what)
+
+
+def check_trainer_edit(z: Zigzagu) -> None:
+    """トレーナーをあとから直す窓（#274）。窓で名前と手持ちを直すと trainers.json に入り、1 回の取り消しで戻る。ROM の値に戻すと消える。"""
+    rom1 = z.call({"cmd": "trainer.get", "id": 1})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(bool(dlg) and "トレーナーを編集" in dlg[-1]["title"], f"トレーナーを直す窓が出る（{[d.get('title') for d in dlg]}）")
+    check(z.call({"cmd": "getField", "id": "trainerEdit.name"})["value"] == rom1["name"], "窓の名前の欄は ROM の値")
+    z.call({"cmd": "setField", "id": "trainerEdit.name", "value": "テスト"})
+    z.call({"cmd": "setField", "id": "trainerEdit.party", "value": "0x10 12, 0x13 11"})
+    z.call({"cmd": "dialog", "press": "ok"})
+    time.sleep(0.3)
+    j = z.call({"cmd": "trainer.json"})
+    t1 = next((t for t in j["trainers"] if t["id"] == 1), None)
+    check(t1 is not None and t1["name"] == "テスト" and [(m["species"], m["level"]) for m in t1["party"]] == [(0x10, 12), (0x13, 11)] and t1["trainerClass"] == rom1["trainerClass"],
+          f"直した値が trainers.json に入る（{t1 and (t1['name'], t1['party'])}）")
+    check(j["modified"], "trainers.json が未出力になる")
+    z.call({"cmd": "undo"})
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "1 回の取り消しで trainers.json から消える")
+    z.call({"cmd": "redo"})
+    z.call({"cmd": "trainer.edit", "id": 1})
+    time.sleep(0.5)
+    z.call({"cmd": "dialog", "press": "revert"})
+    time.sleep(0.3)
+    check(not any(t["id"] == 1 for t in z.call({"cmd": "trainer.json"})["trainers"]), "「ROM の値に戻す」で trainers.json から消える")
+    # 人の右クリックの「トレーナーを編集」（素の ROM のトレーナー: トキワの森 3.? ではなく、番号はスクリプトから探す）
+    z.call({"cmd": "selectMap", "bank": 1, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    persons = z.call({"cmd": "event.state"})["events"]["persons"]
+    found = None
+    for i, p in enumerate(persons):
+        if p.get("trainerType", 0) != 0:
+            found = (i, z.call({"cmd": "trainer.idForPerson", "index": i})["id"])
+            break
+    check(found is not None and found[1] is not None and found[1] > 0, f"トレーナーの人のスクリプトから番号が分かる（{found}）")
 
 
 def main() -> int:
@@ -58,6 +96,9 @@ def main() -> int:
         g1 = z.call({"cmd": "trainer.generate", "bank": 3, "map": 19, "seed": 7})
         g2 = z.call({"cmd": "trainer.generate", "bank": 3, "map": 19, "seed": 7})
         check(g1["party"] == g2["party"] and 1 <= len(g1["party"]) <= 3, f"自動生成は同じ種なら同じ（{g1['party']}）")
+        check_trainer_edit(z)
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        z.call({"cmd": "tab", "name": "event"})
         z.call({"cmd": "event.select", "kind": "person", "index": 0})
         f = z.call({"cmd": "getField", "id": "event.person.flagUnused"})
         check(not f["visible"], "プロジェクトフォルダが無いと「未使用」ボタンは出ない")

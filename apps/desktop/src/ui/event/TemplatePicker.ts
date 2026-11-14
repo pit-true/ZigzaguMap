@@ -17,6 +17,7 @@ import "../../styles/template.css";
 import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
 import { autoId } from "../form/controls";
 import { showError } from "../MessageBox";
+import { hex, parseNumber, parseParty, partyText } from "../trainer/trainerText";
 import type { TemplatePlaceRequest } from "./TemplatePlacer";
 
 /** トレーナーの選択肢（#244。TrainerTable から作る）。 */
@@ -47,33 +48,6 @@ export interface NewTrainerSource {
   generate(seed: number): Promise<{ party: TrainerMon[]; note: string }>;
   /** 種族名（手持ちの欄の下に出す）。 */
   speciesName(species: number): string;
-}
-
-/** 手持ちの欄の文字（`0x10 9, 0x13 8`）。 */
-export function partyText(party: readonly TrainerMon[]): string {
-  return party.map((m) => `${hex(m.species)} ${m.level}`).join(", ");
-}
-
-/** 手持ちの欄を読む（読めなければ Error）。 */
-export function parseParty(text: string): TrainerMon[] {
-  const parts = text.split(/[,、]/).map((x) => x.trim()).filter((x) => x !== "");
-  const party = parts.map((part) => {
-    const [species, level] = part.split(/\s+/);
-    const m = { iv: 0, species: parseNumber(species ?? ""), level: parseNumber(level ?? "") };
-    if (m.species < 1 || m.level < 1 || m.level > 100) throw new Error(jaTrainer.badParty(text));
-    return m;
-  });
-  if (party.length < 1 || party.length > 6) throw new Error(jaTrainer.badParty(text));
-  return party;
-}
-
-const hex = (n: number): string => `0x${n.toString(16).toUpperCase()}`;
-
-function parseNumber(text: string): number {
-  const s = text.trim();
-  const n = /^(0x|\$)[0-9a-f]+$/i.test(s) ? parseInt(s.replace(/^(0x|\$)/i, ""), 16) : /^[0-9]+$/.test(s) ? parseInt(s, 10) : NaN;
-  if (!Number.isInteger(n)) throw new Error(`数ではありません: ${text}`);
-  return n;
 }
 
 /**

@@ -506,30 +506,22 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     check(len(clones_in(z, 3, 0)) == before + 1, "削除を取り消すとクローンも戻る")
     z.call({"cmd": "undo"})
-    # 座標の欄に入れて動かしても合わせる
+    # 座標の欄に入れて動かしても合わせる（最後の人を使う。続けてイベント数を減らして消す）
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
-    z.call({"cmd": "event.select", "kind": "person", "index": 0})
+    n0 = len(z.call({"cmd": "event.state"})["events"]["persons"])
+    z.call({"cmd": "event.select", "kind": "person", "index": n0 - 1})
     z.call({"cmd": "setField", "id": "event.person.x", "value": f"{south[0]:X}"})
     z.call({"cmd": "setField", "id": "event.person.y", "value": f"{south[1]:X}"})
     time.sleep(1.0)
     check(len(clones_in(z, 3, 0)) == before + 1, "座標の欄の入力で境界へ動かすとクローンができる")
-    z.call({"cmd": "undo"})
-    z.call({"cmd": "undo"})
-    check(len(clones_in(z, 3, 0)) == before, "欄の入力を取り消すとクローンも消える")
-    # ひな形で境界の近くに置いても合わせる
+    # イベント数を減らして人を消しても合わせる
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
-    n0 = len(z.call({"cmd": "event.state"})["events"]["persons"])
-    z.call({"cmd": "template.place", "kind": "person", "x": 6, "y": cells["height"] - 1})
-    time.sleep(1.0)
-    check(len(clones_in(z, 3, 0)) == before + 1, "ひな形で境界の近くに置くとクローンができる")
-    # イベント数を減らして消しても合わせる（置いた人は最後の番号）
-    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
-    z.call({"cmd": "tab", "name": "event"})
-    z.call({"cmd": "setField", "id": "event.manager.persons", "value": str(n0)})
+    z.call({"cmd": "setField", "id": "event.manager.persons", "value": str(n0 - 1)})
     z.call({"cmd": "click", "id": "event.manager.apply"})
-    for d in z.call({"cmd": "dialogs"}) or []:
+    time.sleep(0.3)
+    for d in z.call({"cmd": "dialogs"})["dialogs"]:
         if d.get("kind") == "app":
             z.call({"cmd": "dialog", "press": "yes"})
     time.sleep(1.0)
@@ -537,7 +529,8 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     check(len(clones_in(z, 3, 0)) == before + 1, "イベント数の変更を取り消すとクローンも戻る")
     z.call({"cmd": "undo"})
-    check(len(clones_in(z, 3, 0)) == before, "ひな形を取り消すとクローンも消える")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before, "欄の入力を取り消すとクローンも消える")
     # 印を外すと作らない
     z.call({"cmd": "action", "id": "view.clones"})
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})

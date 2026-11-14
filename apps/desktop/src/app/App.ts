@@ -224,6 +224,7 @@ export class App implements ActionTarget {
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
       pickUnused: (kind) => this.pickUnused(kind),
       createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
+      editTrainer: (index) => void this.trainers.editForPerson(index),
       placeTemplate: (x, y) => void this.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       summaries: () => this.eventSummaries(),

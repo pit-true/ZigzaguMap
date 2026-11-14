@@ -16,6 +16,7 @@ import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaEventDelete } from "../../i18n/ja.eventDelete";
 import { jaWarpMap } from "../../i18n/ja.warpMap";
+import { jaTrainer } from "../../i18n/ja.trainer";
 import { showContextMenu } from "../ContextMenu";
 import { showError } from "../MessageBox";
 import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
@@ -58,6 +59,8 @@ export interface EventTabHost {
   summaries?(): Promise<ScriptSummaries>;
   /** ワープの行き先のマップを作る（#241。右クリックのメニュー）。 */
   createWarpMap?(index: number): void;
+  /** 人のスクリプトのトレーナーを直す窓（#274。右クリックのメニュー）。 */
+  editTrainer?(index: number): void;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -526,6 +529,10 @@ export class EventTab {
       },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
+      // 「トレーナーを編集」（#274。人だけ。クローンは参照先を直す）
+      ...(kind === "person" && this.host.editTrainer && this.state.map?.doc.events?.persons[index]?.kind !== 1
+        ? [{ id: "editTrainer", label: jaTrainer.menuEdit, run: () => this.host.editTrainer?.(index) }]
+        : []),
       ...templates,
     ]);
   }
