@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import type { EditorState } from "./EditorState";
+import type { MapNavigation } from "./MapNavigation";
 import type { ImageKind } from "./ImageExport";
 import type { SettingPrompts } from "./SettingPrompts";
 import type { SystemSettings } from "./SystemSettings";
@@ -24,12 +25,8 @@ export interface ActionTarget {
   exportMaps(chooseFolder: boolean): Promise<unknown>;
   openRecent(index: number): Promise<void>;
   exit(): Promise<void>;
-  openMapByNumber(): Promise<void>;
-  openPreviousMap(): Promise<void>;
-  /** 進む（#237）。 */
-  openNextMap(): Promise<void>;
-  /** マップ名で探して開く（#237）。 */
-  findMap(): Promise<void>;
+  /** 番号・名前でマップを開く、戻る・進む（#237）。 */
+  readonly nav: MapNavigation;
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
@@ -107,11 +104,11 @@ export class Actions {
     h.set("view.opacity", () => target.openOpacity());
     h.set("recent.max", () => target.prompts.recentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
-    h.set("tools.openMap", () => target.openMapByNumber());
-    h.set("tools.previousMap", () => target.openPreviousMap());
-    h.set("view.back", () => target.openPreviousMap());
-    h.set("view.forward", () => target.openNextMap());
-    h.set("map.find", () => target.findMap());
+    h.set("tools.openMap", () => target.nav.openMapByNumber());
+    h.set("tools.previousMap", () => target.nav.openPreviousMap());
+    h.set("view.back", () => target.nav.openPreviousMap());
+    h.set("view.forward", () => target.nav.openNextMap());
+    h.set("map.find", () => target.nav.findMap());
     h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
     h.set("image.map", () => target.saveImage("map"));

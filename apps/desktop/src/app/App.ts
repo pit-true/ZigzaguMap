@@ -3,7 +3,6 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isWorkMapId, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
-import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
 import { MapCombo } from "../ui/MapCombo";
@@ -33,7 +32,8 @@ import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
-import { buildMapTree, comboGroups, mapSearchName } from "./MapTreeModel";
+import { buildMapTree, comboGroups } from "./MapTreeModel";
+import { MapNavigation } from "./MapNavigation";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
@@ -69,6 +69,8 @@ interface StartupArgs {
 export class App implements ActionTarget {
   readonly state: EditorState;
   readonly actions: Actions;
+  /** 番号・名前でマップを開く、戻る・進む。 */
+  readonly nav: MapNavigation;
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
   readonly system: SystemSettings;
@@ -134,6 +136,7 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.nav = new MapNavigation({ state, openMap: (id) => this.openMap(id), showFromHistory: (id) => this.showMap(id, "history") });
     this.theme = startMainTheme(() => toTheme(state.settings.data.theme));
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
@@ -255,7 +258,7 @@ export class App implements ActionTarget {
   /** ドラッグ＆ドロップ、キー操作、終了の確認、自動操作を受け付け、起動引数の ROM を開く。 */
   async start(): Promise<void> {
     installShortcuts(this);
-    installHistoryMouse(this);
+    installHistoryMouse(this.nav);
     await this.worldMap.start();
     // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
     await getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget());
@@ -462,51 +465,6 @@ export class App implements ActionTarget {
       this.showError(e);
       return false;
     }
-  }
-
-  /** ツール > マップを指定して開く（Ctrl+M）。初期値は今のマップ。 */
-  async openMapByNumber(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const current = this.state.map ? `${this.state.map.id.bank}.${this.state.map.id.map}` : "";
-    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, current);
-    if (text === null) return;
-    const m = /^\s*(\d+)\s*\.\s*(\d+)\s*$/.exec(text);
-    // AdvanceMap は形の違う入力に、いつも空文字の StrToInt の例外を出す。
-    if (!m) return void (await showError(ja.invalidInteger(""), ja.appTitle));
-    const id = { bank: Number(m[1]), map: Number(m[2]) };
-    if (!session.catalog.has(id)) return void (await showError(ja.mapNotFound));
-    await this.openMap(id);
-  }
-
-  /** マップ名で探して開く（#237。Ctrl+F）。 */
-  async findMap(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const { mapFindDialog } = await import("../ui/MapFindDialog");
-    const id = await mapFindDialog(session.catalog.maps.map((m) => ({ id: m.id, name: mapSearchName(m) })));
-    if (id) await this.openMap(id);
-  }
-
-  /** 戻る（#237。ツール > 以前開いたマップを開く・Alt+BkSp・Alt+←・マウスの戻るボタン）。 */
-  async openPreviousMap(): Promise<void> {
-    await this.stepHistory("back");
-  }
-
-  /** 進む（#237。Alt+→・マウスの進むボタン）。 */
-  async openNextMap(): Promise<void> {
-    await this.stepHistory("forward");
-  }
-
-  private async stepHistory(direction: "back" | "forward"): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const current = this.state.map?.id ?? null;
-    const valid = (id: MapId): boolean => session.catalog.has(id) || !!session.project.loaded(id);
-    const h = this.state.history;
-    const target = direction === "back" ? h.back(current, valid) : h.forward(current, valid);
-    if (!target) return;
-    if (!(await this.showMap(target, "history"))) h.undoStep(direction, target, current);
   }
 
   /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */
