@@ -4,6 +4,7 @@ import {
   EventLabelProject,
   OverworldSprites,
   RegionMapProject,
+  RomEraseProject,
   Rom,
   ScriptsTableProject,
   SpeciesNameTable,
@@ -12,6 +13,7 @@ import {
   eventLabelCountsOf,
   eventPositionsOf,
   withRegionMap,
+  withRomErase,
   withEventLabels,
   withScriptsTable,
   type CommandRegistry,
@@ -67,8 +69,13 @@ export class ProjectSession {
     readonly scriptsTable: ScriptsTableProject,
     /** イベントのラベル（eventscripts と maps\BB\scripts_MM.json。開いたときに読む）。 */
     readonly labels: EventLabelProject,
+    /** ビルドで 0xFF で埋める ROM の範囲（maps\rom_erase.json。#220。開いたときに読む）。 */
+    readonly romErase: RomEraseProject,
   ) {
-    const context = withRegionMap(project.editorContext(), () => this.requireRegionMap().document);
+    const context = withRomErase(
+      withRegionMap(project.editorContext(), () => this.requireRegionMap().document),
+      () => this.requireRomErase(),
+    );
     this.bus = new CommandBus(
       withEventLabels(
         withScriptsTable(context, () => this.requireScriptsTable().document),
@@ -101,7 +108,8 @@ export class ProjectSession {
     const catalog = await MapCatalog.build(project);
     const scripts = await ScriptsTableProject.open(fs.root ? fs : null);
     const labels = await EventLabelProject.open(fs.root ? fs : null);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels);
+    const romErase = await RomEraseProject.open(fs.root ? fs : null);
+    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels, romErase);
   }
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
@@ -208,6 +216,11 @@ export class ProjectSession {
     return doc ? eventPositionsOf(doc.events) : null;
   }
 
+  private requireRomErase(): RomEraseProject {
+    if (!this.fs.root) throw new Error(jaScriptLink.labelsNeedProject);
+    return this.romErase;
+  }
+
   private requireScriptsTable(): ScriptsTableProject {
     const error = this.scriptsTable.loadError;
     if (error !== null) throw new Error(jaScriptLink.scriptsJsonBroken(error));
@@ -231,7 +244,7 @@ export class ProjectSession {
 
   /** 未出力の変更があるか（マップ・タイルセット・マップ名・scripts.json の対応表）。 */
   hasUnsavedChanges(): boolean {
-    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified() || this.labels.isModified();
+    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified() || this.labels.isModified() || this.romErase.isModified();
   }
 
   /**
@@ -286,6 +299,8 @@ export class ProjectSession {
     const labels = await this.labels.save(this.fs, (bank, map) => this.eventPositions(bank, map));
     parts.push(labels);
     if (labels.plan.tables.length > 0 && this.writeTables) parts.push(await this.writeTables(labels.plan.tables));
+    // ビルドで 0xFF で埋める範囲（maps\rom_erase.json。イベントの削除 #220）
+    parts.push(await this.romErase.save(this.fs));
     return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };
   }
 
