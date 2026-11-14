@@ -47,6 +47,13 @@ export class TripleChildMarks {
   private draw(): void {
     const layer = this.view.layer;
     const c = this.canvas;
+    const on = this.state.settings.data.tripleChildMarks && this.state.tab === "map" && !ctrlPeek.held;
+    this.marked = on ? this.cells() : [];
+    // 印が無いときは Canvas の領域を持たない（3 層の次の番号はふつうのマップに無いので、メモリを使わない）
+    if (this.marked.length === 0) {
+      if (c.width !== 0) c.width = c.height = 0;
+      return;
+    }
     c.style.left = layer.style.left;
     c.style.top = layer.style.top;
     c.style.width = layer.style.width;
@@ -57,9 +64,6 @@ export class TripleChildMarks {
     }
     const ctx = c.getContext("2d")!;
     ctx.clearRect(0, 0, c.width, c.height);
-    const on = this.state.settings.data.tripleChildMarks && this.state.tab === "map" && !ctrlPeek.held;
-    this.marked = on ? this.cells() : [];
-    if (this.marked.length === 0) return;
     const size = this.view.cellSize;
     ctx.strokeStyle = COLOR;
     ctx.lineWidth = 2;
