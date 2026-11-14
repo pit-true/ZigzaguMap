@@ -117,6 +117,28 @@ export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/P
 export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock, itemBallLabel } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
+export {
+  ROM_ERASE_FORMAT,
+  ROM_ERASE_PATH,
+  ROM_ERASE_TYPES,
+  RomEraseProject,
+  formatRomEraseAddress,
+  parseRomErase,
+  romRangeCovered,
+  romRangesOverlap,
+  stringifyRomErase,
+  type RomEraseEventKind,
+  type RomEraseFile,
+  type RomEraseRange,
+  type RomEraseType,
+} from "./project/RomEraseJson.js";
+export {
+  AddRomEraseRangesCommand,
+  isRomEraseContext,
+  withRomErase,
+  type AddRomEraseRangesArgs,
+  type RomEraseContext,
+} from "./command/commands/project/AddRomEraseRangesCommand.js";
 export { RomLocations, toOffset, type MapLocations, type RawMapBytes } from "./project/RomLocations.js";
 
 // タイルセットの編集
