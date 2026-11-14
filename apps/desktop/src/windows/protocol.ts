@@ -10,7 +10,7 @@
  */
 
 /** 別ウィンドウの種類（Tauri のウィンドウのラベル）。 */
-export type ToolKind = "block-editor" | "palette-editor" | "block-adjust";
+export type ToolKind = "block-editor" | "palette-editor" | "block-adjust" | "transplant";
 
 /** 別ウィンドウ → メインのイベント名。 */
 export const TOOL_REQUEST_EVENT = "tool-request";
@@ -63,7 +63,23 @@ export type ToolRequest =
   | { readonly from: ToolKind; readonly id: number; readonly op: "execute"; readonly name: string; readonly args: Record<string, unknown> }
   | { readonly from: ToolKind; readonly id: number; readonly op: "undo" | "redo" | "export" | "commitPreview" }
   | { readonly from: ToolKind; readonly id: number; readonly op: "setUi"; readonly palette?: number; readonly preview?: Record<number, readonly number[]> }
-  | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind };
+  | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind }
+  /** 別の ROM からの移植（#314）: 新しいタイルセットの位置と、アニメ処理の機械語がベース ROM の同じ場所と同じか。 */
+  | { readonly from: ToolKind; readonly id: number; readonly op: "probe"; readonly newTilesets: number; readonly code: readonly TransplantCodeProbe[] };
+
+/** ベース ROM の `address`（0x08 起点）に `bytes`（base64）と同じ機械語があるか、の問い合わせ。 */
+export interface TransplantCodeProbe {
+  readonly address: number;
+  readonly bytes: string;
+}
+
+/** probe の返事。 */
+export interface TransplantProbeResult {
+  /** 新しいタイルセットに使うヘッダーの位置（newTilesets 個）。 */
+  readonly addresses: number[];
+  /** code の順に、同じ機械語があるか。 */
+  readonly codeMatches: boolean[];
+}
 
 /** メイン → 別ウィンドウの知らせ。 */
 export type ToolMessage =
@@ -76,4 +92,5 @@ export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: numb
   "block-editor": { width: 823, height: 253 },
   "palette-editor": { width: 286, height: 186 },
   "block-adjust": { width: 264, height: 461 },
+  transplant: { width: 760, height: 470 },
 };

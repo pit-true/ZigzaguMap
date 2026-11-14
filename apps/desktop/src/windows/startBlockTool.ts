@@ -30,6 +30,9 @@ export async function startBlockTool(kind: ToolKind, root: HTMLElement): Promise
     case "block-adjust":
       (await import("./block-adjust/BlockAdjustWindow")).BlockAdjustWindow.start(root, client);
       break;
+    case "transplant":
+      (await import("./transplant/TransplantWindow")).TransplantWindow.start(root, client);
+      break;
   }
 }
 

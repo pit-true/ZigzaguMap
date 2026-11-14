@@ -32,7 +32,7 @@ export interface ActionTarget {
   /** 表示 > 移動エリアの透明度（スライダーの小窓）。 */
   openOpacity(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
-  openToolWindow(kind: "block-editor"): Promise<void>;
+  openToolWindow(kind: "block-editor" | "transplant"): Promise<void>;
   openWorldMap(): Promise<void>;
 }
 
@@ -115,6 +115,7 @@ export class Actions {
     h.set("image.mapEvent", () => target.saveImage("mapEvent"));
     h.set("image.palette", () => target.saveImage("palette"));
     h.set("tools.blockEditor", () => target.openToolWindow("block-editor"));
+    h.set("tools.transplant", () => target.openToolWindow("transplant"));
   }
 
   /** 処理を登録する（同じ ID があれば置き換える）。機能ごとのモジュールが自分のアクションを足すのに使う。 */

@@ -22,6 +22,7 @@ const TOOL_WINDOWS: Readonly<Record<string, ToolWindowStarter>> = {
   "block-editor": startBlockTool,
   "palette-editor": startBlockTool,
   "block-adjust": startBlockTool,
+  transplant: startBlockTool,
   // CodeMirror はここで初めて読み込む（メインの index.html の束には入れない）
   [SCRIPT_EDITOR_WINDOW]: async (_label, root) => {
     const { ScriptEditorWindow } = await import("./script-editor/ScriptEditorWindow");

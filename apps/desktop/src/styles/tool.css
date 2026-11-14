@@ -109,3 +109,39 @@
   width: 265px;
   height: 465px;
 }
+
+/* ---- 別の ROM からタイルセットを取り込む（#314） ---- */
+.transplant {
+  position: relative;
+  height: 470px;
+}
+
+.tp-heading {
+  font-weight: bold;
+}
+
+.tp-path {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-list {
+  height: 404px;
+}
+
+.tp-preview {
+  overflow: auto;
+  border: 1px solid var(--shadow);
+  background: var(--panel, transparent);
+}
+
+.tp-info {
+  white-space: pre-line;
+  font-size: 12px;
+}
+
+.tp-report {
+  white-space: pre-wrap;
+  overflow-x: hidden;
+}
