@@ -103,6 +103,10 @@ export interface SettingsData {
    * クローンを作り（離れたら・消したら消す）、イベントタブの隣の帯にこのマップのクローンを見せる。オフのときは作りも消しもしない。
    */
   showClones: boolean;
+  /** ROM ごとに前回のプロジェクトフォルダを覚え、ROM を開いたときフォルダを選ぶ窓を出さずにそれを開く（設定メニュー。既定オン。ユーザーの要望 #278）。 */
+  rememberRomProject: boolean;
+  /** ROM のパス（小文字）→ 前回いっしょに開いたプロジェクトフォルダ（最近開いたものの件数に関係なく残す）。 */
+  romProjects: Record<string, string>;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -144,6 +148,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   autoMovement: true,
   usageMarks: true,
   showClones: false,
+  rememberRomProject: true,
+  romProjects: {},
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
@@ -178,7 +184,13 @@ export class Settings {
   /** 最近開いたものの先頭に加える（同じものは前から消す）。 */
   addRecent(entry: RecentEntry): void {
     const rest = this.data.recent.filter((r) => r.rom.toLowerCase() !== entry.rom.toLowerCase());
-    this.update({ recent: [entry, ...rest].slice(0, Math.max(1, this.data.recentMax)) });
+    const romProjects = entry.project ? { ...this.data.romProjects, [entry.rom.toLowerCase()]: entry.project } : this.data.romProjects;
+    this.update({ recent: [entry, ...rest].slice(0, Math.max(1, this.data.recentMax)), romProjects });
+  }
+
+  /** その ROM と前回いっしょに開いたプロジェクトフォルダ（無ければ null）。 */
+  rememberedProject(rom: string): string | null {
+    return this.data.romProjects[rom.toLowerCase()] ?? null;
   }
 
   /** すぐに保存する（終了時など）。 */

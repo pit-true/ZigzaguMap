@@ -135,6 +135,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
         // ZigzaguMap 独自（Phase3）。コネクションマネージャーでずれを変えたとき相手側もそろえる
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
+        // ROM を開いたとき、前回のプロジェクトフォルダを窓を出さずに開く（ユーザーの要望 #278。ZigzaguMap 独自）
+        { id: "opt.rememberRomProject", label: ja.rememberRomProject },
         {
           label: ja.recentSettings,
           accel: "Z",
