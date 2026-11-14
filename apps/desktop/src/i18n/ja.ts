@@ -60,8 +60,6 @@ export const ja = {
   headerSort: M["1272"],
   blockPaletteWidth: M["122"],
   movementOpacity: M["1217"],
-  /** 表示 > 移動エリアの透明度（スライダーの小窓を開く）。 */
-  movementOpacityMenu: `${M["1217"]}...`,
   showToolbar: M["1211"],
   rememberLast: M["128"],
   autoSearchOffset: M["1210"],

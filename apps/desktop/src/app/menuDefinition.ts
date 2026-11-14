@@ -88,7 +88,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
             { id: "zoom.movementPalette", label: ja.zoomMovementPalette },
           ],
         },
-        { id: "view.opacity", label: ja.movementOpacityMenu, accel: "Q" },
+        { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
         { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
         sep,
         { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
