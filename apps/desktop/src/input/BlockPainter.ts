@@ -1,27 +1,19 @@
-import { BLOCK_PIXELS, PaintBlocksCommand, PaintCellValuesCommand, createImage, formatHex, type Command } from "@zigzagumap/core";
+import { formatHex } from "@zigzagumap/core";
 import type { BlockUsageService } from "../app/BlockUsageService";
 import type { BlockSelection } from "../app/EditorState";
 import type { EditorState } from "../app/EditorState";
 import type { MixingBag } from "../app/MixingBag";
 import { ja } from "../i18n/ja";
-import { jaPaint } from "../i18n/ja.paint";
-import { jaPen } from "../i18n/ja.pen";
 import type { Cell, MapView } from "../ui/map/MapView";
+import type { AutoPenTool } from "./AutoPenTool";
+import { BlockDragTools, type DragToolKind, type PickedRect } from "./BlockDragTools";
+import { BlockWriter } from "./BlockWriter";
 import { attachCellPointer } from "./CellPointer";
 import { MapCells } from "./MapCells";
-import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
+import { usableSelection } from "./paintCommands";
+import { tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
-import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost, type AutoPenTool } from "./AutoPenTool";
-import { dropTripleChildren, tripleStatusSuffix } from "./tripleRules";
-
-/** ドラッグ中の道具（Phase3 #233）。 */
-type Drag =
-  | { readonly tool: "pick"; readonly anchor: Cell; cancelled: boolean }
-  | { readonly tool: "rect"; readonly anchor: Cell; last: Cell; cancelled: boolean }
-  | { readonly tool: "swap"; readonly anchor: Cell; last: Cell; cancelled: boolean };
-
-/** 矩形塗りの下見の不透明度。 */
-const PREVIEW_ALPHA = 0.75;
+import { tripleStatusSuffix } from "./tripleRules";
 
 /**
  * マップタブのマウス操作（AdvanceMap に合わせ、Phase3 で道具を足した）。
@@ -40,22 +32,25 @@ const PREVIEW_ALPHA = 0.75;
  * マップごとのコマンドをまとめて 1 回の操作にする（隣のマップは書く前に読み込む）。
  * 3 層の次の番号（#301）: どの描き方でも書かない（そのマスは今のまま）。1 つも書けなかったときはステータスバーに理由を出す。
  * 拾ったブロックが 3 層の次の番号なら、1 つ前の 3 層のブロックを選ぶ（パレットと同じ）。
+ *
+ * 道具ごとに分けている（Phase4 #318）: ここはマウスの振り分けと鉛筆・拾う・座標の表示。ドラッグの道具（矩形の選択・矩形塗り・
+ * 入れ替え）は BlockDragTools、自動ペンは AutoPenTool、書き込み（3 層の次の番号を落とす所を含む）は BlockWriter。
  */
-export class BlockPainter implements AutoPenHost {
-  private drag: Drag | null = null;
+export class BlockPainter {
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
   hoverCell: Cell | null = null;
   /** 画面のマスとマップのマスの対応（隣の帯は App が `cells.neighbors` を入れる）。 */
   readonly cells: MapCells;
-  private readonly preview: PreviewCanvas;
+  /** ブロックの書き込み（自動ペン・マップ作成補助・境界ブロックも使う）。 */
+  readonly writer: BlockWriter;
+  /** ドラッグの道具（矩形の選択・矩形塗り・入れ替え）。 */
+  readonly drags: BlockDragTools;
   /** ミキシングバッグ（MapTab が入れる）。 */
   bag: MixingBag | null = null;
   /** ブロックの使用回数（袋から描くときの移動許可。App が入れる）。 */
   usage: BlockUsageService | null = null;
   /** 自動ペン（Phase4 #310。PenExtras が入れる）。オンでパーツのブロックを選んでいれば、左ボタンの描画を受ける。 */
   autoPen: AutoPenTool | null = null;
-  /** 最後に Ctrl＋右ドラッグで選んだ矩形（主マップとその座標。マップ作成補助の「範囲」。#312）。 */
-  lastPick: { readonly id: { bank: number; map: number }; readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -64,70 +59,49 @@ export class BlockPainter implements AutoPenHost {
     private readonly onPicked: () => void,
   ) {
     this.cells = new MapCells(state);
-    this.preview = new PreviewCanvas(view);
+    const preview = new PreviewCanvas(view);
+    this.writer = new BlockWriter(state, this.cells, preview, () => this.drags.tool !== null);
+    this.drags = new BlockDragTools(state, this.writer, preview, (rect) => this.fillRect(rect), onPicked);
+    const startDrag = (tool: DragToolKind, cell: Cell): void => this.drags.start(tool, cell);
     attachCellPointer(view.stage, (e) => this.cellAt(e), {
       down: (cell, g) => {
-        if (g.button === 0 && g.ctrl) this.startDrag({ tool: "rect", anchor: cell, last: cell, cancelled: false });
-        else if (g.button === 0 && g.alt) this.startDrag({ tool: "swap", anchor: cell, last: cell, cancelled: false });
+        if (g.button === 0 && g.ctrl) startDrag("rect", cell);
+        else if (g.button === 0 && g.alt) startDrag("swap", cell);
         else if (g.button === 0) {
           // ダブルクリックで隣のマップを開くとき、この押下で描いた分を取り消せるよう覚える
           this.cells.pressStart();
           if (this.autoPen?.begin(cell)) return;
           this.paint(cell, false);
-        } else if (g.ctrl) this.startDrag({ tool: "pick", anchor: cell, cancelled: false }, cell);
+        } else if (g.ctrl) startDrag("pick", cell);
       },
       move: (cell, g) => {
-        const d = this.drag;
-        if (!d && g.button === 0 && this.autoPen?.drag(cell)) return;
-        if (d && !d.cancelled) {
-          if (d.tool !== "pick") d.last = cell;
-          this.drawPreview(d, cell);
-        } else if (!d && g.button === 0 && this.isSingle()) this.paint(cell, true);
+        const dragging = this.drags.tool !== null;
+        if (!dragging && g.button === 0 && this.autoPen?.drag(cell)) return;
+        if (dragging) this.drags.move(cell);
+        else if (g.button === 0 && this.isSingle()) this.paint(cell, true);
       },
       up: (cell, g) => {
         this.cells.pressEnd();
         this.autoPen?.end();
-        const d = this.drag;
-        this.drag = null;
-        if (d) {
-          this.preview.end();
-          if (d.cancelled) return;
-          const end = cell ?? (d.tool === "pick" ? d.anchor : d.last);
-          if (d.tool === "pick") this.selectRect(d.anchor, end);
-          else if (d.tool === "rect") this.fillRect(rectOf(d.anchor, end));
-          else this.swap(d.anchor, end);
-          return;
-        }
+        if (this.drags.end(cell)) return;
         if (g.button === 2 && cell) this.pick(cell);
       },
       hover: (cell) => {
         this.hover(cell);
-        if (!this.drag) this.autoPen?.hover(cell);
+        if (this.drags.tool === null) this.autoPen?.hover(cell);
       },
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.drag || this.drag.cancelled) return;
-      e.preventDefault();
-      this.drag.cancelled = true;
-      this.preview.end();
-      this.state.setStatus(jaPaint.dragCancelled);
     });
   }
 
-  /** ドラッグ中の道具（自動操作と確認用。無ければ null）。 */
-  get tool(): "pick" | "rect" | "swap" | null {
-    return this.drag?.tool ?? null;
+  /** 最後に Ctrl＋右ドラッグで選んだ矩形（主マップとその座標。マップ作成補助の「範囲」。#312）。 */
+  get lastPick(): PickedRect | null {
+    return this.drags.lastPick;
   }
 
   /** マウスの位置のマス（主マップか、見せている隣の帯の上だけ）。 */
   private cellAt(e: MouseEvent): Cell | null {
     const c = this.view.cellAtAny(e);
     return c && this.cells.resolve(c) ? c : null;
-  }
-
-  private startDrag(d: Drag, cell: Cell = d.anchor): void {
-    this.drag = d;
-    this.drawPreview(d, cell);
   }
 
   private isSingle(): boolean {
@@ -142,15 +116,15 @@ export class BlockPainter implements AutoPenHost {
   paintSelection(cell: Cell, s: BlockSelection, merge = false): void {
     const sel = usableSelection(s);
     const list = tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel);
-    if (this.bag?.appliesTo(s)) return this.write(this.fromBag(list), true, merge, true);
-    this.write(list, true, merge);
+    if (this.bag?.appliesTo(s)) return this.writer.write(this.fromBag(list), true, merge, true);
+    this.writer.write(list, true, merge);
   }
 
   /** 矩形塗り（1 回の操作）。 */
   private fillRect(rect: CellRect): void {
     const list = tileRect(rect, this.state.selection);
-    if (this.bag?.appliesTo(this.state.selection)) return this.write(this.fromBag(list), false, false, true);
-    this.write(list, false, false);
+    if (this.bag?.appliesTo(this.state.selection)) return this.writer.write(this.fromBag(list), false, false, true);
+    this.writer.write(list, false, false);
   }
 
   /** 各マスのブロックを袋から選ぶ（移動許可は、自動で選ぶ設定がオンで使用回数があれば、いちばん多いもの）。 */
@@ -165,112 +139,8 @@ export class BlockPainter implements AutoPenHost {
     });
   }
 
-  /**
-   * 画面のマスの一覧を、マップごとのコマンドにして実行する。隣のマップが読み込まれていなければ、読み込んでから実行する
-   * （その間の操作は順に待たせる）。`forDrag` はドラッグで続けて描く操作（まとめて 1 回にする）。
-   */
-  private write(list: readonly FillCell[], forDrag: boolean, merge: boolean, fromBag = false): void {
-    // 3 層の次の番号は書かない（描き方ごとでなく、ここ 1 か所で落とす。#301）。マップごとにそのマップのタイルセットで見る（#337）
-    let skipped = 0;
-    const groups = this.cells.split(list).flatMap((g) => {
-      const r = dropTripleChildren(g.cells, this.cells.tripleChildOf(g.id));
-      skipped += r.skipped;
-      return r.kept.length > 0 ? [{ id: g.id, cells: r.kept }] : [];
-    });
-    if (groups.length === 0) {
-      if (skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
-      return;
-    }
-    // 袋から描くときは、移動許可を持つマス（自動で選んだもの）だけ移動許可も書く。それ以外は「移動許可も貼る」に従う
-    const withMovements = fromBag || this.state.settings.data.pasteMovements;
-    this.cells.run(
-      groups.map((g) => g.id),
-      () => groups.flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []),
-      forDrag,
-      merge,
-    );
-  }
-
-  /** 主マップの座標のマス（境界ブロックなど）から 3 層の次の番号を落とす（主マップのタイルセットで見る）。 */
-  dropUnplaceable(list: readonly FillCell[]): { kept: FillCell[]; skipped: number } {
-    const triple = this.state.map?.tiles.triple ?? null;
-    return dropTripleChildren(list, triple ? (b) => triple.isTripleChild(b) : null);
-  }
-
-  /** 2 マスのブロックと移動許可を入れ替える（1 回の操作。2 枚のマップにまたがってもよい）。 */
-  private swap(a: Cell, b: Cell): void {
-    const ra = this.cells.resolve(a);
-    const rb = this.cells.resolve(b);
-    if (!ra || !rb || (a.x === b.x && a.y === b.y)) return;
-    const ga = this.cells.gridOf(ra.id);
-    const gb = this.cells.gridOf(rb.id);
-    if (!ga || !gb) return;
-    const va = ga.getCell(ra.x, ra.y);
-    const vb = gb.getCell(rb.x, rb.y);
-    // 3 層の次の番号を動かすと片方だけ書かれてしまうので、入れ替えない（#301）。書く先のマップのタイルセットで見る（#337）
-    const childA = this.cells.tripleChildOf(ra.id);
-    const childB = this.cells.tripleChildOf(rb.id);
-    if (childB?.(va & 0x3ff) || childA?.(vb & 0x3ff)) {
-      this.state.setStatus(jaPen.tripleChildSkipped(1), undefined, true);
-      return;
-    }
-    this.write(
-      [
-        { x: a.x, y: a.y, block: vb & 0x3ff, movement: vb >> 10 },
-        { x: b.x, y: b.y, block: va & 0x3ff, movement: va >> 10 },
-      ],
-      false,
-      false,
-    );
-    this.state.setStatus(jaPaint.swapped(a.x, a.y, b.x, b.y));
-  }
-
-  /** 決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる。マップ作成補助）。 */
-  writeCells(list: readonly FillCell[], merge: boolean, ownMovements: boolean): void {
-    this.write(list, true, merge, ownMovements);
-  }
-
-  /**
-   * 書くマスを実行の直前に決めて書く（自動ペン。#335）。`area` は読むか書くかもしれない画面のマスで、そこにかかる隣のマップを
-   * 先に読み込む。読み込みを待つ間に並んだ前の書き込みを済ませてから `plan` を呼ぶので、前の書き込みを見て中身を決められる。
-   */
-  writePlanned(area: readonly Cell[], plan: () => readonly FillCell[], merge: boolean, ownMovements: boolean): void {
-    const ids = this.cells.split(area).map((g) => g.id);
-    if (ids.length === 0) return;
-    const withMovements = ownMovements || this.state.settings.data.pasteMovements;
-    this.cells.run(
-      ids,
-      () => {
-        const { kept, skipped } = this.dropUnplaceable(plan());
-        if (kept.length === 0 && skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
-        // 編集用に読み込んだマップだけに書く（area の外の、まだ読んでいない隣のマップへはみ出した分は捨てる）
-        return this.cells
-          .split(kept)
-          .filter((g) => !this.cells.needsLoad([g.id]))
-          .flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []);
-      },
-      true,
-      merge,
-    );
-  }
-
-  /** カーソルに置く物を薄く重ねる（自動ペン。空なら消す）。 */
-  showPreview(cells: readonly FillCell[]): void {
-    if (this.drag) return;
-    if (cells.length === 0) return this.preview.end();
-    const p = this.preview.begin();
-    this.drawBlocks(p, cells.filter((c) => this.cells.resolve(c)), AUTOPEN_PREVIEW_ALPHA);
-  }
-
-  /** 画面のマスのブロックと移動許可（どのマップでもなければ null）。 */
-  cellValue(cell: Cell): number | null {
-    const ref = this.cells.resolve(cell);
-    const grid = ref ? this.cells.gridOf(ref.id) : null;
-    return ref && grid ? grid.getCell(ref.x, ref.y) : null;
-  }
-
   private pick(cell: Cell): void {
-    const value = this.cellValue(cell);
+    const value = this.writer.cellValue(cell);
     if (value === null) return;
     this.state.selectBlock(value & 0x3ff);
     const block = this.state.selection.blocks[0] ?? 0;
@@ -279,108 +149,11 @@ export class BlockPainter implements AutoPenHost {
     this.onPicked();
   }
 
-  private selectRect(a: Cell, b: Cell): void {
-    if (!this.state.map) return;
-    const r = rectOf(a, b);
-    const blocks: number[] = [];
-    const movements: number[] = [];
-    for (let y = r.y; y < r.y + r.height; y++) {
-      for (let x = r.x; x < r.x + r.width; x++) {
-        const v = this.cellValue({ x, y }) ?? 0;
-        blocks.push(v & 0x3ff);
-        movements.push(v >> 10);
-      }
-    }
-    this.lastPick = { id: { ...this.state.map.id }, x: r.x, y: r.y, width: r.width, height: r.height };
-    this.state.selectStamp({ width: r.width, height: r.height, blocks, movements });
-    this.onPicked();
-  }
-
   private hover(cell: Cell | null): void {
     if (cell) this.hoverCell = cell;
     const map = this.state.map;
     // 隣の帯の上（主マップの外）は、表示の補助の欄に隣のマップの座標を出す（#238）ので、ここでは出さない
     if (!cell || !map || !map.doc.grid.inBounds(cell.x, cell.y)) return;
-    this.state.setStatus(ja.statusMapCell(cell.x, cell.y, hex4(map.doc.grid.getBlock(cell.x, cell.y))));
+    this.state.setStatus(ja.statusMapCell(cell.x, cell.y, formatHex(map.doc.grid.getBlock(cell.x, cell.y), 4)));
   }
-
-  /** ドラッグ中の下見（矩形の選択は赤い枠、矩形塗りはブロックを半透明で、入れ替えは 2 マスの枠）。 */
-  private drawPreview(d: Drag, cell: Cell): void {
-    const p = this.preview.begin();
-    if (d.tool === "pick") return strokeRect(p, rectOf(d.anchor, cell), "#ff0000");
-    if (d.tool === "swap") {
-      strokeRect(p, rectOf(d.anchor, d.anchor), "#ffd000");
-      return strokeRect(p, rectOf(cell, cell), "#ffd000");
-    }
-    const rect = rectOf(d.anchor, cell);
-    this.drawBlocks(p, tileRect(rect, this.state.selection).filter((c) => this.cells.resolve(c)));
-    strokeRect(p, rect, "#ff0000");
-  }
-
-  /** ブロックを下見の Canvas に半透明で描く（矩形塗りの下見。主マップのタイルセットで描く）。 */
-  private drawBlocks(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, cells: readonly FillCell[], alpha = PREVIEW_ALPHA): void {
-    const map = this.state.map;
-    if (!map || cells.length === 0) return;
-    const minX = Math.min(...cells.map((c) => c.x));
-    const minY = Math.min(...cells.map((c) => c.y));
-    const w = Math.max(...cells.map((c) => c.x)) - minX + 1;
-    const h = Math.max(...cells.map((c) => c.y)) - minY + 1;
-    const image = createImage(w * BLOCK_PIXELS, h * BLOCK_PIXELS);
-    for (const c of cells) map.tiles.renderer.blit(c.block, image.data, image.width, (c.x - minX) * BLOCK_PIXELS, (c.y - minY) * BLOCK_PIXELS);
-    const tmp = document.createElement("canvas");
-    tmp.width = image.width;
-    tmp.height = image.height;
-    tmp.getContext("2d")!.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
-    p.c.save();
-    p.c.imageSmoothingEnabled = false;
-    p.c.globalAlpha = alpha;
-    p.c.drawImage(tmp, p.ox + minX * p.size, p.oy + minY * p.size, w * p.size, h * p.size);
-    p.c.restore();
-  }
-}
-
-/** 分けたあとのマスはどれもそのマップの中（MapCells.split が確かめる）。 */
-const alwaysInside = { inBounds: (): boolean => true };
-
-function strokeRect(p: { c: CanvasRenderingContext2D; ox: number; oy: number; size: number }, r: CellRect, color: string): void {
-  p.c.strokeStyle = color;
-  p.c.lineWidth = 1;
-  p.c.strokeRect(p.ox + r.x * p.size + 0.5, p.oy + r.y * p.size + 0.5, r.width * p.size - 1, r.height * p.size - 1);
-}
-
-/**
- * マスの一覧を書くコマンド（マップの外の分は書かない。書くマスが無ければ null）。
- * 移動許可を持つマスがあり `withMovements` なら paintCells（ブロックと移動許可）、そうでなければ paintBlocks（ブロックだけ）。
- */
-export function cellsCommand(id: { bank: number; map: number }, grid: { inBounds(x: number, y: number): boolean }, list: readonly FillCell[], withMovements: boolean): Command | null {
-  const cells = list.filter((c) => grid.inBounds(c.x, c.y));
-  if (cells.length === 0) return null;
-  if (withMovements && cells.every((c) => c.movement !== undefined)) {
-    return new PaintCellValuesCommand({ bank: id.bank, map: id.map, cells: cells.map((c) => ({ x: c.x, y: c.y, block: c.block, movement: c.movement! })) });
-  }
-  return new PaintBlocksCommand({ bank: id.bank, map: id.map, cells: cells.map(({ x, y, block }) => ({ x, y, block })) });
-}
-
-/**
- * 選択を `cell` を左上にして置くコマンド（マップの外にはみ出す分は置かない。置くマスが無ければ null）。
- * 選択が移動許可を持ち、`withMovements` なら paintCells（ブロックと移動許可）、そうでなければ paintBlocks（ブロックだけ）。
- */
-export function paintCommand(
-  id: { bank: number; map: number },
-  grid: { inBounds(x: number, y: number): boolean },
-  cell: Cell,
-  s: BlockSelection,
-  withMovements: boolean,
-): Command | null {
-  return cellsCommand(id, grid, tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, usableSelection(s)), withMovements);
-}
-
-/** 移動許可の数がブロックと合わない選択は、移動許可を持たないものとして扱う（穴はそのまま）。 */
-function usableSelection(s: BlockSelection): BlockSelection {
-  if (s.movements === undefined || s.movements.length === s.blocks.length) return s;
-  return { width: s.width, height: s.height, blocks: s.blocks, ...(s.holes ? { holes: s.holes } : {}) };
-}
-
-function hex4(n: number): string {
-  return formatHex(n, 4);
 }

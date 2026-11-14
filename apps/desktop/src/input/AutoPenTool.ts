@@ -6,7 +6,7 @@ import { jaPen } from "../i18n/ja.pen";
 import type { Cell, MapView } from "../ui/map/MapView";
 import type { FillCell } from "./paintPlans";
 
-/** 自動ペンが描く道具に頼むこと（BlockPainter が受ける）。 */
+/** 自動ペンが描く道具に頼むこと（BlockPainter の BlockWriter が受ける）。 */
 export interface AutoPenHost {
   /** 画面のマスの値（u16。どのマップでもなければ null）。 */
   cellValue(cell: Cell): number | null;

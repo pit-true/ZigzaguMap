@@ -188,7 +188,7 @@ export class MapAssistHost {
 
   private source(): PenSource {
     const painter = this.app.pen.mapTab.painter;
-    return { get: (x, y) => painter.cellValue({ x, y }) };
+    return { get: (x, y) => painter.writer.cellValue({ x, y }) };
   }
 
   /** 選んだパーツで範囲を塗る（自動ペンと同じ処理。1 回の操作）。書いたマスの数。 */
@@ -235,7 +235,7 @@ export class MapAssistHost {
 
   private write(list: readonly FillCell[]): number {
     if (list.length === 0) return 0;
-    this.app.pen.mapTab.painter.writeCells(list, false, true);
+    this.app.pen.mapTab.painter.writer.writeCells(list, false, true);
     return list.length;
   }
 

@@ -41,7 +41,7 @@ export class PenExtras {
     });
     this.tripleMarks = new TripleChildMarks(mapTab.view, state);
     this.autopen = new AutoPenService(state);
-    this.tool = new AutoPenTool(state, this.autopen, usage, mapTab.painter, mapTab.view);
+    this.tool = new AutoPenTool(state, this.autopen, usage, mapTab.painter.writer, mapTab.view);
     mapTab.painter.autoPen = this.tool;
     this.panel = new AutoPenPanel(state, this.autopen);
     mapTab.insertSide(this.panel.element);

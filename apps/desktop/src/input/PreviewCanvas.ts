@@ -1,5 +1,13 @@
 import type { MapView } from "../ui/map/MapView";
 
+/** 下見を描く入口と、主マップの左上の位置（表示上の画素）と 1 マスの大きさ。 */
+export interface PreviewPen {
+  readonly c: CanvasRenderingContext2D;
+  readonly ox: number;
+  readonly oy: number;
+  readonly size: number;
+}
+
 /**
  * ドラッグ中の下見を描く Canvas（ステージ全体を覆う。隣のマップの帯の上にも描ける。Phase3 #233・#234）。
  * ドラッグの間だけ置き、終わったら外す。重ね描きの Canvas（Ctrl を押している間は隠れる）とは別に置く。
@@ -10,7 +18,7 @@ export class PreviewCanvas {
   constructor(private readonly view: MapView) {}
 
   /** 描く入口と、主マップの左上の位置（表示上の画素）。前に描いたものは消す。 */
-  begin(): { c: CanvasRenderingContext2D; ox: number; oy: number; size: number } {
+  begin(): PreviewPen {
     const stage = this.view.stage;
     const width = Math.round(parseFloat(stage.style.width) || 0);
     const height = Math.round(parseFloat(stage.style.height) || 0);
