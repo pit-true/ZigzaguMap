@@ -14,6 +14,7 @@ import time
 
 from .app import Zigzagu
 from .builder import build_fixture
+from .delete import PATCHES, _apply_patch
 from .fixtures import Fixture
 from .link import TextSnapshot
 from .romread import BuiltRom
@@ -68,6 +69,9 @@ def triple_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log_dir
         z.call({"cmd": "close", "window": BE})
         # N をマップの (1,1) に置く（移動許可はそのまま）
         z.call({"cmd": "command", "name": "paintBlocks", "args": {"bank": TARGET[0], "map": TARGET[1], "cells": [{"x": 1, "y": 1, "block": n}]}})
+        # 新しい・変えたタイルセット（tiles.png）を読むには、map_project.py が Pillow を読めるようにするパッチが要る（build-support）
+        patch = PATCHES / f"map_project-pillow-{fx.name}.patch"
+        check(_apply_patch(fx.project_path, patch, log, ("scripts/map_project.py", "_import_pil_image")), f"写しの map_project.py に {patch.name} を当てる")
         res = z.export()
         log(f"出力: 書いた {len(res.get('written', []))} 件 {[w for w in res.get('written', []) if 'tilesets' in w.replace(chr(92), '/')]}")
         r = build_fixture(fx, log_dir, timeout or 3600)

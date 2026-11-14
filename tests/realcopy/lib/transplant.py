@@ -12,6 +12,7 @@ import time
 
 from .app import Zigzagu
 from .builder import build_fixture
+from .delete import PATCHES, _apply_patch
 from .fixtures import Fixture
 from .link import TextSnapshot
 from .romread import BuiltRom
@@ -57,6 +58,9 @@ def transplant_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log
         check(m["primaryTileset"] >= 0x09F00000 and m["secondaryTileset"] >= 0x09F00000, f"{TARGET[0]}.{TARGET[1]} の組が新しいタイルセットになる（{m['primaryTileset']:#x}, {m['secondaryTileset']:#x}）")
         check([m["width"], m["height"]] == s["selectedSize"], f"配置も写して大きさが {s['selectedSize']} になる")
         z.call({"cmd": "close", "window": TP})
+        # 新しい・変えたタイルセット（tiles.png）を読むには、map_project.py が Pillow を読めるようにするパッチが要る（build-support）
+        patch = PATCHES / f"map_project-pillow-{fx.name}.patch"
+        check(_apply_patch(fx.project_path, patch, log, ("scripts/map_project.py", "_import_pil_image")), f"写しの map_project.py に {patch.name} を当てる")
         res = z.export()
         written = [w for w in res.get("written", []) if "tilesets" in w.replace("\\", "/")]
         log(f"出力: 書いた {len(res.get('written', []))} 件（タイルセット {written}）")
