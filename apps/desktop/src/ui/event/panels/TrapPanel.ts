@@ -1,3 +1,4 @@
+import { showIfScriptEntry } from "../../script/ScriptEntry";
 import type { TrapEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
 import { pushButton } from "../../form/valueControls";
@@ -38,9 +39,11 @@ export class TrapPanel extends ListKindPanel<TrapEvent> {
       this.hex("script", 6, 65, (e) => e.script & 0xffffff, (e, v) => ({ script: withScriptOffset(e.script, v) }), { prefix: "$" }),
     );
     this.element.append(
-      pushButton("event.trap.openScript", ja.event.openScript, () => {
-        if (this.current) host.openScript(this.current.event.script);
-      }, "wide-button"),
+      showIfScriptEntry(
+        pushButton("event.trap.openScript", ja.event.openScript, () => {
+          if (this.current) host.openScript(this.current.event.script);
+        }, "wide-button"),
+      ),
     );
   }
 }

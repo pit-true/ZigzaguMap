@@ -65,10 +65,6 @@ export interface SettingsData {
   romShortcut: boolean;
   /** エクスプローラーの右クリックに登録したか。 */
   contextMenu: boolean;
-  /** スクリプトエディターの exe（未設定なら null）。 */
-  scriptEditor: string | null;
-  /** スクリプトエディターに渡すとき、ROM の名前とオフセットを空白で区切る（false なら「:」）。 */
-  scriptSpaceSeparator: boolean;
   /** 画像を保存したフォルダ（次の保存ダイアログの初期フォルダ）。 */
   imageDir: string | null;
   /** ウィンドウの位置と大きさ。 */
@@ -104,8 +100,6 @@ export const DEFAULT_SETTINGS: SettingsData = {
   advancedHeader: true,
   romShortcut: false,
   contextMenu: false,
-  scriptEditor: null,
-  scriptSpaceSeparator: false,
   imageDir: null,
   window: null,
   mapFiles: [],

@@ -62,7 +62,6 @@ export const ja = {
   backupOnOpen: M["1212"],
   createRomShortcut: M["1213"],
   addContextMenu: M["1214"],
-  chooseScriptEditor: M["1215"],
   recentSettings: M["1218"],
   recentMax: M["1216"],
   recentClear: M["12180"],
@@ -128,12 +127,7 @@ export const ja = {
   allFiles: "All files (*.*)",
   allFilesGerman: "Alle Dateien (*.*)",
   imageSaved: (path: string) => `画像を保存しました: ${path}`,
-  // ファイルを開く・PC の設定（[Menue] 12130〜12151、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
-  openFileTitle: "ファイルを開く",
-  programFilter: "Programme (*.exe)",
-  notExeFile: M["12150"],
-  scriptSeparatorQuestion: M["12151"],
-  scriptEditorSet: (path: string) => `スクリプトエディタ: ${path}`,
+  // PC の設定（[Menue] 12130、[EndnutzerForm] 30、[KontextMenu] 10 を ZigzaguMap に読み替え）
   romShortcutName: M["12130"],
   romShortcutQuestion:
     "ROM を開くたびに、ZigzaguMap.exe と同じフォルダに「Most recently used ROM.gba.lnk」（最後に開いた ROM のショートカット）を作ります。よろしいですか？",

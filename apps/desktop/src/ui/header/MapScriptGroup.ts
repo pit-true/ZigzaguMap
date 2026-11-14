@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { isTableType } from "@zigzagumap/core";
 import { hex, ja } from "../../i18n/ja";
 import { messageBox } from "../MessageBox";
@@ -7,6 +6,7 @@ import { button, combo, edit, group, label, selectIndex, setEnabled, spin } from
 import type { DraftList } from "../form/DraftList";
 import { offsetText } from "../form/inputErrors";
 import { checkOnInput, tryInteger } from "../form/integerInput";
+import { scriptEntry, showIfScriptEntry } from "../script/ScriptEntry";
 import { scriptTypeChoices, type HeaderContext } from "./HeaderContext";
 import { newScriptDraftList, offsetToPointer, scriptDrafts, pointerToOffset, scriptOps, type ScriptDraft } from "./MapScriptDraft";
 
@@ -40,7 +40,7 @@ export class MapScriptGroup {
     this.flagValue = edit("header.flagValue", 256, 72, 89);
     this.flagOffset = edit("header.flagOffset", 352, 72, 97);
     this.remove = button("header.removeScript", h.removeScript, 16, 64, 129, 17, () => this.removeSelected());
-    this.open = button("header.openScript", h.openScript, 16, 104, 193, 33, () => this.openScript());
+    this.open = showIfScriptEntry(button("header.openScript", h.openScript, 16, 104, 193, 33, () => this.openScript()));
     const add = button("header.addScript", h.addScript, 16, 80, 129, 17, () => this.add());
     const save = button("header.saveScripts", h.saveScripts, 256, 104, 193, 33, () => this.save());
     this.element.append(
@@ -197,22 +197,10 @@ export class MapScriptGroup {
     }
   }
 
-  /**
-   * 「スクリプトを開く」: 設定 > スクリプトエディターの選択 で選んだ exe に、ベース ROM のパスとオフセット（16 進）を渡して起動する
-   * （AdvanceMap と同じく、区切りは空白か「:」）。エディターを選んでいなければステータスバーに出す。
-   */
+  /** 「スクリプトを開く」（入口が使えるときだけ見える。Phase2 の内蔵スクリプトエディタ用）。 */
   private openScript(): void {
     const d = this.current;
-    const c = this.ctx;
-    if (!d || !c) return;
-    const pointer = isTableType(d.type) ? d.flagOffset : d.pointer;
-    const offset = hex(pointerToOffset(pointer), 6);
-    const s = c.state.settings.data;
-    if (!s.scriptEditor) {
-      c.state.setStatus(ja.header.noScriptEditor(offset));
-      return;
-    }
-    const args = s.scriptSpaceSeparator ? [c.session.romPath, offset] : [`${c.session.romPath}:${offset}`];
-    invoke("launch_program", { program: s.scriptEditor, args }).catch((e: unknown) => c.state.setStatus(ja.error(String(e)), undefined, true));
+    if (!d) return;
+    scriptEntry.open(isTableType(d.type) ? d.flagOffset : d.pointer);
   }
 }

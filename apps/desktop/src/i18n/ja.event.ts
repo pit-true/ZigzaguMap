@@ -40,8 +40,6 @@ export const jaEvent = {
   /** オフセットの欄（4111・425・434 は同じ文言）。 */
   offset: E["4111"],
   openScript: E["50"],
-  editorUndefined: E["51"],
-  editorNotFound: E["52"],
 
   person: {
     number: E["410"],

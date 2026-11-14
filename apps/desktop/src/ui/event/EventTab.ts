@@ -26,7 +26,7 @@ import { PersonPanel } from "./panels/PersonPanel";
 import { SignPanel } from "./panels/SignPanel";
 import { TrapPanel } from "./panels/TrapPanel";
 import { WarpPanel } from "./panels/WarpPanel";
-import { ScriptLauncher } from "./ScriptLauncher";
+import { scriptEntry } from "../script/ScriptEntry";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -42,7 +42,6 @@ export class EventTab {
   readonly element: HTMLElement;
   readonly view: MapView;
   readonly editor: EventEditor;
-  readonly launcher: ScriptLauncher;
   private readonly noEvents: HTMLElement;
   private readonly common: EventCommonPanel;
   private readonly manager: EventManagerPanel;
@@ -63,7 +62,6 @@ export class EventTab {
     private readonly host: EventTabHost,
   ) {
     this.editor = new EventEditor(state);
-    this.launcher = new ScriptLauncher(state.settings, () => state.session?.romPath ?? null);
     this.element = document.createElement("div");
     this.element.className = "event-tab";
     this.view = new MapView("event-tab-view");
@@ -78,7 +76,7 @@ export class EventTab {
     const panelHost: PanelHost = {
       editor: this.editor,
       mapId: () => state.map?.id ?? null,
-      openScript: (pointer) => void this.launcher.open(pointer),
+      openScript: (pointer) => scriptEntry.open(pointer),
       goTo: (bank, map, warpId) => void this.goTo(bank, map, warpId),
     };
     this.panels = {
@@ -295,7 +293,7 @@ export class EventTab {
     this.editor.endSession();
   }
 
-  /** ダブルクリック: ワープは「マップの移動」、看板・スクリプト・人は「スクリプトを開く」。 */
+  /** ダブルクリック: ワープは「マップの移動」、看板・スクリプト・人は「スクリプトを開く」（入口が使えるときだけ）。 */
   activate(cell: RawCell): void {
     const hit = eventAt(this.placed, cell.x, cell.y);
     const events = this.state.map?.doc.events;
@@ -306,15 +304,15 @@ export class EventTab {
         return void this.goTo(w.bank, w.map, w.warpId);
       }
       case "trap":
-        return void this.launcher.open(events.traps[hit.index]!.script);
+        return scriptEntry.open(events.traps[hit.index]!.script);
       case "sign": {
         const s = events.signs[hit.index]!;
-        if (s.content.type === "script") void this.launcher.open(s.content.script);
+        if (s.content.type === "script") scriptEntry.open(s.content.script);
         return;
       }
       case "person": {
         const p = events.persons[hit.index]!;
-        if (p.script !== 0) void this.launcher.open(p.script);
+        if (p.script !== 0) scriptEntry.open(p.script);
         return;
       }
       case "fly":

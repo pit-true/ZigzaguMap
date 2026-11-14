@@ -100,7 +100,7 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
-    this.system = new SystemSettings(state, this.files, () => this.automation);
+    this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
     this.newMaps = new NewMapController({

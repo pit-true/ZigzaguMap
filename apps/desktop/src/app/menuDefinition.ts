@@ -107,7 +107,6 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.backupOnOpen", label: ja.backupOnOpen, accel: "X" },
         { id: "opt.romShortcut", label: ja.createRomShortcut, accel: "R" },
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
-        { id: "opt.scriptEditor", label: ja.chooseScriptEditor, accel: "Y" },
         {
           label: ja.recentSettings,
           accel: "Z",

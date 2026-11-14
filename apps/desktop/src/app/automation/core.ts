@@ -116,7 +116,7 @@ export const coreCommands: CommandTable = {
     return describeState(app);
   },
   setting: (app, req) => {
-    // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない。スクリプトエディターの確認用）。
+    // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない）。
     (app.state.settings.data as unknown as Record<string, unknown>)[str(req, "key")] = req["value"];
     return null;
   },

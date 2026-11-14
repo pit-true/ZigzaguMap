@@ -2,11 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { ja } from "../i18n/ja";
 import { askYesNo, showError, showInfo } from "../ui/MessageBox";
 import type { EditorState } from "./EditorState";
-import { fileExists, fileNameOf, folderOf, type FileDialogs } from "./FileDialogs";
+import { folderOf } from "./FileDialogs";
 
 /**
- * PC 全体に関わる設定と、外部プログラムの設定。
- * - スクリプトエディターの選択（exe と、オフセットの区切り）
+ * PC 全体に関わる設定。
  * - エクスプローラーの右クリックへの登録、デスクトップのショートカット、最後に開いた ROM のショートカット
  *   （どれも実行の前に確認する。自動操作で起動したときは、確認で「はい」でも実行しない）
  * - ROM へ書き込まない ZigzaguMap では意味の無い項目（バックアップ、ダミーデータ）の案内
@@ -14,27 +13,9 @@ import { fileExists, fileNameOf, folderOf, type FileDialogs } from "./FileDialog
 export class SystemSettings {
   constructor(
     private readonly state: EditorState,
-    private readonly files: FileDialogs,
     /** 自動操作で起動したか。 */
     private readonly automation: () => boolean,
   ) {}
-
-  /** 設定 > スクリプトエディターの選択。 */
-  async chooseScriptEditor(): Promise<void> {
-    const settings = this.state.settings;
-    const current = settings.data.scriptEditor;
-    const path = await this.files.openFile({
-      title: ja.openFileTitle,
-      filters: [{ name: ja.programFilter, extensions: ["exe"] }],
-      directory: current ? folderOf(current) : null,
-      fileName: current ? fileNameOf(current) : null,
-    });
-    if (!path) return;
-    if (!/\.exe$/i.test(path) || !(await fileExists(path))) return void (await showError(ja.notExeFile));
-    const colon = await askYesNo(ja.scriptSeparatorQuestion);
-    settings.update({ scriptEditor: path, scriptSpaceSeparator: !colon });
-    this.state.setStatus(ja.scriptEditorSet(path));
-  }
 
   /** 設定 > コンテキストメニューにAM context menuを追加する（もう一度押すと外す）。 */
   async toggleContextMenu(): Promise<void> {

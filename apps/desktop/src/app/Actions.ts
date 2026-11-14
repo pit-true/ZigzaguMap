@@ -73,7 +73,6 @@ export class Actions {
     // 確認してから切り替えるもの（TOGGLES の既定の動作を上書きする）。
     h.set("opt.romShortcut", () => target.system.toggleRomShortcut());
     h.set("opt.contextMenu", () => target.system.toggleContextMenu());
-    h.set("opt.scriptEditor", () => target.system.chooseScriptEditor());
     h.set("tools.desktopShortcut", () => target.system.createDesktopShortcut());
     // ROM へ書き込まないので意味の無いもの。
     for (const id of ["opt.backupOnOpen", "tools.find", "dummy.bankHeader", "dummy.bank", "dummy.connections", "dummy.wildHeader", "dummy.manage"]) {
