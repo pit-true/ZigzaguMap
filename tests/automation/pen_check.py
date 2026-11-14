@@ -305,6 +305,23 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     screenshot(z, shots, "pen_assist_main.png")
     z.call({"cmd": "undo"})
     check(z.call({"cmd": "cells"})["cells"] == broken, "メインの 1 回の Ctrl+Z で戻る")
+    # 「移動エリアを付ける」を外して整えると、移動許可は今のまま（メインの「移動許可も付ける」がオンでも。#336）
+    rng = [(x, y) for y in range(11, 16) for x in range(7, 16)]
+    z.call({"cmd": "command", "name": "paintCells", "args": {"bank": 3, "map": 0, "cells": [{"x": x, "y": y, "block": broken[y * w + x] & 0x3FF, "movement": 0x0B} for x, y in rng]}})
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": False})
+    win(z, {"cmd": "click", "id": "assist.tidy"})
+    kept = z.call({"cmd": "cells"})["cells"]
+    check(all((kept[y * w + x] & 0x3FF) == (good[y * w + x] & 0x3FF) for x, y in rng), "チェックを外しても縁は直る")
+    check(all(kept[y * w + x] >> 10 == 0x0B for x, y in rng), "移動エリアのチェックを外すと移動許可は変わらない")
+    z.call({"cmd": "undo"})
+    # 付けると、パーツのブロックのマスに移動許可を書く（水は使用回数でいちばん多い 0x04）
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": True})
+    win(z, {"cmd": "click", "id": "assist.tidy"})
+    moved = z.call({"cmd": "cells"})["cells"]
+    check(moved[13 * w + 11] >> 10 == 0x04, f"移動エリアを付けると移動許可を書く（{moved[13 * w + 11] >> 10:#x}）")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "undo"})
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": False})
     # 選んだパーツで範囲を塗る（草むら）
     names = [p["name"] for p in win(z, {"cmd": "state"})["parts"]]
     win(z, {"cmd": "setField", "id": "assist.parts", "value": names.index("草むら")})

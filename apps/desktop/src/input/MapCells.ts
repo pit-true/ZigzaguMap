@@ -81,6 +81,21 @@ export class MapCells {
     return band?.grid ?? null;
   }
 
+  /** そのマップのタイルセットで 3 層の次の番号かを見る関数（主マップか、見せている帯のマップ。どちらでもなければ null。#337）。 */
+  tripleChildOf(id: MapId): ((block: number) => boolean) | null {
+    const main = this.state.map;
+    if (main && main.id.bank === id.bank && main.id.map === id.map) {
+      const triple = main.tiles.triple;
+      return (b) => triple.isTripleChild(b);
+    }
+    const band = this.frame()?.bands.find((b) => b.placement.id.bank === id.bank && b.placement.id.map === id.map);
+    if (band) return band.isTripleChild;
+    // 帯を作り直している間は、読み込み済みのタイルセットの組があればそれで見る
+    const doc = this.state.session?.project.loaded(id);
+    const tiles = doc ? this.state.session?.cachedTiles(`${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) : undefined;
+    return tiles ? (b) => tiles.triple.isTripleChild(b) : null;
+  }
+
   /** 画面のマスの一覧をマップごとに分ける（どのマップでもないマスは捨てる）。主マップが先頭。 */
   split<T extends { x: number; y: number }>(list: readonly T[]): MapWrites<T>[] {
     const groups = new Map<string, MapWrites<T>>();
