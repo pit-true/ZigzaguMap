@@ -133,3 +133,10 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   if (list) list.push(value);
   else map.set(key, [value]);
 }
+
+/** マップ名で探すときの名前（#237。地名に「ポケセン」「ジム」などの補足を足したもの。一覧の「マップとタイルセットで並び替え」と同じ）。 */
+export function mapSearchName(m: MapInfo): string | null {
+  if (m.name === null) return null;
+  const suffix = suffixOf(m);
+  return suffix ? `${listText(m.name)} ${suffix}` : listText(m.name);
+}

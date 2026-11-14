@@ -8,6 +8,7 @@
     共有していないマップ（3.0）では隠れる。かんたん表示とくわしく表示の両方。
   - hover: イベントのホバーの吹き出し（#226）。店の品物、もらえるアイテム、トレーナー、同じマスの 2 つ、0.4 秒の待ち、押すと消える。
   - warp: ワープの吹き出しの行き先の周辺画像（#240）と、ワープできないブロックの上のワープの印と警告。
+  - history: マップの履歴（#237）。サイドボタン・view.back・Alt+Shift+BkSp で戻る・進む、マップ名で探して開く（Ctrl+F）、一覧の絞り込み。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -150,6 +151,55 @@ def check_warp(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(st["events"]["warps"][0]["x"] == w["x"] and st.get("warpWarnings") == [], "元に戻すと印も消える")
 
 
+def current(z: Zigzagu) -> str:
+    m = z.call({"cmd": "history.state"})["current"] or {}
+    return f"{m.get('bank')}.{m.get('map')}"
+
+
+def check_history(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "tab", "name": "map"})
+    for b, m in [(3, 0), (3, 1), (4, 1)]:
+        z.call({"cmd": "selectMap", "bank": b, "map": m})
+    for _ in range(2):
+        z.call({"cmd": "mouse", "target": "map", "cell": [1, 1], "button": "back"})
+        time.sleep(0.3)
+    check(current(z) == "3.0", f"3 枚開いてサイドボタンで 2 回戻ると最初のマップ（{current(z)}）")
+    z.call({"cmd": "mouse", "target": "map", "cell": [1, 1], "button": "forward"})
+    time.sleep(0.3)
+    check(current(z) == "3.1", f"進むボタンで 1 つ進む（{current(z)}）")
+    z.call({"cmd": "action", "id": "view.back"})
+    time.sleep(0.3)
+    st = z.call({"cmd": "history.state"})
+    check(current(z) == "3.0" and len(st["forward"]) == 2, f"view.back で戻り、進むが 2 つ（{st['forward']}）")
+    z.call({"cmd": "key", "key": "Backspace", "alt": True, "shift": True})
+    time.sleep(0.3)
+    check(current(z) == "3.1", f"Alt+Shift+BkSp で進む（{current(z)}）")
+    z.call({"cmd": "selectMap", "bank": 5, "map": 0})
+    st = z.call({"cmd": "history.state"})
+    check(st["forward"] == [], "戻ってから別のマップを開くと進むは消える")
+    # マップ名で探して開く
+    r = z.call({"cmd": "mapFind", "query": "ときわ ぽけせん"})
+    texts = [c["text"] for c in r["candidates"]]
+    check(len(texts) > 0 and texts[0].startswith("5.4"), f"「ときわ ぽけせん」で 5.4 が先頭（{texts[:3]}）")
+    z.call({"cmd": "menu.run", "id": "map.find"})
+    dlg = [d for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("title") == "マップ名で探して開く"]
+    check(len(dlg) == 1, "Ctrl+F（ツール > マップ名で探して開く）で窓が出る")
+    z.call({"cmd": "setField", "id": "mapFind.input", "value": "ニビ"})
+    shot(z, shots, "p3_map_find.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    time.sleep(0.5)
+    check(current(z).startswith("3.2"), f"「ニビ」で Enter（OK）すると先頭のニビシティ 3.2 を開く（{current(z)}）")
+    # マップ一覧の絞り込み
+    z.call({"cmd": "tree.filter", "text": "ポケセン"})
+    items = z.call({"cmd": "tree.list", "visibleOnly": True})
+    maps = [i for i in items if i.get("mapId")]
+    check(len(maps) > 5 and all("ポケセン" in i["text"] for i in maps), f"一覧を「ポケセン」で絞り込むと合う項目だけ（{len(maps)} 件）")
+    shot(z, shots, "p3_tree_filter.png")
+    z.call({"cmd": "tree.filter", "text": ""})
+    after = [i for i in z.call({"cmd": "tree.list", "visibleOnly": True}) if i.get("mapId")]
+    check(len(after) < len(maps) + 50 and len(z.call({"cmd": "tree.list"})) > 300, "絞り込みを消すと元の開き方に戻る")
+
+
 def check_hover_asm(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     """Chronos の写し（読むだけ）で、.s のラベルを付けたイベントの要約。ラベルはメモリの上だけで変え、出力しない。"""
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
@@ -175,6 +225,7 @@ CHECKS = {
     "layoutShared": check_layout_shared,
     "hover": check_hover,
     "warp": check_warp,
+    "history": check_history,
 }
 
 

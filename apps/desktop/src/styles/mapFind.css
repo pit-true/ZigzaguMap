@@ -1,0 +1,51 @@
+/* マップ名で探して開く（#237）と、マップ一覧の絞り込み。 */
+.map-find-dialog .dialog-body input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.map-find-list {
+  height: 220px;
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--window);
+  border: 1px solid var(--field-border);
+}
+
+.map-find-list li {
+  padding: 1px 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.map-find-list li.selected {
+  color: var(--select-text);
+  background: var(--select);
+}
+
+.map-find-none {
+  margin-top: 4px;
+  color: var(--note-text);
+}
+
+.map-find-none[hidden] {
+  display: none;
+}
+
+.map-tree-filter {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.map-tree-filter input {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-tree-filter button {
+  padding: 0 6px;
+}

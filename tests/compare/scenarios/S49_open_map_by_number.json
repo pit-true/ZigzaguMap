@@ -21,7 +21,7 @@
     {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
     {"op": "compareFields", "fields": ["title.map"]},
     {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},
-    {"op": "compareFields", "fields": ["title.map"]},
+    {"op": "compareFields", "fields": ["title.map"], "expectedDifference": "SPEC Phase3 #237: 「以前開いたマップを開く」（Alt+BkSp）はマップの履歴を戻る動きにした。AdvanceMap は直前の 2 枚を行き来する（3.37 に戻る）が、ZigzaguMap は 1 つ前の 4.1 のさらに前の 3.0 へ戻る"},
     {"op": "menu", "key": ["Menue.13", "Menue.135"]},
     {"op": "answerDialog", "button": "Cancel"},
     {"op": "menu", "key": ["Menue.13", "Menue.1310"], "wait": 1.5},

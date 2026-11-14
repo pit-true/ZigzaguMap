@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
+import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -32,6 +33,9 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
   { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
   { keys: "Delete", action: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
+  { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
+  { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
+  { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
   ...scriptEditorKeys(),
 ];
 

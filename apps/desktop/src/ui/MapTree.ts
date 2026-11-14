@@ -1,6 +1,7 @@
 import type { MapId } from "@zigzagumap/core";
 import type { TreeNode } from "../app/MapTreeModel";
 import { HEADER_ROOT_KEY } from "../app/MapTreeModel";
+import { labelMatches } from "../app/mapFind";
 import { ja } from "../i18n/ja";
 
 /** マップ一覧が使う窓口。 */
@@ -43,6 +44,12 @@ export class MapTree {
   private readonly rows = new Map<string, Row>();
   private readonly expanded = new Set<string>();
   private roots: readonly TreeNode[] = [];
+  /** 絞り込む前の全項目（#237）。 */
+  private allRoots: readonly TreeNode[] = [];
+  /** 絞り込みの文字列（空なら絞り込まない）。 */
+  private filterText = "";
+  /** 絞り込みを始める前の開いていた枝（絞り込みを消したら戻す）。 */
+  private savedExpanded: Set<string> | null = null;
   private selectedKey: string | null = null;
   private openedId: MapId | null = null;
 
@@ -64,6 +71,35 @@ export class MapTree {
 
   /** 一覧を作り直す（展開状態はできるだけ残す）。 */
   show(roots: readonly TreeNode[]): void {
+    this.allRoots = roots;
+    this.render();
+  }
+
+  /**
+   * 絞り込む（#237）。項目の文（マップ名と「(バンク.マップ)」）の部分一致で、合う項目とその親だけを出し、枝は全部開く。
+   * グループの名前が合えば中身を全部出す。空にすると元の開き方に戻す。
+   */
+  setFilter(text: string): void {
+    const next = text.trim();
+    if (next === this.filterText) return;
+    if (next !== "" && this.filterText === "") this.savedExpanded = new Set(this.expanded);
+    if (next === "" && this.savedExpanded) {
+      this.expanded.clear();
+      for (const k of this.savedExpanded) this.expanded.add(k);
+      this.savedExpanded = null;
+    }
+    this.filterText = next;
+    this.render();
+  }
+
+  /** 絞り込みの文字列。 */
+  get filter(): string {
+    return this.filterText;
+  }
+
+  private render(): void {
+    const roots = this.filterText === "" ? this.allRoots : filterNodes(this.allRoots, this.filterText);
+    if (this.filterText !== "") for (const key of branchKeys(roots)) this.expanded.add(key);
     this.roots = roots;
     this.rows.clear();
     // 根が 1 つだけ（マップの表示設定で片方だけ）のときは開いておく。
@@ -78,6 +114,7 @@ export class MapTree {
   /** 空にする。 */
   clear(): void {
     this.roots = [];
+    this.allRoots = [];
     this.rows.clear();
     this.expanded.clear();
     this.selectedKey = null;
@@ -322,4 +359,34 @@ function findPath(node: TreeNode, id: MapId): TreeNode[] | null {
     if (path) return [node, ...path];
   }
   return null;
+}
+
+/** 絞り込んだ項目（合う項目と、その親。グループの名前が合えば中身を全部）。 */
+function filterNodes(nodes: readonly TreeNode[], query: string): TreeNode[] {
+  const out: TreeNode[] = [];
+  for (const n of nodes) {
+    if (n.mapId || n.filePath !== undefined) {
+      if (labelMatches(n.label, query)) out.push(n);
+      continue;
+    }
+    if (labelMatches(n.label, query) && n.children && n.children.length > 0) {
+      out.push(n);
+      continue;
+    }
+    const children = filterNodes(n.children ?? [], query);
+    if (children.length > 0) out.push({ ...n, children });
+  }
+  return out;
+}
+
+/** 子を持つ項目の鍵（全部開くため）。 */
+function branchKeys(nodes: readonly TreeNode[]): string[] {
+  const out: string[] = [];
+  for (const n of nodes) {
+    if (n.children && n.children.length > 0) {
+      out.push(n.key);
+      out.push(...branchKeys(n.children));
+    }
+  }
+  return out;
 }
