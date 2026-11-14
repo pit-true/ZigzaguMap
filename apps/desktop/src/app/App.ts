@@ -41,6 +41,9 @@ import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
+import { installScriptEntry } from "../ui/script/ScriptEntry";
+import type { ScriptHost } from "../ui/script/ScriptHost";
+import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 
 /** 起動引数（Rust の StartupArgs）。 */
@@ -91,6 +94,8 @@ export class App implements ActionTarget {
     exportMaps: () => this.exportMaps(false),
   });
   private connections: ConnectionManager | null = null;
+  /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
+  private scriptHostValue: Promise<ScriptHost> | null = null;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -189,6 +194,11 @@ export class App implements ActionTarget {
     for (const topic of ["session", "map", "view"] as const) state.on(topic, () => this.toolbar.update());
     state.on("session", () => this.worldMap.sessionChanged());
     state.on("map", () => this.worldMap.mapChanged());
+    installScriptEntry({
+      available: () => state.session?.projectDir != null,
+      open: (target) => void this.scriptHost().then((h) => h.openTarget(target)).catch((e: unknown) => this.showError(e)),
+      openFile: (path, line) => void this.scriptHost().then((h) => h.openFile(path, line)).catch((e: unknown) => this.showError(e)),
+    });
     this.statusBar.render(state.status);
     this.applyLayout();
     state.emit("view");
@@ -205,7 +215,7 @@ export class App implements ActionTarget {
     });
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
-      if (!(await this.confirmDiscard())) event.preventDefault();
+      if (!(await this.confirmScriptEditor()) || !(await this.confirmDiscard())) event.preventDefault();
       else await this.state.settings.flush();
     });
     const args = await invoke<StartupArgs>("startup_args");
@@ -297,6 +307,9 @@ export class App implements ActionTarget {
    */
   async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
     const reload = options.reload ?? false;
+    // 別のプロジェクトフォルダへ移るときは、スクリプトエディタの未保存も確かめる（エディタは閉じる）
+    const folder = (p: string | null | undefined): string => (p ?? "").replace(/[\\/]+$/, "").toLowerCase();
+    if (folder(project) !== folder(this.state.session?.projectDir) && !(await this.confirmScriptEditor())) return;
     if (!options.confirmed && !(await this.confirmDiscard())) return;
     const state = this.state;
     const previous = state.session;
@@ -555,13 +568,35 @@ export class App implements ActionTarget {
     return true;
   }
 
+  /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
+  scriptHost(): Promise<ScriptHost> {
+    return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
+  }
+
+  /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
+  private async confirmScriptEditor(): Promise<boolean> {
+    if (!this.scriptHostValue) return true;
+    const host = await this.scriptHostValue;
+    let dirty: string[];
+    try {
+      dirty = await host.dirtyFiles();
+    } catch {
+      return true;
+    }
+    if (dirty.length === 0) return true;
+    const answer = await messageBox(ja.question, jaScriptEditor.mainDirty(dirty.length), "warning", "yesNoCancel");
+    if (answer === "cancel") return false;
+    if (answer === "yes") return host.saveAll().catch(() => false);
+    return true;
+  }
+
   /** ツール > ワールドマップエディター（Ctrl+W）。別ウィンドウで開く。 */
   async openWorldMap(): Promise<void> {
     if (this.state.session) await openWorldMapWindow(ja.worldMapEditor);
   }
 
   async exit(): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
+    if (!(await this.confirmScriptEditor()) || !(await this.confirmDiscard())) return;
     await this.state.settings.flush();
     this.closing = true;
     await getCurrentWindow().destroy();
