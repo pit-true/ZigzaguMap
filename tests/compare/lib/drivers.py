@@ -725,12 +725,20 @@ class ZigzaguDriver(Driver):
         raise RuntimeError(f"ポート {lo}〜{hi} がすべて使用中です")
 
     def call(self, obj, timeout=120):
-        req = urllib.request.Request(f"http://127.0.0.1:{self.port}/", data=json.dumps(obj).encode("utf-8"), method="POST")
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            reply = json.loads(r.read().decode("utf-8"))
-        if not reply.get("ok"):
-            raise AppError(reply.get("error", "不明なエラー"))
-        return reply.get("result")
+        # 別ウィンドウは開いてから画面側の準備ができるまで少しかかる（PC が混んでいると 0.3 秒では足りない）。
+        # 「画面の準備ができていません」のときだけ、10 秒まで待ってやり直す
+        deadline = time.time() + 10
+        while True:
+            req = urllib.request.Request(f"http://127.0.0.1:{self.port}/", data=json.dumps(obj).encode("utf-8"), method="POST")
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                reply = json.loads(r.read().decode("utf-8"))
+            if reply.get("ok"):
+                return reply.get("result")
+            error = reply.get("error", "不明なエラー")
+            if obj.get("window") and "画面の準備ができていません" in error and time.time() < deadline:
+                time.sleep(0.2)
+                continue
+            raise AppError(error)
 
     def start(self):
         exe = self.cfg.zigzaguExe
