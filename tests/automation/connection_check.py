@@ -15,6 +15,8 @@
   ダイブ先をつなぐ（2 つ目はできない）。
 - 225: マップの 3×2 を Ctrl＋右ドラッグで拾うと移動許可も持ち、左クリックで貼るとブロックと移動許可の両方が写る。
   「移動許可も貼る」を外すとブロックだけ写る。1 回の取り消しで戻る。Ctrl+C / Ctrl+V で貼る。
+- 233: Ctrl＋左ドラッグの矩形塗り（5×4、2×2 のスタンプで 6×6 の敷き詰め、移動エリアタブの移動許可）と、Alt＋左ドラッグの
+  2 マスの入れ替え。どれも 1 回の取り消しで戻る。Esc でドラッグを取りやめると何も変わらない。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -413,7 +415,63 @@ def check_225(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     check("movements" not in r["block"], "パレットから選んだものは移動許可を持たない")
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225}
+def check_233(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "tab", "name": "map"})
+    width, before = cells_of(z)
+    hist = z.call({"cmd": "state"})["history"]
+    # 5×4 の矩形塗り
+    z.call({"cmd": "selectBlock", "block": 5})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [2, 2], "to": [6, 5]})
+    _, after = cells_of(z)
+    check(all(c & 0x3FF == 5 for c in region(width, after, 2, 2, 5, 4)) and region(width, after, 7, 2, 1, 4) == region(width, before, 7, 2, 1, 4),
+          "Ctrl＋左ドラッグで 5×4 を塗る（外は変わらない）")
+    check(z.call({"cmd": "state"})["history"] == hist + 1, "矩形塗りは 1 回の操作")
+    z.call({"cmd": "undo"})
+    check(cells_of(z)[1] == before, "1 回の取り消しで戻る")
+    # 2×2 のスタンプで 6×6 を敷き詰める
+    z.call({"cmd": "selectBlock", "blocks": [1, 2, 3, 4], "width": 2})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [0, 8], "to": [5, 13]})
+    _, after = cells_of(z)
+    got = [c & 0x3FF for c in region(width, after, 0, 8, 6, 6)]
+    want = [[1, 2], [3, 4]]
+    check(got == [want[y % 2][x % 2] for y in range(6) for x in range(6)], "2×2 のスタンプで 6×6 を左上から敷き詰める")
+    if shots:
+        z.call({"cmd": "mouse", "target": "map", "action": "down", "ctrl": True, "cell": [12, 12]})
+        z.call({"cmd": "mouse", "target": "map", "action": "move", "ctrl": True, "button": "left", "cell": [17, 15]})
+        shot(z, shots, "p3c_233_rect_preview.png")
+        z.call({"cmd": "key", "key": "Escape"})
+        z.call({"cmd": "mouse", "target": "map", "action": "up", "ctrl": True, "cell": [17, 15]})
+    z.call({"cmd": "undo"})
+    check(cells_of(z)[1] == before, "敷き詰めも 1 回の取り消しで戻る")
+    # Esc で取りやめ
+    z.call({"cmd": "mouse", "target": "map", "action": "down", "ctrl": True, "cell": [2, 2]})
+    z.call({"cmd": "mouse", "target": "map", "action": "move", "ctrl": True, "button": "left", "cell": [4, 4]})
+    z.call({"cmd": "key", "key": "Escape"})
+    z.call({"cmd": "mouse", "target": "map", "action": "up", "ctrl": True, "cell": [4, 4]})
+    check(cells_of(z)[1] == before and z.call({"cmd": "state"})["history"] == hist, "Esc で矩形塗りのドラッグを取りやめると何も変わらない")
+    # Alt＋左ドラッグで入れ替え
+    a, b = (3, 5), (10, 10)
+    va, vb = before[a[1] * width + a[0]], before[b[1] * width + b[0]]
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "alt": True, "cell": list(a), "to": list(b)})
+    _, after = cells_of(z)
+    check(after[a[1] * width + a[0]] == vb and after[b[1] * width + b[0]] == va and va != vb, "Alt＋左ドラッグで 2 マスのブロックと移動許可を入れ替える")
+    z.call({"cmd": "undo"})
+    check(cells_of(z)[1] == before, "入れ替えも 1 回の取り消しで戻る")
+    # 移動エリアタブの矩形塗り
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "selectMovement", "value": 1})
+    z.call({"cmd": "mouse", "target": "movement", "action": "drag", "ctrl": True, "cell": [2, 2], "to": [4, 3]})
+    _, after = cells_of(z)
+    got = region(width, after, 2, 2, 3, 2)
+    check(all(c >> 10 == 1 for c in got) and [c & 0x3FF for c in got] == [c & 0x3FF for c in region(width, before, 2, 2, 3, 2)],
+          "移動エリアタブの Ctrl＋左ドラッグで移動許可を矩形に塗る（ブロックは変えない）")
+    z.call({"cmd": "undo"})
+    check(cells_of(z)[1] == before, "移動許可の矩形塗りも 1 回の取り消しで戻る")
+    z.call({"cmd": "tab", "name": "map"})
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233}
 
 
 def main() -> int:
