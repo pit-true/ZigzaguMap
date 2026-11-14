@@ -11,6 +11,7 @@ ZigzaguMap が書くファイルを CFRU-JP のビルドで使うための、ビ
 | `patches/map_project-rom-erase-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（Chronos の版に合わせたもの。改行は CRLF のまま） |
 | `patches/map_project-trainers-nd.patch` | ND の `scripts/map_project.py`（rom-erase のパッチを当てたあと） | `maps/trainers.json` のトレーナーを ROM のトレーナーの表へ書く（#245） |
 | `patches/map_project-trainers-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（改行は CRLF のまま） |
+| `patches/map_project-pillow-nd.patch`、`patches/map_project-pillow-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py` | `maps/tilesets/*/tiles.png` を読むときに、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow の読み込みが失敗するのを避ける（#314・#317。改行は CRLF のまま） |
 | `tests/check_cfru_tree.py` | | パッチを当てたフォルダを確かめる（読むだけ。一時フォルダで動かす） |
 
 Chronos の幅検査（`tools/check_text_width.py`）にも同じ複数行の規則を入れています。これは Chronos だけの道具なので、Chronos のリポジトリに直接入れました（パッチは置いていません）。
@@ -120,3 +121,9 @@ ND と Chronos のフォルダの写しで行いました（実フォルダで�
 - すべての `.string` の本文を `\n`・`\p`・`\l`・`\m` のあとで改行した形に書き換えてビルドすると（ND 16 ファイル 1899 行、Chronos 34 ファイル 2183 行）、ROM 全体が 1 行のときと同じ。Chronos の幅検査の出力も同じ。パッチ無しの string.py と幅検査では、同じ書き換えで ROM が変わる・検査が止まる。
 - `rom_erase.json` を置いてビルドすると、その範囲だけが 0xFF になり、ほかのバイトは変わらない（Chronos は `maps/project.json` が無い形、ND はある形で確かめた）。ベース ROM の外、`bytereplacement`、`special_inserts.asm` との重なりではビルドが止まる。`hooks`・`repoints`・`routinepointers`・`functionrewrites`・`generatedrepoints` との重なりと `#ifdef` の扱いは `tests/check_cfru_tree.py` で確かめている。
 - 置いたマップのデータが埋めた範囲に書かれたときに止める検査は、実際のマップでは起きる場面を作っていない（確かめていない）。
+
+## maps/tilesets の tiles.png と Pillow（map_project-pillow）
+
+`maps/tilesets/<フォルダ>/tileset.json` があると（ブロックエディタで変えたタイルセット、別の ROM から取り込んだタイルセット）、`map_project.py` は `tiles.png` を Pillow で読みます。`scripts/insert.py` から動くときは `scripts/` が `sys.path` の先頭にあるため、Pillow の中の `import logging` → `from string import Template` が `scripts/string.py` を読んでしまい、「Pillow is required to build edited map tilesets」で止まります（Pillow を入れていても止まる）。
+
+パッチは、Pillow を読む間だけ `scripts/` を `sys.path` から外し、読み込み済みの `scripts/string.py` を `sys.modules` から一時的に外します。読んだ後は元に戻すので、ほかの処理は変わりません。`maps/tilesets` が無い間は Pillow を読まないので、ビルドの ROM はパッチを当てる前と同じです。

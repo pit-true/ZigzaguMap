@@ -1,0 +1,37 @@
+diff --git a/scripts/map_project.py b/scripts/map_project.py
+index 464207f..07a14bd 100644
+--- a/scripts/map_project.py
++++ b/scripts/map_project.py
+@@ -181,9 +181,31 @@ def _place_map(data, alloc, root, counts, source, symbols, names, tileset_pointe
+     return _install_header(data, alloc, root, counts, bank, number, header_at)
+ 
+ 
+-def _png_tiles(path, tile_count):
++def _import_pil_image():
++    """Import Pillow without picking up scripts/string.py as the standard string module."""
++    import os
++    import sys
++
++    here = os.path.dirname(os.path.abspath(__file__))
++    saved_path = sys.path[:]
++    shadow = sys.modules.get("string")
++    if shadow is not None and os.path.dirname(os.path.abspath(getattr(shadow, "__file__", None) or "")) == here:
++        del sys.modules["string"]
++    else:
++        shadow = None
++    sys.path[:] = [p for p in sys.path if os.path.abspath(p or os.getcwd()) != here]
+     try:
+         from PIL import Image
++        return Image
++    finally:
++        sys.path[:] = saved_path
++        if shadow is not None:
++            sys.modules["string"] = shadow
++
++
++def _png_tiles(path, tile_count):
++    try:
++        Image = _import_pil_image()
+     except ImportError as exc:
+         raise RuntimeError("Pillow is required to build edited map tilesets") from exc
+     with Image.open(path) as image:
