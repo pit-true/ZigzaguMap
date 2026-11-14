@@ -1536,6 +1536,8 @@ ROM が要るテストは、環境変数 `ZIGZAGU_TEST_ROM` に素の BPRJ の�
 $env:ZIGZAGU_TEST_ROM = "C:\path\to\BPRJ.gba"; pnpm test
 ```
 
+別の ROM からのタイルセットの移植のテストは、`ZIGZAGU_TEST_EMERALD` にエメラルド（日本語版か英語版）のパスを入れると、エメラルドから FR への変換（全マップの組が上限に収まること、ミシロタウンの全ブロックの絵がエメラルドの決まりで描いた絵と同じこと）も確かめます。`ZIGZAGU_TEST_SOURCES` に FR の英語版や LG のパスを「;」区切りで入れると、それぞれの全マップの組を変換します。
+
 ND のベース ROM と NeoDark-CFRU のフォルダを `ZIGZAGU_TEST_ND_ROM` と `ZIGZAGU_TEST_ND_PROJECT` に入れると、`maps\` の JSON を読むテストも実行されます（フォルダには書き込みません）。
 
 ND と Chronos の実フォルダの写しを使うテストは `tests/realcopy` にあります（ローカルだけで動かす）。実フォルダと写し先のパスを `tests/realcopy/local.config.json`（コミットしない。見本は `local.config.example.json`）に書いて、`python tests/realcopy/run.py --smoke` を実行します。実フォルダを写し先へ写し（`build/`・`.git`・ベース ROM 以外の `.gba` などは除く）、ZigzaguMap（`--automation`）で写しを開いて何もせずに出力し、写しでビルドします（ND は CFRU の `python scripts/make.py`、Chronos はルートの `python build.py`）。実行の前後で実フォルダのファイルの更新日時が 1 つも変わらないことも確かめます。`--reuse` で前の写しをそのまま使い、`--dpe` で ND の DPE のビルドまで動かします。写し・起動・出力・ビルドの部品（`tests/realcopy/lib`）は、ほかのテストからも使えます。

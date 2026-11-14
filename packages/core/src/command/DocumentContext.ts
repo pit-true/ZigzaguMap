@@ -20,6 +20,12 @@ export interface DocumentContext extends EditorContext {
   tileset(ref: TilesetRef): TilesetDocument;
   /** タイルセットとして指せるポインタ値か（新規マップやタイルセットの変更の確認用）。 */
   tilesetExists(pointer: number): boolean;
+  /** 新しいタイルセット（New。別の ROM から取り込んだものなど）を加える。同じ指し方があれば Error。 */
+  addTileset(tileset: TilesetDocument): void;
+  /** addTileset で加えたタイルセットを除く（取り消し用）。 */
+  removeTileset(ref: TilesetRef): void;
+  /** 次に加える新しいタイルセットのヘッダーの位置（maps\tilesets のフォルダ名。ROM の外。#309）。`skip` 個目の空き（0 から）。 */
+  newTilesetAddress(skip?: number): number;
   /** 文字列の変換器。 */
   readonly textCodec: TextCodec;
   /** 地名番号のマップ名（編集後の値）。名前表の範囲外なら null。 */
