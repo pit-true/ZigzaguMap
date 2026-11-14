@@ -90,6 +90,8 @@ export interface SettingsData {
   theme: Theme;
   /** 隣のマップの見せ方（`band` = 境界から帯の幅だけ、`all` = マップ全体、`off` = 出さない。Phase3）。 */
   neighborView: NeighborView;
+  /** コネクションマネージャーで接続のずれを変えたとき、相手のマップの逆向きの接続もそろえる（Phase3 #229）。 */
+  alignConnections: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -126,6 +128,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   scriptEditorTheme: "lightPlus",
   theme: "light",
   neighborView: "band",
+  alignConnections: true,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
