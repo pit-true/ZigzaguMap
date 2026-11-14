@@ -8,6 +8,7 @@ import { attachCellPointer } from "./CellPointer";
 import { MapCells } from "./MapCells";
 import { rectOf, type CellRect } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
+import { strokeCellRect } from "./previewDraw";
 
 /** 移動許可の説明（[GehDaten]。無いものは ???）。 */
 export function movementName(value: number): string {
@@ -116,9 +117,7 @@ export class MovementPainter {
     p.c.fillStyle = MOVEMENT_COLORS[this.state.movement] ?? "#000";
     p.c.fillRect(p.ox + r.x * p.size, p.oy + r.y * p.size, r.width * p.size, r.height * p.size);
     p.c.restore();
-    p.c.strokeStyle = "#ff0000";
-    p.c.lineWidth = 1;
-    p.c.strokeRect(p.ox + r.x * p.size + 0.5, p.oy + r.y * p.size + 0.5, r.width * p.size - 1, r.height * p.size - 1);
+    strokeCellRect(p, r, "#ff0000");
   }
 
   private clearPreview(): void {

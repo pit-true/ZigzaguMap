@@ -51,7 +51,7 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   // マップタブのコピーと貼り付け（Phase3 #225。input/StampClipboard.ts）
   { keys: "Ctrl+C", action: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },
   { keys: "Ctrl+V", action: jaPaint.shortcutPaste, where: jaPaint.shortcutWhere },
-  // 矩形塗りと入れ替え（Phase3 #233。input/BlockPainter.ts・MovementPainter.ts）
+  // 矩形塗りと入れ替え（Phase3 #233。input/BlockDragTools.ts・MovementPainter.ts）
   { keys: "Ctrl＋左ドラッグ", action: jaPaint.shortcutRectFill, where: jaPaint.shortcutDragWhere },
   { keys: "Alt＋左ドラッグ", action: jaPaint.shortcutSwap, where: jaPaint.shortcutWhere },
   { keys: "Esc", action: jaPaint.shortcutCancel, where: jaPaint.shortcutDragWhere },

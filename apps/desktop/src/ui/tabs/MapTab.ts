@@ -126,7 +126,7 @@ export class MapTab {
       }
     }
     // 3 層の次の番号は境界ブロックにも置かない（#301）
-    const { kept, skipped } = this.painter.dropUnplaceable(cells);
+    const { kept, skipped } = this.painter.writer.dropUnplaceable(cells);
     if (kept.length === 0 && skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
     if (kept.length > 0) session.bus.execute(new PaintBorderCommand({ bank: map.id.bank, map: map.id.map, cells: kept }));
   }
