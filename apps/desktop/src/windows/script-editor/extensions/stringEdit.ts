@@ -1,14 +1,19 @@
 import { EditorView, type Tooltip } from "@codemirror/view";
-import { checkTextWidth, type TextWidthOptions } from "@zigzagumap/core";
+import { checkTextWidth, endsWithBreakControl, wrapStringBody, type TextWidthOptions } from "@zigzagumap/core";
 import { jaScriptEditorAssist as t } from "../../../i18n/ja.scriptEditorAssist";
 import { errorText } from "../../../util/errors";
 import type { EditorExtensionFactory, EditorFileContext } from "./context";
 import { setPinnedTooltip } from "./pinned";
+import { joinedStringInput as joinedText, normalizeStringInput } from "./stringInput";
 
 /**
  * 文字列の本文のその場編集（#196）。`.s` の文字列の参照のホバーの「本文を編集」から、小さな入力欄を出す。
  * 入力中は文字数で幅を検査し（上限は zigzagumap.json の lineMaxChars・linesPerPage）、超えた行に印を付ける。
  * 「反映」で `.string` のそのラベルの本文だけを書き換える（そのファイルを開いていなければ裏で開き、未保存にする。Ctrl+S で保存）。
+ *
+ * 複数行（#221）: 本文は制御記号（`\n` `\p` `\l` `\m`）のあとで改行した形で見せ、その形で書き戻す。Enter は改行で、
+ * カーソルの前が制御記号でなければ `\n` を補ってから改行する（改行の文字は制御記号のすぐ後ろにしか書けないため）。
+ * 反映は Ctrl+Enter か「反映」。貼り付けなどで制御記号の無い改行が入ったときも、反映のときに `\n` を補う。
  */
 
 /** 幅検査の設定（プロジェクトの設定から）。 */
@@ -19,14 +24,15 @@ export function widthOptions(ctx: EditorFileContext): TextWidthOptions {
 
 /** 入力欄の下の、行ごとの字数の表。 */
 function renderLines(list: HTMLElement, text: string, options: TextWidthOptions): number {
-  const result = checkTextWidth(text, options);
+  const joined = joinedText(text);
+  const result = checkTextWidth(joined, options);
   const over = new Set(result.issues.map((i) => `${i.page}:${i.line}`));
   list.replaceChildren(
     ...result.lines.map((l) => {
       const row = document.createElement("div");
       row.className = "se-width-line";
       row.classList.toggle("over", over.has(`${l.page}:${l.line}`));
-      row.textContent = `${t.stringEdit.lineInfo(l.page + 1, l.line + 1, l.columns, options.maxColumns ?? 18)}　${text.slice(l.start, l.end)}`;
+      row.textContent = `${t.stringEdit.lineInfo(l.page + 1, l.line + 1, l.columns, options.maxColumns ?? 18)}　${joined.slice(l.start, l.end)}`;
       return row;
     }),
   );
@@ -52,9 +58,9 @@ export function openStringEditor(view: EditorView, ctx: EditorFileContext, label
       title.className = "se-string-edit-title";
       title.textContent = `${t.stringEdit.title(label)}（${entry.path}:${entry.line}）`;
       const input = document.createElement("textarea");
-      input.rows = 3;
       input.spellcheck = false;
-      input.value = entry.text;
+      input.value = wrapStringBody(entry.text);
+      input.rows = Math.min(10, Math.max(3, input.value.split("\n").length + 1));
       input.dataset["autoId"] = "se.stringEdit.input";
       const lines = document.createElement("div");
       lines.className = "se-width-lines";
@@ -81,7 +87,7 @@ export function openStringEditor(view: EditorView, ctx: EditorFileContext, label
       };
       const run = async () => {
         try {
-          const path = await ctx.host.editStringBody(label, input.value);
+          const path = await ctx.host.editStringBody(label, normalizeStringInput(input.value));
           if (path === null) error.textContent = t.stringEdit.notFound(label);
           else {
             ctx.host.setMessage(t.stringEdit.applied(label, path));
@@ -91,16 +97,18 @@ export function openStringEditor(view: EditorView, ctx: EditorFileContext, label
           error.textContent = errorText(e);
         }
       };
-      // 改行の文字は本文に書けない（改行は \n と書く）ので、Enter は「反映」にする
-      input.addEventListener("input", () => {
-        if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/\r?\n/g, "");
-        renderLines(lines, input.value, options);
-      });
+      input.addEventListener("input", () => renderLines(lines, input.value, options));
       input.addEventListener("keydown", (e) => {
         e.stopPropagation();
-        if (e.key === "Enter") {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           void run();
+        } else if (e.key === "Enter" && !e.isComposing) {
+          // 改行の文字は制御記号のすぐ後ろにしか書けないので、カーソルの前が制御記号でなければ \n を補う
+          e.preventDefault();
+          const before = input.value.slice(0, input.selectionStart);
+          input.setRangeText(endsWithBreakControl(before) ? "\n" : "\\n\n", input.selectionStart, input.selectionEnd, "end");
+          renderLines(lines, input.value, options);
         } else if (e.key === "Escape") {
           e.preventDefault();
           close();
