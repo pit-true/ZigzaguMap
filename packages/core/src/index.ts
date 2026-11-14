@@ -47,6 +47,8 @@ export { WarpCodec, warpCodec } from "./event/WarpCodec.js";
 export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
+export * from "./event/templates/index.js";
+export * from "./trainer/index.js";
 
 // フライトポジション
 export type { FlyPosition } from "./fly/types.js";
@@ -310,5 +312,6 @@ export * from "./script/edit/index.js";
 export * from "./script/link/index.js";
 export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
+export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";

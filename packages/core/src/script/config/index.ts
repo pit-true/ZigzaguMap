@@ -31,3 +31,14 @@ export {
   type ScriptConfigDocument,
   type ScriptDialectSource,
 } from "./ScriptConfigJson.js";
+export {
+  DEFAULT_USAGE_CONFIG,
+  USAGE_CONFIG_SECTION,
+  USAGE_KINDS,
+  isExcluded,
+  loadUsageConfig,
+  parseUsageConfig,
+  type UsageConfig,
+  type UsageKind,
+  type UsageRange,
+} from "./UsageConfig.js";

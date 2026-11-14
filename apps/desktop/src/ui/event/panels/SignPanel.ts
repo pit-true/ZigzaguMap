@@ -93,7 +93,12 @@ export class SignPanel extends ListKindPanel<SignEvent> {
     }, (e, i) => hiddenPatch(e, "item", i));
     const itemRow = wrap(this.items.element);
     this.element.append(itemLabel, itemRow);
-    const hiddenId = this.row(f.hiddenId, LABEL, this.hex("hiddenId", 2, 25, (e) => hiddenBytes(e).flag, (e, v) => hiddenPatch(e, "flag", v), { bits: 8 }));
+    const hiddenId = this.row(
+      f.hiddenId,
+      LABEL,
+      this.hex("hiddenId", 2, 25, (e) => hiddenBytes(e).flag, (e, v) => hiddenPatch(e, "flag", v), { bits: 8 }),
+      this.unusedButton("hiddenIdUnused", "hiddenItem", (e, v) => hiddenPatch(e, "flag", v)),
+    );
     const amount = this.row(f.amount, LABEL, this.hex("amount", 2, 25, (e) => hiddenBytes(e).amount, (e, v) => hiddenPatch(e, "amount", v), { bits: 8 }));
     this.hiddenPart = [itemLabel, itemRow, hiddenId, amount];
   }

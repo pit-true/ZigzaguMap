@@ -1,0 +1,148 @@
+--- a/scripts/map_project.py
++++ b/scripts/map_project.py
+@@ -625,6 +625,116 @@
+             raise ValueError(f"{what} was written by the map data after it was erased")
+ 
+ 
++TRAINERS_FILE = "trainers.json"
++TRAINER_TABLE_POINTER = 0xF5C0      # gTrainers is read through this pointer (src/defines_battle.h)
++TRAINER_SIZE = 0x20
++TRAINER_COUNT = 743                 # vanilla FireRed (JP)
++TRAINER_ID_MAX = 767                # 0x500 + id must stay below the system flags (0x800)
++TRAINER_NAME_BYTES = 6
++
++
++def _read_trainers(root_dir):
++    """maps/trainers.json (written by ZigzaguMap): [trainer dict] to write into the trainer table. [] without it."""
++    path = root_dir / TRAINERS_FILE
++    if not path.exists():
++        return []
++    source = json.loads(path.read_text(encoding="utf-8"))
++    if source.get("Format") != 1 or not isinstance(source.get("Trainers"), list):
++        raise ValueError(f"Invalid {path}")
++    seen = set()
++    for number, item in enumerate(source["Trainers"]):
++        tid = item.get("Id")
++        if not isinstance(tid, int) or isinstance(tid, bool) or not 1 <= tid <= TRAINER_ID_MAX or tid in seen:
++            raise ValueError(f"Invalid or duplicate trainer Id {tid!r} (#{number}) in {path}")
++        seen.add(tid)
++        party = item.get("Party")
++        if not isinstance(party, list) or not 1 <= len(party) <= 6:
++            raise ValueError(f"Trainer {tid} in {path} needs 1-6 Party entries")
++    return source["Trainers"]
++
++
++def _charmap(root_dir):
++    """text -> bytes of charmap.tbl (the same rules as scripts/string.py)."""
++    table = {}
++    with open(root_dir.parent / "charmap.tbl", encoding="utf-8") as file:
++        for line in file:
++            raw = line.rstrip("\n\r")
++            stripped = raw.strip()
++            if not stripped or stripped.startswith("/") or "=" not in raw:
++                continue
++            eq = raw.find("=")
++            table.setdefault(raw[eq + 1:], bytes(int(k, 16) for k in raw[:eq].split()))
++    table[" "] = b"\x00"
++    return table
++
++
++def _encode_trainer_name(name, table, tid):
++    out = bytearray()
++    longest = max(len(k) for k in table)
++    i = 0
++    while i < len(name):
++        for size in range(min(longest, len(name) - i), 0, -1):
++            if name[i:i + size] in table:
++                out += table[name[i:i + size]]
++                i += size
++                break
++        else:
++            raise ValueError(f"Trainer {tid}: cannot encode {name[i]!r} with charmap.tbl")
++    if len(out) > TRAINER_NAME_BYTES - 1:
++        raise ValueError(f"Trainer {tid}: the name {name!r} is longer than {TRAINER_NAME_BYTES - 1} bytes")
++    return bytes(out) + b"\xFF" * (TRAINER_NAME_BYTES - len(out))
++
++
++def _trainer_party(item):
++    flags = item.get("PartyFlags", 0)
++    out = bytearray()
++    for mon in item["Party"]:
++        out += struct.pack("<HHHH", mon.get("Iv", 0), mon["Level"], mon["Species"], mon.get("HeldItem", 0) if flags & 2 else 0)
++        if flags & 1:
++            moves = mon.get("Moves", [0, 0, 0, 0])
++            out += struct.pack("<HHHH", *moves)
++    return out
++
++
++def _apply_trainers(data, alloc, trainers, root_dir):
++    """Write maps/trainers.json into gTrainers. Parties go to new space; ids above 742 move the table to new space
++    and repoint the code references (words before the table that point into its first entry)."""
++    if not trainers:
++        return
++    table = _pointer(data, TRAINER_TABLE_POINTER)
++    count = TRAINER_COUNT
++    top = max(item["Id"] for item in trainers)
++    if top >= count:
++        grown = bytearray(data[table:table + count * TRAINER_SIZE])
++        grown += bytes(data[table:table + TRAINER_SIZE]) * (top + 1 - count)  # empty entries like trainer 0
++        new_table = alloc.put(grown)
++        moved = 0
++        for at in range(0, table - 3, 4):
++            value = _u32(data, at)
++            if ROM_BASE + table <= value < ROM_BASE + table + TRAINER_SIZE:
++                _write_u32(data, at, value - table + new_table)
++                moved += 1
++        print(f"Moved the trainer table to {ROM_BASE + new_table:#010x} for {top + 1} trainers ({moved} references)")
++        table, count = new_table, top + 1
++    names = _charmap(root_dir)
++    for item in trainers:
++        tid = item["Id"]
++        at = table + tid * TRAINER_SIZE
++        entry = bytearray(TRAINER_SIZE)
++        entry[0] = item.get("PartyFlags", 0) & 3
++        entry[1] = item.get("Class", 0) & 0xFF
++        entry[2] = (item.get("Music", 0) & 0x7F) | (0x80 if item.get("Female") else 0)
++        entry[3] = item.get("Pic", 0) & 0xFF
++        entry[4:4 + TRAINER_NAME_BYTES] = _encode_trainer_name(item.get("Name", ""), names, tid)
++        struct.pack_into("<HHHH", entry, 0x0A, *item.get("Items", [0, 0, 0, 0]))
++        entry[0x12] = 1 if item.get("DoubleBattle") else 0
++        struct.pack_into("<I", entry, 0x14, item.get("AiFlags", 0))
++        entry[0x18] = len(item["Party"])
++        _point(entry, 0x1C, alloc.put(_trainer_party(item)))
++        data[at:at + TRAINER_SIZE] = entry
++    print(f"Wrote {len(trainers)} trainers from maps/{TRAINERS_FILE}")
++
++
+ def apply_project(rom, allocation_start, symbols=None, symbol_sizes=None):
+     """Apply cfru/maps/ to the image rom (a seekable binary file or io.BytesIO); return the end of the map data.
+ 
+@@ -635,6 +745,20 @@
+     root_dir = MAPS_DIR
+     manifest_path = root_dir / "project.json"
+     erase = _read_rom_erase(root_dir)
++    trainers = _read_trainers(root_dir)
++    if not manifest_path.exists() and trainers:   # maps/trainers.json without map sources
++        rom.seek(0)
++        data = bytearray(rom.read())
++        if len(data) < 0x2000000:
++            data.extend(b"\xFF" * (0x2000000 - len(data)))
++        _erase_rom_ranges(data, erase)
++        alloc = _Allocator(data, allocation_start)
++        _apply_trainers(data, alloc, trainers, root_dir)
++        _check_erased_rom_ranges(data, erase)
++        rom.seek(0)
++        rom.write(data)
++        rom.flush()
++        return alloc.next
+     if not manifest_path.exists():
+         if erase:   # maps/rom_erase.json alone: erase the ranges and place no map
+             rom.seek(0)
+@@ -661,6 +785,7 @@
+     for source in sources:
+         _place_map(data, alloc, groups, source, symbols or {}, names, tileset_pointers)
+     _place_day_wild(data, alloc, sources)
++    _apply_trainers(data, alloc, trainers, root_dir)
+     _check_erased_rom_ranges(data, erase)
+     rom.seek(0)
+     rom.write(data)
