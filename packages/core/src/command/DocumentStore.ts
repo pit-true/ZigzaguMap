@@ -5,6 +5,7 @@ import type { MapDocument } from "../model/MapDocument.js";
 import { isWorkMapId, type WorkMapInfo } from "../model/WorkMap.js";
 import { hasMapName } from "../name/MapNameTable.js";
 import { TextCodec } from "../name/TextCodec.js";
+import { ROM_BASE } from "../rom/Rom.js";
 import type { TilesetDocument, TilesetRef } from "../tileset/TilesetDocument.js";
 import type { DocumentContext } from "./DocumentContext.js";
 
@@ -39,6 +40,10 @@ export class DocumentStore implements DocumentContext {
   readonly addedMaps = new Set<string>();
   /** addMap で加えた後に removeMap で除いたマップ（保存済みなら JSON を消す）。 */
   readonly removedMaps = new Set<string>();
+  /** addTileset で加えたタイルセット（キーは tilesetKey）。 */
+  readonly addedTilesets = new Set<string>();
+  /** addTileset で加えた後に removeTileset で除いたタイルセット（保存済みならファイルを消す。値はヘッダーの位置と副か）。 */
+  readonly removedTilesets = new Map<string, { headerAddress: number; secondary: boolean }>();
   /** 作業用のマップ（バンク -1）の名前とパス。 */
   readonly workMaps = new Map<string, WorkMapInfo>();
   /** このセッションで変えたマップ名。 */
@@ -98,7 +103,35 @@ export class DocumentStore implements DocumentContext {
   }
 
   tilesetExists(pointer: number): boolean {
+    if (this.findTileset({ pointer, secondary: false })?.isNew || this.findTileset({ pointer, secondary: true })?.isNew) return true;
     return this.source.tilesetExists ? this.source.tilesetExists(pointer) : pointer !== 0;
+  }
+
+  addTileset(tileset: TilesetDocument): void {
+    const k = tilesetKey(tileset.ref);
+    if (this.tilesets.has(k)) throw new Error(`タイルセット ${k} は既にあります`);
+    this.putTileset(tileset);
+    this.addedTilesets.add(k);
+    this.removedTilesets.delete(k);
+  }
+
+  removeTileset(ref: TilesetRef): void {
+    const k = tilesetKey(ref);
+    const t = this.tilesets.get(k);
+    if (!t || !this.addedTilesets.has(k)) throw new Error(`タイルセット ${k} は加えたタイルセットではありません`);
+    this.tilesets.delete(k);
+    this.addedTilesets.delete(k);
+    this.removedTilesets.set(k, { headerAddress: t.headerAddress, secondary: t.secondary });
+  }
+
+  newTilesetAddress(skip = 0): number {
+    // ビルド（map_project.py）は New のタイルセットのヘッダーを空きへ置き直し、この位置は名前として使うだけ。
+    // ROM の外（0x1000000〜0x1FFFFFF。ビルドは 32MB に広げてから確かめる）から、使っていない位置を選ぶ。
+    for (let at = NEW_TILESET_FIRST; at + NEW_TILESET_STEP <= NEW_TILESET_END; at += NEW_TILESET_STEP) {
+      const pointer = ROM_BASE + at;
+      if (!this.tilesetExists(pointer) && !this.findTileset({ pointer, secondary: false }) && !this.findTileset({ pointer, secondary: true }) && skip-- === 0) return at;
+    }
+    throw new Error("新しいタイルセットの位置が足りません");
   }
 
   mapName(regionId: number): Uint8Array | null {
@@ -189,6 +222,11 @@ export class DocumentStore implements DocumentContext {
     this.removedMaps.add(k);
   }
 }
+
+/** 新しいタイルセットのヘッダーの位置の範囲（ROM の外。ビルドは 32MB に広げる）と間隔。 */
+const NEW_TILESET_FIRST = 0x1f00000;
+const NEW_TILESET_END = 0x2000000;
+const NEW_TILESET_STEP = 0x20;
 
 /** マップのキー（`バンク.マップ`）。 */
 export function mapKey(id: MapId): string {

@@ -333,6 +333,9 @@ export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/co
 export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
 export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";
 export { SetTilesetHeaderCommand, type SetTilesetHeaderArgs } from "./command/commands/tileset/SetTilesetHeaderCommand.js";
+export { AddTilesetCommand, addTilesetArgs, type AddTilesetArgs } from "./command/commands/tileset/AddTilesetCommand.js";
+export { SetLayoutCommand, type SetLayoutArgs } from "./command/commands/layout/SetLayoutCommand.js";
+export * from "./transplant/index.js";
 export { SetTripleLayerCommand, THIRD_LAYER_TILE_COUNT, type SetTripleLayerArgs } from "./command/commands/tileset/SetTripleLayerCommand.js";
 
 // タウンマップ（ワールドマップエディター）
