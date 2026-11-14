@@ -59,6 +59,8 @@ import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
 import { DiveOverlay } from "../ui/map/DiveOverlay";
 import type { MixingBag } from "./MixingBag";
+import { CompositeImage } from "./CompositeImage";
+import { jaComposite } from "../i18n/ja.composite";
 import { installViewExtras } from "../ui/map/viewExtras";
 import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
 import { UsageMarks } from "../ui/usage/UsageMarks";
@@ -141,6 +143,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
   readonly neighbors: NeighborService;
+  /** 接続している全マップ（か今のマップ）の画像（#246）。 */
+  readonly composite: CompositeImage;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
   /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
@@ -249,6 +253,16 @@ export class App implements ActionTarget {
     // ミキシングバッグで描くときの移動許可（#236）
     mapTab.painter.usage = this.blockUsage;
     this.mixingBag = mapTab.bag;
+    // 画像のコピー（#246）: ツール > マップの画像をコピー／接続している全マップの画像をコピー
+    this.composite = new CompositeImage(state);
+    for (const whole of [false, true]) {
+      for (const events of ["none", "persons", "all"] as const) {
+        this.actions.register(`image.${whole ? "copyWhole" : "copyMap"}.${events}`, async () => {
+          const r = await this.composite.copy({ whole, events, ask: true });
+          if (r) state.setStatus(jaComposite.copied(r.width, r.height, r.maps, r.scale));
+        });
+      }
+    }
     mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);
     this.usageMarks = { map: new UsageMarks(mapTab.view, state, "map", this.blockUsage), movement: new UsageMarks(movementTab.view, state, "movement", this.blockUsage) };
     // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
