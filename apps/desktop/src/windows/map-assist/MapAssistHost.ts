@@ -6,6 +6,7 @@ import { readFile } from "../../app/FileDialogs";
 import { jaAssist as t } from "../../i18n/ja.assist";
 import type { FillCell } from "../../input/paintPlans";
 import { errorText } from "../../util/errors";
+import { scheduleIdleGc } from "../../util/idleGc";
 import {
   MAP_ASSIST_MESSAGE_EVENT,
   MAP_ASSIST_REQUEST_EVENT,
@@ -48,7 +49,10 @@ export class MapAssistHost {
   private async start(): Promise<void> {
     await listen<AssistRequest>(MAP_ASSIST_REQUEST_EVENT, (e) => void this.onRequest(e.payload));
     await listen<string>("tool-closed", (e) => {
-      if (e.payload === MAP_ASSIST_WINDOW) this.open = false;
+      if (e.payload !== MAP_ASSIST_WINDOW) return;
+      this.open = false;
+      // 送った画像の文字列などのごみを片付け、空いた領域も OS へ返す
+      scheduleIdleGc(true);
     });
     const state = this.app.state;
     state.on("session", () => this.close());
@@ -101,6 +105,7 @@ export class MapAssistHost {
     try {
       const result = await this.handle(req);
       await this.send({ type: "reply", id: req.id, ok: true, result });
+      scheduleIdleGc(true);
     } catch (e) {
       await this.send({ type: "reply", id: req.id, ok: false, error: errorText(e) });
     }
