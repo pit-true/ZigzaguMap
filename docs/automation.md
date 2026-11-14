@@ -28,8 +28,9 @@ python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFR
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
-python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
-    # Phase3 の表示・ホバー・スタンプ（配置の共有など）。名前はスクリプトの CHECKS の鍵
+python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...] [--chronos <Chronos の写し>]
+    # Phase3 の表示・ホバー・スタンプ・クローン（配置の共有など）。名前はスクリプトの CHECKS の鍵。--chronos を付けると、
+    # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直す窓（trainerEdit）も確かめる
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 ```
@@ -107,7 +108,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 
 AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
 
-ROM を開くメニュー・ツールバー・ドラッグ＆ドロップ・組のフォルダが記録されていない最近開いたものでは、ROM を選んだあとに組のフォルダを選ぶダイアログ（`dialogs` の `kind: "native"`、`type: "folder"`）が出ます。`queuePath` にフォルダか `null`（キャンセル。ROM だけで開く）を渡します。`open` 命令はダイアログを出さずに、渡した ROM とプロジェクトで開きます。
+ROM を開くメニュー・ツールバー・ドラッグ＆ドロップ・組のフォルダが記録されていない最近開いたものでは、ROM を選んだあとに組のフォルダを選ぶダイアログ（`dialogs` の `kind: "native"`、`type: "folder"`）が出ます。ただし 設定 > ROM ごとに前回のプロジェクトフォルダを覚える（`action` の `opt.rememberRomProject`、個人設定 `rememberRomProject`。既定 true）がオンで、その ROM の前回のフォルダ（個人設定 `romProjects`。ROM の小文字のパス → フォルダ）が残っていれば、ダイアログを出さずにそのフォルダで開き、ステータスバーの左に「前回のフォルダを開きました: <場所>」と出します（#278）。`queuePath` にフォルダか `null`（キャンセル。ROM だけで開く）を渡します。`open` 命令はダイアログを出さずに、渡した ROM とプロジェクトで開きます。
 
 Phase1 のフィードバックで足した部品の ID: 透明度のスライダー `view.opacity.slider`（`setField` に 0〜100）・`view.opacity.value`（「30%」）・`view.opacity.close`、マップの外のイベントの帯 `outside.bar`（`getField` の `visible`）・`outside.fix`（マップの内側に戻す）、場所の設定タブの切り替え `header.mode.simple`・`header.mode.classic`（`click`）・`header.advanced`（高度なヘッダーを表示）、かんたん表示 `easy.region`・`easy.newName`・`easy.rename`・`easy.showName`・`easy.music`・`easy.musicNo`・`easy.weather`・`easy.mapType`・`easy.battleType`・`easy.cave`・`easy.bike`・`easy.run`・`easy.escape`・`easy.tileset1`・`easy.tileset2`・`easy.changeTilesets`・`easy.width`・`easy.height`・`easy.resize`・`easy.borderWidth`・`easy.borderHeight`・`easy.resizeBorder`・`easy.connections`・`easy.openConnections`（マップスクリプトは `easy.scriptNo` など、くわしく表示の `header.` を `easy.` にしたもの）、ヘルプの文書の窓 `help.doc`（開いている文書のパス。画面には出さず、`getField` の `value` で読む）・`help.content`（本文。`view.scroll` の `id` に使える）・`help.home`（リンクで別の文書へ移ったときに本文の先頭に出す「← Read meに戻る」。元の文書の離れた位置へ戻る。#219 で「戻る」ボタン `help.back` の代わりにした）・`help.close`・本文のリンク `help.link:<行き先>`（`help.link:#ショートカット`、`help.link:docs/automation.md` など。`click` で押す）、バージョン情報 `about.version`・`about.link`。
 
@@ -238,7 +239,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 |---|---|---|
 | `stamps.list` | | スタンプ（#239）。`all`（全部。`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`secondaryUsed`・`withMovements`・`path`（書いたファイル。メモリだけなら null）・`fits`（今のマップに貼れるか））、`fitting`（今のマップに貼れるものの名前）、`shown`（マップタブの一覧に出ている名前）、`memoryOnly`（出力先のフォルダが無くメモリだけか）、`pending`（まだ書いていない数）、`problems`（読めなかったファイル） |
 | `stamps.save` | `name`、`overwrite`（true で同じ名前を上書き） | 今の選択をスタンプにする（「選択を保存」と同じ。名前は聞かない）。返事は `ok` と `stamps.list` |
-| `stamps.select` | `name` | 一覧の項目を押すのと同じ（選択にする）。返事は `ok` と `selection` |
+| `stamps.select` | `name` | 一覧の項目を押すのと同じ（選択にする。四角でないスタンプは `selection` の `block.holes` に貼らないマスを持つ）。返事は `ok` と `selection` |
 | `stamps.rename` | `name`、`to` | 名前を変える（ファイル名も変わる）。返事は `ok` と `stamps.list` |
 | `stamps.remove` | `name` | 消す（確かめない。ファイルも消す）。返事は `ok` と `stamps.list` |
 
@@ -257,7 +258,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
 
-- クローンの自動作成（#242）: イベントタブで人を `mouse` の `drag` で動かすと、離したときに隣のマップのクローンを合わせる。設定は `action` の `opt.autoClones`（個人設定 `autoClones`）。比較テストは `setting` で `autoClones` を false にしてから比べる。
+- クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置。主マップの左上が原点で負もある）と `clonesShown`（帯の上に印を描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
 
 ## Phase3 の部品と命令（接続・描画）
 
@@ -299,6 +300,10 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `trainer.get` | `id` | 1 件の全部（`partyFlags`・`trainerClass`・`music`・`female`・`pic`・`name`・`items`・`doubleBattle`・`aiFlags`・`party`（`iv`・`level`・`species`、形式により `heldItem`・`moves`））。表の外なら null |
 | `trainer.generate` | `seed`、`bank`・`map`（省略で表示中のマップ） | チームの自動生成（#245）。返事は `party`・`seed`・`candidates`（候補にした野生の種族と最高レベル）・`maps`（野生を使ったマップ）。同じ種なら同じ結果 |
 | `trainer.json` | | `maps\trainers.json` の中身（`trainers`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
+| `trainer.edit` | `id`、または表示中のマップの人 `person`（番号はスクリプトから探す） | トレーナーを直す窓（#274）を出したまま返す（返事は `id`。`person` で番号が見つからなければ null で、番号を聞く入力が出る）。プロジェクトフォルダが無ければ窓を出さず、ステータスバーにエラーを出す |
+| `trainer.idForPerson` | `index`（表示中のマップの人） | その人のスクリプトが使うトレーナーの番号（`trainer`・`trainerbattle*`。吹き出しの要約と同じたどり方）。返事は `id`（見つからなければ null） |
+
+- トレーナーを直す窓（#274）の部品: `trainerEdit.name`・`trainerEdit.class`（コンボ。番号の文字）・`trainerEdit.pic`・`trainerEdit.music`・`trainerEdit.female`・`trainerEdit.item.0`〜`.3`・`trainerEdit.double`・`trainerEdit.ai`・`trainerEdit.party`（「種族 レベル」をカンマで区切る）・`trainerEdit.partyNames`（種族名の表示）、ボタン `trainerEdit.ok`・`trainerEdit.cancel`・`trainerEdit.revert`（trainers.json にあるときだけ）。`dialog` の `press` は `ok` / `cancel` / `revert`。イベントタブの人の右クリックのメニューの項目は `editTrainer`。
 
 trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。同じ番号が無ければ足す）と `removeTrainer`（`{"id": 700}`）でもできます（元に戻せる）。
 - ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。

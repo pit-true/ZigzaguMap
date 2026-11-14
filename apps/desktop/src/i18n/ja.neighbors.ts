@@ -46,4 +46,16 @@ export const jaNeighbors = {
   diveShown: (bank: number, map: number, dive: boolean) => `${dive ? "ダイブ先" : "浮上先"} ${bank}.${map} を重ねています（ダブルクリックで開く）`,
   shortcutDive: "ダイブ先・浮上先をマウスのまわりに重ねる（ダブルクリックで開く）",
   shortcutDiveWhere: "マップタブ・イベントタブ",
+  /** ショートカット一覧の、接続のつまみと隣の帯（#223・#229〜#231）。 */
+  shortcutCornerKeys: "角のつまみを左ドラッグ",
+  shortcutCorner: "接続のずれを変える（相手のマップの逆向きの接続もそろえる）",
+  shortcutCornerWhere: "マップタブの隣の帯の両端",
+  shortcutEdgeMenuKeys: "辺のつまみを右クリック",
+  shortcutEdgeMenu: "接続の追加・削除、新しいマップを作ってつなぐ、ダイブ先・浮上先",
+  shortcutEdgeDragKeys: "辺のつまみを左ドラッグ",
+  shortcutEdgeDrag: "その辺の向きへ広げる・縮める（Esc で取りやめ）",
+  shortcutEdgeWhere: "マップタブの主マップの辺の中央",
+  shortcutBandKeys: "隣の帯をダブルクリック",
+  shortcutBand: "そのマップを開く",
+  shortcutBandWhere: "マップ・移動エリア・イベントタブ",
 } as const;

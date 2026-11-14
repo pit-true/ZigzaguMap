@@ -26,4 +26,11 @@ export const jaPaint = {
   shortcutBagWhere: "マップタブのブロックパレット",
   shortcutBagClear: "ミキシングバッグを空にする",
   shortcutBagClearWhere: "マップタブのミキシングバッグ",
+  /** ショートカット一覧の、矩形の選択と Ctrl を押している間の表示（#225・#238）。 */
+  shortcutPick: "矩形を選ぶ（ブロックと移動許可を拾う。隣の帯の上でも）",
+  shortcutPickWhere: "マップタブのマップ",
+  shortcutPeek: "移動許可とイベントの重ね描きを隠す（イベントもつかまない）",
+  shortcutPeekWhere: "移動エリアタブ・イベントタブ",
+  shortcutPeekPick: "イベントの下のブロックを拾う",
+  shortcutPeekPickWhere: "イベントタブのマップ",
 } as const;
