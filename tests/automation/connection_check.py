@@ -28,6 +28,9 @@
 - 246: 接続している全マップの画像。マサラタウンから、つながっている屋外のマップ全部が接続のずれどおりに並ぶ（マサラタウンの部分の画素が
   マップの画像と同じ）。今のマップ 1 枚、イベントの有無、縮め方。作っている間と後のメモリ（専用ワーキングセット）を記録する。
   クリップボードには書かない（`clipboard` を付けない）。
+- 292: ダブルクリックでマップを開くときは何も描かない。マップタブ・移動エリアタブで隣の帯をダブルクリックしても、帯のマスは変わらず、
+  隣のマップに未出力の印が付かず、履歴も増えない。Space でダイブ先を重ねたままのダブルクリックも、主マップに描かない。
+  帯の上の 1 回のクリックは今までどおり描く。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -764,7 +767,68 @@ def check_246(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     check(half["width"] == 12 * 16 and half["height"] == 10 * 16, "縮めると 1/2 の大きさ")
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236, "246": check_246}
+def wait_map(z: Zigzagu, map_: int, timeout: float = 10) -> dict:
+    t0 = time.time()
+    while True:
+        st = z.call({"cmd": "state"})
+        if st["map"] and st["map"]["map"] == map_ or time.time() - t0 > timeout:
+            return st
+        time.sleep(0.1)
+
+
+def check_292(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    route = z.call({"cmd": "cells", **ROUTE1})
+    width, height = route["width"], route["height"]
+    at = (height - 3) * width + 10  # 帯の (10, -3) は 1 番道路の (10, 高さ-3)
+    for tab, select in (("map", {"cmd": "selectBlock", "block": 0}), ("movement", {"cmd": "selectMovement", "value": 1})):
+        open_main(z)
+        z.call({"cmd": "tab", "name": tab})
+        z.call(select)
+        before = z.call({"cmd": "cells", **ROUTE1})["cells"][at]
+        hist = z.call({"cmd": "state"})["history"]
+        z.call({"cmd": "mouse", "target": tab, "action": "dblclick", "cell": [10, -3]})
+        st = wait_map(z, 19)
+        z.call({"cmd": "neighbors.state", "wait": True})
+        time.sleep(0.4)  # 未出力の印を確かめるまでの待ち（150ms）より長く
+        st = z.call({"cmd": "state"})
+        after = z.call({"cmd": "cells", **ROUTE1})["cells"][at]
+        check(st["map"]["map"] == 19, f"{tab}: 帯のダブルクリックで 1 番道路を開く")
+        check(after == before and "3.19" not in st["dirty"] and st["history"] == hist,
+              f"{tab}: ダブルクリックで開くときは帯に描かない（マス {before:#06x} → {after:#06x}、印 {st['dirty']}、履歴 {hist} → {st['history']}）")
+        # 帯の上の 1 回のクリックは描く
+        open_main(z)
+        z.call({"cmd": "tab", "name": tab})
+        z.call({"cmd": "mouse", "target": tab, "action": "click", "cell": [10, -3]})
+        z.call({"cmd": "neighbors.state", "wait": True})
+        clicked = z.call({"cmd": "cells", **ROUTE1})["cells"][at]
+        st = z.call({"cmd": "state"})
+        check(clicked != before and st["history"] == hist + 1 and st["map"]["map"] == 0, f"{tab}: 帯の上の 1 回のクリックは今までどおり描く（{before:#06x} → {clicked:#06x}）")
+        z.call({"cmd": "undo"})
+    # Space でダイブ先を重ねたままのダブルクリック
+    open_main(z)
+    z.call({"cmd": "command", "name": "connectMaps", "args": {**PALLET, "direction": 5, "offset": 0, "targetBank": 3, "targetMap": 19}})
+    open_main(z)
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "selectBlock", "block": 0})
+    pallet = z.call({"cmd": "cells", **PALLET})
+    i0 = 6 * pallet["width"] + 6
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [6, 6]})
+    z.call({"cmd": "key", "key": " ", "type": "down"})
+    z.call({"cmd": "neighbors.state", "wait": True})
+    z.call({"cmd": "mouse", "target": "map", "action": "dblclick", "cell": [6, 6]})
+    z.call({"cmd": "key", "key": " ", "type": "up"})
+    wait_map(z, 19)
+    time.sleep(0.4)
+    st = z.call({"cmd": "state"})
+    after = z.call({"cmd": "cells", **PALLET})["cells"][i0]
+    check(st["map"]["map"] == 19 and after == pallet["cells"][i0] and st["history"] == hist and "3.0" in st["dirty"],
+          f"ダイブ先を重ねたままのダブルクリックは主マップに描かずに相手を開く（{pallet['cells'][i0]:#06x} → {after:#06x}、履歴 {hist} → {st['history']}）")
+    z.call({"cmd": "tab", "name": "map"})
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236, "246": check_246, "292": check_292}
 
 
 def main() -> int:

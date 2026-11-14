@@ -60,8 +60,11 @@ export class BlockPainter {
       down: (cell, g) => {
         if (g.button === 0 && g.ctrl) this.startDrag({ tool: "rect", anchor: cell, last: cell, cancelled: false });
         else if (g.button === 0 && g.alt) this.startDrag({ tool: "swap", anchor: cell, last: cell, cancelled: false });
-        else if (g.button === 0) this.paint(cell, false);
-        else if (g.ctrl) this.startDrag({ tool: "pick", anchor: cell, cancelled: false }, cell);
+        else if (g.button === 0) {
+          // ダブルクリックで隣のマップを開くとき、この押下で描いた分を取り消せるよう覚える
+          this.cells.pressStart();
+          this.paint(cell, false);
+        } else if (g.ctrl) this.startDrag({ tool: "pick", anchor: cell, cancelled: false }, cell);
       },
       move: (cell, g) => {
         const d = this.drag;
@@ -71,6 +74,7 @@ export class BlockPainter {
         } else if (!d && g.button === 0 && this.isSingle()) this.paint(cell, true);
       },
       up: (cell, g) => {
+        this.cells.pressEnd();
         const d = this.drag;
         this.drag = null;
         if (d) {

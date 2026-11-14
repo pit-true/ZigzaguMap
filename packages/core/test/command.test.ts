@@ -88,6 +88,27 @@ describe("CommandBus", () => {
     expect(() => bus.execute(new PlaceBlockCommand({ bank: 0, map: 0, x: 5, y: 0, block: 1 }))).toThrow(RangeError);
     expect(bus.canUndo).toBe(false);
   });
+
+  it("retract は直前のコマンドを戻し、やり直しの履歴にも残さない", () => {
+    const grid = new BlockGrid(2, 1, Uint16Array.from([1, 2]));
+    const bus = new CommandBus(singleGridContext(grid));
+    const events: CommandEvent["type"][] = [];
+    bus.subscribe((e) => events.push(e.type));
+    const first = new PlaceBlockCommand({ bank: 0, map: 0, x: 0, y: 0, block: 5 });
+    const second = new PlaceBlockCommand({ bank: 0, map: 0, x: 1, y: 0, block: 6 });
+    bus.execute(first);
+    bus.execute(second);
+    // 先頭でないものは戻さない
+    expect(bus.retract(first)).toBe(false);
+    expect(grid.getCell(0, 0) & 0x3ff).toBe(5);
+    expect(bus.retract(second)).toBe(true);
+    expect(grid.getCell(1, 0) & 0x3ff).toBe(2);
+    expect(bus.canRedo).toBe(false);
+    expect(bus.retract(first)).toBe(true);
+    expect(grid.getCell(0, 0) & 0x3ff).toBe(1);
+    expect(bus.canUndo).toBe(false);
+    expect(events).toEqual(["execute", "execute", "undo", "undo"]);
+  });
 });
 
 describe("CommandRegistry", () => {

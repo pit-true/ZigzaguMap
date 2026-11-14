@@ -8,6 +8,7 @@ import { DiveOverlay } from "../ui/map/DiveOverlay";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
 import { installViewExtras } from "../ui/map/viewExtras";
+import type { MapCells } from "../input/MapCells";
 import type { MapTab } from "../ui/tabs/MapTab";
 import type { MovementTab } from "../ui/tabs/MovementTab";
 import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
@@ -57,10 +58,18 @@ export class MapExtras {
     // 境界をまたぐ描画（#234）: 描く道具に隣の帯を教える
     mapTab.painter.cells.neighbors = this.neighbors;
     movementTab.painter.cells.neighbors = this.neighbors;
+    // ダブルクリックで別のマップを開くときは、その 2 回の押下で描いた分を先に取り消す（#292。描く道具のあるタブ）
+    const openAfterRetract =
+      (cells: MapCells | null) =>
+      async (id: MapId): Promise<void> => {
+        if (cells) await cells.retractPresses();
+        await openMap(id);
+      };
+    const openFrom = { map: openAfterRetract(mapTab.painter.cells), movement: openAfterRetract(movementTab.painter.cells), event: openMap };
     // Space でダイブ先・浮上先を重ねる（#232。マップタブとイベントタブ）
-    this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", openMap), new DiveOverlay(eventTab.view, state, "event", openMap)];
+    this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", openFrom.map), new DiveOverlay(eventTab.view, state, "event", openFrom.event)];
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
-      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, openMap, { tab, movement: tab === "movement", clones: tab === "event" }),
+      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, openFrom[tab], { tab, movement: tab === "movement", clones: tab === "event" }),
     );
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
