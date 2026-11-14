@@ -174,6 +174,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.mouse` | `line`・`column`、`toLine`・`toColumn`（あればドラッグ）、`ctrl`・`alt`・`shift` | 本文の位置でマウスを押す（Ctrl+クリックの定義へ移動・カーソルを足す、Alt+ドラッグの矩形選択） |
 | `editor.perf` | `line`・`column`、`count`（既定 30） | その位置で 1 字ずつ打ち、画面の更新（次のフレーム）までの時間を測る（`averageMs`・`maxMs`・`lines`）。打った字は消し、履歴にも残さない |
 | `editor.diagnostics` | | 波線を調べ直して、表示中のファイルの波線（`line`・`column`・`severity`・`source`（`unknownCommand` などの種類か、外から足したものの出どころ）・`message`・`text`）を返す |
+| `editor.widthCheck` | `wait`（true で、動いている検査が終わるまで待つ） | 保存時の幅検査の結果。`busy`、動かした回数 `runs`、最後の結果 `last`（`path`・終了コード `exit`・拾った誤り `errors`（`path`・`line`・`label`・`message`）・登録ファイルへの書き足し `registry`（`path`・`added`・`unresolved`・`removed`・登録の無いファイルなら `notChecked`）・`failed`）、出力の最後の 200 行 `log` |
 | `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
 
 | `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ |

@@ -20,6 +20,7 @@ import { buildExtensions, type EditorFileContext } from "./extensions";
 import type { EditorHost } from "./extensions/context";
 import { projectChangedEffect } from "./extensions/highlight";
 import { EDITOR_THEMES, currentEditorTheme, isEditorTheme, setCurrentEditorTheme, themeCompartment, themeFor, type EditorThemeId } from "./extensions/themes";
+import { WidthCheck } from "./extensions/widthCheck";
 import { ScriptProject } from "./ScriptProject";
 import { decodeScriptText, encodeScriptText, isEditableScriptPath, normalizeScriptPath, scriptFileKind, type DecodedText } from "./fileText";
 import type { ScriptEditorQuery, ScriptRomOpenRequest } from "./protocol";
@@ -63,6 +64,13 @@ export class ScriptEditorWindow {
   private readonly backStack: { path: string; pos: number }[] = [];
   private refreshQueued = false;
   private themeSelectEl: HTMLSelectElement | null = null;
+  /** 保存時の幅検査（#197）。 */
+  readonly widthCheck = new WidthCheck({
+    project: this.project,
+    view: () => this.view,
+    activePath: () => this.activeTab?.path ?? null,
+    setMessage: (text) => this.setMessage(text),
+  });
   /** 拡張に渡すウィンドウの窓口。 */
   readonly host: EditorHost = {
     setMessage: (text) => this.setMessage(text),
@@ -335,6 +343,7 @@ export class ScriptEditorWindow {
     this.client.saved(tab.path);
     void this.checkManualRename(tab, before, doc.toString());
     void this.project.reloadFile(tab.path);
+    this.widthCheck.afterSave(tab.path, doc.toString());
     return true;
   }
 

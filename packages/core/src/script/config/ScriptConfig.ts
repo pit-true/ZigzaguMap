@@ -36,6 +36,21 @@ export interface ScriptConfig {
   linesPerPage: number;
   /** commands.csv（命令の説明）のパス。無ければ null。 */
   commandsCsv: string | null;
+  /** 幅検査の追加の登録ファイル（Chronos の `text_width_registry.json`）。無ければ null（書き足さない）。 */
+  widthRegistry: WidthRegistrySetting | null;
+}
+
+/**
+ * 幅検査の追加の登録ファイルの設定。`.string` を保存したとき、登録のあるファイルの新しい `#org` を書き足す。
+ * 登録の一覧は、幅検査のコマンドの引数の最初（スクリプト）に `--list-registry` を付けて動かして得る。
+ */
+export interface WidthRegistrySetting {
+  /** 登録ファイルのパス（プロジェクトフォルダからの相対）。 */
+  path: string;
+  /** 登録での `.string` のパスの頭（プロジェクトフォルダを幅検査の作業フォルダから見たもの。Chronos は `cfru/`）。 */
+  prefix: string;
+  /** 足すときの窓の種類（Chronos の WINDOWS の名前）。 */
+  window: string;
 }
 
 /**
@@ -85,6 +100,7 @@ export function defaultScriptConfig(dialect: ScriptDialect): ScriptConfig {
       outputRom: `${ND_DPE_DIR}/test.gba`,
       widthCheck: null,
       useGlobal: false,
+      widthRegistry: null,
     };
   }
   return {
@@ -93,6 +109,7 @@ export function defaultScriptConfig(dialect: ScriptDialect): ScriptConfig {
     outputRom: "../build/Chronos.gba",
     widthCheck: { command: "python", args: ["tools/check_text_width.py", "--source"], cwd: ".." },
     useGlobal: true,
+    widthRegistry: { path: "strings/text_width_registry.json", prefix: "cfru/", window: "field" },
   };
 }
 
@@ -110,6 +127,7 @@ export function resolveScriptConfig(settings: ScriptConfigSettings, dialect: Scr
     lineMaxChars: settings.lineMaxChars ?? d.lineMaxChars,
     linesPerPage: settings.linesPerPage ?? d.linesPerPage,
     commandsCsv: settings.commandsCsv !== undefined ? settings.commandsCsv : d.commandsCsv,
+    widthRegistry: settings.widthRegistry !== undefined ? (settings.widthRegistry && { ...settings.widthRegistry }) : d.widthRegistry,
   };
 }
 

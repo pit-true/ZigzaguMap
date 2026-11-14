@@ -432,6 +432,12 @@ export const FEATURE_COMMANDS: Readonly<Record<string, Handler>> = {
     return { path: w.active!.path, diagnostics: currentDiagnostics(w.view.state), external: externalDiagnosticsOf(w.active!.path) };
   },
 
+  "editor.widthCheck": async (w, req) => {
+    // 保存時の幅検査の結果（`wait` が true なら、動いている検査が終わるまで待つ）
+    if (req["wait"] === true) await w.widthCheck.idle();
+    return { busy: w.widthCheck.busy, runs: w.widthCheck.runs, last: w.widthCheck.last, log: w.widthCheck.log.slice(-200) };
+  },
+
   "editor.stringEdit": async (w, req) => {
     await w.project.load();
     if (req["open"] === true) {

@@ -52,6 +52,7 @@ const KNOWN_KEYS = [
   "lineMaxChars",
   "linesPerPage",
   "commandsCsv",
+  "widthRegistry",
 ] as const satisfies readonly (keyof ScriptConfigSettings)[];
 
 /**
@@ -90,6 +91,17 @@ export class ScriptConfigJson {
     if (o.linesPerPage !== undefined) settings.linesPerPage = readPositiveInt(o.linesPerPage, "linesPerPage", path);
     if (o.commandsCsv !== undefined) {
       settings.commandsCsv = o.commandsCsv === null ? null : readPath(o.commandsCsv, "commandsCsv", path);
+    }
+    if (o.widthRegistry !== undefined) {
+      if (o.widthRegistry === null) settings.widthRegistry = null;
+      else {
+        const r = asRecord(o.widthRegistry, "widthRegistry", path);
+        settings.widthRegistry = {
+          path: readPath(r.path, "widthRegistry.path", path),
+          prefix: r.prefix === undefined ? "" : readText(r.prefix, "widthRegistry.prefix", path).replaceAll("\\", "/"),
+          window: r.window === undefined ? "field" : readText(r.window, "widthRegistry.window", path),
+        };
+      }
     }
     return { root, settings };
   }
@@ -141,7 +153,7 @@ export async function saveScriptConfig(fs: ProjectFs, settings: ScriptConfigSett
 
 function toJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((s) => stepToJson(s as ScriptCommandStep));
-  if (typeof value === "object" && value !== null) return stepToJson(value as ScriptCommandStep);
+  if (typeof value === "object" && value !== null) return "command" in value ? stepToJson(value as ScriptCommandStep) : { ...value };
   return value;
 }
 
