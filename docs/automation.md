@@ -17,7 +17,10 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 
 ```sh
 python tests/automation/profile_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>    # 通常の設定と WebView2 のデータが 1 バイトも変わらないこと
-python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>  # どのウィンドウも画面内に出ず、前面にならないこと
+python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダの写し>]
+    # どのウィンドウも画面内に出ず、前面にならないこと（--project でスクリプトエディタも開く）
+python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
+    # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
 python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、エミュレータの起動を記録だけにすること
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
@@ -73,6 +76,8 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
 | `process.launch` | `command`、`args`、`cwd` | エミュレータと同じく待たずに起動する命令。自動操作のときは何も起動せず記録だけする（返事の `launched` は false）。記録は `state` の `launched` と `process.launched` |
+| `script.open` | `path`（と `line`、1 から）か、`bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index`（0 から） | スクリプトエディタでファイルかイベントのスクリプトを開く（イベントのダブルクリックと同じ）。返事は `opened`、イベントなら `location`（`path`・`line`・`label`・`from`）、ステータスバー。ウィンドウの準備は `windows` の `ready` で待つ |
+| `script.resolve` | `bank`・`map`・`kind`・`index` | イベントのスクリプトの場所（`path`・`line`・`label`・`from`: `label` か `scriptsJson`）。見つからなければ null。開かない |
 | `scroll` | `target`（`map` / `movement` / `event` / `palette` / `movementPalette`）か `id`、`to`（`end` で右下の端、`start` で左上）・`x`・`y`（位置、px）・`dx`・`dy`（今の位置からの量、px）のどれか | 部品を載せたスクロールの枠を動かす（スクロールバーを動かしたときと同じく `scroll` の出来事を起こす）。返事は `view.scroll` と同じ |
 | `view.scroll` | `target` か `id` | スクロールの状態。`h`・`v`（横・縦のスクロールバーが出ていて使えるか）、`inside`（枠がウィンドウに収まっているか）、`scrollLeft`・`scrollTop`・`scrollWidth`・`scrollHeight`・`clientWidth`・`clientHeight` |
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
@@ -107,3 +112,24 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `close` | | ウィンドウを閉じる（× を押したときと同じ） |
 
 画面側の準備ができる前の要求には `{"ok":false,"error":"画面の準備ができていません"}` を返します。
+
+## 別ウィンドウ（スクリプトエディタ）
+
+要求に `"window": "script-editor"` を付けると、スクリプトエディタのウィンドウへ送ります（`screenshot` も同じ）。ウィンドウはメインの `script.open` で開きます。行と桁は 1 から、`offset` は本文の先頭からの文字の位置（0 から。改行は 1 文字）です。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `state` / `editor.state` | | タブ（`path`・`kind`（`asm` / `string`）・`dirty`・`missing`・`lineEnding`・`bom`・`lines`）、表示中のファイル `active`、`dirty`、カーソル `cursor`（`line`・`column`・`offset`）、選択 `selection`（範囲ごとの `anchor`・`head`・`text`）、下の帯のお知らせ `message`、題名 `title`、開いているダイアログ `dialogs` |
+| `editor.open` | `path`、`line`（省略可） | ファイルを開く（開いていればそのタブへ）。開けないパスならエラーのダイアログを出したまま返す（返事の `opened` が false） |
+| `editor.text` | `path`（省略で表示中のもの） | 本文（改行は `
+`） |
+| `editor.setText` | `text` | 表示中のファイルの本文を全部置き換える（履歴に入る） |
+| `editor.select` | `line`・`column` か `offset`（始まり）、`toLine`・`toColumn` か `toOffset`（終わり。省略でカーソルだけ） | 選択を変える |
+| `editor.type` | `text`、`line`・`column` か `offset`（省略で今のカーソル） | 文字を入力する（選択と置き換える。キーで入力したときと同じ取引で、IME は通さない） |
+| `editor.key` | `key`、`ctrl`・`alt`・`shift` | 本文へキーを送る（Ctrl+S・Ctrl+Z・Enter など、エディタのキーの割り当てを通る）。`key` も同じ |
+| `editor.save` | | 表示中のファイルを保存する（返事の `saved`） |
+| `editor.activate` | `path` | タブを切り替える |
+| `editor.closeTab` | `path`（省略で表示中のもの） | タブを閉じる。未保存なら確認のダイアログを出したまま返す |
+| `editor.checkExternal` | | 1 秒ごとの見張りを待たずに、外部の変更を調べる |
+| `close` | | × と同じ。未保存が無ければ閉じる（返事の `closing` が true）。あれば確認のダイアログを出したまま返す |
+| `dialogs` / `dialog` | メインと同じ | 画面内のダイアログを読む・押す（「保存しますか？」は `yes` / `no` / `cancel`、「読み直しますか？」は `yes` / `no`） |
