@@ -65,6 +65,7 @@ import { installViewExtras } from "../ui/map/viewExtras";
 import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
 import { UsageMarks } from "../ui/usage/UsageMarks";
 import { BlockUsageService } from "./BlockUsageService";
+import { cloneTargets } from "./cloneSync";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { EdgeMenu } from "../ui/connection/EdgeMenu";
@@ -224,6 +225,7 @@ export class App implements ActionTarget {
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
       pickUnused: (kind) => this.pickUnused(kind),
       createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
+      cloneTargets: (id) => cloneTargets(this.state, id),
       placeTemplate: (x, y) => void this.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       summaries: () => this.eventSummaries(),

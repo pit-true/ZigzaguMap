@@ -76,7 +76,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240） |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
@@ -256,6 +256,8 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `warp.createMap` | `index`、`sample`（見本の番号か null で見本なし）、`copyLayout`（既定 true）、`bank`（省略でバンクを聞く窓を出す） | 窓を出さずに行き先のマップを作り、ワープを向け合って新しいマップを開く。返事は `target`（作ったマップ。取り消し・失敗なら null）・`map`・`status` |
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
+
+- クローンの自動作成（#242）: イベントタブで人を `mouse` の `drag` で動かすと、離したときに隣のマップのクローンを合わせる。設定は `action` の `opt.autoClones`（個人設定 `autoClones`）。比較テストは `setting` で `autoClones` を false にしてから比べる。
 
 ## Phase3 の部品と命令（接続・描画）
 
