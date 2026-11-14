@@ -415,8 +415,36 @@ def check_palette(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     shot(z, shots, "view_movement_info.png")
 
 
+# ---- #315 ----
+
+
+def check_thumbs(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    st = z.call({"cmd": "thumbs.state"})
+    check(not st["enabled"] and st["maps"] == 0 and st["rows"] == 0, "既定はオフで、何も作らない")
+    items = {i["id"]: i for i in z.call({"cmd": "menu.list"}) if i.get("id")}
+    check("view.treeThumbnails" in items and not items["view.treeThumbnails"]["checked"], "表示 > マップ一覧にサムネイルを出す（チェックなし）")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "menu.run", "id": "view.treeThumbnails"})
+    st = z.call({"cmd": "thumbs.state", "wait": True})
+    total = len([i for i in z.call({"cmd": "tree.list"}) if i.get("mapId") and i["key"].startswith("h")])
+    check(st["maps"] == total and st["images"] < st["maps"], f"全マップ {st['maps']} 枚（{total}）、絵は {st['images']} 枚（配置が同じものは使い回す）、{st['ms']:.0f}ms")
+    ctx.setdefault("timings", []).append(("thumbs", st["ms"], st["maps"], st["images"]))
+    check(st["rows"] > 0, f"開いている枝の行に描く（{st['rows']} 行）")
+    shot(z, shots, "view_tree_thumbnails.png")
+    # 切り替えの時間（サムネイルがあっても 100ms 以内）
+    times = []
+    for m in (1, 2, 3, 0):
+        r = z.call({"cmd": "selectMap", "bank": 3, "map": m})
+        times.append(r.get("switchMs", 0))
+    check(max(times) < 100, f"オンでもマップの切り替えは 100ms 以内（{[round(t, 1) for t in times]}）")
+    z.call({"cmd": "menu.run", "id": "view.treeThumbnails"})
+    st = z.call({"cmd": "thumbs.state"})
+    check(not st["enabled"] and st["maps"] == 0 and st["rows"] == 0, "オフにすると捨てて、行からも消える")
+
+
 CHECKS = {
     "events": check_events,
+    "thumbs": check_thumbs,
     "palette": check_palette,
     "pointers": check_pointers,
     "seams": check_seams,

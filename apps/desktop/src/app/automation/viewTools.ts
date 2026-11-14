@@ -119,7 +119,19 @@ function recentState(app: App): unknown {
   return { blocks: r.model.list.map((i) => i.block), tilesets: r.model.list.map((i) => i.tileset) };
 }
 
+/**
+ * `thumbs.state {wait?}`: マップ一覧のサムネイル（#315）。設定でオンか `enabled`、作っている最中か `running`、作り終えたマップの数 `maps`、
+ * 作った絵の数 `images`（配置が同じマップは 1 枚を使い回す）、全部を作るのにかかった時間 `ms`、一覧でサムネイルを描いた行の数 `rows`
+ * （開いている枝の分だけ）。`wait: true` なら作り終えるまで待つ。
+ */
+async function thumbsState(app: App, req: AutomationRequest): Promise<unknown> {
+  const t = app.views.thumbnails;
+  if (req["wait"] === true) await t.settle();
+  return { ...t.status(), rows: app.tree.thumbnailRows() };
+}
+
 export const viewToolCommands: CommandTable = {
+  "thumbs.state": thumbsState,
   "recent.state": recentState,
   "pointers.state": pointersState,
   "pointers.search": pointersSearch,

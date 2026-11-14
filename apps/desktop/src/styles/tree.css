@@ -61,3 +61,16 @@
 .icon-folder-open {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M1.5 3.5h5l1 1.5h6v8.5h-12z' fill='%23f0c050' stroke='%23886000'/%3E%3Cpath d='M1.5 13.5l2.5-6h11l-2.5 6z' fill='%23f8dc88' stroke='%23886000'/%3E%3C/svg%3E");
 }
+
+/* マップ一覧のサムネイル（#315。設定でオンのとき）。 */
+.tree-row.with-thumb {
+  height: 50px;
+}
+
+.tree-thumb {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  margin-right: 3px;
+  image-rendering: pixelated;
+}

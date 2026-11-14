@@ -3,6 +3,8 @@ import type { TownMiniView } from "../ui/view/TownMiniView";
 import type { PointerDialog } from "../ui/pointer/PointerDialog";
 import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
+import type { MapTree } from "../ui/MapTree";
+import { ThumbnailService } from "./ThumbnailService";
 import type { MovementTab } from "../ui/tabs/MovementTab";
 import { RecentBlocksView } from "../ui/map/RecentBlocks";
 import { blockInfoSource, blockInfoText } from "../ui/map/blockInfo";
@@ -27,6 +29,7 @@ export interface ViewFeatureParts {
   readonly statusBar: StatusBar;
   readonly treeFilter: MapTreeFilter;
   readonly eventTab: EventTab;
+  readonly tree: MapTree;
   readonly mapTab: MapTab;
   readonly movementTab: MovementTab;
   readonly files: FileDialogs;
@@ -41,6 +44,7 @@ export interface ViewFeatureParts {
  * - ポインタ一覧と参照元の検索（#307）: ツール > ポインタ一覧と参照元の検索（Ctrl+Shift+P）。初めて開くときに読み込む。
  * - パレットの情報（#308）: ブロックパレットと最近使ったブロックに乗せたときのブロックの情報、TS1 と TS2 の境目（表示メニュー）、
  *   最近使ったブロック（マップタブの右の欄）、移動許可のパレットに乗せた・選んだときの説明（ステータスバーの補助の欄）。
+ * - マップ一覧のサムネイル（#315）: 表示 > マップ一覧にサムネイルを出す（既定オフ）。
  */
 export class ViewFeatures {
   /** 接続の境目の点検（#305）。 */
@@ -53,6 +57,8 @@ export class ViewFeatures {
   private pointerValue: Promise<PointerDialog> | null = null;
   /** 最近使ったブロック（#308）。 */
   readonly recent: RecentBlocksView;
+  /** マップ一覧のサムネイル（#315。設定でオンのときだけ作る）。 */
+  readonly thumbnails: ThumbnailService;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
   lastCopied: string | null = null;
 
@@ -64,6 +70,8 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
+    // マップ一覧のサムネイル（#315）
+    this.thumbnails = new ThumbnailService(state, (id) => parts.tree.refreshThumbnails(id));
     // パレットの情報（#308）
     const { mapTab, movementTab } = parts;
     const palette = mapTab.palette;

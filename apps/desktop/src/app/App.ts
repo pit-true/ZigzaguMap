@@ -189,6 +189,9 @@ export class App implements ActionTarget {
       openMap: (id) => void this.openMap(id),
       isDirty: (id) => state.isDirty(id),
       openMapFile: (path, name) => void this.newMaps.openEntry(path, name),
+      // マップ一覧のサムネイル（#315）
+      showThumbnails: () => state.settings.data.treeThumbnails,
+      thumbnail: (id) => this.views.thumbnails.get(id),
     });
     this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
@@ -238,6 +241,7 @@ export class App implements ActionTarget {
       statusBar: this.statusBar,
       treeFilter: this.treeFilter,
       eventTab,
+      tree: this.tree,
       mapTab,
       movementTab,
       files: this.files,

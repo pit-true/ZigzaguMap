@@ -224,6 +224,7 @@ export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, pars
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer, renderBlocks } from "./render/BlockRenderer.js";
 export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
+export { THUMBNAIL_SIZE, blockAverageColors, renderThumbnail } from "./render/MapThumbnail.js";
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
