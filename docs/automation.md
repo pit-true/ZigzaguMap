@@ -342,6 +342,9 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `pointers.search` | `address`（ROM の上の位置かポインタの値。数）、`rom`（ほかの ROM のパス。省略で開いているベース ROM） | 窓を開いて参照元を探す。返事は `last` と同じ形と、探している間のいちばん長い画面の止まり `maxGapMs` |
 | `pointers.select` | `row` | 一覧の行を押したのと同じ（イベントの行ならイベントタブで選ぶ）。返事は `selected` |
 | `recent.state` | | 最近使ったブロック（#308）。`blocks`（新しい順の番号）と、それぞれの持ち主のタイルセット `tilesets`（ポインタ） |
+| `thumbs.state` | `wait`（true で作り終えるまで待つ） | マップ一覧のサムネイル（#315）。設定でオンか `enabled`、作っている最中か `running`、作り終えたマップの数 `maps`、作った絵の数 `images`、全部を作るのにかかった時間 `ms`、一覧でサムネイルを描いた行の数 `rows`（開いている枝の分だけ） |
+| `zoom.state` | `tab`（`map` / `movement` / `event`。省略で `map`） | マップの拡大（#316）。倍率 `zoom`、描く大きさ `cellSize`、画面の上の大きさ `screenCellSize`、CSS で広げる割合 `scale`、重ね描きの Canvas の画素数 `layer`、スクロールの大きさ `scrollSize` と位置 `scroll`、個人設定 `mapZoom` |
+| `zoom.wheel` | `tab`、`cell`（主マップの左上が原点のマス）、`delta`（負で拡大、正で縮小。既定 -1） | そのマスの上で Ctrl＋ホイールを回したのと同じ。返事は `zoom.state` と、回したあとの同じマスの画面の上の位置 `at` とずれ `drift`（画素） |
 | `catalog.get` | `bank`、`map` | マップ一覧の情報（地名の番号 `region`・配置の番号 `layoutId`・名前 `name`・タイルセットの番号）。無ければ null |
 
 - ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
@@ -349,3 +352,5 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。
 - ポインタ一覧（#307）: `action` か `menu.run` の `tools.pointers`（Ctrl+Shift+P）。窓の ID は `pointers`（`ui.shot` で撮れる）、一覧 `pointers.list`・行 `pointers.row.<番号>`（`mouse` の `rightClick` で右クリックのメニュー。項目 `copyValue`・`copyBytes`・`copyLocation`）、アドレス `pointers.address`、ROM の選び方 `pointers.rom`（`base` / `other`。`other` はファイルのダイアログを出す）、「探す」`pointers.search`、結果の文 `pointers.status`・一覧 `pointers.results`（行 `pointers.result.<番号>`）、「閉じる」`pointers.close`。
 - パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。3 層は 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
+- マップ一覧のサムネイル（#315）: `action` か `menu.run` の `view.treeThumbnails`（個人設定 `treeThumbnails`。既定 false）。行の縮小は `canvas.tree-thumb`。
+- マップの拡大（#316）: `mouse` のマップのタブの `cell` は、拡大していても画面の上のマスの大きさで押す。中ボタンのドラッグはスクロールの枠 `map-tab-view`・`movement-tab-view`・`event-tab-view`（`mouse` の `id`）に `"button": "middle"` の `drag` で送る（ステージに送ると、スクロールで部品が動いて量が合わない）。メニューの `zoom.map` などは 1 倍・2 倍の切り替えで、個人設定 `mapZoom` のそのタブの値を 0 に戻す。

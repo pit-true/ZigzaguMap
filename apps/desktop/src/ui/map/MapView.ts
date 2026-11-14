@@ -7,13 +7,22 @@ export interface Cell {
   readonly y: number;
 }
 
+/** 拡大の上限（Ctrl＋ホイール。#316）。 */
+export const MAX_MAP_ZOOM = 8;
+
 /**
  * マップの表示領域（スクロールつき）。下から順に、ブロック画像の Canvas、重ね描き用の Canvas（移動許可やイベント）、
  * グリッドの Canvas を重ねる。ブロック画像は等倍で持ち、拡大は表示の大きさだけ変える。
  * 重ね描きとグリッドは表示の大きさで描く（文字や線をにじませないため）。
+ *
+ * 3〜8 倍（#316）: 重ね描きなどは 2 倍の大きさで描き、ステージ全体を CSS の拡大（transform）で表示の大きさにする。
+ * 拡大した画像は持たない（メモリは 2 倍のときと同じ）。拡大していないとき（1 倍・2 倍）は今までと同じ作りと操作。
+ * `cellSize` は描く大きさ（1 倍か 2 倍）、`screenCellSize` は画面の上の大きさ（マウスの位置からマスを求めるとき）。
  */
 export class MapView {
   readonly element: HTMLElement;
+  /** スクロールの大きさを決める枠（拡大したステージの大きさ）。 */
+  private readonly sizer: HTMLElement;
   readonly stage: HTMLElement;
   private readonly base: HTMLCanvasElement;
   private readonly baseContext: CanvasRenderingContext2D;
@@ -37,6 +46,8 @@ export class MapView {
   constructor(className: string) {
     this.element = document.createElement("div");
     this.element.className = `map-scroll ${className}`;
+    // スクロールの枠（自動操作の `mouse` の `id`。中ボタンのドラッグなど、スクロールしても動かない部品で押すため。#316）
+    this.element.dataset["autoId"] = className;
     this.stage = document.createElement("div");
     this.stage.className = "map-stage";
     this.base = canvas("map-base");
@@ -48,17 +59,35 @@ export class MapView {
     this.frame.className = "map-frame";
     this.frame.hidden = true;
     this.stage.append(this.base, this.layer, this.gridCanvas, this.frame);
-    this.element.append(this.stage);
+    this.sizer = document.createElement("div");
+    this.sizer.className = "map-sizer";
+    this.sizer.append(this.stage);
+    this.element.append(this.sizer);
     this.element.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
-  /** 表示倍率（1 か 2）。 */
+  /** 表示倍率（1〜8）。 */
   get zoom(): number {
     return this.zoomValue;
   }
 
-  /** 1 マスの表示上の大きさ。 */
+  /** 描く倍率（1 か 2。3 倍より上は 2 倍で描いて CSS で広げる）。 */
+  private get drawZoom(): number {
+    return Math.min(this.zoomValue, 2);
+  }
+
+  /** CSS で広げる割合（2 倍以下なら 1）。 */
+  get screenScale(): number {
+    return this.zoomValue / this.drawZoom;
+  }
+
+  /** 1 マスの描く大きさ（重ね描きの Canvas の上の画素）。 */
   get cellSize(): number {
+    return BLOCK_PIXELS * this.drawZoom;
+  }
+
+  /** 1 マスの画面の上の大きさ（マウスの位置からマスを求めるとき）。 */
+  get screenCellSize(): number {
     return BLOCK_PIXELS * this.zoomValue;
   }
 
@@ -73,10 +102,31 @@ export class MapView {
 
   /** 拡大とグリッドを設定する。 */
   configure(zoom: number, grid: boolean): void {
-    if (zoom === this.zoomValue && grid === this.gridOn) return;
-    this.zoomValue = zoom;
+    const z = Math.min(MAX_MAP_ZOOM, Math.max(1, Math.round(zoom)));
+    if (z === this.zoomValue && grid === this.gridOn) return;
+    this.zoomValue = z;
     this.gridOn = grid;
     this.layout();
+  }
+
+  /**
+   * 倍率を変え、画面の (clientX, clientY) の下のマスが同じ場所に見えるようにスクロールする（Ctrl＋ホイール。#316）。
+   * 位置が無ければ表示の中央を保つ。
+   */
+  zoomAt(zoom: number, clientX?: number, clientY?: number): void {
+    const z = Math.min(MAX_MAP_ZOOM, Math.max(1, Math.round(zoom)));
+    if (z === this.zoomValue) return;
+    const r = this.element.getBoundingClientRect();
+    const ax = clientX !== undefined ? clientX - r.left : this.element.clientWidth / 2;
+    const ay = clientY !== undefined ? clientY - r.top : this.element.clientHeight / 2;
+    const old = this.screenCellSize;
+    const cx = (this.element.scrollLeft + ax) / old;
+    const cy = (this.element.scrollTop + ay) / old;
+    this.zoomValue = z;
+    this.layout();
+    const size = this.screenCellSize;
+    this.element.scrollLeft = Math.max(0, cx * size - ax);
+    this.element.scrollTop = Math.max(0, cy * size - ay);
   }
 
   /** ブロック画像を最新にする（変わった範囲だけ写す）。 */
@@ -122,7 +172,7 @@ export class MapView {
     const same = old.left === margins.left && old.top === margins.top && old.right === margins.right && old.bottom === margins.bottom;
     const initial = this.scrollPending && (margins.left > 0 || margins.top > 0);
     if (same && !initial) return;
-    const size = this.cellSize;
+    const size = this.screenCellSize;
     const left = this.element.scrollLeft + (margins.left - old.left) * size;
     const top = this.element.scrollTop + (margins.top - old.top) * size;
     this.marginsValue = { ...margins };
@@ -148,15 +198,15 @@ export class MapView {
   /** マウスの位置のマス（主マップの左上が原点。ステージの外でも範囲を調べずに返す。ドラッグ用）。 */
   rawCellAt(e: MouseEvent): Cell {
     const r = this.base.getBoundingClientRect();
-    return { x: Math.floor((e.clientX - r.left) / this.cellSize), y: Math.floor((e.clientY - r.top) / this.cellSize) };
+    return { x: Math.floor((e.clientX - r.left) / this.screenCellSize), y: Math.floor((e.clientY - r.top) / this.screenCellSize) };
   }
 
   /** マウスの位置のマス。マップ外なら null。 */
   cellAt(e: MouseEvent): Cell | null {
     if (!this.image) return null;
     const r = this.base.getBoundingClientRect();
-    const x = Math.floor((e.clientX - r.left) / this.cellSize);
-    const y = Math.floor((e.clientY - r.top) / this.cellSize);
+    const x = Math.floor((e.clientX - r.left) / this.screenCellSize);
+    const y = Math.floor((e.clientY - r.top) / this.screenCellSize);
     if (x < 0 || y < 0 || x >= this.image.width || y >= this.image.height) return null;
     return { x, y };
   }
@@ -201,14 +251,21 @@ export class MapView {
       this.base.height = h;
       this.drawnVersion = -1;
     }
-    const dw = w * this.zoomValue;
-    const dh = h * this.zoomValue;
+    const dw = w * this.drawZoom;
+    const dh = h * this.drawZoom;
     const m = this.marginsValue;
     const size = this.cellSize;
     const ox = m.left * size;
     const oy = m.top * size;
-    this.stage.style.width = `${dw + (m.left + m.right) * size}px`;
-    this.stage.style.height = `${dh + (m.top + m.bottom) * size}px`;
+    const stageW = dw + (m.left + m.right) * size;
+    const stageH = dh + (m.top + m.bottom) * size;
+    this.stage.style.width = `${stageW}px`;
+    this.stage.style.height = `${stageH}px`;
+    // 3 倍より上は、ステージを CSS で広げ、スクロールの大きさは外の枠で決める（#316）
+    const scale = this.screenScale;
+    this.stage.style.transform = scale === 1 ? "" : `scale(${scale})`;
+    this.sizer.style.width = `${stageW * scale}px`;
+    this.sizer.style.height = `${stageH * scale}px`;
     for (const c of [this.base, this.layer, this.gridCanvas, this.frame]) {
       c.style.left = `${ox}px`;
       c.style.top = `${oy}px`;

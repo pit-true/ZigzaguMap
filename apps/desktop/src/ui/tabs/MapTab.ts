@@ -12,6 +12,7 @@ import { MapView } from "../map/MapView";
 import { StampPanel } from "../stamp/StampPanel";
 import { tripleStatusSuffix } from "../../input/tripleRules";
 import { jaPen } from "../../i18n/ja.pen";
+import { tabZoom } from "../../app/mapZoom";
 
 /** マップタブ（左にマップ、右に境界ブロックとブロックパレット）。 */
 export class MapTab {
@@ -100,7 +101,7 @@ export class MapTab {
 
   private configure(): void {
     const s = this.state.settings.data;
-    this.view.configure(s.zoomMap ? 2 : 1, s.grid);
+    this.view.configure(tabZoom(s, "map"), s.grid);
     this.palette.configure(s.paletteWidth, s.zoomBlockPalette ? 2 : 1, s.grid);
     this.palette.showSelection(this.state.selection);
   }

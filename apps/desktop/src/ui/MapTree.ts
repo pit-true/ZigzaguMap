@@ -12,6 +12,10 @@ export interface MapTreeHost {
   isDirty(id: MapId): boolean;
   /** 「マップファイル」の項目を開く（ダブルクリックか Enter）。 */
   openMapFile?(path: string, name: string): void;
+  /** サムネイルを出すか（#315。設定でオンのとき）。 */
+  showThumbnails?(): boolean;
+  /** マップの縮小（まだできていなければ null）。 */
+  thumbnail?(id: MapId): ImageData | null;
 }
 
 /** 一覧の項目の情報（自動操作の `tree.list`）。 */
@@ -183,6 +187,48 @@ export class MapTree {
     return out;
   }
 
+  /** サムネイルを描き直す（`id` のマップの行だけ。null なら全部。#315）。行は開いた枝の分しか無いので、軽い。 */
+  refreshThumbnails(id: MapId | null = null): void {
+    for (const row of this.rows.values()) {
+      if (!row.node.mapId || (id && !sameId(row.node.mapId, id))) continue;
+      const thumb = row.element.querySelector<HTMLCanvasElement>("canvas.tree-thumb");
+      if (thumb) delete thumb.dataset["drawn"];
+      this.decorateThumbnail(row);
+    }
+  }
+
+  /** サムネイルを描いた行の数（自動操作用）。 */
+  thumbnailRows(): number {
+    let n = 0;
+    for (const row of this.rows.values()) if (row.element.querySelector("canvas.tree-thumb[data-drawn]")) n++;
+    return n;
+  }
+
+  /** マップの行の縮小（#315。設定でオフなら外す）。 */
+  private decorateThumbnail(row: Row): void {
+    const id = row.node.mapId;
+    let thumb = row.element.querySelector<HTMLCanvasElement>("canvas.tree-thumb");
+    if (!id || !this.host.showThumbnails?.()) {
+      thumb?.remove();
+      row.element.classList.remove("with-thumb");
+      return;
+    }
+    if (!thumb) {
+      thumb = document.createElement("canvas");
+      thumb.className = "tree-thumb";
+      thumb.width = 48;
+      thumb.height = 48;
+      row.element.firstElementChild!.after(thumb);
+      row.element.classList.add("with-thumb");
+    }
+    if (thumb.dataset["drawn"] !== undefined) return;
+    const image = this.host.thumbnail?.(id) ?? null;
+    if (image) {
+      thumb.getContext("2d")!.putImageData(image, 0, 0);
+      thumb.dataset["drawn"] = "";
+    }
+  }
+
   /** 項目の行（親を開いて行を作る）。無ければ null。自動操作がマウスの出来事を送るのに使う。 */
   rowElement(key: string): HTMLElement | null {
     const path = findKeyPath(this.roots, key);
@@ -226,6 +272,7 @@ export class MapTree {
       label.textContent = node.label + (this.host.isDirty(node.mapId) ? ja.modifiedMark : "");
       const opened = this.openedId && sameId(this.openedId, node.mapId);
       icon.className = "tree-icon " + (opened ? "icon-map-open" : "icon-map");
+      this.decorateThumbnail(row);
     } else {
       label.textContent = node.label;
       icon.className = "tree-icon " + (this.expanded.has(node.key) ? "icon-folder-open" : "icon-folder");

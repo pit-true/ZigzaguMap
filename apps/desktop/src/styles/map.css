@@ -14,6 +14,19 @@
   position: relative;
 }
 
+/* 3〜8 倍の拡大（#316）: ステージを左上を起点に CSS で広げ、スクロールの大きさは外の枠で決める */
+.map-sizer {
+  position: relative;
+}
+
+.map-stage {
+  transform-origin: 0 0;
+}
+
+.map-stage canvas {
+  image-rendering: pixelated;
+}
+
 .map-stage canvas,
 .palette-stage canvas {
   position: absolute;

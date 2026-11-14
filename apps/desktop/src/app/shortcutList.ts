@@ -5,6 +5,7 @@ import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaPen } from "../i18n/ja.pen";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
+import { jaMapZoom } from "../i18n/ja.mapZoom";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
 /** ショートカットの一覧の 1 行。 */
@@ -62,6 +63,9 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: jaNeighbors.shortcutEdgeMenuKeys, action: jaNeighbors.shortcutEdgeMenu, where: jaNeighbors.shortcutEdgeWhere },
   { keys: jaNeighbors.shortcutEdgeDragKeys, action: jaNeighbors.shortcutEdgeDrag, where: jaNeighbors.shortcutEdgeWhere },
   { keys: jaNeighbors.shortcutBandKeys, action: jaNeighbors.shortcutBand, where: jaNeighbors.shortcutBandWhere },
+  // マップの拡大と中ボタンのスクロール（Phase4 #316。ui/map/MapZoomControls.ts）
+  { keys: jaMapZoom.shortcutZoomKeys, action: jaMapZoom.shortcutZoom, where: jaMapZoom.shortcutWhere },
+  { keys: jaMapZoom.shortcutScrollKeys, action: jaMapZoom.shortcutScroll, where: jaMapZoom.shortcutWhere },
   // イベントタブの右クリックのメニュー（ui/event/EventTab.ts）
   { keys: "右クリック", action: jaEventDelete.shortcutMenu, where: jaEventDelete.shortcutWhere },
   ...scriptEditorKeys(),

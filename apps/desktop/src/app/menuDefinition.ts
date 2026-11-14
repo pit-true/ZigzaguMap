@@ -11,6 +11,7 @@ import { jaEventView } from "../i18n/ja.eventView";
 import { jaTownMini } from "../i18n/ja.townMini";
 import { jaPointers } from "../i18n/ja.pointers";
 import { jaPaletteInfo } from "../i18n/ja.paletteInfo";
+import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
@@ -132,6 +133,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         sep,
         { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
         { id: "view.combobox", label: ja.comboBox, accel: "N" },
+        // マップ一覧のサムネイル（#315。ZigzaguMap 独自。既定オフ）
+        { id: "view.treeThumbnails", label: jaThumbnails.menu },
         {
           label: ja.mapDisplay,
           accel: "O",
