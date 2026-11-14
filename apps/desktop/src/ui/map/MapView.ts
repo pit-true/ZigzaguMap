@@ -42,6 +42,10 @@ export class MapView {
   beforePng: (() => void) | null = null;
   /** 新しいマップを出したあと、最初に余白が付いたらスクロールを合わせる。 */
   private scrollPending = false;
+  /** 隠れているタブか（`setDormant`）。 */
+  private dormantValue = false;
+  /** 隠れていたタブが出たときに呼ぶ（重ね描きを描き直す。タブが入れる）。 */
+  readonly wakeListeners: (() => void)[] = [];
 
   constructor(className: string) {
     this.element = document.createElement("div");
@@ -91,6 +95,32 @@ export class MapView {
     return BLOCK_PIXELS * this.zoomValue;
   }
 
+  /** 隠れているタブか。隠れている間は、重ね描きを描かなくてよい（出たときに `wakeListeners` で描き直す）。 */
+  get dormant(): boolean {
+    return this.dormantValue;
+  }
+
+  /**
+   * タブが隠れた・出たことを知らせる（Phase4 #318。メモリを減らすため）。隠れている間は、ブロック画像の Canvas を持たず、
+   * 重ね描きの Canvas も中身を捨てる（大きさはそのまま。マウスの位置などの計算は変わらない）。出たら全部を描き直す。
+   */
+  setDormant(dormant: boolean): void {
+    if (dormant === this.dormantValue) return;
+    this.dormantValue = dormant;
+    if (dormant) {
+      this.base.width = 0;
+      this.base.height = 0;
+      this.drawnVersion = -1;
+      // 大きさを入れ直すと中身（画素の領域）を捨てる。描かなければ領域は持たない
+      const { width, height } = this.layer;
+      this.layer.width = width;
+      this.layer.height = height;
+      return;
+    }
+    this.layout();
+    for (const l of this.wakeListeners) l();
+  }
+
   /** 表示するマップを変える（null で空）。 */
   setImage(image: MapImage | null): void {
     if (image !== this.image) this.scrollPending = true;
@@ -132,7 +162,7 @@ export class MapView {
   /** ブロック画像を最新にする（変わった範囲だけ写す）。 */
   sync(): void {
     const image = this.image;
-    if (!image) return;
+    if (!image || this.dormantValue) return;
     const rect = this.drawnVersion < 0 ? { x: 0, y: 0, width: image.image.width, height: image.image.height } : image.dirtySince(this.drawnVersion);
     if (rect) this.baseContext.putImageData(image.imageData, 0, 0, rect.x, rect.y, rect.width, rect.height);
     this.drawnVersion = image.version;
@@ -217,6 +247,15 @@ export class MapView {
    */
   toPng(withNeighbors = false): string | null {
     if (!this.image) return null;
+    // 隠れているタブも撮れるよう、撮る間だけ描く
+    if (this.dormantValue) {
+      this.setDormant(false);
+      try {
+        return this.toPng(withNeighbors);
+      } finally {
+        this.setDormant(true);
+      }
+    }
     const out = document.createElement("canvas");
     const o = withNeighbors ? this.originPx : { x: 0, y: 0 };
     // タブが隠れていても撮れるよう、大きさと位置は CSS の値から読む
@@ -246,9 +285,11 @@ export class MapView {
   private layout(): void {
     const w = this.image ? this.image.image.width : 0;
     const h = this.image ? this.image.image.height : 0;
-    if (this.base.width !== w || this.base.height !== h) {
-      this.base.width = w;
-      this.base.height = h;
+    const bw = this.dormantValue ? 0 : w;
+    const bh = this.dormantValue ? 0 : h;
+    if (this.base.width !== bw || this.base.height !== bh) {
+      this.base.width = bw;
+      this.base.height = bh;
       this.drawnVersion = -1;
     }
     const dw = w * this.drawZoom;

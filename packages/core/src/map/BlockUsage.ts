@@ -20,6 +20,18 @@ export interface UsageLayout {
 /** 1 つの数え先（主タイルセットのブロックなら主の値、副のブロックなら主と副の組）。 */
 type Counts = Map<number, number>;
 
+/** 数えた配置（`BlockUsage.layouts`）。 */
+interface LayoutEntry {
+  readonly primary: number;
+  readonly secondary: number;
+  /** 配置の中身（ベース ROM のままなら null で、`read` で読み直す）。 */
+  readonly cells: Uint16Array | null;
+  readonly read: (() => Uint16Array) | null;
+  refs: number;
+}
+
+const EMPTY_CELLS = new Uint16Array(0);
+
 function mapKey(id: MapId): string {
   return `${id.bank}.${id.map}`;
 }
@@ -37,32 +49,45 @@ function cellKey(value: number): number {
  * - マップを編集したら、そのマップの分だけ差し替える（`set`）。全部を数え直さない。
  */
 export class BlockUsage {
-  private readonly maps = new Map<string, UsageLayout>();
-  private readonly layoutRefs = new Map<string, number>();
+  /** マップ → 配置の見分け。 */
+  private readonly maps = new Map<string, string>();
+  /**
+   * 配置の見分け → 数えた配置と、それを使うマップの数。共有している配置は 1 つだけ持つ。
+   * 配置の中身は、外すときに数を引くためだけに持つ。ベース ROM のままの配置は持たず、外すときに ROM から読み直す（`read`）。
+   */
+  private readonly layouts = new Map<string, LayoutEntry>();
   private readonly primary = new Map<number, Counts>();
   private readonly secondary = new Map<string, Counts>();
 
   /** そのマップの配置を入れる・差し替える。 */
   set(layout: UsageLayout): void {
+    this.put(layout, null);
+  }
+
+  /** `read` を渡すと配置の中身を持たず、外すときに `read` で読み直す（ベース ROM のままの配置）。 */
+  private put(layout: UsageLayout, read: (() => Uint16Array) | null): void {
     this.remove(layout.id);
-    const copy: UsageLayout = { ...layout, cells: layout.cells.slice() };
-    this.maps.set(mapKey(layout.id), copy);
-    const refs = this.layoutRefs.get(copy.layoutKey) ?? 0;
-    this.layoutRefs.set(copy.layoutKey, refs + 1);
-    if (refs === 0) this.apply(copy, 1);
+    this.maps.set(mapKey(layout.id), layout.layoutKey);
+    const entry = this.layouts.get(layout.layoutKey);
+    if (entry) {
+      entry.refs++;
+      return;
+    }
+    this.apply(layout.primary, layout.secondary, layout.cells, 1);
+    this.layouts.set(layout.layoutKey, { primary: layout.primary, secondary: layout.secondary, cells: read ? null : layout.cells.slice(), read, refs: 1 });
   }
 
   /** そのマップを外す（消したマップ）。 */
   remove(id: MapId): void {
-    const old = this.maps.get(mapKey(id));
-    if (!old) return;
+    const key = this.maps.get(mapKey(id));
+    if (key === undefined) return;
     this.maps.delete(mapKey(id));
-    const refs = (this.layoutRefs.get(old.layoutKey) ?? 1) - 1;
-    if (refs <= 0) {
-      this.layoutRefs.delete(old.layoutKey);
-      this.apply(old, -1);
-    } else {
-      this.layoutRefs.set(old.layoutKey, refs);
+    const entry = this.layouts.get(key);
+    if (!entry) return;
+    entry.refs--;
+    if (entry.refs <= 0) {
+      this.layouts.delete(key);
+      this.apply(entry.primary, entry.secondary, entry.cells ?? entry.read!(), -1);
     }
   }
 
@@ -76,14 +101,14 @@ export class BlockUsage {
     return this.maps.size;
   }
 
-  private apply(layout: UsageLayout, sign: 1 | -1): void {
-    const p = layout.primary >>> 0;
-    const pair = `${p}:${layout.secondary >>> 0}`;
+  private apply(primary: number, secondary: number, cells: Uint16Array, sign: 1 | -1): void {
+    const p = primary >>> 0;
+    const pair = `${p}:${secondary >>> 0}`;
     let pc = this.primary.get(p);
     if (!pc) this.primary.set(p, (pc = new Map()));
     let sc = this.secondary.get(pair);
     if (!sc) this.secondary.set(pair, (sc = new Map()));
-    for (const v of layout.cells) {
+    for (const v of cells) {
       const target = (v & BLOCK_ID_MASK) < PRIMARY_BLOCK_COUNT ? pc : sc;
       const k = cellKey(v);
       const n = (target.get(k) ?? 0) + sign;
@@ -141,13 +166,18 @@ export class BlockUsage {
         const loaded = project.loaded(id);
         if (project.inBase(id) && !project.hasJson(id) && (!loaded || !project.isModified(id))) {
           const footer = rom.pointer(project.base.bankTable.headerOffset(id));
-          const width = rom.u32(footer);
-          const height = rom.u32(footer + 4);
-          const blocks = rom.pointer(footer + 12);
-          const bytes = rom.slice(blocks, width * height * 2);
-          const cells = new Uint16Array(width * height);
-          for (let i = 0; i < cells.length; i++) cells[i] = bytes[i * 2]! | (bytes[i * 2 + 1]! << 8);
-          usage.set({ id, primary: rom.u32(footer + 16), secondary: rom.u32(footer + 20), cells, layoutKey: `rom:${footer}` });
+          const layoutKey = `rom:${footer}`;
+          const read = (): Uint16Array => {
+            const width = rom.u32(footer);
+            const height = rom.u32(footer + 4);
+            const bytes = rom.slice(rom.pointer(footer + 12), width * height * 2);
+            const cells = new Uint16Array(width * height);
+            for (let i = 0; i < cells.length; i++) cells[i] = bytes[i * 2]! | (bytes[i * 2 + 1]! << 8);
+            return cells;
+          };
+          // 共有している配置は 2 枚目から読まない
+          const cells = usage.layouts.has(layoutKey) ? EMPTY_CELLS : read();
+          usage.put({ id, primary: rom.u32(footer + 16), secondary: rom.u32(footer + 20), cells, layoutKey }, read);
         } else {
           const doc = loaded ?? (await project.peek(id));
           if (doc) usage.set(layoutOf(doc));
