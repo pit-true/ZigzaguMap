@@ -2,6 +2,7 @@ import { BLOCK_PIXELS } from "@zigzagumap/core";
 import type { BlockSelection } from "../../app/EditorState";
 import type { TilesetView } from "../../app/TilesetView";
 import { attachCellPointer } from "../../input/CellPointer";
+import { paletteBlock, paletteRectSelection } from "../../input/tripleRules";
 import { toImageData } from "../canvas";
 import { drawGrid, type Cell } from "./MapView";
 
@@ -19,6 +20,8 @@ export interface BlockPaletteHost {
  * 右のブロックパレット（主の 640 個の後に副を並べる、1 行 8 個が既定）。
  * 左・右クリックで 1 つ選び、Ctrl＋右ドラッグで矩形を選ぶ。選択中は赤い枠で囲む。
  * Ctrl＋左クリックはミキシングバッグへの出し入れ（#236。窓口が受けるとき）。
+ * 3 層のブロック（#300）: 3 枚目に使われている次の番号は絵を薄くして斜線を引き、押すと 1 つ前の 3 層のブロックを選ぶ。
+ * 3 層のブロックを選んでいる間は、選択の枠を次の番号まで 2 マス分にする（Bochi と同じ）。
  */
 export class BlockPaletteView {
   readonly element: HTMLElement;
@@ -53,7 +56,7 @@ export class BlockPaletteView {
           this.drawSelection(rectOf(cell, cell));
         } else if (g.button === 0 && g.ctrl && this.host.toggleBag) {
           const block = this.tiles?.blockAt(cell.x, cell.y, this.width);
-          if (block !== null && block !== undefined) this.host.toggleBag(block);
+          if (block !== null && block !== undefined) this.host.toggleBag(paletteBlock(this.tiles!.triple, block));
         } else {
           this.pick(cell);
         }
@@ -123,7 +126,9 @@ export class BlockPaletteView {
     this.base.height = h;
     if (tiles) {
       const image = tiles.paletteImage(this.width);
-      this.base.getContext("2d")!.putImageData(toImageData(image), 0, 0);
+      const ctx = this.base.getContext("2d")!;
+      ctx.putImageData(toImageData(image), 0, 0);
+      this.markTripleChildren(ctx);
     }
     const dw = w * this.zoom;
     const dh = h * this.zoom;
@@ -141,6 +146,34 @@ export class BlockPaletteView {
     this.drawSelection(null);
   }
 
+  /** 3 層の次の番号（単独では置けないブロック）の絵を薄くして斜線を引く（Q4 の推奨）。 */
+  private markTripleChildren(ctx: CanvasRenderingContext2D): void {
+    const tiles = this.tiles;
+    if (!tiles) return;
+    const total = tiles.paletteBlockCount;
+    ctx.save();
+    for (let i = 0; i < total; i++) {
+      const block = i;
+      if (!tiles.triple.isTripleChild(block)) continue;
+      const p = tiles.positionOf(block, this.width);
+      const x = p.col * BLOCK_PIXELS;
+      const y = p.row * BLOCK_PIXELS;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+      ctx.fillRect(x, y, BLOCK_PIXELS, BLOCK_PIXELS);
+      ctx.strokeStyle = "rgba(200, 0, 0, 0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, y + BLOCK_PIXELS - 0.5);
+      ctx.lineTo(x + BLOCK_PIXELS - 0.5, y + 0.5);
+      ctx.moveTo(x + 0.5, y + BLOCK_PIXELS / 2);
+      ctx.lineTo(x + BLOCK_PIXELS / 2, y + 0.5);
+      ctx.moveTo(x + BLOCK_PIXELS / 2, y + BLOCK_PIXELS - 0.5);
+      ctx.lineTo(x + BLOCK_PIXELS - 0.5, y + BLOCK_PIXELS / 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   private cellAt(e: MouseEvent): Cell | null {
     if (!this.tiles) return null;
     const r = this.base.getBoundingClientRect();
@@ -154,16 +187,19 @@ export class BlockPaletteView {
   private pick(cell: Cell): void {
     const block = this.tiles?.blockAt(cell.x, cell.y, this.width);
     if (block === null || block === undefined) return;
-    this.host.select({ width: 1, height: 1, blocks: [block] }, false);
+    this.host.select({ width: 1, height: 1, blocks: [paletteBlock(this.tiles!.triple, block)] }, false);
   }
 
   private selectRect(r: { x: number; y: number; w: number; h: number }): void {
-    if (!this.tiles) return;
-    const blocks: number[] = [];
-    for (let y = r.y; y < r.y + r.h; y++) {
-      for (let x = r.x; x < r.x + r.w; x++) blocks.push(this.tiles.blockAt(x, y, this.width) ?? 0);
+    const tiles = this.tiles;
+    if (!tiles) return;
+    if (r.w === 1 && r.h === 1) {
+      // 1 マスだけの矩形は、ふつうに押したのと同じ（3 層の次の番号なら 3 層のブロック）
+      const b = tiles.blockAt(r.x, r.y, this.width);
+      if (b !== null) this.host.select({ width: 1, height: 1, blocks: [paletteBlock(tiles.triple, b)] }, true);
+      return;
     }
-    this.host.select({ width: r.w, height: r.h, blocks }, true);
+    this.host.select(paletteRectSelection(r, (x, y) => tiles.blockAt(x, y, this.width), tiles.triple, this.width), true);
   }
 
   /** 選択の枠を描く。`dragging` を渡すとドラッグ中の矩形を描く。 */
@@ -191,6 +227,19 @@ export class BlockPaletteView {
     if (!r) return;
     c.strokeStyle = "#ff0000";
     c.lineWidth = 1;
+    const single = !dragging && this.selection && this.selection.width === 1 && this.selection.height === 1;
+    const third = single ? this.tiles.triple.thirdOf(this.selection!.blocks[0] ?? 0) : null;
+    if (third !== null) {
+      // 3 層のブロック: 次の番号まで 2 マス分の枠（行の端で折り返すときは 2 つの枠）
+      const q = this.tiles.positionOf(third, this.width);
+      if (q.row === r.y && q.col === r.x + 1) {
+        c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, 2 * size - 1, size - 1);
+      } else {
+        c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, size - 1, size - 1);
+        c.strokeRect(q.col * size + 0.5, q.row * size + 0.5, size - 1, size - 1);
+      }
+      return;
+    }
     c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, r.w * size - 1, r.h * size - 1);
   }
 }

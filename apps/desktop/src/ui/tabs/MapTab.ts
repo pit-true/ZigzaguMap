@@ -10,6 +10,8 @@ import { BlockPaletteView } from "../map/BlockPaletteView";
 import { BorderView } from "../map/BorderView";
 import { MapView } from "../map/MapView";
 import { StampPanel } from "../stamp/StampPanel";
+import { tripleStatusSuffix } from "../../input/tripleRules";
+import { jaPen } from "../../i18n/ja.pen";
 
 /** マップタブ（左にマップ、右に境界ブロックとブロックパレット）。 */
 export class MapTab {
@@ -40,10 +42,10 @@ export class MapTab {
         if (stamp) state.selectStamp(selection);
         else state.select(selection);
         const block = selection.blocks[0] ?? 0;
-        state.setStatus(ja.statusPaletteBlock(block, state.map?.tiles.blockOffset(block) ?? null));
+        state.setStatus(ja.statusPaletteBlock(block, state.map?.tiles.blockOffset(block) ?? null) + tripleStatusSuffix(state.map?.tiles.triple ?? null, block));
       },
       hover: (block, offset) => {
-        if (block !== null) state.setStatus(ja.statusPaletteBlock(block, offset));
+        if (block !== null) state.setStatus(ja.statusPaletteBlock(block, offset) + tripleStatusSuffix(state.map?.tiles.triple ?? null, block));
       },
       toggleBag: (block) => state.setStatus(this.bag.toggle(block) ? jaPaint.bagAdded(block) : jaPaint.bagRemoved(block)),
     });
@@ -121,7 +123,10 @@ export class MapTab {
         if (border.inBounds(x0 + dx, y0 + dy) && selectionWrites(s, dy * s.width + dx)) cells.push({ x: x0 + dx, y: y0 + dy, block: s.blocks[dy * s.width + dx] ?? 0 });
       }
     }
-    if (cells.length > 0) session.bus.execute(new PaintBorderCommand({ bank: map.id.bank, map: map.id.map, cells }));
+    // 3 層の次の番号は境界ブロックにも置かない（#301）
+    const { kept, skipped } = this.painter.dropUnplaceable(cells);
+    if (kept.length === 0 && skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
+    if (kept.length > 0) session.bus.execute(new PaintBorderCommand({ bank: map.id.bank, map: map.id.map, cells: kept }));
   }
 }
 
