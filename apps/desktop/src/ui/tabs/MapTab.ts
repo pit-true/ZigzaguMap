@@ -17,7 +17,8 @@ import { jaPen } from "../../i18n/ja.pen";
 export class MapTab {
   readonly element: HTMLElement;
   readonly view: MapView;
-  private readonly palette: BlockPaletteView;
+  /** ブロックパレット（Phase4 の自動ペンが色を重ねる）。 */
+  readonly palette: BlockPaletteView;
   private readonly border: BorderView;
   private readonly selected: HTMLElement;
   /** マップのマウス操作（描く・拾う・矩形で選ぶ）。 */

@@ -3,6 +3,7 @@ import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
+import { jaPen } from "../i18n/ja.pen";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -54,6 +55,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Ctrl＋右ドラッグ", action: jaPaint.shortcutPick, where: jaPaint.shortcutPickWhere },
   { keys: "Ctrl（押している間）", action: jaPaint.shortcutPeek, where: jaPaint.shortcutPeekWhere },
   { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
+  // 自動ペン（Phase4 #310。app/penExtras.ts）
+  { keys: "P", action: jaPen.shortcutAutoPen, where: jaPen.shortcutAutoPenWhere },
   // 接続のつまみと隣の帯（#223・#229〜#231。ui/map/ConnectionHandles.ts・EdgeHandles.ts・NeighborLayer.ts）
   { keys: jaNeighbors.shortcutCornerKeys, action: jaNeighbors.shortcutCorner, where: jaNeighbors.shortcutCornerWhere },
   { keys: jaNeighbors.shortcutEdgeMenuKeys, action: jaNeighbors.shortcutEdgeMenu, where: jaNeighbors.shortcutEdgeWhere },

@@ -57,6 +57,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "opt.alignConnections": "alignConnections",
   "view.usageMarks": "usageMarks",
   "view.tripleChildMarks": "tripleChildMarks",
+  "view.autoPenTint": "autoPenTint",
   "view.clones": "showClones",
   "opt.rememberRomProject": "rememberRomProject",
 };
