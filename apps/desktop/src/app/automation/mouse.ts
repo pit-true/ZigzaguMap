@@ -15,7 +15,8 @@ import { describeSelection } from "./status";
  *   マップのタブ（map / movement / event）の `cell` は主マップの左上が原点で、負の値や大きさを超える値で隣のマップの帯の上を指せる（Phase3）。
  * - action: `click` / `dblclick` / `rightClick` / `drag`（`to` / `toPx` まで `steps` 回（既定 8）に分けて動かす）/ `hover` /
  *   `down` / `move` / `up`（1 つずつ送る）。
- * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）。ctrl・shift: 修飾キー。
+ * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）/ `middle` / `back`・`forward`（サイドボタン。`click` で
+ *   マップの履歴を戻る・進む。#237）。ctrl・shift: 修飾キー。
  * 返事は選択中のブロック・移動許可・イベントとステータスバー。
  */
 
@@ -162,7 +163,7 @@ class MouseSender {
 }
 
 function maskOf(button: number): number {
-  return button === 2 ? 2 : button === 1 ? 4 : 1;
+  return button === 2 ? 2 : button === 1 ? 4 : button === 3 ? 8 : button === 4 ? 16 : 1;
 }
 
 function buttonOf(req: AutomationRequest, fallback: number): number {
@@ -171,7 +172,10 @@ function buttonOf(req: AutomationRequest, fallback: number): number {
   if (b === "left" || b === 0) return 0;
   if (b === "right" || b === 2) return 2;
   if (b === "middle" || b === 1) return 1;
-  throw new Error(`button は left / right です: ${String(b)}`);
+  // マウスのサイドボタン（#237。マップの履歴の戻る・進む）
+  if (b === "back" || b === 3) return 3;
+  if (b === "forward" || b === 4) return 4;
+  throw new Error(`button は left / right / middle / back / forward です: ${String(b)}`);
 }
 
 async function mouse(app: App, req: AutomationRequest): Promise<unknown> {

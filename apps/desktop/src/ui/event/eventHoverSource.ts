@@ -10,6 +10,7 @@ import { BEHAVIOR_MASK, isWarpBehavior } from "@zigzagumap/core";
 import { watchCommands } from "../form/commit";
 import { blockAttribute } from "./warpCheck";
 import { WarpPreview } from "./WarpPreview";
+import { ctrlPeek } from "../map/ctrlPeek";
 
 /** 吹き出しの中身を作るのに要るもの（イベントタブと App が渡す）。 */
 export interface EventHoverDeps {
@@ -74,7 +75,8 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
     return attr !== null && !isWarpBehavior(attr) ? t.warpUnusable(attr & BEHAVIOR_MASK) : null;
   };
   const source: HoverSource = {
-    enabled: () => state.tab === "event" && !!state.map,
+    // Ctrl を押している間はイベントを隠しているので出さない（#238）
+    enabled: () => state.tab === "event" && !!state.map && !ctrlPeek.held,
     eventsAt: (cell: RawCell) => deps.placed().filter((e) => e.x === cell.x && e.y === cell.y).reverse(),
     quick: (e: PlacedEvent): HoverSection => {
       const doc = state.map?.doc;
