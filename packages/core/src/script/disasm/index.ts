@@ -31,3 +31,12 @@ export {
   renderDisassembly,
 } from "./renderDisassembly.js";
 export { ScriptTextCodec } from "./scriptText.js";
+export {
+  findImportedLabels,
+  importMarkLine,
+  planScriptImport,
+  type ScriptImportBlock,
+  type ScriptImportItem,
+  type ScriptImportOptions,
+  type ScriptImportPlan,
+} from "./ScriptImporter.js";
