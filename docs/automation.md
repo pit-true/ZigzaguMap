@@ -252,6 +252,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 |---|---|---|
 | `blockUsage` | `block`（省略で選んでいるブロック） | ブロックの使用回数（#235）。索引ができるまで待つ。`count`（全マップ）、`here`（表示中のマップ）、`movements`（移動許可 → 数）、`mostMovement`、`mismatches`（表示中のマップで移動許可がいちばん多い値と違うマス `x`・`y`・`movement`）、`selectedMovement`（選んでいる移動許可）、`marks`（今付けている印の数。`map`・`movement`） |
 | `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
+| `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 
