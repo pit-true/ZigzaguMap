@@ -1,10 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { affectedMaps, flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { isWorkMapId, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
-import { inputDialog } from "../ui/InputDialog";
-import { messageBox, showError } from "../ui/MessageBox";
+import { messageBox } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
 import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
@@ -28,47 +27,35 @@ import { installMakeButtons } from "../ui/newmap/MakeButtons";
 import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
-import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
+import { EditorState } from "./EditorState";
 import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
-import { buildMapTree, comboGroups, mapSearchName } from "./MapTreeModel";
+import { buildMapTree, comboGroups } from "./MapTreeModel";
+import { MapNavigation } from "./MapNavigation";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import { ProjectSession, UnknownRomError } from "./ProjectSession";
+import type { ProjectSession } from "./ProjectSession";
+import { SessionOpener } from "./SessionOpener";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
-import { jaUsage } from "../i18n/ja.usage";
-import type { UsageKind } from "@zigzagumap/core";
 import { UsageService } from "./UsageService";
 import { TrainerService } from "./TrainerService";
+import { EventActions } from "./EventActions";
+import { ChangeTracker } from "./ChangeTracker";
 import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
-import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
-import type { ScriptSummaries } from "../ui/event/ScriptSummaries";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
-import { NeighborService } from "./neighbors/NeighborService";
-import { NeighborLayer } from "../ui/map/NeighborLayer";
-import { DiveOverlay } from "../ui/map/DiveOverlay";
 import type { MixingBag } from "./MixingBag";
-import { CompositeImage } from "./CompositeImage";
-import { jaComposite } from "../i18n/ja.composite";
-import { installViewExtras } from "../ui/map/viewExtras";
-import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
-import { UsageMarks } from "../ui/usage/UsageMarks";
-import { BlockUsageService } from "./BlockUsageService";
-import { ConnectionHandles } from "../ui/map/ConnectionHandles";
-import { EdgeHandles } from "../ui/map/EdgeHandles";
-import { EdgeMenu } from "../ui/connection/EdgeMenu";
-import { EdgeResize } from "../ui/connection/EdgeResize";
+import { MapExtras } from "./mapExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -79,15 +66,16 @@ interface StartupArgs {
   readonly profile: string | null;
 }
 
-/** 未出力の印を確かめるまでの待ち時間（ドラッグ中に何度も調べないため）。 */
-const DIRTY_CHECK_DELAY = 150;
-
 /** アプリ全体。画面部品を組み立て、ROM・マップの読み込み、出力、終了を受け持つ。 */
 export class App implements ActionTarget {
   readonly state: EditorState;
   readonly actions: Actions;
+  /** 番号・名前でマップを開く、戻る・進む。 */
+  readonly nav: MapNavigation;
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
+  /** ROM・プロジェクトフォルダを開く。 */
+  readonly opener = new SessionOpener(this);
   readonly system: SystemSettings;
   /** 数を入力して変える設定。 */
   readonly prompts: SettingPrompts;
@@ -109,8 +97,8 @@ export class App implements ActionTarget {
   readonly outsideBar: OutsideEventsBar;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(withNeighbors?: boolean): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
-  private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly pendingDirty = new Map<string, MapId>();
+  /** 操作のあとの描き直しと未出力の印。 */
+  readonly changes = new ChangeTracker(this);
   private closing = false;
   /** ワールドマップエディター（別ウィンドウ）の受け手。 */
   private readonly worldMap = new WorldMapHost({
@@ -122,16 +110,14 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
-  private summariesValue: Promise<ScriptSummaries> | null = null;
-  private warpMapCreatorValue: Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> | null = null;
-  private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
-  private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
   /** 使われているフラグ・変数などの番号の索引（#227）。 */
   readonly usage: UsageService;
   /** トレーナーの表と trainers.json（#244・#245）。 */
   readonly trainers: TrainerService;
+  /** イベントタブの操作（ひな形を置く・イベントの削除など）。 */
+  readonly events: EventActions;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -140,25 +126,10 @@ export class App implements ActionTarget {
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
   profileDir: string | null = null;
-  /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
-  readonly neighbors: NeighborService;
-  /** 接続している全マップ（か今のマップ）の画像（#246）。 */
-  readonly composite: CompositeImage;
+  /** Phase3 でマップの表示に足したもの（隣の帯・つまみ・使用の印・画像のコピーなど）。 */
+  readonly extras: MapExtras;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
-  /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
-  diveOverlays: DiveOverlay[] = [];
-  /** ブロックの使用回数の索引（#235）。 */
-  readonly blockUsage: BlockUsageService;
-  /** 使用の印（#235。マップタブと移動エリアタブ）。 */
-  readonly usageMarks: { readonly map: UsageMarks; readonly movement: UsageMarks };
-  private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
-  private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
-  /** 隣の帯の角と辺のつまみ（マップタブ）。 */
-  readonly connectionHandles: ConnectionHandles;
-  readonly edgeHandles: EdgeHandles;
-  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
-  readonly edgeResize: EdgeResize;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -168,14 +139,14 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.nav = new MapNavigation({ state, openMap: (id) => this.openMap(id), showFromHistory: (id) => this.showMap(id, "history") });
     this.theme = startMainTheme(() => toTheme(state.settings.data.theme));
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
     this.usage = new UsageService(this);
     this.trainers = new TrainerService(this);
-    this.templateSource.trainers = () => this.trainerChoices();
-    this.templateSource.newTrainer = this.trainers.newTrainerSource();
+    this.events = new EventActions(this);
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
@@ -218,54 +189,22 @@ export class App implements ActionTarget {
     const mapTab = new MapTab(state);
     installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
+    const events = this.events;
     const eventTab = new EventTab(state, {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
-      deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
-      pickUnused: (kind) => this.pickUnused(kind),
-      createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
+      deleteEvent: (kind, index) => void events.deleteEvent(kind, index),
+      pickUnused: (kind) => events.pickUnused(kind),
+      createWarpMap: (index) => void events.warpMapCreator().then((c) => c.run(index)),
       editTrainer: (index) => void this.trainers.editForPerson(index),
-      placeTemplate: (x, y) => void this.placeTemplate(x, y),
+      placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
-      summaries: () => this.eventSummaries(),
+      summaries: () => events.eventSummaries(),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
-    this.neighbors = new NeighborService(state);
-    // 境界をまたぐ描画（#234）: 描く道具に隣の帯を教える
-    mapTab.painter.cells.neighbors = this.neighbors;
-    movementTab.painter.cells.neighbors = this.neighbors;
-    this.mapTabPainter = mapTab.painter;
-    // Space でダイブ先・浮上先を重ねる（#232。マップタブとイベントタブ）
-    this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", (id) => this.openMap(id)), new DiveOverlay(eventTab.view, state, "event", (id) => this.openMap(id))];
-    this.movementTabPainter = movementTab.painter;
-    const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
-      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement", clones: tab === "event" }),
-    );
-    // 隣の帯のつまみ（マップタブだけ。#229）
-    this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
-    // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
-    this.edgeResize = new EdgeResize(state);
-    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
-    // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
-    this.blockUsage = new BlockUsageService(state);
-    // ミキシングバッグで描くときの移動許可（#236）
-    mapTab.painter.usage = this.blockUsage;
+    this.extras = new MapExtras(state, this.actions, { map: mapTab, movement: movementTab, event: eventTab }, (id) => this.openMap(id));
     this.mixingBag = mapTab.bag;
-    // 画像のコピー（#246）: ツール > マップの画像をコピー／接続している全マップの画像をコピー
-    this.composite = new CompositeImage(state);
-    for (const whole of [false, true]) {
-      for (const events of ["none", "persons", "all"] as const) {
-        this.actions.register(`image.${whole ? "copyWhole" : "copyMap"}.${events}`, async () => {
-          const r = await this.composite.copy({ whole, events, ask: true });
-          if (r) state.setStatus(jaComposite.copied(r.width, r.height, r.maps, r.scale));
-        });
-      }
-    }
-    mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);
-    this.usageMarks = { map: new UsageMarks(mapTab.view, state, "map", this.blockUsage), movement: new UsageMarks(movementTab.view, state, "movement", this.blockUsage) };
-    // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
-    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) installViewExtras(view, state, tab, this.neighbors);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -322,14 +261,14 @@ export class App implements ActionTarget {
   /** ドラッグ＆ドロップ、キー操作、終了の確認、自動操作を受け付け、起動引数の ROM を開く。 */
   async start(): Promise<void> {
     installShortcuts(this);
-    installHistoryMouse(this);
+    installHistoryMouse(this.nav);
     await this.worldMap.start();
     // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
     await getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget());
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
-      if (p.type === "drop") void this.drop(p.paths);
+      if (p.type === "drop") void this.opener.drop(p.paths);
     });
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
@@ -343,147 +282,31 @@ export class App implements ActionTarget {
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
-    if (args.rom) await this.openSession(args.rom, args.project ?? this.recordedProject(args.rom));
+    if (args.rom) await this.opener.openSession(args.rom, args.project ?? this.opener.recordedProject(args.rom));
   }
 
   // ---- 開く ----
 
-  async openRomDialog(): Promise<void> {
-    const path = await this.files.rom();
-    if (path) await this.openRomAskingFolder(path);
-  }
-
-  /**
-   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ツールバー・ドラッグ＆ドロップ・
-   * 組のフォルダが記録されていない最近開いたもの）。キャンセルなら ROM だけで開く。未出力の変更の確認は先に済ませる。
-   */
-  async openRomAskingFolder(rom: string): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
-    // ROM でないファイルなら、フォルダを聞く前にエラーを出す（開いていたものはそのまま）
-    let bytes: Uint8Array;
-    try {
-      bytes = await ProjectSession.readRom(rom);
-    } catch (e) {
-      await this.showOpenError(e);
-      return;
-    }
-    // 前回のフォルダを覚えていて、まだあれば、窓を出さずにそれを開く（設定 > ROM ごとに前回のプロジェクトフォルダを覚える。#278）
-    const remembered = this.state.settings.data.rememberRomProject ? this.state.settings.rememberedProject(rom) : null;
-    if (remembered && (await invoke<boolean>("is_dir", { path: remembered }).catch(() => false))) {
-      await this.openSession(rom, remembered, { confirmed: true, bytes });
-      if (this.state.session?.projectDir) this.state.setStatus(ja.openedRememberedProject(this.state.session.projectDir));
-      return;
-    }
-    const before = this.state.status;
-    this.state.setStatus(ja.choosePairFolder);
-    const project = await this.files.folder(ja.pairFolderTitle);
-    this.state.setStatus(before.left, before.right, before.error);
-    await this.openSession(rom, project, { confirmed: true, bytes });
-  }
-
-  /** 最近開いたものに記録した、その ROM と組のフォルダ（無ければ null）。 */
-  recordedProject(rom: string): string | null {
-    return this.state.settings.data.recent.find((r) => r.rom.toLowerCase() === rom.toLowerCase())?.project ?? null;
-  }
-
-  async openProjectDialog(): Promise<void> {
-    const folder = await this.files.folder(ja.projectFolderTitle);
-    if (!folder) return;
-    await this.openFolder(folder);
-  }
-
-  /** プロジェクトフォルダを開く。ベース ROM は、開いている ROM か、最近開いたものの組から選ぶ。無ければ選ばせる。 */
-  private async openFolder(folder: string): Promise<void> {
-    const known = this.state.settings.data.recent.find((r) => r.project?.toLowerCase() === folder.toLowerCase());
-    let rom = this.state.session?.romPath ?? known?.rom ?? null;
-    if (!rom) {
-      this.state.setStatus(ja.needRomForProject);
-      rom = await this.files.rom();
-    }
-    if (rom) await this.openSession(rom, folder);
-  }
-
-  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダならプロジェクト、.gba なら ROM。 */
-  async drop(paths: readonly string[]): Promise<void> {
-    const path = paths[0];
-    if (path === undefined) return;
-    if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
-    else if (path.toLowerCase().endsWith(".gba")) await this.openRomAskingFolder(path);
-    else this.state.setStatus(ja.unsupportedFile, undefined, true);
-  }
-
-  async openRecent(index: number): Promise<void> {
-    const entry = this.state.settings.data.recent[index];
-    if (!entry) return;
-    if (entry.project) await this.openSession(entry.rom, entry.project);
-    else await this.openRomAskingFolder(entry.rom);
-  }
-
-  async reload(): Promise<void> {
-    const s = this.state.session;
-    // AdvanceMap と同じく、読み直したあとはマップを開かない（題名はアプリ名、ステータスは「マップを選択してください」）
-    if (s) await this.openSession(s.romPath, s.projectDir, { reload: true });
-  }
-
-  /**
-   * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
-   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
-   * `reload` は ROM の再読み込み（マップを開かない）、`confirmed` は未出力の確認が済んでいる、`bytes` は読み済みの ROM。
-   */
-  async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
-    const reload = options.reload ?? false;
-    // 別のプロジェクトフォルダへ移るときは、スクリプトエディタの未保存も確かめる（エディタは閉じる）
-    const folder = (p: string | null | undefined): string => (p ?? "").replace(/[\\/]+$/, "").toLowerCase();
-    if (folder(project) !== folder(this.state.session?.projectDir) && !(await this.confirmScriptEditor())) return;
-    if (!options.confirmed && !(await this.confirmDiscard())) return;
+  /** 開いたセッションを画面に付ける（SessionOpener が開けたときに呼ぶ）。前のセッションの購読はやめる。 */
+  async attachSession(session: ProjectSession, rom: string): Promise<void> {
     const state = this.state;
-    const previous = state.session;
-    state.setStatus(ja.loading);
-    let session: ProjectSession;
-    try {
-      session = await ProjectSession.open(rom, project, options.bytes);
-    } catch (e) {
-      await previous?.reattach().catch(() => undefined);
-      await this.showOpenError(e);
-      return;
-    }
-    try {
-      timings.mark("sessionOpened");
-      this.unsubscribeBus?.();
-      state.session = session;
-      state.map = null;
-      state.mapImage = null;
-      state.dirty = new Set();
-      state.history.clear();
-      this.unsubscribeBus = session.bus.subscribe((e) => this.onCommand(e));
-      this.tree.clear();
-      this.rebuildTree();
-      this.romInfo.show(session.project.game);
-      this.hint.hidden = true;
-      state.settings.addRecent({ rom, project: session.projectDir });
-      void this.system.updateRomShortcut(rom);
-      state.emit("session");
-      state.emit("map");
-      await this.setTitle(null);
-      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
-
-      const last = state.settings.data.last;
-      const target =
-        !reload && state.settings.data.rememberLast && last && last.rom.toLowerCase() === rom.toLowerCase() ? { bank: last.bank, map: last.map } : null;
-      if (target && session.catalog.has(target)) {
-        if (last && (TAB_ORDER as readonly string[]).includes(last.tab)) state.setTab(last.tab as TabId);
-        await this.openMap(target);
-      }
-    } catch (e) {
-      this.showError(e);
-    }
-  }
-
-  /** 開けなかったときのエラー（ステータスバーを元に戻してから出す）。 */
-  private async showOpenError(e: unknown): Promise<void> {
-    this.state.setStatus(this.state.session ? ja.statusRomLoaded : ja.statusOpenRom);
-    if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
-    else await showError(errorText(e));
+    this.unsubscribeBus?.();
+    state.session = session;
+    state.map = null;
+    state.mapImage = null;
+    state.dirty = new Set();
+    state.history.clear();
+    this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
+    this.tree.clear();
+    this.rebuildTree();
+    this.romInfo.show(session.project.game);
+    this.hint.hidden = true;
+    state.settings.addRecent({ rom, project: session.projectDir });
+    void this.system.updateRomShortcut(rom);
+    state.emit("session");
+    state.emit("map");
+    await this.setTitle(null);
+    state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
   }
 
   // ---- マップ ----
@@ -531,51 +354,6 @@ export class App implements ActionTarget {
     }
   }
 
-  /** ツール > マップを指定して開く（Ctrl+M）。初期値は今のマップ。 */
-  async openMapByNumber(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const current = this.state.map ? `${this.state.map.id.bank}.${this.state.map.id.map}` : "";
-    const text = await inputDialog(ja.openMapTitle, ja.openMapPrompt, current);
-    if (text === null) return;
-    const m = /^\s*(\d+)\s*\.\s*(\d+)\s*$/.exec(text);
-    // AdvanceMap は形の違う入力に、いつも空文字の StrToInt の例外を出す。
-    if (!m) return void (await showError(ja.invalidInteger(""), ja.appTitle));
-    const id = { bank: Number(m[1]), map: Number(m[2]) };
-    if (!session.catalog.has(id)) return void (await showError(ja.mapNotFound));
-    await this.openMap(id);
-  }
-
-  /** マップ名で探して開く（#237。Ctrl+F）。 */
-  async findMap(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const { mapFindDialog } = await import("../ui/MapFindDialog");
-    const id = await mapFindDialog(session.catalog.maps.map((m) => ({ id: m.id, name: mapSearchName(m) })));
-    if (id) await this.openMap(id);
-  }
-
-  /** 戻る（#237。ツール > 以前開いたマップを開く・Alt+BkSp・Alt+←・マウスの戻るボタン）。 */
-  async openPreviousMap(): Promise<void> {
-    await this.stepHistory("back");
-  }
-
-  /** 進む（#237。Alt+→・マウスの進むボタン）。 */
-  async openNextMap(): Promise<void> {
-    await this.stepHistory("forward");
-  }
-
-  private async stepHistory(direction: "back" | "forward"): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const current = this.state.map?.id ?? null;
-    const valid = (id: MapId): boolean => session.catalog.has(id) || !!session.project.loaded(id);
-    const h = this.state.history;
-    const target = direction === "back" ? h.back(current, valid) : h.forward(current, valid);
-    if (!target) return;
-    if (!(await this.showMap(target, "history"))) h.undoStep(direction, target, current);
-  }
-
   /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */
   async openConnections(): Promise<void> {
     if (!this.connections) {
@@ -596,12 +374,6 @@ export class App implements ActionTarget {
 
   // ---- 編集 ----
 
-  /** 隣のマップを読み込んでから書く操作（境界をまたぐ描画。#234）が残っていないことを待つ（自動操作用）。 */
-  async settlePainting(): Promise<void> {
-    await this.mapTabPainter?.cells.settle();
-    await this.movementTabPainter?.cells.settle();
-  }
-
   /** 元に戻す。 */
   undo(): void {
     const bus = this.state.session?.bus;
@@ -612,71 +384,6 @@ export class App implements ActionTarget {
   redo(): void {
     const bus = this.state.session?.bus;
     if (bus && !bus.redo()) this.state.setStatus(ja.nothingToRedo);
-  }
-
-  /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
-  private onCommand(e: CommandEvent): void {
-    if (e.command && changesMapList(e.command)) void this.afterMapListChange();
-    // 名前表を書き換えたら（取り消し・やり直しも）、AdvanceMap と同じく一覧の名前も変える
-    else if (e.command && commandNames(e.command).includes(SET_MAP_NAME)) void this.refreshMapList();
-    if (this.onTilesetCommand(e)) return;
-    // 変わったマップ（group の中と targets も見る。2 枚のマップにまたがる操作でも両方に印を付ける）
-    const ids = affectedMaps(e.command);
-    if (ids.length === 0) return;
-    const current = this.state.map;
-    const others: MapId[] = [];
-    for (const id of ids) {
-      if (current && current.id.bank === id.bank && current.id.map === id.map) {
-        const doc = current.doc;
-        // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
-        if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
-          void this.openMap(id);
-        } else {
-          this.state.mapImage?.update();
-          this.state.emit("cells");
-        }
-      } else others.push(id);
-      this.pendingDirty.set(`${id.bank}.${id.map}`, id);
-    }
-    // 表示中でないマップが変わったことを知らせる（隣の帯の描き直し用）
-    if (others.length > 0) {
-      this.state.changedMaps = others;
-      this.state.emit("otherMaps");
-    }
-    if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
-    this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
-  }
-
-  /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */
-  private onTilesetCommand(e: CommandEvent): boolean {
-    const refs = tilesetRefsOf(e.command);
-    if (refs.length === 0) return false;
-    const changed = refs.flatMap((ref) => this.state.session?.refreshTilesets(ref) ?? []);
-    if (this.state.map && changed.includes(this.state.map.tiles)) {
-      this.state.mapImage?.redrawAll();
-      this.state.emit("cells");
-      this.state.emit("tiles");
-    }
-    return true;
-  }
-
-  /** 未出力の印を付け直す。 */
-  checkDirty(all = false): void {
-    if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
-    this.dirtyTimer = null;
-    const session = this.state.session;
-    if (!session) return;
-    const ids = all ? session.modifiedMaps() : [...this.pendingDirty.values()];
-    if (all) this.state.dirty = new Set(ids.map((id) => `${id.bank}.${id.map}`));
-    else {
-      for (const id of ids) {
-        const key = `${id.bank}.${id.map}`;
-        if (session.isModified(id)) this.state.dirty.add(key);
-        else this.state.dirty.delete(key);
-      }
-    }
-    this.pendingDirty.clear();
-    this.state.emit("dirty");
   }
 
   /** マップ一覧を作り直す（マップを加えた・取り消した・差し替えたとき、マップファイルを登録したとき）。 */
@@ -691,23 +398,7 @@ export class App implements ActionTarget {
       this.tree.setOpened(current.id);
       this.combo.setOpened(current.id);
     }
-    this.checkDirty(true);
-  }
-
-  /** マップの追加・作業用のマップの作成を取り消したら、表示中のマップが無くなっていれば前のマップへ戻る。一覧も作り直す。 */
-  private async afterMapListChange(): Promise<void> {
-    const session = this.state.session;
-    const current = this.state.map;
-    if (session && current && session.project.loaded(current.id) !== current.doc) {
-      const back = this.state.previousMap;
-      if (back && session.project.loaded(back)) await this.openMap(back);
-      else {
-        this.state.map = null;
-        this.state.mapImage = null;
-        this.state.emit("map");
-      }
-    }
-    await this.refreshMapList();
+    this.changes.checkDirty(true);
   }
 
   // ---- 出力 ----
@@ -727,7 +418,7 @@ export class App implements ActionTarget {
       await this.scripts.settle();
       const result = await session.export(target);
       if (target !== undefined) this.state.settings.addRecent({ rom: session.romPath, project: session.projectDir });
-      this.checkDirty(true);
+      this.changes.checkDirty(true);
       this.state.setStatus(ja.exported(result.written.length, result.removed.length));
       return true;
     } catch (e) {
@@ -737,7 +428,7 @@ export class App implements ActionTarget {
   }
 
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
-  private async confirmDiscard(): Promise<boolean> {
+  async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
     if (!session || (session.modifiedMaps().length === 0 && !session.hasUnsavedChanges() && !session.isRegionMapModified())) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
@@ -751,98 +442,12 @@ export class App implements ActionTarget {
     this.eventTab.removeSelected();
   }
 
-  /** イベントの削除（#220。初めて使うときに読み込む）。 */
-  /** 範囲の中で使われていない最小の番号（#227）。無ければステータスバーに出して null。 */
-  async pickUnused(kind: UsageKind): Promise<number | null> {
-    const what = jaUsage.kind[kind] ?? kind;
-    if (!this.usage.now) this.state.setStatus(jaUsage.building);
-    const value = await this.usage.next(kind);
-    const error = this.usage.state().error;
-    if (error) this.state.setStatus(jaUsage.failed(error), undefined, true);
-    else if (value === null) this.state.setStatus(jaUsage.none(what), undefined, true);
-    else this.state.setStatus(jaUsage.picked(what, `0x${value.toString(16).toUpperCase()}`));
-    return value;
-  }
-
-  /** ひな形を置く処理（#243。初めて使うときに読み込む）。 */
-  templatePlacer(): Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> {
-    return (this.templatePlacerValue ??= import("../ui/event/TemplatePlacer").then(({ TemplatePlacer }) => {
-      const placer = new TemplatePlacer(this);
-      // 新しいトレーナー（#245）は setTrainer を同じ 1 回の取り消しに足す
-      placer.extend({ commands: (request, map) => this.trainers.commandsFor(request, map) });
-      return placer;
-    }));
-  }
-
-  /** ひな形の窓のトレーナーの選択肢（#244。番号・クラス・名前・手持ちの数。ほかで使っていれば印）。 */
-  private async trainerChoices(): Promise<{ id: number; text: string }[]> {
-    const { jaTrainer } = await import("../i18n/ja.trainer");
-    return (await this.trainers.list()).map((t) => ({ id: t.id, text: jaTrainer.choice(t.id, t.className, t.name, t.partySize, t.uses, t.edited) }));
-  }
-
-  /** 窓の中身（未使用の番号・トレーナーの一覧など）。#244・#245 が足す。 */
-  templateSource: import("../ui/event/TemplatePicker").TemplatePickerSource = {
-    unused: (kind, skip) => this.usage.next(kind, skip),
-  };
-
-  /** 「ここにひな形を置く」（#243）: 窓で種類と入力を聞いて置く。 */
-  async placeTemplate(x: number, y: number): Promise<boolean> {
-    try {
-      const { openTemplatePicker } = await import("../ui/event/TemplatePicker");
-      const request = await openTemplatePicker(this, x, y, this.templateSource);
-      if (!request) return false;
-      await (await this.templatePlacer()).place(request);
-      return true;
-    } catch (e) {
-      this.showError(e);
-      return false;
-    }
-  }
-
   /** イベントタブでイベントを選ぶ（ひな形を置いたあと）。 */
   eventTabSelect(kind: "person" | "sign" | "trap", index: number): void {
     this.eventTab.select(kind, index);
   }
 
-  eventDeleter(): Promise<import("../ui/event/EventDeleter").EventDeleter> {
-    return (this.eventDeleterValue ??= import("../ui/event/EventDeleter").then(({ EventDeleter }) => new EventDeleter(this)));
-  }
-
-  /**
-   * イベントを削除する（右クリックの「イベントを削除」・Delete キー・「イベントの削除」ボタン）。
-   * 消すものを調べて確認のダイアログを出し、「削除」なら消す。`confirm` が false なら確かめずに消す（自動操作用）。
-   */
-  async deleteEvent(kind: string, index: number, confirm = true): Promise<boolean> {
-    const id = this.state.map?.id;
-    if (!id || kind === "fly") return false;
-    const { jaEventDelete: t } = await import("../i18n/ja.eventDelete");
-    try {
-      this.state.setStatus(t.planning);
-      const deleter = await this.eventDeleter();
-      const plan = await deleter.plan(id, kind as "person" | "sign" | "warp" | "trap", index);
-      const { confirmEventDelete, eventName } = await import("../ui/event/EventDeleteDialog");
-      this.state.setStatus("");
-      if (confirm && !(await confirmEventDelete(plan))) return false;
-      const files = await deleter.run(plan);
-      this.state.setStatus(files.length > 0 ? t.doneWithFiles(eventName(plan), files) : t.done(eventName(plan)));
-      return true;
-    } catch (e) {
-      this.state.setStatus(t.failed(errorText(e)), undefined, true);
-      return false;
-    }
-  }
-
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
-  /** ワープの「行き先のマップを作る」（#241。初めて使うときに読み込む）。 */
-  warpMapCreator(): Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> {
-    return (this.warpMapCreatorValue ??= import("../ui/event/WarpMapCreator").then(({ WarpMapCreator }) => new WarpMapCreator(this)));
-  }
-
-  /** イベントのスクリプトの要約（#226。初めてホバーしたときに読み込む）。 */
-  eventSummaries(): Promise<ScriptSummaries> {
-    return (this.summariesValue ??= import("../ui/event/ScriptSummaries").then(({ ScriptSummaries }) => new ScriptSummaries(this)));
-  }
-
   scriptHost(): Promise<ScriptHost> {
     return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
   }
@@ -853,7 +458,7 @@ export class App implements ActionTarget {
   }
 
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
-  private async confirmScriptEditor(): Promise<boolean> {
+  async confirmScriptEditor(): Promise<boolean> {
     if (!this.scriptHostValue) return true;
     const host = await this.scriptHostValue;
     let dirty: string[];
@@ -975,21 +580,6 @@ export class App implements ActionTarget {
     this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
 }
-
-const SET_MAP_NAME = "setMapName";
-/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）。 */
-const MAP_LIST_COMMANDS = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
-
-/** コマンドとその中のコマンド（まとめたもの）の名前。 */
-function commandNames(command: Command): string[] {
-  return flattenCommandRecords(command).map((r) => r.name);
-}
-
-function changesMapList(command: Command): boolean {
-  return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
-}
-
-
 
 function toolbarLabel(id: string): string {
   const map: Record<string, string> = {
