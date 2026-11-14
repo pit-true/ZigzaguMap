@@ -1,0 +1,36 @@
+/* 「ここにひな形を置く」の窓（#243） */
+.template-dialog {
+  width: 440px;
+}
+
+.tp-form {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.tp-cell {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tp-cell input[type="text"],
+.tp-cell select,
+.tp-cell textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.tp-cell textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.tp-small {
+  padding: 0 6px;
+}
+.tp-note { color: var(--gray-text); font-size: 11px; }

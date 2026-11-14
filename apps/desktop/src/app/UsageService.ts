@@ -141,6 +141,8 @@ export class UsageService {
       );
       if (this.session !== session) return null;
       this.project = project;
+      // trainers.json（#245）の番号も使用中に入れる
+      this.app.trainers.syncUsage();
       // 作っている間の編集を入れる
       for (const id of session.project.mapIds()) {
         const doc = session.project.loaded(id);
@@ -161,6 +163,7 @@ export class UsageService {
       if (typeof a.bank === "number" && typeof a.map === "number") this.dirtyMaps.set(`${a.bank}.${a.map}`, { bank: a.bank, map: a.map });
     }
     if (this.dirtyMaps.size > 0) this.scheduleUpdate();
+    this.app.trainers.syncUsage();
   }
 
   private scheduleUpdate(): void {

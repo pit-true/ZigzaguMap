@@ -14,6 +14,7 @@ import {
   type CommandEvent,
   type EventLabelSavePlan,
   type EventLabelTarget,
+  type EventScriptKind,
   type LoadedScriptConfig,
   type ScriptTemplate,
 } from "@zigzagumap/core";
@@ -43,6 +44,21 @@ interface Assigned {
 const KIND_OF: Readonly<Record<EventLabelTarget, "person" | "sign" | "tile">> = { person: "person", sign: "sign", tile: "tile" };
 
 /**
+ * ひな形（#243）を置くコマンドの書き方。イベントを置いたときの Phase2 のひな形の代わりに使う。
+ * `script` が null なら（隠しアイテムの看板・落とし物の人）、ラベルもスクリプトも付けない。
+ */
+export interface TemplateWriter {
+  /** ラベル名の `{kind}` に入れる名前（`Giver`・`Mart`・`Trainer`）。 */
+  readonly nameKind: string;
+  /** eventscripts の種別（人は `npc` / `trainer`）。 */
+  readonly labelKind: EventScriptKind;
+  /** 規則で作った名前から、実際のラベル名を作る（トレーナーは `EventScript_` を頭に付ける）。 */
+  labelName(base: string): string;
+  /** ラベルからスクリプトを作る（null ならスクリプトを書かない）。 */
+  readonly script: ((label: string) => ScriptTemplate) | null;
+}
+
+/**
  * メインウィンドウのスクリプト連携（#202 のひな形、#208 の表の書き出し、#207 の取り込みの書き足し）。
  *
  * - イベントを置いたとき（`addEvent`・`setEventCounts` で増えたとき）に、ラベルを自動で付け、ひな形をすぐ `.s` と `.string` に書く。
@@ -65,6 +81,25 @@ export class ScriptLink {
   private readonly replacements = new WeakMap<Command, readonly { path: string; before: string; after: string }[]>();
   /** 書き足しが済んだら決まるもの（自動操作と出力が待つ）。 */
   private pending: Promise<unknown> = Promise.resolve();
+  /** ひな形（#243）を置くコマンドの書き方（Phase2 のひな形の代わり）。 */
+  private readonly templateWriters = new WeakMap<Command, TemplateWriter>();
+  /** ひな形を置いたコマンドで付けたラベル（置いた側が読む）。 */
+  private readonly templateLabels = new WeakMap<Command, string>();
+
+  /** 次に実行するコマンドを、ひな形を置くコマンドとして書く（実行の前に呼ぶ）。 */
+  expectTemplate(command: Command, writer: TemplateWriter): void {
+    this.templateWriters.set(command, writer);
+  }
+
+  /** ひな形を置いたコマンドで付けたラベル（スクリプトの無いひな形なら null）。 */
+  templateLabel(command: Command): string | null {
+    return this.templateLabels.get(command) ?? null;
+  }
+
+  /** 書き足しの待ちに加える（自動操作の `script.settle` が待つ）。 */
+  trackWork<T>(p: Promise<T>): Promise<T> {
+    return this.track(p);
+  }
 
   constructor(private readonly app: App) {
     this.files = new ScriptFiles(app);
@@ -116,6 +151,9 @@ export class ScriptLink {
   private added(session: ProjectSession, events: AddedEvents, command: Command): void {
     const store = session.labels.store;
     const { bank, map } = events.map;
+    const writer = this.templateWriters.get(command);
+    // スクリプトの無いひな形（隠しアイテムの看板・落とし物の人）はラベルもひな形も付けない
+    if (writer && !writer.script) return;
     const again = this.assigned.get(command);
     const resolved = session.scriptsTable.document.resolve(bank, map);
     const config = this.loadedConfig?.config;
@@ -130,13 +168,19 @@ export class ScriptLink {
       const taken = (name: string): boolean => used.has(name) || known.includes(name) || list.some((a) => a.label === name);
       for (let i = events.from; i < events.to; i++) {
         if (store.label(bank, map, events.target, i)) continue;
-        const name = newScriptLabel(config.labelTemplate, { map: scriptLabelMapName(resolved.script, bank, map), kind: KIND_OF[events.target], index: i }, taken);
+        const values = { map: scriptLabelMapName(resolved.script, bank, map), kind: KIND_OF[events.target], index: i };
+        const name = writer
+          ? writer.labelName(newScriptLabel(config.labelTemplate, { ...values, kindName: writer.nameKind }, (n) => taken(writer.labelName(n))))
+          : newScriptLabel(config.labelTemplate, values, taken);
         list.push({ target: events.target, index: i, label: name });
       }
       this.assigned.set(command, [...(this.assigned.get(command) ?? []), ...list]);
     }
-    for (const a of list) store.set(bank, map, a.target, a.index, { label: a.label, kind: a.target === "person" ? "npc" : a.target });
-    const templates = list.map((a) => eventScriptTemplate(KIND_OF[a.target], a.label, { dialect: config.dialect, useGlobal: config.useGlobal }));
+    for (const a of list) store.set(bank, map, a.target, a.index, { label: a.label, kind: writer?.labelKind ?? (a.target === "person" ? "npc" : a.target) });
+    const templates = list.map((a) =>
+      writer?.script ? writer.script(a.label) : eventScriptTemplate(KIND_OF[a.target], a.label, { dialect: config.dialect, useGlobal: config.useGlobal }),
+    );
+    if (writer && list[0]) this.templateLabels.set(command, list[0].label);
     this.write(command, resolved.script, resolved.strings, templates, again !== undefined);
   }
 

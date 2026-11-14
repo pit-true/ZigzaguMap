@@ -10,6 +10,7 @@ import {
   type MapId,
 } from "@zigzagumap/core";
 import "../../styles/event.css";
+import { jaTemplate } from "../../i18n/ja.template";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaEventDelete } from "../../i18n/ja.eventDelete";
@@ -42,6 +43,10 @@ export interface EventTabHost {
   deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
   /** 範囲の中で使われていない最小の番号（#227。「未使用を選ぶ」ボタン）。 */
   pickUnused?(kind: UnusedKind): Promise<number | null>;
+  /** 「ここにひな形を置く」（#243。マスの位置）。 */
+  placeTemplate?(x: number, y: number): void;
+  /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
+  canPlaceTemplate?(): boolean;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -443,7 +448,14 @@ export class EventTab {
   /** 右クリック: イベントの上なら選んで、「イベントを削除」と「スクリプトを開く」のメニューを出す。 */
   contextMenu(cell: RawCell, x: number, y: number): void {
     const hit = eventAt(this.placed, cell.x, cell.y);
-    if (!hit) return;
+    // 「ここにひな形を置く」（#243）。プロジェクトフォルダを開いているときだけ、イベントの無いマスでも出す
+    const templates = this.host.canPlaceTemplate?.()
+      ? [{ id: "placeTemplate", label: jaTemplate.menuPlace, run: () => this.host.placeTemplate?.(cell.x, cell.y) }]
+      : [];
+    if (!hit) {
+      if (templates.length > 0) showContextMenu(x, y, templates);
+      return;
+    }
     this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
     const kind = hit.kind;
     const index = hit.index;
@@ -457,6 +469,7 @@ export class EventTab {
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
+      ...templates,
     ]);
   }
 
