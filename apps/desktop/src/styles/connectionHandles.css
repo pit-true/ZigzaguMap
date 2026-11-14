@@ -1,0 +1,53 @@
+/* 隣の帯の角のつまみ（ui/map/ConnectionHandles.ts。Phase3） */
+.conn-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 2px solid #1060d0;
+  border-radius: 2px;
+  z-index: 3;
+  touch-action: none;
+}
+
+.conn-handle-h {
+  cursor: ew-resize;
+}
+
+.conn-handle-v {
+  cursor: ns-resize;
+}
+
+/* 主マップの辺の中央のつまみ（ui/map/EdgeHandles.ts。右クリックで接続のメニュー） */
+.conn-edge {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  background: #1060d0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  z-index: 3;
+  touch-action: none;
+  cursor: move;
+}
+
+.conn-edge-up,
+.conn-edge-down {
+  cursor: ns-resize;
+}
+
+.conn-edge-left,
+.conn-edge-right {
+  cursor: ew-resize;
+}
+
+/* 辺のつまみのドラッグ中の新しい大きさの枠（#231） */
+.resize-preview {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #1060d0;
+  pointer-events: none;
+  z-index: 2;
+}

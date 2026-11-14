@@ -8,13 +8,15 @@ import { describeSelection } from "./status";
  * 実際の操作と同じ順に送る。画面側は人が操作したときと同じ処理を通る。
  *
  * `{"cmd":"mouse","target":"map","action":"click","cell":[5,3]}` のように使う。
- * - target: `map`（マップタブ）/ `movement`（移動エリア）/ `event`（イベント）/ `palette`（ブロックパレット）/ `border`（境界ブロック）/
+ * - target: `connectionHandle`（隣の帯のつまみ。`handle` に `connection.handles` の `id`。`cell: [0, 0]` がつまみの中心）/
+ *   `map`（マップタブ）/ `movement`（移動エリア）/ `event`（イベント）/ `palette`（ブロックパレット）/ `border`（境界ブロック）/
  *   `movementPalette`（移動許可のパレット）。`id` を渡すと `data-auto-id`（か `field:<AdvanceMap の部品名>`）の部品の上（`px` だけ使える）。
  * - 位置: `cell: [x, y]`（マス。マスの中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）。古い形の `x`・`y`（マス）も読む。
  *   マップのタブ（map / movement / event）の `cell` は主マップの左上が原点で、負の値や大きさを超える値で隣のマップの帯の上を指せる（Phase3）。
  * - action: `click` / `dblclick` / `rightClick` / `drag`（`to` / `toPx` まで `steps` 回（既定 8）に分けて動かす）/ `hover` /
  *   `down` / `move` / `up`（1 つずつ送る）。
- * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）。ctrl・shift: 修飾キー。
+ * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）/ `middle` / `back`・`forward`（サイドボタン。`click` で
+ *   マップの履歴を戻る・進む。#237）。ctrl・shift・alt: 修飾キー。
  * 返事は選択中のブロック・移動許可・イベントとステータスバー。
  */
 
@@ -46,6 +48,15 @@ export const MOUSE_TARGETS: Readonly<Record<string, string>> = {
 function resolveTarget(app: App, req: AutomationRequest): Target {
   if (typeof req["id"] === "string") return { element: findField(req["id"]), cell: { w: 1, h: 1 } };
   const name = str(req, "target");
+  if (name === "connectionHandle") {
+    // 隣の帯のつまみ（Phase3）。`cell: [0, 0]` がつまみの中心で、`to` はマップタブのマス単位のずらし
+    const id = str(req, "handle");
+    const element = document.querySelector<HTMLElement>(`.map-tab-view [data-auto-id="${CSS.escape(id)}"]`);
+    if (!element) throw new Error(`つまみが見つかりません: ${id}`);
+    const size = app.state.settings.data.zoomMap ? 32 : 16;
+    const r = element.getBoundingClientRect();
+    return { element, cell: { w: size, h: size }, origin: { x: r.width / 2 - size / 2, y: r.height / 2 - size / 2 } };
+  }
   const selector = MOUSE_TARGETS[name];
   if (!selector) throw new Error(`target は ${Object.keys(MOUSE_TARGETS).join(" / ")} のどれかです: ${name}`);
   const element = document.querySelector<HTMLElement>(selector);
@@ -96,6 +107,7 @@ class MouseSender {
     private readonly el: HTMLElement,
     private readonly ctrl: boolean,
     private readonly shift: boolean,
+    private readonly alt = false,
   ) {}
 
   private init(x: number, y: number, button: number, buttons: number, detail = 1): PointerEventInit {
@@ -112,6 +124,7 @@ class MouseSender {
       detail,
       ctrlKey: this.ctrl,
       shiftKey: this.shift,
+      altKey: this.alt,
       pointerId: 1,
       pointerType: "mouse",
       isPrimary: true,
@@ -152,7 +165,7 @@ class MouseSender {
 }
 
 function maskOf(button: number): number {
-  return button === 2 ? 2 : button === 1 ? 4 : 1;
+  return button === 2 ? 2 : button === 1 ? 4 : button === 3 ? 8 : button === 4 ? 16 : 1;
 }
 
 function buttonOf(req: AutomationRequest, fallback: number): number {
@@ -161,7 +174,10 @@ function buttonOf(req: AutomationRequest, fallback: number): number {
   if (b === "left" || b === 0) return 0;
   if (b === "right" || b === 2) return 2;
   if (b === "middle" || b === 1) return 1;
-  throw new Error(`button は left / right です: ${String(b)}`);
+  // マウスのサイドボタン（#237。マップの履歴の戻る・進む）
+  if (b === "back" || b === 3) return 3;
+  if (b === "forward" || b === 4) return 4;
+  throw new Error(`button は left / right / middle / back / forward です: ${String(b)}`);
 }
 
 async function mouse(app: App, req: AutomationRequest): Promise<unknown> {
@@ -169,7 +185,7 @@ async function mouse(app: App, req: AutomationRequest): Promise<unknown> {
   const action = optStr(req, "action") ?? "click";
   const at = pointOf(req, t, "cell", "px", "x", "y");
   if (!at) throw new Error("位置を cell: [x, y] か px: [x, y] で指定してください");
-  const m = new MouseSender(t.element, req["ctrl"] === true, req["shift"] === true);
+  const m = new MouseSender(t.element, req["ctrl"] === true, req["shift"] === true, req["alt"] === true);
   const [x, y] = at;
   switch (action) {
     case "hover":

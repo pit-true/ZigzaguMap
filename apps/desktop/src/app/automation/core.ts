@@ -68,8 +68,10 @@ function key(_app: App, req: AutomationRequest): null {
   // キー操作をまねる（メニューの確認用）。押して離すまでを送る。
   const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
   const target = typeof req["id"] === "string" ? findField(req["id"]) : (document.activeElement ?? document.body);
-  target.dispatchEvent(new KeyboardEvent("keydown", init));
-  target.dispatchEvent(new KeyboardEvent("keyup", init));
+  // `type` に `down` / `up` を付けると押すだけ・離すだけを送る（Ctrl を押している間の表示の確認。#238）
+  const type = req["type"];
+  if (type !== "up") target.dispatchEvent(new KeyboardEvent("keydown", init));
+  if (type !== "down") target.dispatchEvent(new KeyboardEvent("keyup", init));
   return null;
 }
 
@@ -104,7 +106,9 @@ export const coreCommands: CommandTable = {
   selectBlock: (app, req) => {
     const blocks = Array.isArray(req["blocks"]) ? (req["blocks"] as number[]) : [int(req, "block")];
     const width = typeof req["width"] === "number" ? req["width"] : 1;
-    app.state.select({ width, height: Math.ceil(blocks.length / width), blocks });
+    // 移動許可（`movements`。マップから拾った複数選択と同じ形。Phase3 #225）
+    const movements = Array.isArray(req["movements"]) ? (req["movements"] as number[]) : undefined;
+    app.state.select({ width, height: Math.ceil(blocks.length / width), blocks, ...(movements ? { movements } : {}) });
     return null;
   },
   action: async (app, req) => {

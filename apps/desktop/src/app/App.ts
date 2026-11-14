@@ -8,6 +8,8 @@ import { messageBox, showError } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
 import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
+import { MapTreeFilter } from "../ui/MapTreeFilter";
+import { installHistoryMouse } from "./historyMouse";
 import { MenuBar } from "../ui/MenuBar";
 import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
@@ -31,7 +33,7 @@ import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
-import { buildMapTree, comboGroups } from "./MapTreeModel";
+import { buildMapTree, comboGroups, mapSearchName } from "./MapTreeModel";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
@@ -55,6 +57,11 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
+import { installViewExtras } from "../ui/map/viewExtras";
+import { ConnectionHandles } from "../ui/map/ConnectionHandles";
+import { EdgeHandles } from "../ui/map/EdgeHandles";
+import { EdgeMenu } from "../ui/connection/EdgeMenu";
+import { EdgeResize } from "../ui/connection/EdgeResize";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -81,6 +88,8 @@ export class App implements ActionTarget {
   private readonly toolbar: Toolbar;
   /** 左のマップ一覧（自動操作の `tree.list` も読む）。 */
   readonly tree: MapTree;
+  /** マップ一覧の絞り込みの欄（#237）。 */
+  readonly treeFilter: MapTreeFilter;
   private readonly combo: MapCombo;
   private readonly splitter: Splitter;
   private readonly romInfo = new RomInfoPanel();
@@ -125,6 +134,11 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
   readonly neighbors: NeighborService;
+  /** 隣の帯の角と辺のつまみ（マップタブ）。 */
+  readonly connectionHandles: ConnectionHandles;
+  readonly edgeHandles: EdgeHandles;
+  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
+  readonly edgeResize: EdgeResize;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -196,9 +210,16 @@ export class App implements ActionTarget {
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.neighbors = new NeighborService(state);
-    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) {
-      new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" });
-    }
+    const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
+      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" }),
+    );
+    // 隣の帯のつまみ（マップタブだけ。#229）
+    this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
+    // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
+    this.edgeResize = new EdgeResize(state);
+    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
+    // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
+    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) installViewExtras(view, state, tab, this.neighbors);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -214,7 +235,8 @@ export class App implements ActionTarget {
     this.left = document.createElement("aside");
     this.left.className = "left-panel";
     this.left.style.width = `${settings.data.leftWidth}px`;
-    this.left.append(this.tree.element, this.romInfo.element);
+    this.treeFilter = new MapTreeFilter(this.tree);
+    this.left.append(this.treeFilter.element, this.tree.element, this.romInfo.element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");
@@ -229,7 +251,7 @@ export class App implements ActionTarget {
     this.outsideBar = new OutsideEventsBar(state);
     root.append(this.menu.element, this.toolbar.element, this.combo.element, this.outsideBar.element, body, this.statusBar.element);
 
-    state.on("status", () => this.statusBar.render(state.status));
+    state.on("status", () => this.statusBar.render(state.status, state.statusInfo));
     state.on("tab", () => {
       tabControl.show(state.tab);
       const last = state.settings.data.last;
@@ -254,6 +276,7 @@ export class App implements ActionTarget {
   /** ドラッグ＆ドロップ、キー操作、終了の確認、自動操作を受け付け、起動引数の ROM を開く。 */
   async start(): Promise<void> {
     installShortcuts(this);
+    installHistoryMouse(this);
     await this.worldMap.start();
     // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
     await getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget());
@@ -378,7 +401,7 @@ export class App implements ActionTarget {
       state.map = null;
       state.mapImage = null;
       state.dirty = new Set();
-      state.previousMap = null;
+      state.history.clear();
       this.unsubscribeBus = session.bus.subscribe((e) => this.onCommand(e));
       this.tree.clear();
       this.rebuildTree();
@@ -413,15 +436,21 @@ export class App implements ActionTarget {
   // ---- マップ ----
 
   /** マップを開いて表示する。 */
+  /** マップを開く（今のマップを戻るの履歴に積む。#237）。 */
   async openMap(id: MapId): Promise<void> {
+    await this.showMap(id, "visit");
+  }
+
+  /** マップを開く。`nav` が `visit` なら今のマップを戻るの履歴に積む。戻る・進むで開くときは `history`。開けたら true。 */
+  private async showMap(id: MapId, nav: "visit" | "history"): Promise<boolean> {
     const state = this.state;
     const session = state.session;
-    if (!session) return;
+    if (!session) return false;
     const start = performance.now();
     timings.lastMapSwitchStart = start;
     try {
       const map = await session.openMap(id);
-      if (state.map && (state.map.id.bank !== id.bank || state.map.id.map !== id.map)) state.previousMap = state.map.id;
+      if (nav === "visit") state.history.visit(state.map?.id ?? null, id);
       state.map = map;
       state.mapImage = new MapImage(map.doc.grid, map.tiles);
       state.emit("map");
@@ -431,7 +460,7 @@ export class App implements ActionTarget {
         const path = session.project.workMapInfo(id)?.path;
         if (path) await this.setRawTitle(`${ja.appTitle} - ${path.replace(/\.[^.\\/]*$/, "")}`);
         timings.lastMapSwitchMs = performance.now() - start;
-        return;
+        return true;
       }
       this.tree.setOpened(id);
       this.combo.setOpened(id);
@@ -442,8 +471,10 @@ export class App implements ActionTarget {
       state.setStatus(ja.statusMapLoaded(id.bank, id.map));
       state.settings.update({ last: { rom: session.romPath, bank: id.bank, map: id.map, tab: state.tab } });
       await this.setTitle(map.doc.mapNameText() ?? ja.noName);
+      return true;
     } catch (e) {
       this.showError(e);
+      return false;
     }
   }
 
@@ -462,8 +493,34 @@ export class App implements ActionTarget {
     await this.openMap(id);
   }
 
+  /** マップ名で探して開く（#237。Ctrl+F）。 */
+  async findMap(): Promise<void> {
+    const session = this.state.session;
+    if (!session) return;
+    const { mapFindDialog } = await import("../ui/MapFindDialog");
+    const id = await mapFindDialog(session.catalog.maps.map((m) => ({ id: m.id, name: mapSearchName(m) })));
+    if (id) await this.openMap(id);
+  }
+
+  /** 戻る（#237。ツール > 以前開いたマップを開く・Alt+BkSp・Alt+←・マウスの戻るボタン）。 */
   async openPreviousMap(): Promise<void> {
-    if (this.state.previousMap) await this.openMap(this.state.previousMap);
+    await this.stepHistory("back");
+  }
+
+  /** 進む（#237。Alt+→・マウスの進むボタン）。 */
+  async openNextMap(): Promise<void> {
+    await this.stepHistory("forward");
+  }
+
+  private async stepHistory(direction: "back" | "forward"): Promise<void> {
+    const session = this.state.session;
+    if (!session) return;
+    const current = this.state.map?.id ?? null;
+    const valid = (id: MapId): boolean => session.catalog.has(id) || !!session.project.loaded(id);
+    const h = this.state.history;
+    const target = direction === "back" ? h.back(current, valid) : h.forward(current, valid);
+    if (!target) return;
+    if (!(await this.showMap(target, "history"))) h.undoStep(direction, target, current);
   }
 
   /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */

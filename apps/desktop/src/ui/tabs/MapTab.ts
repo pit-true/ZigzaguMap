@@ -1,10 +1,13 @@
 import { PaintBorderCommand } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { BlockPainter } from "../../input/BlockPainter";
+import { StampClipboard } from "../../input/StampClipboard";
+import { jaPaint } from "../../i18n/ja.paint";
 import { ja } from "../../i18n/ja";
 import { BlockPaletteView } from "../map/BlockPaletteView";
 import { BorderView } from "../map/BorderView";
 import { MapView } from "../map/MapView";
+import { StampPanel } from "../stamp/StampPanel";
 
 /** マップタブ（左にマップ、右に境界ブロックとブロックパレット）。 */
 export class MapTab {
@@ -13,12 +16,19 @@ export class MapTab {
   private readonly palette: BlockPaletteView;
   private readonly border: BorderView;
   private readonly selected: HTMLElement;
+  /** マップのマウス操作（描く・拾う・矩形で選ぶ）。 */
+  readonly painter: BlockPainter;
+  /** Ctrl+C / Ctrl+V（Phase3 #225）。 */
+  readonly clipboard: StampClipboard;
+  /** スタンプの一覧（Phase3 #239）。 */
+  readonly stamps: StampPanel;
 
   constructor(private readonly state: EditorState) {
     this.element = document.createElement("div");
     this.element.className = "map-tab";
     this.view = new MapView("map-tab-view");
-    new BlockPainter(this.view, state, () => this.palette.scrollToSelection());
+    this.painter = new BlockPainter(this.view, state, () => this.palette.scrollToSelection());
+    this.clipboard = new StampClipboard(state, this.painter);
 
     this.palette = new BlockPaletteView({
       select: (selection, stamp) => {
@@ -50,7 +60,8 @@ export class MapTab {
     this.selected = document.createElement("div");
     this.selected.className = "selected-block";
     borderBox.append(borderLabel, this.border.element, this.selected);
-    side.append(borderBox, this.palette.element);
+    this.stamps = new StampPanel(state);
+    side.append(borderBox, pasteMovementsToggle(state), this.stamps.element, this.palette.element);
     this.element.append(this.view.element, side);
 
     state.on("map", () => this.showMap());
@@ -101,4 +112,19 @@ export class MapTab {
     }
     if (cells.length > 0) session.bus.execute(new PaintBorderCommand({ bank: map.id.bank, map: map.id.map, cells }));
   }
+}
+
+/** 「移動許可も貼る」のチェック（マップから拾った複数選択を移動許可ごと貼るか。個人設定 `pasteMovements`。Phase3 #225）。 */
+function pasteMovementsToggle(state: EditorState): HTMLElement {
+  const row = document.createElement("label");
+  row.className = "paste-movements";
+  row.title = jaPaint.pasteMovementsHint;
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.dataset["autoId"] = "map.pasteMovements";
+  box.checked = state.settings.data.pasteMovements;
+  box.addEventListener("change", () => state.settings.update({ pasteMovements: box.checked }));
+  state.on("view", () => (box.checked = state.settings.data.pasteMovements));
+  row.append(box, document.createTextNode(jaPaint.pasteMovements));
+  return row;
 }

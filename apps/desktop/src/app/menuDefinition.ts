@@ -2,6 +2,7 @@ import { ja } from "../i18n/ja";
 import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
+import { jaMapFind } from "../i18n/ja.mapFind";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -125,6 +126,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.backupOnOpen", label: ja.backupOnOpen, accel: "X" },
         { id: "opt.romShortcut", label: ja.createRomShortcut, accel: "R" },
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
+        // ZigzaguMap 独自（Phase3）。コネクションマネージャーでずれを変えたとき相手側もそろえる
+        { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
         {
           label: ja.recentSettings,
           accel: "Z",
@@ -157,9 +160,13 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
         { id: "tools.build", label: jaBuild.menu, accel: "B", shortcut: fkey("F7"), enable: "rom" },
         { id: "tools.previousMap", label: ja.previousMap, accel: "U", shortcut: { key: "BACKSPACE", alt: true, text: "Alt+BkSp" } },
+        // ZigzaguMap 独自（Phase3 #237）。マップの履歴を進む（以前開いたマップを開くは「戻る」になった）。
+        { id: "view.forward", label: jaMapFind.forward, shortcut: { key: "BACKSPACE", alt: true, shift: true, text: "Alt+Shift+BkSp" }, enable: "rom" },
         { id: "tools.desktopShortcut", label: ja.desktopShortcut, accel: "V" },
         sep,
         { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", shortcut: ctrl("M"), enable: "rom" },
+        // ZigzaguMap 独自（Phase3 #237）。マップ名の一部で探して開く（HexManiacAdvance の Ctrl+G。ZigzaguMap の Ctrl+G はグリッド）。
+        { id: "map.find", label: jaMapFind.find, shortcut: ctrl("F"), enable: "rom" },
         {
           label: ja.dummyData,
           accel: "X",

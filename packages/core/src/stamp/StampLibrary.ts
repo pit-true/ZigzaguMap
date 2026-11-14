@@ -176,6 +176,27 @@ export class StampLibrary {
   }
 
   /**
+   * 書き先のフォルダを移す（出力先を指定して出力したとき）。移した先のスタンプを読み、今持っているスタンプを全部書く
+   * （同じ名前は今の方で上書き）。戻り値は書いたパス。
+   */
+  async relocate(fs: ProjectFs): Promise<string[]> {
+    const current = [...this.entries.values()].map((e) => e.stamp);
+    this.entries.clear();
+    this.problems.length = 0;
+    this.fsValue = fs;
+    await this.readFolder(fs);
+    const written: string[] = [];
+    for (const stamp of current) {
+      const key = nameKey(stamp.name);
+      const entry: Entry = { stamp, base: this.entries.get(key)?.base ?? null };
+      this.entries.set(key, entry);
+      const p = await this.write(entry);
+      if (p) written.push(p);
+    }
+    return written;
+  }
+
+  /**
    * 書き先のフォルダを決める（素の ROM だけで開いて、出力先を選んだとき）。そのフォルダのスタンプを読み、
    * メモリだけのスタンプを書く（同じ名前がフォルダにあれば、メモリの方で上書きする）。戻り値は書いたパス。
    */

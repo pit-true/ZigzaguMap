@@ -7,6 +7,7 @@
   python tests/realcopy/run.py --smoke --dpe           # ND は DPE のビルドまで動かす
   python tests/realcopy/run.py --link --reuse          # スクリプト連携（lib/link.py）。ビルドはスクリプトエディタのビルドの欄で行う
   python tests/realcopy/run.py --all --reuse           # --smoke と --link の両方（Phase2 の通しの確認）
+  python tests/realcopy/run.py --connection --only nd  # 接続の編集（lib/connection.py。Phase3）を出力してビルドし、ROM の接続を確かめる
   python tests/realcopy/run.py --template --reuse      # 使われている番号の索引とイベントのひな形（lib/template.py）
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
 
@@ -32,9 +33,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from lib import config, fixtures, snapshot  # noqa: E402
 from lib.app import Zigzagu  # noqa: E402
 from lib.builder import build_fixture, build_nd_dpe  # noqa: E402
+from lib.connection import connection_one  # noqa: E402
+from lib.template import template_one  # noqa: E402
 from lib.delete import delete_one  # noqa: E402
 from lib.link import link_one  # noqa: E402
-from lib.template import template_one  # noqa: E402
 
 APP_ID = "io.github.pit-true.zigzagumap"
 
@@ -153,6 +155,30 @@ def template_fixture(cfg, name: str, args, log_dir: pathlib.Path) -> tuple[bool,
     return not failures, lines
 
 
+def connection_fixture(cfg, name: str, args, log_dir: pathlib.Path) -> tuple[bool, list[str]]:
+    """--connection: 接続の編集（lib/connection.py）。"""
+    fx = fixtures.get(cfg, name)
+    lines: list[str] = []
+    failures: list[str] = []
+    t0 = time.perf_counter()
+    c = fixtures.make_copy(fx, reuse=args.reuse)
+    lines.append(f"写し: {'前のものを使用' if c['reused'] else str(c['files']) + ' ファイルを写した'} {fx.dir}")
+
+    def check(cond: bool, what: str) -> None:
+        print(("  OK   " if cond else "  NG   ") + what, flush=True)
+        if not cond:
+            failures.append(what)
+            lines.append("NG   " + what)
+
+    def log(text: str) -> None:
+        print("       " + text, flush=True)
+
+    with Zigzagu(cfg, f"connection-{name}", args.exe) as z:
+        connection_one(fx, z, check, log, args.timeout, log_dir / f"connection-{name}")
+    lines.append(f"合計 {time.perf_counter() - t0:.1f} 秒、失敗 {len(failures)} 件")
+    return not failures, lines
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -160,8 +186,9 @@ def main() -> int:
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--link", action="store_true", help="スクリプト連携（ラベル・ひな形・取り込み・マップスクリプト・ビルドの欄）の確認")
     ap.add_argument("--delete", action="store_true", help="イベントの削除（.s の記述・ROM の埋める範囲）と複数行の文字列の確認")
+    ap.add_argument("--all", action="store_true", help="--smoke と --link と --delete")
+    ap.add_argument("--connection", action="store_true", help="接続の編集（Phase3）を出力してビルドし、ROM の接続を確かめる")
     ap.add_argument("--template", action="store_true", help="使われている番号の索引とイベントのひな形（置く・元に戻す・出力・ビルド・ROM の中身）の確認")
-    ap.add_argument("--all", action="store_true", help="--smoke と --link と --delete と --template")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
     ap.add_argument("--dpe", action="store_true")
@@ -170,9 +197,9 @@ def main() -> int:
     ap.add_argument("--timeout", type=int)
     args = ap.parse_args()
     if args.all:
-        args.smoke = args.link = args.delete = args.template = True
-    if not args.smoke and not args.link and not args.delete and not args.template:
-        ap.error("--smoke か --link か --delete か --template か --all を付けてください")
+        args.smoke = args.link = args.delete = True
+    if not args.smoke and not args.link and not args.delete and not args.connection and not args.template:
+        ap.error("--smoke か --link か --delete か --connection か --template か --all を付けてください")
     cfg = config.load(args.config, args.exe)
     args.exe = cfg.zigzaguExe
     args.timeout = args.timeout or cfg.buildTimeout
@@ -192,12 +219,13 @@ def main() -> int:
     log_dir = cfg.copyRoot / "logs" / time.strftime("%Y%m%d-%H%M%S")
     results: dict[str, bool] = {}
     runs = [(n, "smoke") for n in names if args.smoke] + [(n, "link") for n in names if args.link] + [(n, "delete") for n in names if args.delete]
+    runs += [(n, "connection") for n in names if args.connection]
     runs += [(n, "template") for n in names if args.template]
     for name, kind in runs:
-        key = name if sum([args.smoke, args.link, args.delete, args.template]) == 1 else f"{name} ({kind})"
+        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template]) == 1 else f"{name} ({kind})"
         print(f"\n== {key}")
         try:
-            run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "template": template_fixture}[kind]
+            run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]
             ok, lines = run(cfg, name, args, log_dir)
         except Exception as e:  # noqa: BLE001  1 つが失敗しても残りと実フォルダの確認は続ける
             ok, lines = False, [f"エラー: {type(e).__name__}: {e}"]

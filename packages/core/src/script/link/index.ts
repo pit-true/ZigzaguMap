@@ -17,6 +17,7 @@ export {
   EVENT_LABEL_COMMANDS,
   EventLabelError,
   RealignEventLabelsCommand,
+  ShiftEventLabelPositionsCommand,
   RenameEventLabelCommand,
   SetEventLabelCommand,
   SetMapScriptTableCommand,

@@ -28,6 +28,8 @@ import { STAMPS_DIR } from "./paths.js";
  * - `cells` は左上から行ごとの `[ブロック番号, 移動許可]`。`null` のマスは貼らない。
  * - タイルセットの組はマップのヘッダーと同じ値（ROM のポインタ。maps\tilesets のタイルセットも同じ形）。
  * - `secondaryUsed` は副タイルセットのブロック（0x280 以上）を含むか。false なら主が同じマップに貼れる。
+ * - `withMovements` は移動許可に意味があるか（マップから拾った選択なら true、ブロックパレットから選んだものは false で、
+ *   移動許可は 0 を入れる）。省略時は true。false のスタンプは「移動許可も貼る」がオンでも移動許可を貼らない。
  * - 知らない項目は書き戻しても残す。Bochi は maps\ の数字のフォルダだけを読むので、stamps\ は無視される。
  * - 書くときは 2 空白の字下げと CRLF（maps\ の JSON にそろえる）。名前は UTF-8 のまま書く。
  */
@@ -50,6 +52,8 @@ export interface Stamp {
   readonly secondaryTileset: number;
   /** 副タイルセットのブロックを含むか。 */
   readonly secondaryUsed: boolean;
+  /** 移動許可に意味があるか（マップから拾ったもの）。 */
+  readonly withMovements: boolean;
   /** 左上から行ごと（width × height 個）。 */
   readonly cells: readonly StampCell[];
   /** 作った日時（ISO 8601）。 */
@@ -58,7 +62,7 @@ export interface Stamp {
   readonly extra?: Readonly<Record<string, unknown>>;
 }
 
-const KNOWN = new Set(["format", "name", "width", "height", "primaryTileset", "secondaryTileset", "secondaryUsed", "cells", "created"]);
+const KNOWN = new Set(["format", "name", "width", "height", "primaryTileset", "secondaryTileset", "secondaryUsed", "withMovements", "cells", "created"]);
 
 /** `0x082D4A94` の形（大文字の 16 進 8 桁）。 */
 export function formatStampPointer(value: number): string {
@@ -115,6 +119,7 @@ export function parseStamp(text: string, path: string | null = null): Stamp {
     primaryTileset: readPointer(root, "primaryTileset", path),
     secondaryTileset: readPointer(root, "secondaryTileset", path),
     secondaryUsed: declared || stampUsesSecondary(cells),
+    withMovements: readBool(root, "withMovements", path, true),
     cells,
     created: readString(root, "created", path),
     ...(Object.keys(extra).length > 0 ? { extra } : {}),
@@ -133,6 +138,7 @@ export function stringifyStamp(stamp: Stamp): string {
   lines.push(field("primaryTileset", formatStampPointer(stamp.primaryTileset)));
   lines.push(field("secondaryTileset", formatStampPointer(stamp.secondaryTileset)));
   lines.push(field("secondaryUsed", stamp.secondaryUsed));
+  lines.push(field("withMovements", stamp.withMovements));
   const rows: string[] = [];
   for (let y = 0; y < stamp.height; y++) {
     const row = stamp.cells.slice(y * stamp.width, (y + 1) * stamp.width).map((c) => (c === null ? "null" : `[${c[0]}, ${c[1]}]`));
@@ -155,6 +161,7 @@ export function createStamp(
   values: readonly (number | null)[],
   tilesets: { primary: number; secondary: number },
   created: string = new Date().toISOString(),
+  withMovements = true,
 ): Stamp {
   if (values.length !== width * height) throw new Error(`マスの数（${values.length}）が ${width}×${height} と合いません`);
   const cells = values.map((v): StampCell => (v === null ? null : [v & BLOCK_ID_MASK, (v >>> 10) & MOVEMENT_MAX]));
@@ -165,6 +172,7 @@ export function createStamp(
     primaryTileset: tilesets.primary >>> 0,
     secondaryTileset: tilesets.secondary >>> 0,
     secondaryUsed: stampUsesSecondary(cells),
+    withMovements,
     cells,
     created,
   };

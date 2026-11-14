@@ -48,8 +48,8 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
 | `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |
 | `action` | `id` | メニューのアクションを ID で実行する（例: `view.grid`。有効かどうかは見ない） |
-| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など） |
-| `mouse` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`）か `id`、位置は `cell: [x, y]`（マス。中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）、`action`（`click`（既定）/ `dblclick` / `rightClick` / `drag` / `hover` / `down` / `move` / `up`）、`drag` は `to: [x, y]`（マス）か `toPx` と `steps`（既定 8）、`button`（`left` / `right`）、`ctrl`、`shift` | マウス操作。実際のマウスは動かさず、部品へ pointer・mouse・click・dblclick・contextmenu の出来事を実際の操作と同じ順に送る（画面側は人の操作と同じ処理を通る）。拡大表示は設定から読む。返事は選択中のブロック・移動許可・イベントとステータスバー |
+| `key` | `key`、`ctrl`・`alt`・`shift`、`id`（省略可）、`type`（省略可。`down` で押すだけ、`up` で離すだけ） | キー操作をまねる（メニューの確認用）。`id` を付けるとその部品へ送る（トラックバーの PageUp など）。Ctrl を押している間の表示（#238）は `{"cmd":"key","key":"Control","ctrl":true,"type":"down"}` で押し、`{"cmd":"key","key":"Control","type":"up"}` で離す |
+| `mouse` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`）か `id`、位置は `cell: [x, y]`（マス。中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）、`action`（`click`（既定）/ `dblclick` / `rightClick` / `drag` / `hover` / `down` / `move` / `up`）、`drag` は `to: [x, y]`（マス）か `toPx` と `steps`（既定 8）、`button`（`left` / `right` / `middle` / `back` / `forward`。`back`・`forward` はサイドボタンで、マップの履歴を戻る・進む #237）、`ctrl`、`shift` | マウス操作。実際のマウスは動かさず、部品へ pointer・mouse・click・dblclick・contextmenu の出来事を実際の操作と同じ順に送る（画面側は人の操作と同じ処理を通る）。拡大表示は設定から読む。返事は選択中のブロック・移動許可・イベントとステータスバー |
 | `pointer`（別名） | `target`、`type`（`down` / `move` / `up`）、`x`・`y`（画素）、`button`、`ctrl`、`shift` | `mouse` の `action`・`px` と同じ（古い名前） |
 | `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
 | `selectMovement` | `value` | 移動許可の選択を変える（移動エリアタブなら、パレットのそのマスを左クリックするのと同じ） |
@@ -221,12 +221,49 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 吹き出しの部品の ID は `event.hover`（`ui.shot` で撮れる）です。ワープの吹き出しは行き先の周辺画像（`sections[].image` が true）と、ワープできないブロックの上なら `warn`（「このブロックではワープできません…」）を持ちます（#240）。
 
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `history.state` | | マップの履歴（#237）。`current`（表示中のマップ）、`back`（戻る先。古い順で、最後が 1 つ前）、`forward`（進む先。最後がいちばん先）、`canBack`・`canForward` |
+| `mapFind` | `query`、`open`（true で先頭の候補を開く） | マップ名で探す（#237。ツール > マップ名で探して開く と同じ探し方）。返事は `candidates`（`id`・`name`・`text`、50 件まで）と、開いたマップ `opened` |
+| `tree.filter` | `text`（空で消す） | マップ一覧の絞り込みの欄に入れる（入力したときと同じ）。返事は `filter` と項目の数 `items`。絞り込んだ一覧は `tree.list` で読む |
+
+- 戻る・進むは `action` の `view.back`・`view.forward`（`tools.previousMap` も戻る）。マウスのサイドボタンは `mouse` の `button: "back"` / `"forward"`（`click`。どの部品の上でもよい）。
+- マップ名で探して開く窓（`action` の `map.find`、Ctrl+F）: 題名「マップ名で探して開く」、入力欄 `mapFind.input`（`setField` で入れると候補を作り直す）、候補の一覧 `mapFind.list`・候補 `mapFind.item:<バンク>.<マップ>`、`dialog` の `press` は `ok`（先頭か選んだ候補を開く）・`cancel`。
+- マップ一覧の絞り込みの欄 `tree.filter`、× のボタン `tree.filterClear`。
+
+- Ctrl を押している間（#238）: 移動エリアタブとイベントタブの `canvasPng` は重ね描きを含まない。イベントタブの `mouse` の `rightClick` に `ctrl: true` を付けると、メニューを出さずにイベントの下のブロックを拾う（`selection` の `block`）。
+- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・右の順。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `stamps.list` | | スタンプ（#239）。`all`（全部。`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`secondaryUsed`・`withMovements`・`path`（書いたファイル。メモリだけなら null）・`fits`（今のマップに貼れるか））、`fitting`（今のマップに貼れるものの名前）、`shown`（マップタブの一覧に出ている名前）、`memoryOnly`（出力先のフォルダが無くメモリだけか）、`pending`（まだ書いていない数）、`problems`（読めなかったファイル） |
+| `stamps.save` | `name`、`overwrite`（true で同じ名前を上書き） | 今の選択をスタンプにする（「選択を保存」と同じ。名前は聞かない）。返事は `ok` と `stamps.list` |
+| `stamps.select` | `name` | 一覧の項目を押すのと同じ（選択にする）。返事は `ok` と `selection` |
+| `stamps.rename` | `name`、`to` | 名前を変える（ファイル名も変わる）。返事は `ok` と `stamps.list` |
+| `stamps.remove` | `name` | 消す（確かめない。ファイルも消す）。返事は `ok` と `stamps.list` |
+
+- スタンプの部品の ID: 欄 `stamp.panel`、「選択を保存」`stamp.save`、一覧 `stamp.list`、項目 `stamp.item:<名前>`（`click` で選ぶ）、一覧の下の知らせ `stamp.note`。右クリックのメニューの項目は `stampRename`・`stampOverwrite`・`stampRemove`（`contextMenu.press`）。
+
 ## Phase3 の部品と命令（接続・描画）
 
 - 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。
 - `canvasPng` のマップのタブ（`map` / `movement` / `event`）に `neighbors: true` を付けると、隣のマップの帯と主マップの枠も含めた画像を返す（無ければ主マップだけ）。
 - `mouse` のマップのタブの `cell` は主マップの左上が原点。負の値や大きさを超える値で、隣のマップの帯の上を指せる（例: 上の帯の上のダブルクリック `{"cmd":"mouse","target":"map","action":"dblclick","cell":[5,-3]}`）。`px` は今までどおり部品（ステージ）の左上から。
 - 見せ方の切り替えはメニューのアクション `neighbors.band` / `neighbors.all` / `neighbors.off`（`{"cmd":"action","id":"neighbors.off"}`）か、`{"cmd":"setting","key":"neighborView","value":"off"}`。比較テストは AdvanceMap と同じ見た目で比べるため、起動のたびに `off` にする。
+- 角のつまみ（#229）: `{"cmd":"connection.handles"}` で、表示中のマップの隣の帯のつまみの一覧（`id` は `corner:<接続の番号>:<start|end>`、接続の番号 `index`・向き・相手・ずれ、つまみの中心のマス `at`（主マップの左上が原点、境界の線の上））。ドラッグは `{"cmd":"mouse","target":"connectionHandle","handle":"corner:0:start","action":"drag","cell":[0,0],"to":[3,0]}`（`cell: [0, 0]` がつまみの中心、`to` はマップタブのマス単位のずらし。上下の接続は横、左右の接続は縦の動きだけを読む）。離すと `shiftConnection` を 1 回実行する。
+- `shiftConnection` コマンド（`{"cmd":"command","name":"shiftConnection","args":{"bank":3,"map":0,"index":0,"offset":3,"targets":[{"bank":3,"map":0},{"bank":3,"map":19}]}}`）: 自分の接続のずれを変え、`targets` に相手が入っていれば相手の逆向きの接続を `-offset` にそろえる（逆の接続が無ければ自分だけ）。
+- 設定 > 接続のずれを相手のマップにもそろえる（アクション `opt.alignConnections`、個人設定 `alignConnections`。既定オン）: コネクションマネージャーの「保存」で、ずれだけを変えた接続を `shiftConnection` にして相手もそろえる。比較テストは AdvanceMap と同じく相手を変えないよう、起動のたびにオフにする。
+- 辺のつまみ（#230）: `connection.handles` の `edge:<up|down|left|right>`（主マップの辺の中央。隣のマップを「出さない」にしているときは出さない）。`{"cmd":"connection.menu","side":"right"}` で右クリックのメニューを出して項目（`id`・`label`・`enabled`）を返す。押すのは `{"cmd":"contextMenu.press","id":"newMap"}`。項目の `id`: `newMap`（新しいマップを作ってつなぐ。バンクを聞く入力「新しいマップのバンク」が出る）、`connect`（既存のマップとつなぐ。マップを選ぶ「つなぐマップ」が出る。`dialog` の `input` で絞り込み（`3.19` は完全一致）、`press: "ok"` で先頭か選んだもの）、`remove:<接続の番号>`（接続を消す。確認に `yes`）、`diveNew`・`diveConnect`・`emergeNew`・`emergeConnect`（ダイブ先・浮上先。もう持っていれば押せない）。
+- `neighbors.state` の `connections` は主マップの接続の全部（ダイブ・浮上も。`index`・`direction`・`offset`・`bank`・`map`）。
+- コマンド（#230）: `connectMaps`（`bank`・`map`・`direction`・`offset`・`targetBank`・`targetMap`。相手に逆向きの接続を足す。相手がもう逆の接続を持っていればずれだけそろえる。ダイブ・浮上は 1 枚に 1 つまで（`diveExists`））、`disconnectMaps`（`bank`・`map`・`index`・`targets`。相手の逆の接続も消す）、`fillLayout`（`bank`・`map`・`cell`。配置を同じ値で埋める）。新しいマップを作ってつなぐのは `group` の `createMap` → `setBorder` → `fillLayout` → `connectMaps`。
+- 入力ダイアログ（`inputDialog`）の OK・Cancel は `dialog` の `press: "ok"`・`"cancel"` でも押せる。
+- 複数選択の移動許可（#225）: マップから Ctrl＋右ドラッグで拾った選択は、`selection`（とマウス操作の返事）の `block.movements` に移動許可を持つ（パレットから選んだものは持たない）。`selectBlock` に `movements`（`blocks` と同じ並び）を渡すと、マップから拾ったのと同じ選択になる。マップタブの右の欄の「移動許可も貼る」は `map.pasteMovements`（`setField` に true / false。個人設定 `pasteMovements`）。オンなら `paintCells`、オフなら `paintBlocks` で貼る。
+- `paintCells` コマンド: `{"cmd":"command","name":"paintCells","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9,"movement":12}]}}`（ブロックと移動許可を両方書く。ドラッグ中はまとめて 1 回の操作）。
+- コピーと貼り付け: マップタブで `{"cmd":"key","key":"c","ctrl":true}`（コピー）、`mouse` の `hover` でマスを指してから `{"cmd":"key","key":"v","ctrl":true}`（貼る）。
+- 矩形塗りと入れ替え（#233）: `mouse` に `alt` を足した。矩形塗りは `{"cmd":"mouse","target":"map","action":"drag","ctrl":true,"cell":[2,2],"to":[6,5]}`（移動エリアタブは `target: "movement"`）、入れ替えは `"alt":true`。取りやめは `down`・`move`（`button: "left"`）のあとに `{"cmd":"key","key":"Escape"}` を送ってから `up`。矩形塗りは選択が移動許可を持ち「移動許可も貼る」がオンなら `paintCells`、そうでなければ `paintBlocks`、入れ替えは `paintCells` の 2 マス。
+- 辺のつまみのドラッグでリサイズ（#231）: `{"cmd":"mouse","target":"connectionHandle","handle":"edge:left","action":"drag","cell":[0,0],"to":[-3,0]}`（左へ 3 広げる。`to` はマス単位のずらしで、その辺の外向きが広げる向き）。離すと `group`（`resizeMapEdge` と、プロジェクトがあれば `shiftEventLabelPositions`）を 1 回実行する。`{"cmd":"resize.refs"}` で、最後に左・上をずらしたときに見つけた、直していない `.s` の座標の行（`path`・`line`・`text`・`kind`（`warp` / `object`））を返す。見つかったときは「直していない座標」のダイアログも出る（`dialog` の `press: "ok"` で閉じる）。
+- コマンド: `resizeMapEdge`（`bank`・`map`・`side`（`up` / `down` / `left` / `right`）・`amount`（広げるマス数。負なら縮める）・`targets`（自分と、ずれを直す接続の相手））、`shiftEventLabelPositions`（`bank`・`map`・`dx`・`dy`。scripts_MM.json の照合用の座標をずらす）。
+
 
 ## Phase3 の部品と命令（未使用の番号・ひな形・トレーナー）
 

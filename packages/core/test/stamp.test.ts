@@ -42,6 +42,7 @@ describe("スタンプのファイル形式", () => {
         '  "primaryTileset": "0x082D4A94",',
         '  "secondaryTileset": "0x082D4AAC",',
         '  "secondaryUsed": false,',
+        '  "withMovements": true,',
         '  "cells": [',
         "    [16, 1], [17, 1],",
         "    [24, 1], [25, 1],",
@@ -235,5 +236,23 @@ describe("CfruProject と stamps\\", () => {
     expect(await project.ensureManifest()).toBeNull();
     // 出力しても project.json は書き直さない（同じ内容）。
     expect(await project.save()).toEqual({ written: [], removed: [] });
+  });
+
+  it("withMovements（パレットから作ったスタンプ）を読み書きする。省略時は true", () => {
+    const s = createStamp("パレット", 1, 1, [5], { primary: P1, secondary: S1 }, CREATED, false);
+    expect(parseStamp(stringifyStamp(s)).withMovements).toBe(false);
+    const text = stringifyStamp(tree()).replace('  "withMovements": true,\r\n', "");
+    expect(parseStamp(text).withMovements).toBe(true);
+  });
+
+  it("出力先を移すと、今のスタンプを全部移した先に書く", async () => {
+    const a = new MemoryProjectFs();
+    const lib = await StampLibrary.open(a);
+    await lib.save(tree("木"));
+    const b = new MemoryProjectFs();
+    await b.writeText("maps/stamps/前から.json", stringifyStamp(tree("前から")));
+    expect(await lib.relocate(b)).toEqual(["maps/stamps/木.json"]);
+    expect(lib.list().map((s) => s.name)).toEqual(["前から", "木"]);
+    expect(b.files.has("maps/stamps/木.json")).toBe(true);
   });
 });

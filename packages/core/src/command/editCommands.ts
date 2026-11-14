@@ -2,6 +2,10 @@ import type { CommandFactory, CommandRegistry } from "./CommandRegistry.js";
 import { AddConnectionCommand } from "./commands/connection/AddConnectionCommand.js";
 import { RemoveConnectionCommand } from "./commands/connection/RemoveConnectionCommand.js";
 import { SetConnectionCommand } from "./commands/connection/SetConnectionCommand.js";
+import { ShiftConnectionCommand } from "./commands/connection/ShiftConnectionCommand.js";
+import { ConnectMapsCommand } from "./commands/connection/ConnectMapsCommand.js";
+import { DisconnectMapsCommand } from "./commands/connection/DisconnectMapsCommand.js";
+import { FillLayoutCommand } from "./commands/connection/createConnectedMap.js";
 import { AddEventCommand } from "./commands/event/AddEventCommand.js";
 import { MoveEventCommand } from "./commands/event/MoveEventCommand.js";
 import { RemoveEventCommand } from "./commands/event/RemoveEventCommand.js";
@@ -13,6 +17,7 @@ import { SetHeaderFieldsCommand } from "./commands/header/SetHeaderFieldsCommand
 import { SetMapNameCommand } from "./commands/header/SetMapNameCommand.js";
 import { SetRawHeaderCommand } from "./commands/header/SetRawHeaderCommand.js";
 import { ResizeMapCommand } from "./commands/layout/ResizeMapCommand.js";
+import { ResizeMapEdgeCommand } from "./commands/layout/ResizeMapEdgeCommand.js";
 import { SetBorderCommand } from "./commands/layout/SetBorderCommand.js";
 import { SetRawFooterCommand } from "./commands/layout/SetRawFooterCommand.js";
 import { SetTilesetsCommand } from "./commands/layout/SetTilesetsCommand.js";
@@ -57,6 +62,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetMapNameCommand,
   // 配置の大きさ・ボーダー・タイルセットの参照
   ResizeMapCommand,
+  ResizeMapEdgeCommand,
   SetBorderCommand,
   SetTilesetsCommand,
   SetRawFooterCommand,
@@ -71,6 +77,11 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   AddConnectionCommand,
   RemoveConnectionCommand,
   SetConnectionCommand,
+  // 2 枚のマップの接続（Phase3。相手側もそろえる）
+  ShiftConnectionCommand,
+  ConnectMapsCommand,
+  DisconnectMapsCommand,
+  FillLayoutCommand,
   // 野生
   SetWildRateCommand,
   SetWildSlotCommand,

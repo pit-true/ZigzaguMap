@@ -216,6 +216,7 @@ export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/Place
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";
 export { PaintCellsCommand, type CellWrite } from "./command/commands/PaintCellsCommand.js";
 export { PaintBlocksCommand, type PaintBlocksArgs } from "./command/commands/PaintBlocksCommand.js";
+export { PaintCellValuesCommand, type PaintCellValuesArgs } from "./command/commands/PaintCellValuesCommand.js";
 export { PaintMovementCommand, type PaintMovementArgs } from "./command/commands/PaintMovementCommand.js";
 export { PaintBorderCommand, type PaintBorderArgs } from "./command/commands/PaintBorderCommand.js";
 
@@ -241,6 +242,7 @@ export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/h
 export { SetMapNameCommand, type SetMapNameArgs } from "./command/commands/header/SetMapNameCommand.js";
 export { MAP_SIZE_LIMIT, checkMapSize, maxMapHeight, resizeGrid } from "./command/commands/layout/mapSize.js";
 export { ResizeMapCommand, type ResizeMapArgs } from "./command/commands/layout/ResizeMapCommand.js";
+export { MIN_EDGE_RESIZE, ResizeMapEdgeCommand, edgeShift, type ResizeMapEdgeArgs } from "./command/commands/layout/ResizeMapEdgeCommand.js";
 export { SetBorderCommand, type SetBorderArgs } from "./command/commands/layout/SetBorderCommand.js";
 export { SetTilesetsCommand, type SetTilesetsArgs } from "./command/commands/layout/SetTilesetsCommand.js";
 export { SetRawFooterCommand, type SetRawFooterArgs } from "./command/commands/layout/SetRawFooterCommand.js";
@@ -259,6 +261,23 @@ export { type ConnectionFields } from "./command/commands/connection/connectionF
 export { AddConnectionCommand, type AddConnectionArgs } from "./command/commands/connection/AddConnectionCommand.js";
 export { RemoveConnectionCommand, type RemoveConnectionArgs } from "./command/commands/connection/RemoveConnectionCommand.js";
 export { SetConnectionCommand, type SetConnectionArgs } from "./command/commands/connection/SetConnectionCommand.js";
+export { PairedConnectionsCommand, readTargets, type PairedArgs } from "./command/commands/connection/PairedConnectionsCommand.js";
+export { ShiftConnectionCommand, type ShiftConnectionArgs } from "./command/commands/connection/ShiftConnectionCommand.js";
+export { ConnectMapsCommand, isDiveDirection, type ConnectMapsArgs } from "./command/commands/connection/ConnectMapsCommand.js";
+export { DisconnectMapsCommand, type DisconnectMapsArgs } from "./command/commands/connection/DisconnectMapsCommand.js";
+export { FillLayoutCommand, createConnectedMap, type ConnectedMapPlan, type FillLayoutArgs } from "./command/commands/connection/createConnectedMap.js";
+export {
+  MIN_SLOT,
+  NEW_CONNECTED_MAP_CELL,
+  NEW_CONNECTED_MAP_DEPTH,
+  centeredOffset,
+  chooseSlot,
+  directionOf,
+  edgeLength,
+  freeSlots,
+  newConnectedMapSize,
+  type Slot,
+} from "./connection/ConnectionSlots.js";
 export { newWildArea } from "./command/commands/wild/wildAreas.js";
 export { SetWildRateCommand, type SetWildRateArgs } from "./command/commands/wild/SetWildRateCommand.js";
 export { SetWildSlotCommand, type SetWildSlotArgs } from "./command/commands/wild/SetWildSlotCommand.js";
@@ -295,3 +314,4 @@ export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
+export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
