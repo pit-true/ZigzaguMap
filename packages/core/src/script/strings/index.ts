@@ -2,9 +2,13 @@
 export {
   StringFileError,
   appendStringEntry,
+  endsWithBreakControl,
   findStringEntry,
   parseStringFile,
+  removeStringEntry,
   replaceStringBody,
+  splitStringBodyLines,
+  wrapStringBody,
   resolveStringText,
   stringFileNewline,
   stringLineOffsets,

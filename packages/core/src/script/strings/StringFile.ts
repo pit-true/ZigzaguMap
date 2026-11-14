@@ -6,7 +6,10 @@
 // - 空白だけの行は空行、行頭が `//` の行はコメント。
 // - 最初の `#org @ラベル` より前の行は、`MAX_LENGTH=` / `FILL_FF=` の設定か、それ以外（string.py は警告を出して飛ばす）。
 // - `#org @ラベル` から次の `#org` までの、上のどれでもない行が本文。本文の 1 行が 1 つの文字列（終端 0xFF 付き）になる。
-//   続く行は連結しない。2 行目は、ラベルの付かない別の文字列として直後に置かれる。
+// - ただし、行の末尾がちょうど改行・改ページの制御記号（`\n` `\p` `\l` `\m`）で終わり、次の行も本文なら、次の行は
+//   続きとして同じ文字列につながる（何も足さず、何も削らない。ZigzaguMap と一緒に直した string.py の規則。#221）。
+//   制御記号のあとに空白があるときや、次の行が空行・コメント・指定・`#org` のときはつながらない。
+// - つながらない 2 つ目の本文は、ラベルの付かない別の文字列として直後に置かれる。
 // - 本文の無い `#org`（`#org` が続く）は、次のラベルと同じ文字列を指す。
 //
 // 読んだ行は改行の形（LF / CRLF / CR / 最後の改行なし）と BOM まで残し、`stringifyStringFile` で元の文字列に戻る。
@@ -38,6 +41,8 @@ export interface StringLine {
   /** 行の後ろの改行。 */
   readonly eol: StringLineEnding;
   readonly kind: StringLineKind;
+  /** 本文の行で、前の本文の行の続き（前の行が制御記号で終わる）なら true。 */
+  readonly continued: boolean;
 }
 
 /** `#org` 1 つ分。 */
@@ -46,11 +51,15 @@ export interface StringEntry {
   readonly label: string;
   /** `#org` の行の番号（0 から）。 */
   readonly headerLine: number;
-  /** 本文の行の番号（0 から）。ふつうは 1 つ。無ければ次のラベルと同じ文字列を指す。 */
+  /** 本文の行の番号（0 から。続きの行も含む）。無ければ次のラベルと同じ文字列を指す。 */
   readonly bodyLines: readonly number[];
+  /** ラベルが指す文字列（最初の文字列）の行の番号。1 行で書いたなら 1 つ、制御記号のあとで改行したなら複数。 */
+  readonly textLines: readonly number[];
+  /** この `#org` の文字列ごとの行の番号（最初がラベルの文字列、2 つ目からはラベルの付かない文字列）。 */
+  readonly strings: readonly (readonly number[])[];
   /** この `#org` が受け持つ行の終わり（次の `#org` の行、なければ行の数。含まない）。 */
   readonly endLine: number;
-  /** ラベルが指す文字列（最初の本文の行）。本文が無ければ空文字。 */
+  /** ラベルが指す文字列（最初の文字列。複数の行ならつないだもの）。本文が無ければ空文字。 */
   readonly text: string;
   /** 囲んでいる `#ifdef` / `#ifndef` の条件（外側から。`#ifndef X` と `#else` の側は `!X`）。 */
   readonly conditions: readonly string[];
@@ -89,6 +98,17 @@ export function pythonStrip(text: string): string {
 
 /** アセンブラのラベルに使える名前。 */
 const LABEL_PATTERN = /^[A-Za-z_.][A-Za-z0-9_.]*$/;
+
+/**
+ * 行の末尾が改行・改ページの制御記号（`\n` `\p` `\l` `\m`）か。`\\n` のように前のバックスラッシュで
+ * 打ち消されたものは数えない。後ろに空白があれば false。
+ */
+export function endsWithBreakControl(text: string): boolean {
+  if (!/\\[nplm]$/.test(text)) return false;
+  let slashes = 0;
+  for (let i = text.length - 2; i >= 0 && text[i] === "\\"; i--) slashes++;
+  return slashes % 2 === 1;
+}
 
 function isHeader(line: string): boolean {
   return line.slice(0, 6).toUpperCase() === "#ORG @" && line.length > 6;
@@ -136,14 +156,22 @@ function splitLines(source: string): { text: string; eol: StringLineEnding }[] {
 
 function build(bom: boolean, raw: readonly { text: string; eol: StringLineEnding }[]): StringFile {
   const lines: StringLine[] = [];
-  const entries: { label: string; headerLine: number; bodyLines: number[]; conditions: readonly string[] }[] = [];
+  const entries: {
+    label: string;
+    headerLine: number;
+    bodyLines: number[];
+    strings: number[][];
+    conditions: readonly string[];
+  }[] = [];
   let started = false;
   let maxLength = 0;
   let fillFF = false;
   const conditions: string[] = [];
   for (const [i, { text, eol }] of raw.entries()) {
     const kind = classify(text, started);
-    lines.push({ text, eol, kind });
+    const previous = lines[lines.length - 1];
+    const continued = kind === "body" && previous?.kind === "body" && endsWithBreakControl(previous.text);
+    lines.push({ text, eol, kind, continued });
     if (kind === "directive") {
       const c = conditionalOf(text);
       if (c?.type === "if") conditions.push(c.name);
@@ -153,9 +181,12 @@ function build(bom: boolean, raw: readonly { text: string; eol: StringLineEnding
       } else if (c?.type === "endif") conditions.pop();
     } else if (kind === "header") {
       started = true;
-      entries.push({ label: pythonStrip(text).slice(6), headerLine: i, bodyLines: [], conditions: [...conditions] });
+      entries.push({ label: pythonStrip(text).slice(6), headerLine: i, bodyLines: [], strings: [], conditions: [...conditions] });
     } else if (kind === "body") {
-      entries[entries.length - 1]!.bodyLines.push(i);
+      const entry = entries[entries.length - 1]!;
+      entry.bodyLines.push(i);
+      if (continued && entry.strings.length > 0) entry.strings[entry.strings.length - 1]!.push(i);
+      else entry.strings.push([i]);
     } else if (kind === "setting") {
       const value = pythonStrip(text).split("=")[1] ?? "";
       if (pythonStrip(text).includes("MAX_LENGTH")) {
@@ -172,7 +203,8 @@ function build(bom: boolean, raw: readonly { text: string; eol: StringLineEnding
     entries: entries.map((e, k) => ({
       ...e,
       endLine: entries[k + 1]?.headerLine ?? lines.length,
-      text: e.bodyLines.length > 0 ? lines[e.bodyLines[0]!]!.text : "",
+      textLines: e.strings[0] ?? [],
+      text: (e.strings[0] ?? []).map((n) => lines[n]!.text).join(""),
     })),
     settings: { maxLength, fillFF },
   };
@@ -228,14 +260,62 @@ export function resolveStringText(file: StringFile, label: string): string | nul
   return "";
 }
 
-/** 本文の 1 行として書けるか確かめる。書けなければ StringFileError。 */
-function checkBodyText(text: string): void {
-  if (/[\r\n]/.test(text)) {
-    throw new StringFileError("本文に改行の文字は書けません（改行は \\n、改ページは \\p と書きます）");
+/**
+ * 本文を .string の行に分ける。本文の中の改行の文字（LF / CRLF / CR）は、制御記号（`\n` `\p` `\l` `\m`）の
+ * すぐ後ろにだけ書ける（そこで行を分けて書き、string.py がつなぎ直す）。分けた行がどれも本文として読まれるかも確かめる。
+ * 書けなければ StringFileError。
+ */
+export function splitStringBodyLines(text: string): string[] {
+  const parts = text.split(/\r\n|\n|\r/);
+  for (const [i, part] of parts.entries()) {
+    if (i < parts.length - 1 && !endsWithBreakControl(part)) {
+      throw new StringFileError(`改行は制御記号（\\n・\\p・\\l・\\m）のすぐ後ろにだけ書けます: ${part.slice(-20)}`);
+    }
+    if (classify(part, true) !== "body") {
+      throw new StringFileError(
+        i === 0
+          ? `本文として読まれない文字列です（空、// で始まる、#org などの指定と同じ形）: ${part}`
+          : `改行の後ろの行が本文として読まれません（空、// で始まる、#org などの指定と同じ形）: ${part}`,
+      );
+    }
   }
-  if (classify(text, true) !== "body") {
-    throw new StringFileError(`本文として読まれない文字列です（空、// で始まる、#org などの指定と同じ形）: ${text}`);
+  return parts;
+}
+
+/** 本文の行として読まれるか（空白だけ・`//`・`#org`・`#include` などの指定ではない）。 */
+function isBodyText(text: string): boolean {
+  return classify(text, true) === "body";
+}
+
+/**
+ * 1 行の本文を、改行・改ページの制御記号のあとで行を分けた形（LF でつないだ文字列）にする。長い文を読みやすく書くため。
+ * 分けた後ろの行が本文として読まれない（空白だけ、`//` や `#` の指定で始まる）ところでは分けない。
+ * 本文にもう改行の文字があれば、そのまま返す。
+ */
+export function wrapStringBody(text: string): string {
+  if (/[\r\n]/.test(text)) return text;
+  const out: string[] = [];
+  let line = "";
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === "\\" && i + 1 < text.length) {
+      line += text.slice(i, i + 2);
+      i += 2;
+      const rest = text.slice(i);
+      // 次に分ける位置までを、分けた後ろの行として調べる
+      const next = /\\[nplm]/.exec(rest);
+      const segment = next ? rest.slice(0, next.index + 2) : rest;
+      if (rest !== "" && endsWithBreakControl(line) && isBodyText(segment)) {
+        out.push(line);
+        line = "";
+      }
+    } else {
+      line += text[i];
+      i++;
+    }
   }
+  out.push(line);
+  return out.join("\n");
 }
 
 function withLines(file: StringFile, lines: { text: string; eol: StringLineEnding }[]): StringFile {
@@ -246,29 +326,71 @@ function withLines(file: StringFile, lines: { text: string; eol: StringLineEndin
  * ラベルの本文を差し替えた新しい形を返す（元の形は変えない）。
  *
  * 書き戻しの決まり:
- * - 本文は 1 行で書く。`\n` `\p` `\l` は文字のまま（バックスラッシュと英字）で書き、改行の文字は使えない。
- * - 本文の行があれば、最初の本文の行の文字列だけを置き換える。改行の形、2 行目以降の本文、コメント、空行は変えない。
- * - 本文の行が無い（次のラベルと同じ文字列を指す）ときは、`#org` の直後に 1 行足す。次のラベルとの共有はなくなる。
+ * - `\n` `\p` `\l` は文字のまま（バックスラッシュと英字）で書く。本文の中の改行の文字は、制御記号のすぐ後ろにだけ書け、
+ *   そこで .string の行を分ける（`splitStringBodyLines`）。
+ * - ラベルの文字列の行（1 行か、制御記号のあとで分けた複数の行）を新しい行に置き換える。いちばん後ろの行の改行は
+ *   置き換える前の最後の行のもの、それより前の行はファイルでいちばん多い形。ほかの行（ラベルの付かない 2 つ目の文字列、
+ *   コメント、空行）は変えない。
+ * - 本文の行が無い（次のラベルと同じ文字列を指す）ときは、`#org` の直後に足す。次のラベルとの共有はなくなる。
  */
 export function replaceStringBody(file: StringFile, label: string, text: string): StringFile {
   const entry = findStringEntry(file, label);
   if (!entry) throw new StringFileError(`ラベル ${label} の #org がありません`);
-  checkBodyText(text);
+  const parts = splitStringBodyLines(text);
   const lines = file.lines.map((l) => ({ text: l.text, eol: l.eol }));
-  const first = entry.bodyLines[0];
+  const newline = stringFileNewline(file);
+  const make = (lastEol: StringLineEnding) =>
+    parts.map((p, i) => ({ text: p, eol: i < parts.length - 1 ? newline : lastEol }));
+  const first = entry.textLines[0];
   if (first !== undefined) {
-    lines[first] = { text, eol: lines[first]!.eol };
+    const lastEol = lines[entry.textLines[entry.textLines.length - 1]!]!.eol;
+    lines.splice(first, entry.textLines.length, ...make(lastEol));
   } else {
     const header = lines[entry.headerLine]!;
-    const newline = stringFileNewline(file);
     if (header.eol === "") {
       lines[entry.headerLine] = { text: header.text, eol: newline };
-      lines.splice(entry.headerLine + 1, 0, { text, eol: "" });
+      lines.splice(entry.headerLine + 1, 0, ...make(""));
     } else {
-      lines.splice(entry.headerLine + 1, 0, { text, eol: header.eol });
+      lines.splice(entry.headerLine + 1, 0, ...make(header.eol));
     }
   }
   return withLines(file, lines);
+}
+
+/**
+ * ラベルの `#org` を除いた新しい形を返す（イベントの削除 #220 で使う）。ラベルが無ければ StringFileError。
+ *
+ * - 除くのは、`#org` の行と、その `#org` の本文の行（続きの行と、ラベルの付かない 2 つ目からの文字列も）と、
+ *   その後ろの空行。次の `#org` の前のコメント（次のまとまりの見出し）と、`#ifdef` などの指定の行は残す。
+ * - 直前の行が ZigzaguMap の取り込みの印（`// ZigzaguMap:` のコメント）なら一緒に除く。
+ * - 本文の無い前の `#org` がこのラベルの文字列を共有している（`#org` が続く書き方）ときと、このラベルに本文が無い
+ *   （次のラベルの文字列を共有している）ときは、`#org` の行だけを除く。
+ * - ファイルの最後のまとまりを除いたときは、残った最後の空行も除き、最後の改行の有無を元にそろえる。
+ */
+export function removeStringEntry(file: StringFile, label: string): StringFile {
+  const index = file.entries.findIndex((e) => e.label === label);
+  if (index < 0) throw new StringFileError(`ラベル ${label} の #org がありません`);
+  const entry = file.entries[index]!;
+  const previous = file.entries[index - 1];
+  const shared = entry.bodyLines.length === 0 || (previous !== undefined && previous.bodyLines.length === 0);
+  const remove = new Set<number>([entry.headerLine]);
+  if (!shared) {
+    let end = entry.endLine;
+    while (end > entry.headerLine + 1 && file.lines[end - 1]!.kind !== "body" && file.lines[end - 1]!.kind !== "blank") end--;
+    for (let n = entry.headerLine + 1; n < end; n++) {
+      const kind = file.lines[n]!.kind;
+      if (kind === "body" || kind === "blank" || kind === "comment") remove.add(n);
+    }
+    const mark = entry.headerLine - 1;
+    if (mark >= 0 && file.lines[mark]!.kind === "comment" && /^\/\/\s*ZigzaguMap:/.test(file.lines[mark]!.text)) remove.add(mark);
+  }
+  const kept = file.lines.map((l) => ({ text: l.text, eol: l.eol })).filter((_, n) => !remove.has(n));
+  const removedTail = remove.has(file.lines.length - 1);
+  if (removedTail) {
+    while (kept.length > 0 && pythonStrip(kept[kept.length - 1]!.text) === "") kept.pop();
+    if (kept.length > 0) kept[kept.length - 1]!.eol = file.lines[file.lines.length - 1]!.eol;
+  }
+  return withLines(file, kept);
 }
 
 /**
@@ -279,7 +401,7 @@ export function replaceStringBody(file: StringFile, label: string, text: string)
 export function appendStringEntry(file: StringFile, label: string, text: string): StringFile {
   if (!LABEL_PATTERN.test(label)) throw new StringFileError(`ラベルに使えない名前です: ${label}`);
   if (findStringEntry(file, label)) throw new StringFileError(`ラベル ${label} はもうあります`);
-  checkBodyText(text);
+  const parts = splitStringBodyLines(text);
   const newline = stringFileNewline(file);
   const lines = file.lines.map((l) => ({ text: l.text, eol: l.eol }));
   const last = lines[lines.length - 1];
@@ -287,6 +409,8 @@ export function appendStringEntry(file: StringFile, label: string, text: string)
   if (last && last.eol === "") last.eol = newline;
   if (last && pythonStrip(last.text) !== "") lines.push({ text: "", eol: newline });
   lines.push({ text: `#org @${label}`, eol: newline });
-  lines.push({ text, eol: finalNewline ? newline : "" });
+  for (const [i, part] of parts.entries()) {
+    lines.push({ text: part, eol: i < parts.length - 1 || finalNewline ? newline : "" });
+  }
   return withLines(file, lines);
 }

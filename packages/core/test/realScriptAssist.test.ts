@@ -47,11 +47,17 @@ for (const [dialect, dir] of Object.entries(dirs)) {
     it(".string をすべて調べて、重複のラベルの波線が出ない", async () => {
       const assist = await load(dir!);
       const found: string[] = [];
+      const stray: string[] = [];
       for (const path of assist.strings.paths()) {
         const text = readFileSync(join(dir!, path), "utf8").replace(/\r\n?/g, "\n");
-        for (const d of lintStringText(text, { path, strings: assist.strings, width: null })) found.push(`${path} ${d.code} ${JSON.stringify(d.params)}`);
+        for (const d of lintStringText(text, { path, strings: assist.strings, width: null })) {
+          // 続きにならない本文の行（#221）は、実ファイルにもともとある書き方なので数だけ出す
+          if (d.code === "strayStringLine") stray.push(`${path} ${String(d.params["label"])}`);
+          else found.push(`${path} ${d.code} ${JSON.stringify(d.params)}`);
+        }
       }
       expect(found).toEqual([]);
+      console.info(`続きにならない本文の行: ${stray.length} 件 ${stray.join(", ")}`);
     });
 
     it("msgbox の文字列の引数の役割が方言で違う", async () => {
