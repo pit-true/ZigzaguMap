@@ -605,6 +605,19 @@ Gen3 Script Assistant 改造版（VS Code の拡張）の色付け・ホバー�
 - ファイルの更新日時と大きさを返す `fs_stat` を足しました（無ければ null）。スクリプトエディタが外部の変更を見つけるのに使います。
 - 別ウィンドウは、大きさを変えられるもの（最小の大きさつき、最大化もできる）も開けます。位置と大きさはメインが個人設定に残し、次に開くときに当てます（自動操作のときは使わず、画面外に出します）。
 
+### ビルド側の変更（build-support）
+
+ZigzaguMap が書くファイルのうち、CFRU-JP のビルドを直さないと使えないものの変更を `build-support/` に置いています（正本）。各プロジェクトの `.py` を丸ごと置かず、変更だけのパッチと、当てたフォルダを確かめるスクリプトです。当て方と細かい規則は [build-support/README.md](build-support/README.md) にあります。
+
+| パッチ | 当てる先 | 中身 |
+|---|---|---|
+| `string-multiline.patch` | `scripts/string.py`（ND と Chronos で同じ） | `.string` の本文を `\n`・`\p`・`\l`・`\m` の直後で改行して、1 つの文字列を複数の行で書けるようにする。1 行で書いたときと同じバイト列になる |
+| `map_project-rom-erase-nd.patch`、`map_project-rom-erase-chronos.patch` | `scripts/map_project.py` | `maps\rom_erase.json`（素の ROM の範囲の一覧）の範囲を、マップのデータを置く前に 0xFF で埋める。範囲がベース ROM の外にかかるときと、`bytereplacement`・`hooks`・`repoints` などが書く位置と重なるときはビルドを止める |
+
+- Chronos には入れてあります（幅検査の `tools/check_text_width.py` も同じ複数行の規則で読む）。ND には入れていません。当てるときは build-support/README.md の手順で `git -c core.autocrlf=false apply` します。
+- どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（写しで確かめた）。
+- `python build-support/tests/check_cfru_tree.py --cfru <CFRU-JP のフォルダ>` で、当てたフォルダの動きを確かめられます（フォルダは読むだけ）。
+
 ## 画面の構成
 
 AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。

@@ -1,0 +1,146 @@
+--- a/scripts/string.py
++++ b/scripts/string.py
+@@ -78,6 +78,22 @@
+ }
+ 
+ 
++LINE_BREAK_ESCAPES = "nplm"  # \n, \p, \l, \m: a text line ending with one of them goes on on the next line
++
++
++def ContinuesOnNextLine(line: str) -> bool:
++    """True when the text line ends with \\n, \\p, \\l or \\m (an escape, not a doubled backslash).
++    The next line, if it is a text line too, belongs to the same string (nothing is added between them)."""
++    if len(line) < 2 or line[-1] not in LINE_BREAK_ESCAPES or line[-2] != "\\":
++        return False
++    slashes = 0
++    i = len(line) - 2
++    while i >= 0 and line[i] == "\\":
++        slashes += 1
++        i -= 1
++    return slashes % 2 == 1
++
++
+ def StringFileConverter(fileName: str):
+     stringToWrite = ".thumb\n.text\n.align 2\n\n"
+     with open(fileName, 'r', encoding="utf_8") as file:
+@@ -87,15 +103,26 @@
+         lineNum = 0
+         definesDict = {}
+         conditionals = []
++        pending = None  # [text, [(start offset in text, line number), ...]] of a string that goes on
++
++        def Flush():
++            nonlocal pending, stringToWrite
++            if pending is not None:
++                stringToWrite += ProcessString(pending[0], pending[1], maxLength, fillFF)
++                stringToWrite += "0xFF\n\n"  # Only print line in everything went alright
++                pending = None
+ 
+         for line in file:
+             lineNum += 1
+             line = line.rstrip("\n\r")  # Remove only newline characters
+             if TryProcessFileInclusion(line, definesDict):
++                Flush()
+                 continue
+             if TryProcessConditionalCompilation(line, definesDict, conditionals):
++                Flush()
+                 continue
+             if line.strip() == "" or line[:2] == "//":  # Ignore blank lines and comment lines
++                Flush()
+                 continue
+             
+             if readingState == 0:  # Only when the file starts
+@@ -121,19 +148,36 @@
+                     
+             elif readingState == 1:
+                 if line[:6].upper() == "#ORG @" and line[6:] != "":
++                    Flush()
+                     line = line.strip()
+                     title = line[6:]
+                     stringToWrite += ".global " + title + "\n" + title + ":\n"
+                 else:
+-                    stringToWrite += ProcessString(line, lineNum, maxLength, fillFF)
+-                    stringToWrite += "0xFF\n\n"  # Only print line in everything went alright
++                    if pending is None:
++                        pending = [line, [(0, lineNum)]]
++                    else:
++                        pending[1].append((len(pending[0]), lineNum))
++                        pending[0] += line
++                    if not ContinuesOnNextLine(line):
++                        Flush()
++        Flush()
+ 
+     output = open(fileName.split(".string")[0] + '.s', 'w')  # Only open file once we know everything went okay.
+     output.write(stringToWrite)
+     output.close()
+ 
+ 
+-def ProcessString(string: str, lineNum: int, maxLength=0, fillWithFF=False) -> str:
++def ProcessString(string: str, lineNum, maxLength=0, fillWithFF=False) -> str:
++    # lineNum: the line number, or [(start offset in string, line number), ...] for a string written on several lines
++    lineStarts = lineNum if isinstance(lineNum, list) else [(0, lineNum)]
++
++    def LineAt(at):
++        number = lineStarts[0][1]
++        for start, n in lineStarts:
++            if start <= at:
++                number = n
++        return number
++
+     charMap = PokeByteTableMaker()
+     stringToWrite = ".byte "
+     buffer = False
+@@ -176,7 +220,7 @@
+                 stringToWrite += hex(charMap["\\" + string[i]]) + ", "
+                 strLen += 1
+             except KeyError:
+-                print('Error parsing string: "' + string + '" (Line ' + str(lineNum) + ')')
++                print('Error parsing string: "' + string + '" (Line ' + str(LineAt(i)) + ')')
+                 sys.exit(0)
+ 
+         elif string[i] == '{':
+@@ -185,7 +229,7 @@
+             while j < len(string) and string[j] != '}':
+                 j += 1
+             if j >= len(string):
+-                print(f'Error: unclosed {{ on line {lineNum}')
++                print(f'Error: unclosed {{ on line {LineAt(i)}')
+                 sys.exit(1)
+             key = string[i:j+1]  # "{Lv}" のように括弧を含む
+             if key in charMap:
+@@ -198,7 +242,7 @@
+                     stringToWrite += hex(value) + ", "
+                     strLen += 1
+             else:
+-                print(f'Warning: Unknown special "{key}" on line {lineNum}')
++                print(f'Warning: Unknown special "{key}" on line {LineAt(i)}')
+             i = j
+ 
+         elif string[i] == '<':
+@@ -207,7 +251,7 @@
+             while j < len(string) and string[j] != '>':
+                 j += 1
+             if j >= len(string):
+-                print(f'Error: unclosed < on line {lineNum}')
++                print(f'Error: unclosed < on line {LineAt(i)}')
+                 sys.exit(1)
+             content = string[i+1:j].strip()
+             for hex_str in content.split():
+@@ -215,7 +259,7 @@
+                     stringToWrite += hex(int(hex_str, 16)) + ", "
+                     strLen += 1
+                 except ValueError:
+-                    print(f'Warning: Invalid hex value "{hex_str}" in <...> on line {lineNum}')
++                    print(f'Warning: Invalid hex value "{hex_str}" in <...> on line {LineAt(i)}')
+             i = j
+ 
+         else:
+@@ -245,7 +289,7 @@
+                 stringToWrite += hex(charMap["\\" + string[i]])
+                 strLen += 1
+             else:
+-                print(f'Error parsing string on line {lineNum} at character "{string[i]}".')
++                print(f'Error parsing string on line {LineAt(i)} at character "{string[i]}".')
+                 sys.exit(1)
+ 
+         i += 1

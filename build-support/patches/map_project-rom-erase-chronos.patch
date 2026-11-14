@@ -1,0 +1,196 @@
+--- a/scripts/map_project.py
++++ b/scripts/map_project.py
+@@ -474,15 +474,176 @@
+     _replace_table_references(data, start, new)
+ 
+ 
++ROM_ERASE_FILE = "rom_erase.json"
++ERASE_LIMIT = 0x1000000  # maps/rom_erase.json may only erase the base ROM part (the CFRU code starts here)
++PATCH_LISTS = ("bytereplacement", "hooks", "repoints", "routinepointers", "functionrewrites")
++GENERATED_REPOINT_LIST = "generatedrepoints"
++SPECIAL_INSERTS_LIST, SPECIAL_INSERTS_BIN = "special_inserts.asm", "build/special_inserts.bin"
++
++
++def _read_rom_erase(root_dir):
++    """maps/rom_erase.json (written by ZigzaguMap when it deletes an event whose script is in the base ROM):
++    [(offset, length, description)] of base ROM ranges to fill with 0xFF. Only Address and Length are used."""
++    path = root_dir / ROM_ERASE_FILE
++    if not path.exists():
++        return []
++    source = json.loads(path.read_text(encoding="utf-8"))
++    if source.get("Format") != 1 or not isinstance(source.get("Ranges"), list):
++        raise ValueError(f"Invalid {path}")
++    ranges = []
++    for number, item in enumerate(source["Ranges"]):
++        address, length = item.get("Address"), item.get("Length")
++        if not isinstance(address, str) or not isinstance(length, int) or isinstance(length, bool) or length < 1:
++            raise ValueError(f"Invalid range #{number} in {path}")
++        try:
++            value = int(address, 16)
++        except ValueError:
++            raise ValueError(f"Invalid address {address!r} in {path}") from None
++        offset = value - ROM_BASE
++        if value < ROM_BASE or offset + length > ERASE_LIMIT:
++            raise ValueError(f"{path} range {value:#010x} (+{length}) is outside the base ROM "
++                             f"({ROM_BASE:#010x}-{ROM_BASE + ERASE_LIMIT:#010x})")
++        ranges.append((offset, length, f"{path} range {value:#010x} (+{length})"))
++    return ranges
++
++
++def _patch_list_lines(path):
++    """(line number, line) of the lines insert.py applies from a patch list (same #include / #ifdef rules)."""
++    defines, conditionals = {}, []
++    with open(path, encoding="utf-8", errors="replace") as file:
++        for number, line in enumerate(file, 1):
++            if line.startswith('#include "'):
++                try:
++                    with open(line.split('"')[1].strip(), encoding="utf-8", errors="replace") as included:
++                        for define in included:
++                            words = define.strip().split()
++                            if define.startswith("#define ") and len(words) > 1:
++                                defines[words[1]] = True
++                except OSError:
++                    pass
++                continue
++            words = line.strip().split()
++            upper = line.strip().upper()
++            if upper.startswith("#IFDEF ") and len(words) > 1:
++                conditionals.insert(0, (words[1], True))
++                continue
++            if upper.startswith("#IFNDEF ") and len(words) > 1:
++                conditionals.insert(0, (words[1], False))
++                continue
++            if upper == "#ELSE" and conditionals:
++                name, kind = conditionals.pop(0)
++                conditionals.insert(0, (name, not kind))
++                continue
++            if upper == "#ENDIF":
++                if conditionals:
++                    conditionals.pop(0)
++                continue
++            if any((name in defines) != kind for name, kind in conditionals):
++                continue
++            if not words or words[0].startswith("#"):
++                continue
++            yield number, line
++
++
++def _function_rewrite_size(params):
++    params -= 1
++    return 20 if params < 4 else 44 + 8 * (params - 1)
++
++
++def _patched_regions():
++    """[(start, end, where)] of the fixed ROM positions insert.py writes from the patch lists of this tree
++    (bytereplacement, hooks, repoints, routinepointers, functionrewrites, generatedrepoints, special inserts)."""
++    regions = []
++    for name in PATCH_LISTS:
++        if not Path(name).is_file():
++            continue
++        for number, line in _patch_list_lines(name):
++            words = line.split()
++            try:
++                if name == "bytereplacement":
++                    start, size = int(line[:8], 16) - ROM_BASE, len(line[9:].split())
++                else:
++                    start = int(words[1], 16) - ROM_BASE
++                    if name in ("hooks", "functionrewrites"):
++                        start &= ~1
++                    size = {"hooks": 10 if start % 4 else 8,
++                            "functionrewrites": _function_rewrite_size(int(words[2])) if len(words) > 2 else 0
++                            }.get(name, 4)
++            except (ValueError, IndexError):
++                continue
++            regions.append((start, start + size, f"{name}:{number}"))
++    if Path(GENERATED_REPOINT_LIST).is_file():
++        with open(GENERATED_REPOINT_LIST, encoding="utf-8", errors="replace") as file:
++            for number, line in enumerate(file, 1):
++                words = line.split()
++                if len(words) == 2 and not words[0].startswith("#") and words[1].isdigit():
++                    start = int(words[1])
++                    regions.append((start, start + 4, f"{GENERATED_REPOINT_LIST}:{number}"))
++    if Path(SPECIAL_INSERTS_LIST).is_file() and Path(SPECIAL_INSERTS_BIN).is_file():
++        offsets = []
++        with open(SPECIAL_INSERTS_LIST, encoding="utf-8", errors="replace") as file:
++            for line in file:
++                if line.strip().startswith(".org "):
++                    try:
++                        offsets.append(int(line.split(".org ")[1].split(",")[0], 16))
++                    except ValueError:
++                        pass
++        offsets.sort()
++        binary = Path(SPECIAL_INSERTS_BIN).read_bytes()
++        starts = set(offsets)
++        for i, start in enumerate(offsets):
++            end = len(binary)
++            if i + 1 < len(offsets):   # as insert.py: up to a word 0xFFFFFFFF or the next .org
++                end = start
++                while end < len(binary) and binary[end:end + 4] != b"\xFF\xFF\xFF\xFF":
++                    end += 1
++                    if end in starts:
++                        break
++            regions.append((start, end, SPECIAL_INSERTS_LIST))
++    return regions
++
++
++def _erase_rom_ranges(data, ranges):
++    """Fill the maps/rom_erase.json ranges with 0xFF. A range that a patch list of the build writes is an error."""
++    if not ranges:
++        return
++    regions = _patched_regions()
++    for offset, length, what in ranges:
++        for start, end, where in regions:
++            if start < offset + length and offset < end:
++                raise ValueError(f"{what} overlaps {where} ({start + ROM_BASE:#010x}-{end + ROM_BASE:#010x}), "
++                                 f"which the build writes")
++    for offset, length, _ in ranges:
++        data[offset:offset + length] = b"\xFF" * length
++    print(f"Erased {len(ranges)} base ROM ranges ({sum(r[1] for r in ranges)} bytes) from maps/{ROM_ERASE_FILE}")
++
++
++def _check_erased_rom_ranges(data, ranges):
++    """The map data must not have been written into an erased range (tileset headers, map name and bank tables)."""
++    for offset, length, what in ranges:
++        if any(b != 0xFF for b in data[offset:offset + length]):
++            raise ValueError(f"{what} was written by the map data after it was erased")
++
++
+ def apply_project(rom, allocation_start, symbols=None, symbol_sizes=None):
+     """Apply cfru/maps/ to the image rom (a seekable binary file or io.BytesIO); return the end of the map data.
+ 
+     allocation_start: the first free byte after the CFRU code. symbols: CFRU symbol -> rom offset (item balls).
+     symbol_sizes: a callable returning {rom offset: size} of the CFRU symbols (only called when CFRU code has
+-    replaced the map group table). Without maps/project.json nothing is read or written."""
++    replaced the map group table). Without maps/project.json no map is placed (maps/rom_erase.json, the
++    base ROM ranges ZigzaguMap erases, is applied with or without it)."""
+     root_dir = MAPS_DIR
+     manifest_path = root_dir / "project.json"
++    erase = _read_rom_erase(root_dir)
+     if not manifest_path.exists():
++        if erase:   # maps/rom_erase.json alone: erase the ranges and place no map
++            rom.seek(0)
++            data = bytearray(rom.read())
++            _erase_rom_ranges(data, erase)
++            for offset, length, _ in erase:
++                rom.seek(offset)
++                rom.write(data[offset:offset + length])
++            rom.flush()
+         return allocation_start
+     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+     if manifest.get("Format") != 1 or not isinstance(manifest.get("BaseBankCounts"), list):
+@@ -492,6 +653,7 @@
+     data = bytearray(rom.read())
+     if len(data) < 0x2000000:
+         data.extend(b"\xFF" * (0x2000000 - len(data)))
++    _erase_rom_ranges(data, erase)   # before any map data is written
+     alloc = _Allocator(data, allocation_start)
+     groups = _Groups(data, manifest["BaseBankCounts"], symbol_sizes)
+     tileset_pointers = _place_tilesets(data, alloc, root_dir)
+@@ -499,6 +661,7 @@
+     for source in sources:
+         _place_map(data, alloc, groups, source, symbols or {}, names, tileset_pointers)
+     _place_day_wild(data, alloc, sources)
++    _check_erased_rom_ranges(data, erase)
+     rom.seek(0)
+     rom.write(data)
+     rom.flush()
