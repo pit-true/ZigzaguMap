@@ -9,9 +9,12 @@ interface Loaded {
 }
 
 /**
- * メインウィンドウから `.s` と `.string` を書き換える窓口（ひな形・取り込み・マップスクリプトの表）。
- * エディタで開いているファイルはエディタの本文へ送り（ディスクへ直接書かない）、開いていなければディスクに書く。
- * 書き換えは 1 つずつ順に行う。書いたファイルのラベルの一覧（イベントタブのスクリプト欄が使う）も読み直す。
+ * `.s`・`.string`（と幅検査の登録）を書き換える窓口。書き込みはすべてこの 1 本の列で 1 つずつ順に行う（#293）。
+ * メインの書き込み（ひな形・取り込み・イベントの削除・マップスクリプトの表・幅検査の登録）も、エディタのディスクへの書き込み
+ * （ラベル名の変更で開いていないファイル・幅検査の登録。`writeIfUnchanged`）も、エディタを閉じる間の待ち（`hold`）も、この列に並ぶ。
+ * エディタで開いているファイルはエディタの本文へ送り、未保存の変更が無ければそのまま保存させる（ディスクにも入る）。
+ * 開いていなければディスクに書く。書く前にタブやエディタが閉じたら、ディスクの本文に書き直す。
+ * 書いたファイルのラベルの一覧（イベントタブのスクリプト欄が使う）も読み直す。
  */
 export class ScriptFiles {
   private queue: Promise<unknown> = Promise.resolve();
@@ -72,9 +75,9 @@ export class ScriptFiles {
     for (const l of this.listeners) l();
   }
 
-  /** 本文を読む（無ければ null）。 */
-  async read(path: string): Promise<Loaded | null> {
-    const host = await this.app.scriptHostIfLoaded();
+  /** 本文を読む（無ければ null）。`editor` が false ならエディタの本文を見ずにディスクを読む。 */
+  async read(path: string, editor = true): Promise<Loaded | null> {
+    const host = editor ? await this.app.scriptHostIfLoaded() : null;
     const buffer = host ? await host.bufferText(path).catch(() => null) : null;
     if (buffer !== null) return { text: buffer, inEditor: true };
     const fs = this.app.state.session?.files;
@@ -82,32 +85,82 @@ export class ScriptFiles {
     return { text: await fs.readText(path), inEditor: false };
   }
 
+  /** 書き込みの列に `job` を並べ、順番が来たら動かす（前の書き込みが済んでから。失敗しても列は止めない）。 */
+  exclusive<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(job);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
   /**
-   * 本文を書き換える。`edit` は今の本文（無いファイルは `create` の本文、`create` も無ければ Error）を受け、新しい本文を返す
-   * （null なら書かない）。エディタで開いていればエディタの本文を書き換え、`save` ならそのタブを保存する。
+   * 書き込みの列を `until` が決まるまで止める（エディタを閉じる間。閉じる前の確認と保存に、メインの書き込みを混ぜない）。
+   * 前に並んでいる書き込みが済んだら決まる。
    */
-  change(path: string, edit: (text: string) => string | null, options: { create?: string; save?: boolean } = {}): Promise<boolean> {
-    const job = this.queue.then(async () => {
-      const loaded = await this.read(path);
-      if (!loaded && options.create === undefined) throw new Error(t.fileMissing(path));
-      const before = loaded?.text ?? options.create!;
-      const after = edit(before);
-      if (after === null) return false;
-      if (loaded?.inEditor) {
-        const host = await this.app.scriptHostIfLoaded();
-        if (!host || !(await host.setBufferText(path, after, options.save === true))) throw new Error(t.editorWriteFailed(path));
-      } else {
-        const fs = this.app.state.session?.files;
-        if (!fs?.root) throw new Error(t.noProjectFolder);
-        if (after !== before || !loaded) await fs.writeText(path, after);
-        const host = await this.app.scriptHostIfLoaded();
-        await host?.fileChanged(path);
-      }
+  hold(until: Promise<unknown>): Promise<void> {
+    return new Promise((started) => {
+      void this.exclusive(() => {
+        started();
+        return until;
+      });
+    });
+  }
+
+  /**
+   * 本文を書き換える。`edit` は今の本文（無いファイルは `create` の本文、`create` も無ければ Error）と、ファイルがあったかを受け、
+   * 新しい本文を返す（null なら書かない）。エディタで開いていればエディタの本文を書き換え、そのタブに未保存の変更が無ければ
+   * 保存する（`save: false` なら保存しない）。
+   */
+  change(path: string, edit: (text: string, existed: boolean) => string | null, options: { create?: string; save?: boolean } = {}): Promise<boolean> {
+    return this.exclusive(() => this.changeNow(path, edit, options, true));
+  }
+
+  private async changeNow(path: string, edit: (text: string, existed: boolean) => string | null, options: { create?: string; save?: boolean }, editor: boolean): Promise<boolean> {
+    const loaded = await this.read(path, editor);
+    if (!loaded && options.create === undefined) throw new Error(t.fileMissing(path));
+    const before = loaded?.text ?? options.create!;
+    const after = edit(before, loaded !== null);
+    if (after === null) return false;
+    if (loaded?.inEditor) {
+      const host = await this.app.scriptHostIfLoaded();
+      const ok = host ? await host.setBufferText(path, after, options.save !== false).catch(() => false) : false;
+      // 読んだあとでタブかエディタが閉じた: ディスクの本文に書き直す（閉じかけのエディタへ渡して消えないように）
+      if (!ok) return this.changeNow(path, edit, options, false);
+    } else {
+      const fs = this.app.state.session?.files;
+      if (!fs?.root) throw new Error(t.noProjectFolder);
+      if (after !== before || !loaded) await fs.writeText(path, after);
+      const host = await this.app.scriptHostIfLoaded();
+      await host?.fileChanged(path);
+    }
+    this.forget(path);
+    return true;
+  }
+
+  /**
+   * ディスクの本文が `expected`（無いファイルなら null）のときだけ `text` に書き換える（エディタからのディスクへの書き込み）。
+   * 書けたら true、本文が変わっていたら false（読み直してやり直してもらう）。
+   */
+  writeIfUnchanged(path: string, expected: string | null, text: string): Promise<boolean> {
+    return this.exclusive(async () => {
+      const fs = this.app.state.session?.files;
+      if (!fs?.root) throw new Error(t.noProjectFolder);
+      const current = (await fs.exists(path)) ? await fs.readText(path) : null;
+      if (current !== expected) return false;
+      if (current !== text) await fs.writeText(path, text);
+      const host = await this.app.scriptHostIfLoaded();
+      await host?.fileChanged(path);
       this.forget(path);
       return true;
     });
-    this.queue = job.catch(() => undefined);
-    return job;
+  }
+
+  /** ファイルを消す（書き込みの列に並べる。幅検査の登録を取り消しで消すとき）。 */
+  removeFile(path: string): Promise<void> {
+    return this.exclusive(async () => {
+      const fs = this.app.state.session?.files;
+      if (fs?.root && (await fs.exists(path))) await fs.remove(path);
+      this.forget(path);
+    });
   }
 
   /** 最後にまとまりを足す（無いファイルは `create` の本文から作る）。実際に足した文字列を返す（取り消しで探す）。 */

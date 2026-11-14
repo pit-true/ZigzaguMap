@@ -12,6 +12,7 @@ import { messageBox } from "../../ui/MessageBox";
 import { errorText } from "../../util/errors";
 import { BuildPanel } from "./BuildPanel";
 import { EditorTab, statFile, type FileStat } from "./EditorTab";
+import { writeOnDisk } from "./diskWrite";
 import { ExternalChanges } from "./ExternalChanges";
 import { buildExtensions, type EditorFileContext } from "./extensions";
 import type { EditorHost } from "./extensions/context";
@@ -31,6 +32,8 @@ import { ThemeControl } from "./ThemeControl";
 
 /** 外部の変更を調べる間隔（ms）。 */
 const POLL_MS = 1000;
+/** 閉じ始めたことをメインが受け取るのを待つ時間の上限（ms。メインが答えなくても閉じられるように）。 */
+const CLOSING_REPLY_MS = 5000;
 
 /**
  * スクリプトエディタの別ウィンドウ（tool.html → startToolWindow から、開いたときに初めて読み込む）。
@@ -77,6 +80,11 @@ export class ScriptEditorWindow {
     activePath: () => this.activeTab?.path ?? null,
     setMessage: (text) => this.setMessage(text),
     report: (title, lines, problem) => this.build.appendOutside(title, lines, problem),
+    writeOnDisk: async (path, edit) =>
+      (await writeOnDisk(this.client, path, (raw) => {
+        const text = edit(raw);
+        return text === null ? null : { text, count: 1 };
+      })) > 0,
   });
   /** 拡張に渡すウィンドウの窓口。 */
   readonly host: EditorHost = {
@@ -89,7 +97,8 @@ export class ScriptEditorWindow {
   private readonly queryHandlers: MessageHandlers<ScriptEditorQueryMap> = {
     dirty: () => this.tabs.filter((x) => x.dirty).map((x) => x.path),
     saveAll: () => this.saveAll(),
-    bufferText: (q) => this.findTab(q.path)?.state.doc.toString() ?? null,
+    // 閉じ始めたら本文を渡さない（確認のあとはディスクが正しい。メインはディスクを読み書きする）
+    bufferText: (q) => (this.closing ? null : (this.findTab(q.path)?.state.doc.toString() ?? null)),
     setBufferText: (q) => this.setBufferText(q.path, q.text, q.save),
   };
 
@@ -146,7 +155,8 @@ export class ScriptEditorWindow {
     this.project.onChange(() => this.projectChanged());
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
-      if (!(await this.confirmClose())) event.preventDefault();
+      if (await this.beginClose()) this.closing = true;
+      else event.preventDefault();
     });
     await this.client.connect({
       notices: {
@@ -293,9 +303,20 @@ export class ScriptEditorWindow {
     return true;
   }
 
+  /**
+   * 閉じ始める（#293）。先にメインへ知らせ、メインが並べている書き込みを本文に受け取ってから未保存を確かめる。閉じるまでの間、
+   * メインは `.s`・`.string` への次の書き込みを待たせる（閉じたあとはディスクへ書く）。閉じるのをやめたらメインへ知らせる。
+   */
+  private async beginClose(): Promise<boolean> {
+    await Promise.race([this.client.request({ type: "closing" }).catch(() => null), new Promise((r) => setTimeout(r, CLOSING_REPLY_MS))]);
+    const ok = await this.confirmClose();
+    if (!ok) void this.client.request({ type: "closeCancelled" }).catch(() => undefined);
+    return ok;
+  }
+
   /** ウィンドウを閉じる（× と同じ。未保存なら聞く）。 */
   async closeWindow(): Promise<void> {
-    if (!(await this.confirmClose())) return;
+    if (this.closing || !(await this.beginClose())) return;
     this.closing = true;
     // 自動操作の返事（ダイアログを押した返事）を送り終えてから閉じる
     setTimeout(() => void getCurrentWindow().destroy(), 300);
@@ -399,7 +420,7 @@ export class ScriptEditorWindow {
 
   /** メインから届いた書き換え（ひな形など）を本文に入れる。`save` は、前に未保存の変更が無かったときだけ保存する。変わった範囲だけを置き換え、元に戻す履歴に入る。 */
   private async setBufferText(path: string, text: string, save: boolean): Promise<boolean> {
-    const tab = this.findTab(path);
+    const tab = this.closing ? null : this.findTab(path);
     if (!tab) return false;
     const wasDirty = tab.dirty;
     const spec = minimalChange(tab.state.doc.toString(), text);

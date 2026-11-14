@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { parseWidthCheckOutput, parseWidthRegistryListing, planWidthRegistry, readTextIfExists, type ScriptCommandStep, type WidthCheckError } from "@zigzagumap/core";
+import { parseWidthCheckOutput, parseWidthRegistryListing, planWidthRegistry, type ScriptCommandStep, type WidthCheckError } from "@zigzagumap/core";
 import { jaScriptEditorAssist as t } from "../../../i18n/ja.scriptEditorAssist";
 import { errorText } from "../../../util/errors";
 import { ProcessRunner, type ProcessLine } from "../../../util/processRunner";
@@ -21,6 +21,11 @@ export interface WidthCheckHost {
   setMessage(text: string): void;
   /** 1 回分の出力をビルドの欄のログに足す（`problem` なら欄を出す）。 */
   report(title: string, lines: readonly string[], problem: boolean): void;
+  /**
+   * 開いていないファイルを、メインの書き込みの列で書き換える（#293。読んだときのままなら書き、変わっていたら読み直す）。
+   * `edit` は読んだ本文（無ければ null）から新しい本文を返す（null なら書かない）。書いたら true。
+   */
+  writeOnDisk(path: string, edit: (raw: string | null) => string | null): Promise<boolean>;
 }
 
 /** 最後の実行の結果（自動操作の `editor.widthCheck` で返す）。 */
@@ -90,18 +95,21 @@ export class WidthCheck {
       const reg = config.widthRegistry;
       if (reg && step.args.length > 0) {
         const listing = parseWidthRegistryListing((await this.exec({ ...step, args: [step.args[0]!, "--list-registry"] })).stdout);
-        const fs = this.host.project.fs;
-        const registryText = await readTextIfExists(fs, reg.path);
-        const plan = planWidthRegistry({
-          registryText,
-          listing,
-          fileKey: reg.prefix + path,
-          stringText: text,
-          window: reg.window,
-          unresolvedReason: (buffers) => t.widthCheck.unresolvedReason(buffers),
+        // 登録はメインのひな形も書くので、メインの書き込みの列で読み書きする
+        let plan: ReturnType<typeof planWidthRegistry> | null = null;
+        await this.host.writeOnDisk(reg.path, (registryText) => {
+          plan = planWidthRegistry({
+            registryText,
+            listing,
+            fileKey: reg.prefix + path,
+            stringText: text,
+            window: reg.window,
+            unresolvedReason: (buffers) => t.widthCheck.unresolvedReason(buffers),
+          });
+          return plan.text;
         });
-        if (plan.text !== null) await fs.writeText(reg.path, plan.text);
-        registry = { path: reg.path, added: plan.added, unresolved: plan.unresolved, removed: plan.removed, notChecked: plan.notChecked };
+        const p = plan as ReturnType<typeof planWidthRegistry> | null;
+        if (p) registry = { path: reg.path, added: p.added, unresolved: p.unresolved, removed: p.removed, notChecked: p.notChecked };
       }
       const { exit, lines } = await this.exec(step);
       const errors = parseWidthCheckOutput(lines);
