@@ -192,6 +192,22 @@ export { CommandBus, type CommandEvent, type CommandEventType, type CommandListe
 export { CommandRegistry, createDefaultRegistry, type CommandFactory } from "./command/CommandRegistry.js";
 export { CommandGroup, flattenCommandRecords } from "./command/CommandGroup.js";
 export { affectedMaps, mapTargets } from "./command/affectedMaps.js";
+export {
+  inverseOf,
+  isVertical,
+  layoutNeighbors,
+  oppositeDirection,
+  placeNeighbor,
+  resolveCell,
+  sideOf,
+  type CellRect,
+  type MapSize,
+  type Margins,
+  type NeighborLayoutResult,
+  type NeighborPlacement,
+  type NeighborRange,
+  type Side,
+} from "./connection/NeighborLayout.js";
 export { GridStore, type GridSource } from "./command/GridStore.js";
 export { PlaceBlockCommand, type PlaceBlockArgs } from "./command/commands/PlaceBlockCommand.js";
 export { PlaceMovementCommand, type PlaceMovementArgs } from "./command/commands/PlaceMovementCommand.js";

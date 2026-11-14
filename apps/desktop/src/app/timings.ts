@@ -4,6 +4,8 @@ export const timings = {
   marks: {} as Record<string, number>,
   /** 最後にマップを切り替えたときの所要時間（ミリ秒）。 */
   lastMapSwitchMs: 0,
+  /** 最後にマップを切り替え始めた時刻（performance.now()。隣のマップの帯の時間を測る）。 */
+  lastMapSwitchStart: 0,
 
   /** 出来事の時刻を記録する（最初の 1 回だけ）。 */
   mark(name: string): void {

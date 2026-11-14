@@ -48,6 +48,8 @@ import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
+import { NeighborService } from "./neighbors/NeighborService";
+import { NeighborLayer } from "../ui/map/NeighborLayer";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -84,7 +86,7 @@ export class App implements ActionTarget {
   private readonly eventTab: EventTab;
   /** マップの外のイベントの帯。 */
   readonly outsideBar: OutsideEventsBar;
-  readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(): string | null } }>;
+  readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(withNeighbors?: boolean): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
   private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDirty = new Map<string, MapId>();
@@ -110,6 +112,8 @@ export class App implements ActionTarget {
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
   profileDir: string | null = null;
+  /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
+  readonly neighbors: NeighborService;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -172,6 +176,10 @@ export class App implements ActionTarget {
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
+    this.neighbors = new NeighborService(state);
+    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) {
+      new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" });
+    }
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -391,6 +399,7 @@ export class App implements ActionTarget {
     const session = state.session;
     if (!session) return;
     const start = performance.now();
+    timings.lastMapSwitchStart = start;
     try {
       const map = await session.openMap(id);
       if (state.map && (state.map.id.bank !== id.bank || state.map.id.map !== id.map)) state.previousMap = state.map.id;

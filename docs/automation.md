@@ -211,3 +211,10 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 ## Phase3 の部品と命令（表示・ホバー・スタンプ）
 
 - 場所の設定タブの「配置の共有」（#228）: かんたん表示 `easy.layoutShared`（「この配置（ブロックの並び）は N 枚のマップで使われています」の文。共有していないマップでは `visible` が false）・一覧 `easy.layoutShared.list`・一覧のマップ `easy.layoutShared.map:<バンク>.<マップ>`（`click` で開く。表示中のマップはボタンにしない）。くわしく表示は頭が `header.`（`header.layoutShared` など）。
+
+## Phase3 の部品と命令（接続・描画）
+
+- 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。
+- `canvasPng` のマップのタブ（`map` / `movement` / `event`）に `neighbors: true` を付けると、隣のマップの帯と主マップの枠も含めた画像を返す（無ければ主マップだけ）。
+- `mouse` のマップのタブの `cell` は主マップの左上が原点。負の値や大きさを超える値で、隣のマップの帯の上を指せる（例: 上の帯の上のダブルクリック `{"cmd":"mouse","target":"map","action":"dblclick","cell":[5,-3]}`）。`px` は今までどおり部品（ステージ）の左上から。
+- 見せ方の切り替えはメニューのアクション `neighbors.band` / `neighbors.all` / `neighbors.off`（`{"cmd":"action","id":"neighbors.off"}`）か、`{"cmd":"setting","key":"neighborView","value":"off"}`。比較テストは AdvanceMap と同じ見た目で比べるため、起動のたびに `off` にする。

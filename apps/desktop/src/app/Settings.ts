@@ -30,6 +30,9 @@ export interface MapFileEntry {
   readonly path: string;
 }
 
+/** 隣のマップの見せ方。 */
+export type NeighborView = "band" | "all" | "off";
+
 /** 場所の設定タブの表示。 */
 export type HeaderView = "simple" | "classic";
 
@@ -85,6 +88,8 @@ export interface SettingsData {
   scriptEditorTheme: string;
   /** メインと道具のウィンドウの配色（`light` = 明るい標準色、`dark` = ダーク）。スクリプトエディタは `scriptEditorTheme` を使う。 */
   theme: Theme;
+  /** 隣のマップの見せ方（`band` = 境界から帯の幅だけ、`all` = マップ全体、`off` = 出さない。Phase3）。 */
+  neighborView: NeighborView;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -120,6 +125,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   mapFileDir: null,
   scriptEditorTheme: "lightPlus",
   theme: "light",
+  neighborView: "band",
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
