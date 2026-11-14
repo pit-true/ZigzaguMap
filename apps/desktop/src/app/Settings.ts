@@ -80,6 +80,8 @@ export interface SettingsData {
   mapFiles: MapFileEntry[];
   /** `.map` を保存・読み込みしたフォルダ（次のダイアログの初期フォルダ）。 */
   mapFileDir: string | null;
+  /** スクリプトエディタのテーマ（`darkPlus` / `lightPlus` / `monokai` / `solarizedDark`。エディタのウィンドウが決める）。 */
+  scriptEditorTheme: string;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   toolWindows: {},
   mapFiles: [],
   mapFileDir: null,
+  scriptEditorTheme: "lightPlus",
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
