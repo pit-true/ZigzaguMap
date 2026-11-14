@@ -1,84 +1,24 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { tags } from "@lezer/highlight";
 import type { EditorExtensionFactory } from "./context";
+import { DEFAULT_EDITOR_THEME, EDITOR_THEMES, PALETTES, uiVariables, type CodePalette, type EditorPalette, type EditorThemeId } from "./palettes";
 
 /**
  * テーマ 4 つ（Dark+ 風・Light+ 風・Monokai 風・Solarized Dark 風）。テーマのパッケージは入れず、`EditorView.theme` と
  * `HighlightStyle` を自前で書く。色を分けるのは、字句の種類（コメント・ラベル定義・ディレクティブ・数・文字列・`.string` の制御）と、
  * 命令表と索引で決めた種類（highlight.ts の `.cm-sem-*`: 命令・ARM の命令・文字列の参照・ラベルの参照・変数・定数）。
- * 選んだテーマは個人設定（settings.json の `scriptEditorTheme`）に残す。
+ * 選んだテーマは個人設定（settings.json の `scriptEditorTheme`）に残す。色の表は palettes.ts。
+ * テーマはウィンドウ全体に当てる（#218）。本文はタブごとの区画、部品（帯・ダイアログ・入力欄・スクロールバー）は CSS 変数。
  */
 
-export type EditorThemeId = "darkPlus" | "lightPlus" | "monokai" | "solarizedDark";
-export const EDITOR_THEMES: readonly EditorThemeId[] = ["darkPlus", "lightPlus", "monokai", "solarizedDark"];
-export const DEFAULT_EDITOR_THEME: EditorThemeId = "lightPlus";
+export { DEFAULT_EDITOR_THEME, EDITOR_THEMES, PALETTES, type EditorThemeId } from "./palettes";
 
-/** テーマの色。 */
-interface Palette {
-  dark: boolean;
-  bg: string;
-  fg: string;
-  gutterBg: string;
-  gutterFg: string;
-  activeLine: string;
-  activeGutter: string;
-  selection: string;
-  cursor: string;
-  match: string;
-  panel: string;
-  border: string;
-  comment: string;
-  labelDef: string;
-  directive: string;
-  number: string;
-  string: string;
-  macroArg: string;
-  escape: string;
-  placeholder: string;
-  special: string;
-  raw: string;
-  command: string;
-  instruction: string;
-  text: string;
-  label: string;
-  variable: string;
-  constant: string;
-}
-
-export const PALETTES: Record<EditorThemeId, Palette> = {
-  darkPlus: {
-    dark: true, bg: "#1e1e1e", fg: "#d4d4d4", gutterBg: "#1e1e1e", gutterFg: "#858585", activeLine: "#2a2d2e", activeGutter: "#2a2d2e",
-    selection: "#264f78", cursor: "#aeafad", match: "#613214", panel: "#252526", border: "#454545",
-    comment: "#6a9955", labelDef: "#dcdcaa", directive: "#c586c0", number: "#b5cea8", string: "#ce9178", macroArg: "#9cdcfe",
-    escape: "#d7ba7d", placeholder: "#4fc1ff", special: "#4ec9b0", raw: "#808080",
-    command: "#569cd6", instruction: "#c586c0", text: "#ce9178", label: "#dcdcaa", variable: "#9cdcfe", constant: "#b5cea8",
-  },
-  lightPlus: {
-    dark: false, bg: "#ffffff", fg: "#000000", gutterBg: "#f5f5f5", gutterFg: "#237893", activeLine: "#f3f8ff", activeGutter: "#e4eefb",
-    selection: "#add6ff", cursor: "#000000", match: "#f8c9ab", panel: "#f3f3f3", border: "#cccccc",
-    comment: "#008000", labelDef: "#795e26", directive: "#af00db", number: "#098658", string: "#a31515", macroArg: "#001080",
-    escape: "#ee0000", placeholder: "#0070c1", special: "#267f99", raw: "#808080",
-    command: "#0000ff", instruction: "#af00db", text: "#a31515", label: "#795e26", variable: "#001080", constant: "#098658",
-  },
-  monokai: {
-    dark: true, bg: "#272822", fg: "#f8f8f2", gutterBg: "#272822", gutterFg: "#90908a", activeLine: "#3e3d32", activeGutter: "#3e3d32",
-    selection: "#49483e", cursor: "#f8f8f0", match: "#6b5b14", panel: "#1e1f1c", border: "#414339",
-    comment: "#75715e", labelDef: "#a6e22e", directive: "#f92672", number: "#ae81ff", string: "#e6db74", macroArg: "#fd971f",
-    escape: "#ae81ff", placeholder: "#66d9ef", special: "#a6e22e", raw: "#75715e",
-    command: "#66d9ef", instruction: "#f92672", text: "#e6db74", label: "#a6e22e", variable: "#fd971f", constant: "#ae81ff",
-  },
-  solarizedDark: {
-    dark: true, bg: "#002b36", fg: "#839496", gutterBg: "#073642", gutterFg: "#586e75", activeLine: "#073642", activeGutter: "#0b4452",
-    selection: "#274642", cursor: "#d30102", match: "#5d4a00", panel: "#00212b", border: "#0b4452",
-    comment: "#586e75", labelDef: "#b58900", directive: "#859900", number: "#d33682", string: "#2aa198", macroArg: "#cb4b16",
-    escape: "#dc322f", placeholder: "#268bd2", special: "#6c71c4", raw: "#657b83",
-    command: "#268bd2", instruction: "#859900", text: "#2aa198", label: "#b58900", variable: "#cb4b16", constant: "#d33682",
-  },
-};
-
-function build(p: Palette): Extension {
+function build(palette: EditorPalette): Extension {
+  const p: CodePalette = palette.code;
+  const u = palette.ui;
   const view = EditorView.theme(
     {
       "&": { backgroundColor: p.bg, color: p.fg },
@@ -92,10 +32,32 @@ function build(p: Palette): Extension {
       ".cm-searchMatch": { backgroundColor: p.match, outline: `1px solid ${p.border}` },
       ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: p.selection },
       ".cm-panels": { backgroundColor: p.panel, color: p.fg, borderColor: p.border },
-      ".cm-panels input, .cm-panels button": { color: p.fg, backgroundColor: p.bg, border: `1px solid ${p.border}` },
+      ".cm-panels.cm-panels-top": { borderBottom: `1px solid ${p.border}` },
+      ".cm-panels.cm-panels-bottom": { borderTop: `1px solid ${p.border}` },
+      ".cm-panels input, .cm-panels .cm-textfield": { color: u.fieldText, backgroundColor: u.field, border: `1px solid ${u.fieldBorder}` },
+      ".cm-panels button, .cm-panels .cm-button": {
+        color: u.buttonText, backgroundColor: u.button, backgroundImage: "none", border: `1px solid ${u.buttonBorder}`,
+      },
+      ".cm-panels .cm-button:hover, .cm-panels button:hover": { backgroundColor: u.buttonHot },
+      ".cm-panels .cm-button:active": { backgroundColor: u.hot, backgroundImage: "none" },
+      ".cm-panel button[name=close]": { color: u.muted, backgroundColor: "transparent", border: "none" },
+      ".cm-panel label": { color: p.fg },
+      ".cm-panel.cm-panel-lint ul": { backgroundColor: p.bg, color: p.fg },
+      ".cm-panel.cm-panel-lint ul [aria-selected]": { backgroundColor: p.selection, color: p.fg },
+      ".cm-panel.cm-panel-lint ul:focus [aria-selected]": { backgroundColor: u.select, color: u.selectText },
       ".cm-tooltip": { backgroundColor: p.panel, color: p.fg, border: `1px solid ${p.border}` },
-      ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: p.selection, color: p.fg },
+      ".cm-tooltip .cm-tooltip-arrow:before": { borderTopColor: p.border, borderBottomColor: p.border },
+      ".cm-tooltip .cm-tooltip-arrow:after": { borderTopColor: p.panel, borderBottomColor: p.panel },
+      ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: u.select, color: u.selectText },
+      ".cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail": { color: u.selectText },
       ".cm-completionDetail": { color: p.comment },
+      ".cm-completionMatchedText": { color: u.accent, textDecoration: "none", fontWeight: "bold" },
+      ".cm-tooltip button, .cm-tooltip textarea, .cm-tooltip input": {
+        color: u.fieldText, backgroundColor: u.field, border: `1px solid ${u.fieldBorder}`,
+      },
+      ".cm-tooltip button": { color: u.buttonText, backgroundColor: u.button, borderColor: u.buttonBorder },
+      ".cm-tooltip button:hover": { backgroundColor: u.buttonHot },
+      ".cm-tooltip a": { color: u.link },
       ".cm-sem-command, .cm-sem-command span": { color: p.command },
       ".cm-sem-instruction, .cm-sem-instruction span": { color: p.instruction },
       ".cm-sem-text, .cm-sem-text span": { color: p.text, fontStyle: "italic" },
@@ -143,13 +105,28 @@ export const themeCompartment = new Compartment();
 /** 今のテーマ（ウィンドウで 1 つ。ScriptEditorWindow が個人設定から決め、変えたら全部のタブを入れ替える）。 */
 let current: EditorThemeId = DEFAULT_EDITOR_THEME;
 
+/** 題名の帯を暗くしたか（明るいテーマでは Windows の設定に任せる）。 */
+let titleDark = false;
+
 export function currentEditorTheme(): EditorThemeId {
   return current;
 }
 
+/**
+ * テーマを今のものにし、ウィンドウの部品の色（CSS 変数）・標準の部品の明暗（color-scheme）・題名の帯を合わせる。
+ * 本文の色は呼ぶ側がタブの区画（themeCompartment）を入れ替える。
+ */
 export function setCurrentEditorTheme(id: EditorThemeId): void {
   current = id;
-  document.documentElement.dataset["seTheme"] = id;
+  const root = document.documentElement;
+  root.dataset["seTheme"] = id;
+  const palette = PALETTES[id];
+  for (const [name, value] of Object.entries(uiVariables(palette))) root.style.setProperty(name, value);
+  root.style.colorScheme = palette.code.dark ? "dark" : "light";
+  if (palette.code.dark !== titleDark) {
+    titleDark = palette.code.dark;
+    void getCurrentWindow().setTheme(titleDark ? "dark" : null).catch(() => undefined);
+  }
 }
 
 export const themesExtension: EditorExtensionFactory = () => themeCompartment.of(themeFor(current));

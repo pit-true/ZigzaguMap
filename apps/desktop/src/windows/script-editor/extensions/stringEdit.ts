@@ -132,8 +132,8 @@ export const stringEditExtension: EditorExtensionFactory = (ctx) =>
         ".se-string-edit textarea": { width: "100%", boxSizing: "border-box", font: "inherit", resize: "vertical" },
         ".se-string-edit-title": { fontWeight: "bold", marginBottom: "4px" },
         ".se-width-line": { whiteSpace: "pre", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis" },
-        ".se-width-line.over": { color: "#e51400", fontWeight: "bold" },
+        ".se-width-line.over": { color: "var(--error-text)", fontWeight: "bold" },
         ".se-width-line.over::before": { content: '"▲ "' },
         ".se-string-edit-hint": { fontSize: "11px", opacity: "0.75", marginTop: "4px" },
-        ".se-string-edit-error": { color: "#e51400", fontSize: "12px" },
+        ".se-string-edit-error": { color: "var(--error-text)", fontSize: "12px" },
       });

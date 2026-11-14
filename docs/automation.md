@@ -22,6 +22,8 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
 python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、ビルドの手順の copy
+python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
+    # スクリプトエディタのテーマ 4 つで、ウィンドウの部品（帯・検索の欄・補完・ホバー・ビルドの欄・波線の一覧・ダイアログ・スクロールバー）が同じテーマの色になること
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
@@ -97,7 +99,7 @@ AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automat
 
 ROM を開くメニュー・ツールバー・ドラッグ＆ドロップ・組のフォルダが記録されていない最近開いたものでは、ROM を選んだあとに組のフォルダを選ぶダイアログ（`dialogs` の `kind: "native"`、`type: "folder"`）が出ます。`queuePath` にフォルダか `null`（キャンセル。ROM だけで開く）を渡します。`open` 命令はダイアログを出さずに、渡した ROM とプロジェクトで開きます。
 
-Phase1 のフィードバックで足した部品の ID: 透明度のスライダー `view.opacity.slider`（`setField` に 0〜100）・`view.opacity.value`（「30%」）・`view.opacity.close`、マップの外のイベントの帯 `outside.bar`（`getField` の `visible`）・`outside.fix`（マップの内側に戻す）、場所の設定タブの切り替え `header.mode.simple`・`header.mode.classic`（`click`）・`header.advanced`（高度なヘッダーを表示）、かんたん表示 `easy.region`・`easy.newName`・`easy.rename`・`easy.showName`・`easy.music`・`easy.musicNo`・`easy.weather`・`easy.mapType`・`easy.battleType`・`easy.cave`・`easy.bike`・`easy.run`・`easy.escape`・`easy.tileset1`・`easy.tileset2`・`easy.changeTilesets`・`easy.width`・`easy.height`・`easy.resize`・`easy.borderWidth`・`easy.borderHeight`・`easy.resizeBorder`・`easy.connections`・`easy.openConnections`（マップスクリプトは `easy.scriptNo` など、くわしく表示の `header.` を `easy.` にしたもの）、ヘルプの文書の窓 `help.doc`（開いている文書のパス）・`help.content`（本文。`view.scroll` の `id` に使える）・`help.back`・`help.close`・本文のリンク `help.link:<行き先>`（`help.link:#ショートカット`、`help.link:docs/automation.md` など。`click` で押す）、バージョン情報 `about.version`・`about.link`。
+Phase1 のフィードバックで足した部品の ID: 透明度のスライダー `view.opacity.slider`（`setField` に 0〜100）・`view.opacity.value`（「30%」）・`view.opacity.close`、マップの外のイベントの帯 `outside.bar`（`getField` の `visible`）・`outside.fix`（マップの内側に戻す）、場所の設定タブの切り替え `header.mode.simple`・`header.mode.classic`（`click`）・`header.advanced`（高度なヘッダーを表示）、かんたん表示 `easy.region`・`easy.newName`・`easy.rename`・`easy.showName`・`easy.music`・`easy.musicNo`・`easy.weather`・`easy.mapType`・`easy.battleType`・`easy.cave`・`easy.bike`・`easy.run`・`easy.escape`・`easy.tileset1`・`easy.tileset2`・`easy.changeTilesets`・`easy.width`・`easy.height`・`easy.resize`・`easy.borderWidth`・`easy.borderHeight`・`easy.resizeBorder`・`easy.connections`・`easy.openConnections`（マップスクリプトは `easy.scriptNo` など、くわしく表示の `header.` を `easy.` にしたもの）、ヘルプの文書の窓 `help.doc`（開いている文書のパス。画面には出さず、`getField` の `value` で読む）・`help.content`（本文。`view.scroll` の `id` に使える）・`help.home`（リンクで別の文書へ移ったときに本文の先頭に出す「← Read meに戻る」。元の文書の離れた位置へ戻る。#219 で「戻る」ボタン `help.back` の代わりにした）・`help.close`・本文のリンク `help.link:<行き先>`（`help.link:#ショートカット`、`help.link:docs/automation.md` など。`click` で押す）、バージョン情報 `about.version`・`about.link`。
 
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 
@@ -162,7 +164,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.checkExternal` | | 1 秒ごとの見張りを待たずに、外部の変更を調べる |
 | `editor.project` | `wait`（省略で true） | 命令表と索引の読み込みを待ち、読み込みの結果（`loaded`・`loadMs`・`dialect`・命令・ラベル・`.equ`・文字列のラベルの数、`problems`）を返す |
 | `editor.tokens` | `line`、または `fromLine`・`toLine`（省略で全部） | 行ごとの字句の種類 `syntax`（`comment`・`labelDef`・`directive`・`number`・`string`・`macroArg`・`escape`・`placeholder`・`special`・`rawBytes`・`meta`）と、命令表で決めた種類 `semantic`（`command`・`instruction`・`unknownCommand`・`textRef`・`labelRef`・`variable`・`constant`）。どれも `text`・`column`・`kind` |
-| `editor.theme` | `theme`（省略で今のまま。`darkPlus` / `lightPlus` / `monokai` / `solarizedDark`） | テーマを変える（個人設定に残す）。返事は `theme`・`themes`・色の表 `palette`・画面で実際に出ている色 `rendered`（種類ごと、`comment`・`labelDef`・`background`） |
+| `editor.theme` | `theme`（省略で今のまま。`darkPlus` / `lightPlus` / `monokai` / `solarizedDark`） | テーマを変える（個人設定に残す）。返事は `theme`・`themes`・色の表 `palette`（本文の `code` とウィンドウの部品の `ui`）・本文で実際に出ている色 `rendered`（種類ごと、`comment`・`labelDef`・`background`）・ウィンドウの部品で実際に出ている色 `ui`（部品ごとの `background`（透明なら親の地）・`color`・`border`。出ていない部品は null。部品は `page`・`tabBar`・`tab`・`activeTab`・`statusBar`・`themeSelect`・`romBar`・`buildPanel`・`buildButton`・`buildLog`・`buildProblems`・`searchPanel`・`searchField`・`searchButton`・`lintPanel`・`tooltip`・`completion`・`completionSelected`・`dialog`・`dialogBody`・`dialogButton`・`dialogInput`、`scrollbar` は `background` に `scrollbar-color` の値） |
 | `editor.hover` | `line`・`column` か `offset`、`show`（true で吹き出しを出したままにする） | その位置のホバー（`type`（`command`・`string`・`stringEqu`・`label`・`value`）、範囲 `from`・`to`・`text`、`markdown`、記号を外した `plain`）。出すものが無ければ null |
 | `editor.closeHover` | | `show` で出した吹き出し（と文字列の入力欄）を閉じる |
 | `editor.complete` | `line`・`column` か `offset`、`filter`（省略で打った分）、`limit`（既定 50）、`show`（true で候補の窓を出す） | その位置の補完（`context`（`op` / `argument`）、`argIndex`、引数の種類 `kind`、置き換える範囲 `from`・`to`、`word`、候補の総数 `total`、絞った数 `count`、候補 `items`（`label`・`type`・`detail`）） |
@@ -170,7 +172,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.back` | | 定義へ移動する前の位置へ戻る（Alt+← と同じ） |
 | `editor.search` | `query`・`replace`・`regexp`・`caseSensitive`・`wholeWord`（省略で前の値）、`action`（`find`（既定）・`next`・`previous`・`replace`・`replaceAll`・`selectAll`・`close`） | 検索の欄を開いて条件を入れ、`action` を行う。返事は一致の一覧 `matches`（`line`・`column`・`text`。500 件まで）、`count`、`selection`、`dirty`。`replace` は、選んでいる一致を置き換えて次を選ぶ（一致を選んでいなければ、次の一致を選ぶだけ。置換の欄のボタンと同じ） |
 | `editor.select`（広げたもの） | 上の 1 つの範囲に加えて、`add`（true で今の選択に足す）、`ranges`（範囲の配列）、`rect`（`line`・`column`・`toLine`・`toColumn` の矩形） | 複数の範囲・矩形の選択 |
-| `editor.command` | `name`（`moveLineUp`・`moveLineDown`・`copyLineUp`・`copyLineDown`・`toggleComment`・`selectNextOccurrence`・`selectSelectionMatches`・`addCursorAbove`・`addCursorBelow`・`undo`・`redo`・`startCompletion`） | エディタの操作を実行し、本文 `text` と `selection` を返す |
+| `editor.command` | `name`（`moveLineUp`・`moveLineDown`・`copyLineUp`・`copyLineDown`・`toggleComment`・`selectNextOccurrence`・`selectSelectionMatches`・`addCursorAbove`・`addCursorBelow`・`undo`・`redo`・`startCompletion`・`openLintPanel`・`closeLintPanel`） | エディタの操作を実行し、本文 `text` と `selection` を返す |
 | `editor.mouse` | `line`・`column`、`toLine`・`toColumn`（あればドラッグ）、`ctrl`・`alt`・`shift` | 本文の位置でマウスを押す（Ctrl+クリックの定義へ移動・カーソルを足す、Alt+ドラッグの矩形選択） |
 | `editor.perf` | `line`・`column`、`count`（既定 30） | その位置で 1 字ずつ打ち、画面の更新（次のフレーム）までの時間を測る（`averageMs`・`maxMs`・`lines`）。打った字は消し、履歴にも残さない |
 | `editor.diagnostics` | | 波線を調べ直して、表示中のファイルの波線（`line`・`column`・`severity`・`source`（`unknownCommand` などの種類か、外から足したものの出どころ）・`message`・`text`）を返す |

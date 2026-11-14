@@ -79,6 +79,57 @@ function renderedColors(w: ScriptEditorWindow): Record<string, string | null> {
   return out;
 }
 
+/** 透明な地なら、親をたどって実際に見えている地の色を返す。 */
+function effectiveBackground(el: Element): string {
+  for (let e: Element | null = el; e; e = e.parentElement) {
+    const bg = getComputedStyle(e).backgroundColor;
+    if (bg && bg !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(bg)) return bg;
+  }
+  return getComputedStyle(document.body).backgroundColor;
+}
+
+/** ウィンドウの部品ごとの、実際に描かれている色（`background`・`color`・`border`）。出ていない部品は null。 */
+const UI_PARTS: Record<string, string> = {
+  page: "body",
+  tabBar: ".se-tabs",
+  tab: ".se-tab:not(.active)",
+  activeTab: ".se-tab.active",
+  statusBar: ".se-statusbar",
+  themeSelect: ".se-theme",
+  romBar: ".se-rom-bar:not([hidden])",
+  buildPanel: ".se-build:not([hidden])",
+  buildButton: ".se-build-bar button",
+  buildLog: ".se-build-log",
+  buildProblems: ".se-build-problems",
+  searchPanel: ".cm-panels .cm-search",
+  searchField: ".cm-panels .cm-search .cm-textfield",
+  searchButton: ".cm-panels .cm-search .cm-button",
+  lintPanel: ".cm-panel.cm-panel-lint ul",
+  tooltip: ".cm-tooltip",
+  completion: ".cm-tooltip-autocomplete",
+  completionSelected: ".cm-tooltip-autocomplete li[aria-selected]",
+  dialog: ".dialog",
+  dialogBody: ".dialog .message-row, .dialog .dialog-body",
+  dialogButton: ".dialog button:not(.dialog-close)",
+  dialogInput: ".dialog input",
+};
+
+function uiColors(): Record<string, { background: string; color: string; border: string } | null> {
+  const out: Record<string, { background: string; color: string; border: string } | null> = {};
+  for (const [name, selector] of Object.entries(UI_PARTS)) {
+    const el = document.querySelector(selector);
+    if (!el || (name !== "page" && el.getClientRects().length === 0)) {
+      out[name] = null;
+      continue;
+    }
+    const cs = getComputedStyle(el);
+    out[name] = { background: effectiveBackground(el), color: cs.color, border: cs.borderTopColor };
+  }
+  const scroller = document.querySelector(".cm-scroller");
+  out["scrollbar"] = scroller ? { background: getComputedStyle(scroller).scrollbarColor, color: "", border: "" } : null;
+  return out;
+}
+
 /** 色付けとテーマ（`editor.tokens` / `editor.theme`）。 */
 export const lookCommands: EditorCommandTable = {
   "editor.tokens": (w, req) => {
@@ -96,6 +147,6 @@ export const lookCommands: EditorCommandTable = {
       await settle(150);
     }
     const id = currentEditorTheme();
-    return { theme: id, themes: EDITOR_THEMES, palette: PALETTES[id], rendered: w.active ? renderedColors(w) : null };
+    return { theme: id, themes: EDITOR_THEMES, palette: PALETTES[id], rendered: w.active ? renderedColors(w) : null, ui: uiColors() };
   },
 };

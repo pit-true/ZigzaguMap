@@ -1,5 +1,6 @@
 import { startCompletion } from "@codemirror/autocomplete";
 import { addCursorAbove, addCursorBelow, copyLineDown, copyLineUp, moveLineDown, moveLineUp, redo, toggleComment, undo } from "@codemirror/commands";
+import { closeLintPanel, openLintPanel } from "@codemirror/lint";
 import { selectNextOccurrence, selectSelectionMatches } from "@codemirror/search";
 import { EditorSelection } from "@codemirror/state";
 import type { Command } from "@codemirror/view";
@@ -21,6 +22,8 @@ const COMMAND_BY_NAME: Readonly<Record<string, Command>> = {
   undo,
   redo,
   startCompletion,
+  openLintPanel,
+  closeLintPanel,
 };
 
 /** エディタの本文へキーを送る（Ctrl+S・Ctrl+Z・Enter など、キーの割り当てを通る）。本文が無ければウィンドウへ送る。 */
