@@ -1,4 +1,4 @@
-import { THUMBNAIL_SIZE, blockAverageColors, renderThumbnail, type MapId } from "@zigzagumap/core";
+import { BlockRenderer, THUMBNAIL_SIZE, blockAverageColors, renderThumbnail, type MapId } from "@zigzagumap/core";
 import { scheduleIdleGc } from "../util/idleGc";
 import type { EditorState } from "./EditorState";
 import { TilesetView } from "./TilesetView";
@@ -33,10 +33,11 @@ const keyOf = (id: MapId): string => `${id.bank}.${id.map}`;
  * - オフにすると、作ったものを全部捨てる。編集したマップは少し待ってから作り直す。
  */
 export class ThumbnailService {
-  private readonly images = new Map<string, ImageData>();
+  /** 縮小（RGB565 の 16 ビットで持つ。行に描くときだけ ImageData にする。メモリを半分にするため）。 */
+  private readonly images = new Map<string, Uint16Array>();
   /** マップ → 使い回す絵の鍵（配置の番号か、マップそのもの）。 */
   private readonly shared = new Map<string, string>();
-  private readonly byShare = new Map<string, ImageData>();
+  private readonly byShare = new Map<string, Uint16Array>();
   private token = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private updateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -76,8 +77,8 @@ export class ThumbnailService {
   /** そのマップの縮小（まだ無ければ null）。 */
   get(id: MapId): ImageData | null {
     if (!this.enabled) return null;
-    const k = keyOf(id);
-    return this.images.get(k) ?? null;
+    const packed = this.images.get(keyOf(id));
+    return packed ? unpack565(packed) : null;
   }
 
   /** 作り具合。 */
@@ -144,7 +145,7 @@ export class ThumbnailService {
     const current = this.state.map?.id;
     const at = current ? Math.max(0, ids.findIndex((i) => i.bank === current.bank && i.map === current.map)) : 0;
     const order = ids.map((id, i) => ({ id, d: Math.abs(i - at) })).sort((a, b) => a.d - b.d);
-    const tiles = new Map<string, { view: TilesetView; colors: Uint8Array }>();
+    const tiles = new Map<string, Uint8Array>();
     let slice = performance.now();
     let made = false;
     try {
@@ -161,8 +162,8 @@ export class ThumbnailService {
           if (token !== this.token) return;
           if (!doc) continue;
           const tilesKey = `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`;
-          let t = tiles.get(tilesKey);
-          if (!t) {
+          let colors = tiles.get(tilesKey);
+          if (!colors) {
             let view = session.cachedTiles(tilesKey) ?? null;
             if (!view) {
               const pair = await project.peekTilesets(doc).catch(() => null);
@@ -170,12 +171,13 @@ export class ThumbnailService {
               if (!pair) continue;
               view = new TilesetView(tilesKey, pair.primary, pair.secondary);
             }
-            t = { view, colors: blockAverageColors(view.renderer, view.paletteBlockCount) };
-            tiles.set(tilesKey, t);
+            // 色を取るためだけの描き手を作る（開いている組の描き手のキャッシュに、全部のブロックの絵を残さない）
+            colors = blockAverageColors(new BlockRenderer(view.primary, view.secondary), view.paletteBlockCount);
+            tiles.set(tilesKey, colors);
             while (tiles.size > TILESET_CACHE) tiles.delete(tiles.keys().next().value!);
           }
-          const rgba = renderThumbnail(doc.grid, t.colors, THUMBNAIL_SIZE);
-          image = new ImageData(rgba.data, rgba.width, rgba.height);
+          const rgba = renderThumbnail(doc.grid, colors, THUMBNAIL_SIZE);
+          image = pack565(rgba.data);
           this.byShare.set(share, image);
           made = true;
         }
@@ -195,4 +197,32 @@ export class ThumbnailService {
       if (made) scheduleIdleGc(true);
     }
   }
+}
+
+/** RGBA を RGB565 にする（透明の画素は 0。縮小の色は 0 にならないよう 1 にする）。 */
+export function pack565(rgba: Uint8ClampedArray): Uint16Array {
+  const out = new Uint16Array(rgba.length / 4);
+  for (let i = 0; i < out.length; i++) {
+    const o = i * 4;
+    if (rgba[o + 3] === 0) continue;
+    const v = ((rgba[o]! >> 3) << 11) | ((rgba[o + 1]! >> 2) << 5) | (rgba[o + 2]! >> 3);
+    out[i] = v === 0 ? 1 : v;
+  }
+  return out;
+}
+
+/** RGB565 を 48×48 の ImageData にする（0 は透明）。 */
+export function unpack565(packed: Uint16Array): ImageData {
+  const image = new ImageData(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+  const d = image.data;
+  for (let i = 0; i < packed.length; i++) {
+    const v = packed[i]!;
+    if (v === 0) continue;
+    const o = i * 4;
+    d[o] = ((v >> 11) & 31) * 255 / 31;
+    d[o + 1] = ((v >> 5) & 63) * 255 / 63;
+    d[o + 2] = (v & 31) * 255 / 31;
+    d[o + 3] = 255;
+  }
+  return image;
 }
