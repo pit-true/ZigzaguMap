@@ -1,4 +1,3 @@
-import { formatHex } from "../../binary/bytes.js";
 import { ROM_BASE, type Rom } from "../../rom/Rom.js";
 import type { DisasmCommandSet } from "../disasm/DisasmCommandSet.js";
 import type { DisasmLine } from "../disasm/DisasmTypes.js";
@@ -6,7 +5,7 @@ import { disassembleScripts } from "../disasm/ScriptDisassembler.js";
 import type { ScriptTextCodec } from "../disasm/scriptText.js";
 import type { UsageKind } from "../config/UsageConfig.js";
 import { isVariableNumber } from "./eventUsage.js";
-import type { UsageSite } from "./UsageIndex.js";
+import { RomUsageSite, type UsageSite } from "./UsageIndex.js";
 
 /** 命令番号 trainerbattle。 */
 const TRAINERBATTLE = 0x5c;
@@ -49,12 +48,7 @@ export function romScriptUsage(
   for (const block of d.blocks) {
     for (const line of block.lines) {
       for (const u of lineUsage(line)) {
-        out.push({
-          ...u,
-          source: "rom",
-          where: `ROM 0x${formatHex(line.offset + ROM_BASE, 8)}（${options.where}）`,
-          ...(options.map ? { map: options.map } : {}),
-        });
+        out.push(new RomUsageSite(u.kind, u.value, line.offset, options.where, options.map));
       }
     }
   }

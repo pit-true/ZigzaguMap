@@ -4,7 +4,7 @@ import { evaluateMacroExpression } from "../commands/macroExpression.js";
 import type { ScriptCommandTable } from "../commands/ScriptCommandTable.js";
 import type { UsageKind } from "../config/UsageConfig.js";
 import { isVariableNumber } from "./eventUsage.js";
-import type { UsageSite } from "./UsageIndex.js";
+import { AsmUsageSite, type UsageSite } from "./UsageIndex.js";
 
 /** トレーナーの番号を書く命令（ND と Chronos の `trainer` と `trainerbattle1`〜`16`）。 */
 const TRAINER_COMMAND = /^(trainer|trainerbattle[0-9]*)$/i;
@@ -43,7 +43,7 @@ export function asmUsage(path: string, text: string, table: ScriptCommandTable, 
       if (value === null || value < 0) return;
       if (kind === "var" && !isVariableNumber(value)) return;
       if (kind === "trainer" && value === 0) return;
-      out.push({ kind, value, source: "asm", where: `${path}:${i + 1}`, path, line: i + 1 });
+      out.push(new AsmUsageSite(kind, value, path, i + 1));
     });
   }
   return out;
