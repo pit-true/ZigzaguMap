@@ -72,6 +72,11 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
 | `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物 |
+| `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
+| `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
+| `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
+| `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |
+| `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
 | `commands` | | 登録されている命令の名前 |
 | `windows` | | 開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`） |
 | `exit` | | 確認なしで終了する |
@@ -100,6 +105,8 @@ AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automat
 ROM を開くメニュー・ツールバー・ドラッグ＆ドロップ・組のフォルダが記録されていない最近開いたものでは、ROM を選んだあとに組のフォルダを選ぶダイアログ（`dialogs` の `kind: "native"`、`type: "folder"`）が出ます。`queuePath` にフォルダか `null`（キャンセル。ROM だけで開く）を渡します。`open` 命令はダイアログを出さずに、渡した ROM とプロジェクトで開きます。
 
 Phase1 のフィードバックで足した部品の ID: 透明度のスライダー `view.opacity.slider`（`setField` に 0〜100）・`view.opacity.value`（「30%」）・`view.opacity.close`、マップの外のイベントの帯 `outside.bar`（`getField` の `visible`）・`outside.fix`（マップの内側に戻す）、場所の設定タブの切り替え `header.mode.simple`・`header.mode.classic`（`click`）・`header.advanced`（高度なヘッダーを表示）、かんたん表示 `easy.region`・`easy.newName`・`easy.rename`・`easy.showName`・`easy.music`・`easy.musicNo`・`easy.weather`・`easy.mapType`・`easy.battleType`・`easy.cave`・`easy.bike`・`easy.run`・`easy.escape`・`easy.tileset1`・`easy.tileset2`・`easy.changeTilesets`・`easy.width`・`easy.height`・`easy.resize`・`easy.borderWidth`・`easy.borderHeight`・`easy.resizeBorder`・`easy.connections`・`easy.openConnections`（マップスクリプトは `easy.scriptNo` など、くわしく表示の `header.` を `easy.` にしたもの）、ヘルプの文書の窓 `help.doc`（開いている文書のパス。画面には出さず、`getField` の `value` で読む）・`help.content`（本文。`view.scroll` の `id` に使える）・`help.home`（リンクで別の文書へ移ったときに本文の先頭に出す「← Read meに戻る」。元の文書の離れた位置へ戻る。#219 で「戻る」ボタン `help.back` の代わりにした）・`help.close`・本文のリンク `help.link:<行き先>`（`help.link:#ショートカット`、`help.link:docs/automation.md` など。`click` で押す）、バージョン情報 `about.version`・`about.link`。
+
+イベントの削除の確認のダイアログの部品の ID は `eventDelete.list`（消すものの一覧）・`eventDelete.ok`・`eventDelete.cancel`、右クリックのメニューは `contextMenu` と `contextMenu.<項目の id>` です。
 
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 
@@ -177,7 +184,8 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.perf` | `line`・`column`、`count`（既定 30） | その位置で 1 字ずつ打ち、画面の更新（次のフレーム）までの時間を測る（`averageMs`・`maxMs`・`lines`）。打った字は消し、履歴にも残さない |
 | `editor.diagnostics` | | 波線を調べ直して、表示中のファイルの波線（`line`・`column`・`severity`・`source`（`unknownCommand` などの種類か、外から足したものの出どころ）・`message`・`text`）を返す |
 | `editor.widthCheck` | `wait`（true で、動いている検査が終わるまで待つ） | 保存時の幅検査の結果。`busy`、動かした回数 `runs`、最後の結果 `last`（`path`・終了コード `exit`・拾った誤り `errors`（`path`・`line`・`label`・`message`）・登録ファイルへの書き足し `registry`（`path`・`added`・`unresolved`・`removed`・登録の無いファイルなら `notChecked`）・`failed`）、出力の最後の 200 行 `log` |
-| `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
+| `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`text` の改行は `
+` などの制御記号のすぐ後ろにだけ書け、そこで `.string` の行を分ける。#221）（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
 
 | `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ |
 | `build.state` | | `running`・`step`（今の手順、0 から）・`steps`（手順の列）・`result`（`ok`・`code`・`killed`・`failedStep`・`ms`）・`problems`（拾ったエラー。`kind`・`severity`・`message`・`path`・`line`・`symbol`・`logLine`）・`lines`（ログの行数）・`outputRom` |
