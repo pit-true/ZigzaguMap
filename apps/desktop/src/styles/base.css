@@ -11,6 +11,56 @@
   --select-text: #ffffff;
   --hot: #cce8ff;
   --hot-border: #99d1ff;
+  /* メニュー */
+  --menu-bg: #f2f2f2;
+  --menu-border: #ccc;
+  --menu-active: #91c9f7;
+  --menu-disabled-active: #e6e6e6;
+  --menu-separator: #d7d7d7;
+  /* ツールバーのボタン */
+  --toolbar-hot: #f8f8f8;
+  --toolbar-pressed: #e0e0e0;
+  /* 入力欄とボタン */
+  --field-border: #7a7a7a;
+  --field-disabled-border: #cccccc;
+  --spin-disabled-border: #c0c0c0;
+  --group-border: #dcdcdc;
+  --groupbox-border: #d5dfe5;
+  --button-face: #e1e1e1;
+  --button-border: #adadad;
+  --button-hot: #e5f1fb;
+  --button-pressed: #cce4f7;
+  --button-pressed-border: #005499;
+  --disabled-text: #a0a0a0;
+  --disabled-face: #f4f4f4;
+  --disabled-border: #d0d0d0;
+  /* 窓・区切り線・文字 */
+  --dialog-border: #707070;
+  --dialog-close-text: #333;
+  --link-text: #0000ff;
+  --memo-bg: #c8c8c8;
+  --rule: #c8c8c8;
+  --frame-border: #b8b8b8;
+  --row-rule: #e4e4e4;
+  --note-text: #555;
+  --tree-inactive-select: #cdcdcd;
+  /* 知らせ・エラー */
+  --notice-bg: #fff4c2;
+  --notice-border: #d8c070;
+  --warn-bg: #fff6d0;
+  --warn-border: #d0a000;
+  --warn-text: #000;
+  --error-bg: #ffe0e0;
+  --error-text: #c00000;
+  --error-text-strong: #b00000;
+  /* ヘルプの文書（Markdown） */
+  --help-text: #444;
+  --md-rule: #d0d0d0;
+  --md-rule-soft: #e0e0e0;
+  --md-code-bg: #f0f0f0;
+  --md-pre-bg: #f4f4f4;
+  --md-cell-border: #c8c8c8;
+  --md-link: #0645ad;
   font-family: "MS UI Gothic", "Meiryo UI", "Yu Gothic UI", sans-serif;
   font-size: 12px;
   color: var(--text);

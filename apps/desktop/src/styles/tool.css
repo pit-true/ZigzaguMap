@@ -64,7 +64,7 @@
 }
 
 .pal-swatch.selected {
-  outline: 1px dotted #000000;
+  outline: 1px dotted var(--text);
   outline-offset: 1px;
 }
 
@@ -83,8 +83,8 @@
 }
 
 .am-button.active {
-  border-color: #0078d7;
-  background: #cce4f7;
+  border-color: var(--select);
+  background: var(--button-pressed);
 }
 
 /* ---- ブロックパレット一括変更 ---- */

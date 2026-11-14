@@ -31,14 +31,14 @@
 }
 
 .toolbar-button:hover:not(.disabled) {
-  border-color: #fff #a0a0a0 #a0a0a0 #fff;
-  background: #f8f8f8;
+  border-color: var(--highlight) var(--shadow) var(--shadow) var(--highlight);
+  background: var(--toolbar-hot);
 }
 
 .toolbar-button:active:not(.disabled),
 .toolbar-button.checked {
-  border-color: #a0a0a0 #fff #fff #a0a0a0;
-  background: #e0e0e0;
+  border-color: var(--shadow) var(--highlight) var(--highlight) var(--shadow);
+  background: var(--toolbar-pressed);
 }
 
 .toolbar-separator {

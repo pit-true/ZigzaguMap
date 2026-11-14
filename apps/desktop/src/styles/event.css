@@ -81,8 +81,8 @@
   align-items: center;
   gap: 12px;
   padding: 4px 10px;
-  background: #fff4c2;
-  border-bottom: 1px solid #d8c070;
+  background: var(--notice-bg);
+  border-bottom: 1px solid var(--notice-border);
 }
 
 .outside-bar[hidden] {
@@ -99,9 +99,9 @@
   width: 169px;
   margin: 0 0 6px;
   padding: 4px;
-  border: 1px solid #d0a000;
-  background: #fff6d0;
-  color: #000;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
   white-space: normal;
   line-height: 13px;
 }
