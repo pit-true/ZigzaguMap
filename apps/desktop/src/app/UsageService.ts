@@ -14,7 +14,7 @@ import type { App } from "./App";
 import type { ProjectSession } from "./ProjectSession";
 import { scheduleIdleGc } from "../util/idleGc";
 
-/** ROM を開いてから索引を作り始めるまでの待ち（起動からマップの表示を遅らせないため）。 */
+/** イベントタブを開いてから索引を作り始めるまでの待ち（起動からマップの表示を遅らせないため）。 */
 const START_DELAY_MS = 1200;
 /** 編集のあと、マップの分を直すまでの待ち（続けて入力したときにまとめる）。 */
 const UPDATE_DELAY_MS = 150;
@@ -50,6 +50,7 @@ export class UsageService {
 
   constructor(private readonly app: App) {
     app.state.on("session", () => this.attach(app.state.session));
+    app.state.on("tab", () => this.scheduleStart());
   }
 
   private attach(session: ProjectSession | null): void {
@@ -57,6 +58,7 @@ export class UsageService {
     for (const u of this.unsubscribe) u();
     this.unsubscribe = [];
     if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
     this.session = session;
     this.project = null;
     this.building = null;
@@ -72,7 +74,19 @@ export class UsageService {
         this.scheduleUpdate();
       }),
     );
-    this.timer = setTimeout(() => void this.ensure(), START_DELAY_MS);
+    this.scheduleStart();
+  }
+
+  /**
+   * 待ち時間に作り始める。作るのはイベントタブを開いているときだけ（マップタブだけを使う間はメモリを増やさない）。
+   * ほかのタブでも、「未使用」ボタン・ひな形・自動操作で要れば `ensure` がすぐ作る。
+   */
+  private scheduleStart(): void {
+    if (this.project || this.building || this.timer || this.app.state.tab !== "event") return;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      void this.ensure();
+    }, START_DELAY_MS);
   }
 
   /** 作り終えた索引（まだなら作り終えるまで待つ。作れなければ null）。 */
@@ -149,8 +163,10 @@ export class UsageService {
         const doc = session.project.loaded(id);
         if (doc) project.setMap(id, contentOf(doc));
       }
-      await this.flush();
-      // 全マップと C のソースを読んだごみを片付け、空いた領域も OS へ返す（待機時のメモリを 150MB 以下に保つ）
+      await this.flush(tools);
+      // 命令表は持ち続けない（直すときに作り直す）。全マップと C のソースを読んだごみを片付け、空いた領域も OS へ返す
+      // （待機時のメモリを 150MB 以下に保つ）
+      project.setTools(null);
       scheduleIdleGc(true);
       return project;
     } catch (e) {
@@ -175,7 +191,7 @@ export class UsageService {
   }
 
   /** たまった差分を索引へ入れる。 */
-  private async flush(): Promise<void> {
+  private async flush(given?: Awaited<ReturnType<typeof import("../ui/script/disasmTools").disasmTools>>): Promise<void> {
     if (this.updateTimer) {
       clearTimeout(this.updateTimer);
       this.updateTimer = null;
@@ -183,6 +199,10 @@ export class UsageService {
     const project = this.project;
     const session = this.session;
     if (!project || !session) return;
+    if (this.dirtyMaps.size === 0 && this.dirtyFiles.size === 0) return;
+    // 命令表はこのときだけ作る（持ち続けない）
+    const tools = given ?? (await (await import("../ui/script/disasmTools")).disasmTools(session).catch(() => null));
+    if (tools) project.setTools({ table: tools.table ?? null, commands: tools.commands, text: tools.text });
     for (const id of this.dirtyMaps.values()) {
       const doc = session.project.loaded(id);
       if (doc) project.setMap(id, contentOf(doc));
@@ -195,5 +215,6 @@ export class UsageService {
       const loaded = await this.app.scripts.files.read(path).catch(() => null);
       project.updateAsm(path, loaded?.text ?? null);
     }
+    if (!given) project.setTools(null);
   }
 }

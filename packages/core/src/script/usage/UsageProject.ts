@@ -76,6 +76,16 @@ export class UsageProject {
     private text: ScriptTextCodec | undefined = undefined,
   ) {}
 
+  /**
+   * 逆アセンブルの命令表と `.s` の命令表を入れ替える。作り終えたら null で外してメモリを空け、
+   * マップや `.s` を直すときだけ入れる（外している間の `setMap` はイベントの分だけを直し、`updateAsm` は `.equ` だけを読む）。
+   */
+  setTools(tools: { readonly table: ScriptCommandTable | null; readonly commands: DisasmCommandSet; readonly text?: ScriptTextCodec } | null): void {
+    this.table = tools?.table ?? null;
+    this.commands = tools?.commands ?? null;
+    this.text = tools?.text;
+  }
+
   /** 作り終えたか（作っていなければ null）。 */
   get built(): UsageBuildStats | null {
     return this.stats;
