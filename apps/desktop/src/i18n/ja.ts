@@ -171,6 +171,9 @@ export const ja = {
   exportFolderTitle: "出力先のフォルダ（CFRU-JP のフォルダ）を選んでください",
   projectFolderTitle: "CFRU-JP のフォルダを選んでください",
   needRomForProject: "先にベースROMを選んでください",
+  /** ROM を開いた直後のフォルダ選択（ダイアログの題名とステータスバー）。 */
+  pairFolderTitle: "ROM と組にする CFRU-JP のフォルダを選んでください（キャンセルすると ROM だけで開きます）",
+  choosePairFolder: "ROM と組にする CFRU-JP のフォルダを選んでください",
   projectOpened: (folder: string) => `プロジェクト: ${folder}`,
   undone: "元に戻しました",
   redone: "やり直しました",

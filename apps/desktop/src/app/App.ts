@@ -214,14 +214,31 @@ export class App implements ActionTarget {
     // 自動操作の入口のコードは、自動操作で起動したときだけ読み込む（通常の起動では読まない）。
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
-    if (args.rom) await this.openSession(args.rom, args.project);
+    // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
+    if (args.rom) await this.openSession(args.rom, args.project ?? this.recordedProject(args.rom));
   }
 
   // ---- 開く ----
 
   async openRomDialog(): Promise<void> {
     const path = await this.files.rom();
-    if (path) await this.openSession(path, null);
+    if (path) await this.openRomAskingFolder(path);
+  }
+
+  /**
+   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ツールバー・ドラッグ＆ドロップ・
+   * 組のフォルダが記録されていない最近開いたもの）。キャンセルなら ROM だけで開く。未出力の変更の確認は先に済ませる。
+   */
+  async openRomAskingFolder(rom: string): Promise<void> {
+    if (!(await this.confirmDiscard())) return;
+    this.state.setStatus(ja.choosePairFolder);
+    const project = await this.files.folder(ja.pairFolderTitle);
+    await this.openSession(rom, project, false, true);
+  }
+
+  /** 最近開いたものに記録した、その ROM と組のフォルダ（無ければ null）。 */
+  recordedProject(rom: string): string | null {
+    return this.state.settings.data.recent.find((r) => r.rom.toLowerCase() === rom.toLowerCase())?.project ?? null;
   }
 
   async openProjectDialog(): Promise<void> {
@@ -246,13 +263,15 @@ export class App implements ActionTarget {
     const path = paths[0];
     if (path === undefined) return;
     if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
-    else if (path.toLowerCase().endsWith(".gba")) await this.openSession(path, null);
+    else if (path.toLowerCase().endsWith(".gba")) await this.openRomAskingFolder(path);
     else this.state.setStatus(ja.unsupportedFile, undefined, true);
   }
 
   async openRecent(index: number): Promise<void> {
     const entry = this.state.settings.data.recent[index];
-    if (entry) await this.openSession(entry.rom, entry.project);
+    if (!entry) return;
+    if (entry.project) await this.openSession(entry.rom, entry.project);
+    else await this.openRomAskingFolder(entry.rom);
   }
 
   async reload(): Promise<void> {
@@ -263,10 +282,10 @@ export class App implements ActionTarget {
 
   /**
    * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
-   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
+   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。`confirmed` なら未出力の確認は済んでいる。
    */
-  async openSession(rom: string, project: string | null, reload = false): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
+  async openSession(rom: string, project: string | null, reload = false, confirmed = false): Promise<void> {
+    if (!confirmed && !(await this.confirmDiscard())) return;
     const state = this.state;
     const previous = state.session;
     state.setStatus(ja.loading);
