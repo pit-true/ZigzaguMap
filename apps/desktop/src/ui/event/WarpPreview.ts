@@ -43,16 +43,13 @@ export class WarpPreview {
 
   private async render(session: ProjectSession, target: MapId, warpId: number): Promise<WarpPreviewResult> {
     if (!session.catalog.has(target)) return { kind: "noMap" };
-    let doc;
-    try {
-      doc = await session.project.peek(target);
-    } catch {
-      return { kind: "noMap" };
-    }
+    const doc = await session.project.peek(target);
+    if (!doc) return { kind: "noMap" };
     const warps = doc.events?.warps ?? [];
     const warp = warps[warpId];
     if (!warp) return { kind: "noWarp", count: warps.length };
-    const { primary, secondary } = await session.project.loadTilesets(doc);
+    // タイルセットも読み取り専用で読む（読み込み済みの組なら使い回す）
+    const { primary, secondary } = await session.project.peekTilesets(doc);
     const renderer = new BlockRenderer(primary, secondary);
     const half = Math.floor(WARP_PREVIEW_SIZE / 2);
     const border = doc.border;

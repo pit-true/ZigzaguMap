@@ -22,6 +22,17 @@
   display: block;
 }
 
+/* 隣のマップの帯（ui/map/NeighborLayer.ts）と主マップの枠（Phase3） */
+.map-stage canvas.map-neighbor {
+  image-rendering: pixelated;
+}
+
+.map-frame {
+  position: absolute;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.75);
+}
+
 .map-base,
 .palette-stage canvas:first-child,
 .border-canvas {

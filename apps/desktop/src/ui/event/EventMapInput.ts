@@ -80,16 +80,15 @@ export class EventMapInput {
     });
   }
 
-  /** マウスの位置のマス（マップの外も含む）。マップが無ければ null。 */
+  /** マウスの位置のマス（主マップの左上が原点。マップの外も含む）。マップが無ければ null。 */
   private cellAt(e: MouseEvent): RawCell | null {
     if (this.view.stage.clientWidth === 0) return null;
-    const r = this.view.stage.getBoundingClientRect();
-    const size = this.view.cellSize;
-    return { x: Math.floor((e.clientX - r.left) / size), y: Math.floor((e.clientY - r.top) / size) };
+    return this.view.rawCellAt(e);
   }
 
+  /** 主マップの中か（隣のマップの帯の上は含めない）。 */
   private inside(cell: RawCell): boolean {
-    const size = this.view.cellSize;
-    return cell.x >= 0 && cell.y >= 0 && cell.x * size < this.view.stage.clientWidth && cell.y * size < this.view.stage.clientHeight;
+    const size = this.view.mapSize;
+    return cell.x >= 0 && cell.y >= 0 && cell.x < size.width && cell.y < size.height;
   }
 }

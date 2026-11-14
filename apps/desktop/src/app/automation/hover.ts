@@ -39,9 +39,11 @@ export const hoverCommands: CommandTable = {
   "event.hover": async (app, req) => {
     const tab = eventTab(app);
     const cell = cellOf(app, req);
+    // 主マップの左上（隣のマップの帯の余白の内側）からの位置
     const r = tab.view.stage.getBoundingClientRect();
+    const o = tab.view.originPx;
     const size = tab.view.cellSize;
-    const shown = await tab.hoverTip.showAt(cell, r.left + (cell.x + 0.5) * size, r.top + (cell.y + 0.5) * size);
+    const shown = await tab.hoverTip.showAt(cell, r.left + o.x + (cell.x + 0.5) * size, r.top + o.y + (cell.y + 0.5) * size);
     const out = describe(tab, shown);
     if (req["show"] === false) tab.hoverTip.hide();
     return out;

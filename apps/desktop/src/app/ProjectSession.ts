@@ -159,6 +159,11 @@ export class ProjectSession {
     return { id, doc, tiles };
   }
 
+  /** 持っているタイルセットの組（無ければ undefined。持っている順は変えない。隣のマップの帯の描画用）。 */
+  cachedTiles(key: string): TilesetView | undefined {
+    return this.tilesets.get(key);
+  }
+
   /** 種族名表（初めて使うときに読む。読めなければ null）。 */
   get speciesNames(): SpeciesNameTable | null {
     if (this.species === undefined) {

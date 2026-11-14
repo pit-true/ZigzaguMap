@@ -19,11 +19,11 @@ describe("CfruProject.peek（読み取り専用の読み込み）", () => {
     const project = await CfruProject.open(buildSyntheticRom(), new MemoryProjectFs());
     const id = { bank: 0, map: 1 };
     const peeked = await project.peek(id);
-    expect(peeked.width).toBe(2);
+    expect(peeked?.width).toBe(2);
     expect(project.loaded(id)).toBeUndefined();
     const doc = await project.load(id);
     new CommandBus(project.gridStore()).execute(new PlaceBlockCommand({ ...id, x: 0, y: 0, block: 9 }));
-    expect((await project.peek(id)).grid.getBlock(0, 0)).toBe(9);
+    expect((await project.peek(id))?.grid.getBlock(0, 0)).toBe(9);
     expect(await project.peek(id)).toBe(doc);
   });
 });

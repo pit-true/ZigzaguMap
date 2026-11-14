@@ -1,4 +1,5 @@
 import { ja } from "../i18n/ja";
+import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
 
@@ -79,6 +80,16 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
+        {
+          // 隣のマップの帯（Phase3。ZigzaguMap 独自）
+          label: jaNeighbors.menu,
+          accel: "B",
+          children: [
+            { id: "neighbors.band", label: jaNeighbors.viewBand },
+            { id: "neighbors.all", label: jaNeighbors.viewAll },
+            { id: "neighbors.off", label: jaNeighbors.viewOff },
+          ],
+        },
         {
           label: ja.mapSize,
           accel: "M",
