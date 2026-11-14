@@ -55,7 +55,7 @@ async function measureOnce() {
     const startupMs = origin + marks.mapShown - start;
     const switches = [];
     for (const [bank, map] of SWITCH_MAPS) switches.push((await call({ cmd: "selectMap", bank, map })).switchMs);
-    return { startupMs, pageToMapMs: marks.mapShown, switches };
+    return { startupMs, pageToMapMs: marks.mapShown, pageStartMs: origin - start, marks, switches };
   } finally {
     await call({ cmd: "exit" }).catch(() => undefined);
     for (let i = 0; i < 40 && proc.exitCode === null; i++) await sleep(100);
@@ -78,3 +78,15 @@ const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const allSwitches = results.flatMap((r) => r.switches);
 console.log(`起動→マップ表示: 中央値 ${median(results.map((r) => r.startupMs)).toFixed(0)} ms、最大 ${Math.max(...results.map((r) => r.startupMs)).toFixed(0)} ms`);
 console.log(`マップの切り替え: 中央値 ${median(allSwitches).toFixed(1)} ms、最大 ${Math.max(...allSwitches).toFixed(1)} ms（${allSwitches.length} 回）`);
+// 内訳（中央値）: exe の起動からページの読み込み開始まで、そのあとは画面側の記録（ページの読み込み開始からの時刻）の間
+const steps = ["scriptStart", "appLoaded", "settingsLoaded", "domReady", "started", "romRead", "sessionOpened", "mapShown"];
+const parts = [`ページの読み込み開始まで ${median(results.map((r) => r.pageStartMs)).toFixed(0)}`];
+let prev = null;
+for (const name of steps) {
+  const xs = results.map((r) => r.marks[name]).filter((v) => typeof v === "number");
+  if (xs.length !== results.length) continue;
+  const at = results.map((r) => r.marks[name] - (prev ? r.marks[prev] : 0));
+  parts.push(`${prev ?? "ページ"}→${name} ${median(at).toFixed(0)}`);
+  prev = name;
+}
+console.log(`内訳（中央値、ms）: ${parts.join("、")}`);

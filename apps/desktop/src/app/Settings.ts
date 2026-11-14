@@ -192,10 +192,10 @@ export class Settings {
   private constructor(readonly data: SettingsData) {}
 
   /** AppData から読む。読めなければ既定値。 */
-  static async load(): Promise<Settings> {
+  static async load(prefetched?: Promise<string>): Promise<Settings> {
     let saved: Partial<SettingsData> = {};
     try {
-      const text = await invoke<string>("load_settings");
+      const text = await (prefetched ?? invoke<string>("load_settings"));
       if (text) saved = JSON.parse(text) as Partial<SettingsData>;
     } catch {
       saved = {};
