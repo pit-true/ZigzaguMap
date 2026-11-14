@@ -3,6 +3,7 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { CommandGroup, EditError, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
 import type { App } from "../app/App";
 import { jaBlockEditor as t } from "../i18n/ja.blockEditor";
+import { jaTransplant } from "../i18n/ja.transplant";
 import {
   TOOL_MESSAGE_EVENT,
   TOOL_REQUEST_EVENT,
@@ -68,7 +69,7 @@ export class ToolWindowHost {
   async open(kind: ToolKind): Promise<void> {
     if (!this.app.state.map) return;
     const size = TOOL_WINDOW_SIZES[kind];
-    const title = kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : t.adjustTitle;
+    const title = kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : kind === "transplant" ? jaTransplant.title : t.adjustTitle;
     this.opened.add(kind);
     try {
       await invoke("open_tool_window", { label: kind, title, width: size.width, height: size.height });
@@ -137,6 +138,8 @@ export class ToolWindowHost {
       case "open":
         await this.open(req.kind);
         return null;
+      case "probe":
+        return (await import("./transplant/transplantProbe")).probeTransplant(this.requireSession().project, req.newTilesets, req.code);
     }
   }
 

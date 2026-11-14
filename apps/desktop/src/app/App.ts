@@ -537,7 +537,7 @@ export class App implements ActionTarget {
   }
 
   /** 別ウィンドウ（ブロックエディタなど）を開く。窓口のコードは初めて開くときに読み込む。 */
-  async openToolWindow(kind: "block-editor"): Promise<void> {
+  async openToolWindow(kind: "block-editor" | "transplant"): Promise<void> {
     const { ToolWindowHost } = await import("../windows/ToolWindowHost");
     await (await ToolWindowHost.get(this)).open(kind);
   }

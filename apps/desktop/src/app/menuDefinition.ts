@@ -1,6 +1,7 @@
 import { ja } from "../i18n/ja";
 import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaComposite } from "../i18n/ja.composite";
+import { jaTransplant } from "../i18n/ja.transplant";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
@@ -185,6 +186,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #314）。別の ROM のタイルセットを新しいタイルセットとして取り込む。
+        { id: "tools.transplant", label: jaTransplant.menu, accel: "I", enable: "map" },
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
         { id: "tools.build", label: jaBuild.menu, accel: "B", shortcut: fkey("F7"), enable: "rom" },
         { id: "tools.previousMap", label: ja.previousMap, accel: "U", shortcut: { key: "BACKSPACE", alt: true, text: "Alt+BkSp" } },

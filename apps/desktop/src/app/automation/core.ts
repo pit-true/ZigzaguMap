@@ -32,7 +32,7 @@ export function describeState(app: App): unknown {
   return {
     rom: session?.romPath ?? null,
     project: session?.projectDir ?? null,
-    map: s.map ? { bank: s.map.id.bank, map: s.map.id.map, name: s.map.doc.mapNameText(), width: s.map.doc.width, height: s.map.doc.height } : null,
+    map: s.map ? { bank: s.map.id.bank, map: s.map.id.map, name: s.map.doc.mapNameText(), width: s.map.doc.width, height: s.map.doc.height, primaryTileset: s.map.doc.primaryTileset >>> 0, secondaryTileset: s.map.doc.secondaryTileset >>> 0 } : null,
     tab: s.tab,
     selection: s.selection,
     movement: s.movement,

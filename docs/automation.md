@@ -37,6 +37,12 @@ python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagu
     # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタで 3 層にする・3 層目の 4 マス・確かめの窓・1 回の取り消し・
     # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
     # third（3 層目の 4 タイル）・triple・thirdVisible が出る。3 層の保存は `setTripleLayer` コマンド
+python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り込む元の ROM> [--source ...] --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>] [--memory]
+    # 別の ROM からタイルセットを取り込む窓（#314）: 一覧・絵・情報・変わることの一覧・両方と配置も写す・1 回の取り消し・出力・主だけ・
+    # --memory で窓を閉じた後のメモリ。窓（"window": "transplant"）の `state` は rom・game・mapCount・selected・parts・copyLayout・
+    # report（変わることの一覧の行）・conversion（主・副のタイル数とブロック数、変換の結果）・target。部品は tp.pickRom・tp.maps・
+    # tp.parts（0 両方 / 1 主だけ / 2 副だけ）・tp.copyLayout・tp.import・tp.close・tp.preview・tp.primaryInfo・tp.secondaryInfo・tp.report。
+    # 元の ROM は queuePath で積んでから tp.pickRom を押す
 python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
     # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
     # --project を付けると「ここに落とし物を追加」も確かめる
@@ -71,7 +77,7 @@ python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFR
 | `canvasPng` | `target`（`map` / `movement` / `event` / `palette` / `border` / `movementPalette`。古い形の `tab` も可。省略時は表示中のタブのマップ）か `id`（部品。`field:RandBox` など） | Canvas を PNG（Base64）で返す。マップは重ね描きとグリッド、ブロックパレットは選択の枠とグリッドを含む。表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる |
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |
-| `state` | | 開いている ROM・プロジェクト・マップ、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB）、`openedUrls`（ヘルプのリンクなどで開こうとした外部の URL。新しい順。自動操作のときはブラウザを開かない） |
+| `state` | | 開いている ROM・プロジェクト・マップ（`map` は番号・名前・大きさと、主・副タイルセットのポインタ値 `primaryTileset`・`secondaryTileset`）、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB）、`openedUrls`（ヘルプのリンクなどで開こうとした外部の URL。新しい順。自動操作のときはブラウザを開かない） |
 | `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
 | `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
 | `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |

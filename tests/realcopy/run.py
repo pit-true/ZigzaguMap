@@ -9,6 +9,8 @@
   python tests/realcopy/run.py --all --reuse           # --smoke と --link の両方（Phase2 の通しの確認）
   python tests/realcopy/run.py --connection --only nd  # 接続の編集（lib/connection.py。Phase3）を出力してビルドし、ROM の接続を確かめる
   python tests/realcopy/run.py --template --reuse      # 使われている番号の索引とイベントのひな形（lib/template.py）
+  python tests/realcopy/run.py --transplant --source-rom <素の BPRJ> --reuse  # 別の ROM からのタイルセットの移植（lib/transplant.py。Phase4 #314）
+  python tests/realcopy/run.py --triple --reuse        # トリプルレイヤーの出力・ビルド・できた ROM の中身（lib/triple.py。Phase4 #317）
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
 
 --smoke: 写しを作り、ZigzaguMap で写しの ROM とプロジェクトを開いて何もせずに出力し、写しでビルドする
@@ -35,6 +37,8 @@ from lib.app import Zigzagu  # noqa: E402
 from lib.builder import build_fixture, build_nd_dpe  # noqa: E402
 from lib.connection import connection_one  # noqa: E402
 from lib.template import template_one  # noqa: E402
+from lib.transplant import transplant_one  # noqa: E402
+from lib.triple import triple_one  # noqa: E402
 from lib.delete import delete_one  # noqa: E402
 from lib.link import link_one  # noqa: E402
 
@@ -179,6 +183,33 @@ def connection_fixture(cfg, name: str, args, log_dir: pathlib.Path) -> tuple[boo
     return not failures, lines
 
 
+def phase4_fixture(cfg, name: str, args, log_dir: pathlib.Path, kind: str) -> tuple[bool, list[str]]:
+    """--transplant・--triple（Phase4。lib/transplant.py・lib/triple.py）。"""
+    fx = fixtures.get(cfg, name)
+    lines: list[str] = []
+    failures: list[str] = []
+    t0 = time.perf_counter()
+    c = fixtures.make_copy(fx, reuse=args.reuse)
+    lines.append(f"写し: {'前のものを使用' if c['reused'] else str(c['files']) + ' ファイルを写した'} {fx.dir}")
+
+    def check(cond: bool, what: str) -> None:
+        print(("  OK   " if cond else "  NG   ") + what, flush=True)
+        if not cond:
+            failures.append(what)
+            lines.append("NG   " + what)
+
+    def log(text: str) -> None:
+        print("       " + text, flush=True)
+
+    with Zigzagu(cfg, f"{kind}-{name}", args.exe) as z:
+        if kind == "transplant":
+            transplant_one(fx, z, check, log, args.timeout, log_dir / f"transplant-{name}", pathlib.Path(args.source_rom))
+        else:
+            triple_one(fx, z, check, log, args.timeout, log_dir / f"triple-{name}")
+    lines.append(f"合計 {time.perf_counter() - t0:.1f} 秒、失敗 {len(failures)} 件")
+    return not failures, lines
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -189,6 +220,9 @@ def main() -> int:
     ap.add_argument("--all", action="store_true", help="--smoke と --link と --delete")
     ap.add_argument("--connection", action="store_true", help="接続の編集（Phase3）を出力してビルドし、ROM の接続を確かめる")
     ap.add_argument("--template", action="store_true", help="使われている番号の索引とイベントのひな形（置く・元に戻す・出力・ビルド・ROM の中身）の確認")
+    ap.add_argument("--transplant", action="store_true", help="別の ROM からのタイルセットの移植（Phase4）を出力してビルドし、ROM の中身を確かめる")
+    ap.add_argument("--source-rom", help="--transplant で取り込む元の ROM（素の BPRJ。読むだけ）")
+    ap.add_argument("--triple", action="store_true", help="トリプルレイヤー（Phase4）を出力してビルドし、ROM の中身と開き直しを確かめる")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
     ap.add_argument("--dpe", action="store_true")
@@ -198,8 +232,10 @@ def main() -> int:
     args = ap.parse_args()
     if args.all:
         args.smoke = args.link = args.delete = True
-    if not args.smoke and not args.link and not args.delete and not args.connection and not args.template:
-        ap.error("--smoke か --link か --delete か --connection か --template か --all を付けてください")
+    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple]):
+        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --all を付けてください")
+    if args.transplant and not args.source_rom:
+        ap.error("--transplant には --source-rom（取り込む元の ROM）が要ります")
     cfg = config.load(args.config, args.exe)
     args.exe = cfg.zigzaguExe
     args.timeout = args.timeout or cfg.buildTimeout
@@ -221,12 +257,17 @@ def main() -> int:
     runs = [(n, "smoke") for n in names if args.smoke] + [(n, "link") for n in names if args.link] + [(n, "delete") for n in names if args.delete]
     runs += [(n, "connection") for n in names if args.connection]
     runs += [(n, "template") for n in names if args.template]
+    runs += [(n, "transplant") for n in names if args.transplant]
+    runs += [(n, "triple") for n in names if args.triple]
     for name, kind in runs:
-        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template]) == 1 else f"{name} ({kind})"
+        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple]) == 1 else f"{name} ({kind})"
         print(f"\n== {key}")
         try:
-            run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]
-            ok, lines = run(cfg, name, args, log_dir)
+            if kind in ("transplant", "triple"):
+                ok, lines = phase4_fixture(cfg, name, args, log_dir, kind)
+            else:
+                run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]
+                ok, lines = run(cfg, name, args, log_dir)
         except Exception as e:  # noqa: BLE001  1 つが失敗しても残りと実フォルダの確認は続ける
             ok, lines = False, [f"エラー: {type(e).__name__}: {e}"]
             traceback.print_exc()
