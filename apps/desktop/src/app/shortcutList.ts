@@ -1,4 +1,5 @@
 import { ja } from "../i18n/ja";
+import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -30,6 +31,7 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "↑↓", action: ja.shortcuts.spin, where: ja.shortcuts.inSpin },
   { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
   { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
+  { keys: "Delete", action: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
   ...scriptEditorKeys(),
 ];
 
@@ -64,7 +66,8 @@ function scriptEditorKeys(): ShortcutRow[] {
     ["F2", s.rename],
     ["Ctrl+B", s.build],
     ["Esc", s.closeHover],
-    ["Enter", s.applyString],
+    ["Ctrl+Enter", s.applyString],
+    ["Enter", s.stringEnter],
   ];
   return rows.map(([keys, action]) => ({ keys, action, where: s.where }));
 }

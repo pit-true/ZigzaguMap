@@ -136,5 +136,6 @@ export const jaScriptEditorAssist = {
     build: "ビルド（下のビルドの欄）",
     closeHover: "ホバーの吹き出しを閉じる・文字列の入力欄を取り消す",
     applyString: "文字列の入力欄の本文を .string へ反映する",
+    stringEnter: ".string の本文と文字列の入力欄で改行する（前が \\n・\\p・\\l・\\m でなければ \\n を補う）",
   },
 };
