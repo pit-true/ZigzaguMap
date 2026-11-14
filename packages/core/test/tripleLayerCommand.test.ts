@@ -5,6 +5,10 @@ import {
   SetBlockCommand,
   SetBlockCountCommand,
   SetTripleLayerCommand,
+  BvdFile,
+  MemoryProjectFs,
+  TilesetSourceJson,
+  TripleLayerIndex,
   createDefaultRegistry,
   type TilesetRef,
 } from "../src/index.js";
@@ -77,5 +81,35 @@ describe("SetTripleLayerCommand", () => {
     expect(registry.names()).toContain("setTripleLayer");
     const cmd = registry.create({ name: "setTripleLayer", args: { ...P, block: 1, attribute: 0x30000000, third: [1, 2, 3, 4] } });
     expect(cmd.name).toBe("setTripleLayer");
+  });
+});
+
+describe("トリプルレイヤーの往復（#317）", () => {
+  it("3 層にして出力し、開き直しても同じ状態。tileset.json は Bochi の規則（N の 4 バイト目 0x30、N+1 の属性と上層 0）", async () => {
+    const fs = new MemoryProjectFs();
+    const project = await openLoaded(rom, fs, [PRIMARY, SECONDARY]);
+    const ctx = project.editorContext();
+    ctx.tileset(PRIMARY).blocks.set([9, 9, 9, 9, 9, 9, 9, 9], 4 * 8);
+    ctx.tileset(PRIMARY).attributes[4] = 0x84;
+    new CommandBus(ctx).execute(new SetTripleLayerCommand({ ...P, block: 3, tiles: [1, 2, 3, 4, 5, 6, 7, 8], attribute: 0x30000002, third: [0x11, 0x12, 0x13, 0x14] }));
+    const saved = await project.save();
+    const info = saved.written.find((w) => w.endsWith("tileset.json") && w.includes("primary"))!;
+    const json = TilesetSourceJson.parse(await fs.readText(info), info);
+    expect(json.behaviors[3 * 4 + 3]).toBe(0x30);
+    expect([...json.behaviors.subarray(4 * 4, 5 * 4)]).toEqual([0, 0, 0, 0]);
+    expect([...json.blocks.subarray(4 * 16, 5 * 16)]).toEqual([0x11, 0, 0x12, 0, 0x13, 0, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+    const reopened = await openLoaded(rom, fs, [PRIMARY, SECONDARY]);
+    const a = ctx.tileset(PRIMARY);
+    const b = reopened.editorContext().tileset(PRIMARY);
+    expect([...b.attributes]).toEqual([...a.attributes]);
+    expect([...b.blocks]).toEqual([...a.blocks]);
+    const index = new TripleLayerIndex(b, reopened.editorContext().tileset(SECONDARY));
+    expect(index.isTriple(3) && index.isTripleChild(4)).toBe(true);
+
+    // .bvd の書き出しと読み込みでも残る
+    const bvd = BvdFile.read(BvdFile.write(b.blocks, b.attributes), b.blockCapacity);
+    expect(bvd.attributes[3]).toBe(0x30000002);
+    expect([...bvd.blocks.subarray(32, 40)]).toEqual([0x11, 0x12, 0x13, 0x14, 0, 0, 0, 0]);
   });
 });
