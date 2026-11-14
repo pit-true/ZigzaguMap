@@ -24,7 +24,7 @@ import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
 import { EventMapInput, type RawCell } from "./EventMapInput";
 import { EventOffsets, hasAnyEvent, listCount, mapFly, type UiKind } from "./eventModel";
 import { FlyPanel } from "./panels/FlyPanel";
-import type { PanelHost, ScriptEventKind } from "./panels/KindPanel";
+import type { PanelHost, ScriptEventKind, UnusedKind } from "./panels/KindPanel";
 import { PersonPanel } from "./panels/PersonPanel";
 import { SignPanel } from "./panels/SignPanel";
 import { TrapPanel } from "./panels/TrapPanel";
@@ -40,6 +40,8 @@ export interface EventTabHost {
   readonly scriptFiles: ScriptFiles;
   /** イベントを削除する（#220。確認のダイアログを出してから。スクリプトの記述と ROM の範囲も）。 */
   deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
+  /** 範囲の中で使われていない最小の番号（#227。「未使用を選ぶ」ボタン）。 */
+  pickUnused?(kind: UnusedKind): Promise<number | null>;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -98,6 +100,8 @@ export class EventTab {
       openScript: (kind, index) => this.openScript(kind, index),
       labelSource: (kind, index) => this.labelSource(kind, index),
       goTo: (bank, map, warpId) => void this.goTo(bank, map, warpId),
+      unused: (kind) => this.host.pickUnused?.(kind) ?? Promise.resolve(null),
+      unusedAvailable: () => state.session?.projectDir != null,
     };
     this.panels = {
       person: new PersonPanel(panelHost),

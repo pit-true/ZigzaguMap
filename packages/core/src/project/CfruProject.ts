@@ -225,6 +225,22 @@ export class CfruProject {
     return doc;
   }
 
+  /**
+   * マップを読むが、保持しない（索引づくりなどで全マップをなめるとき。読み込み済みならそのマップを返す）。
+   * 無いマップなら null。返したものを編集しないこと。
+   */
+  async peek(id: MapId): Promise<MapDocument | null> {
+    const k = mapKey(id);
+    const cached = this.store.find(id);
+    if (cached) return cached;
+    if (this.store.removedMaps.has(k)) return null;
+    if (this.jsonMaps.has(k)) {
+      const path = mapSourcePath(id);
+      return MapSourceConverter.fromSource(MapSourceJson.parse(await this.fs.readText(path), path), path);
+    }
+    return this.base.has(id) ? this.base.read(id) : null;
+  }
+
   /** マップを読む。例外を投げず、読めなかった理由を結果で返す。 */
   async tryLoad(id: MapId): Promise<MapLoadResult> {
     try {

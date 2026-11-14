@@ -21,6 +21,8 @@ export class ScriptFiles {
   private readonly done = new Map<string, string[]>();
   /** ラベルの一覧が変わったときに呼ぶもの。 */
   private readonly listeners = new Set<() => void>();
+  /** ファイルが変わったときに呼ぶもの（パスつき。使われている番号の索引 #227 が使う）。 */
+  private readonly pathListeners = new Set<(path: string) => void>();
 
   constructor(private readonly app: App) {}
 
@@ -28,6 +30,12 @@ export class ScriptFiles {
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** ファイルが変わった（書き換えた・エディタで保存した）ときに呼ぶ。戻り値でやめる。 */
+  onPathChange(listener: (path: string) => void): () => void {
+    this.pathListeners.add(listener);
+    return () => this.pathListeners.delete(listener);
   }
 
   /** `.s` のラベルの名前（ファイルの順。無いファイルは空）。 */
@@ -59,6 +67,7 @@ export class ScriptFiles {
     } else {
       this.labels.delete(path);
       this.done.delete(path);
+      for (const l of this.pathListeners) l(path);
     }
     for (const l of this.listeners) l();
   }

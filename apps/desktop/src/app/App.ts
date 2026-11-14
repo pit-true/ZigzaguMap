@@ -37,6 +37,9 @@ import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
+import { jaUsage } from "../i18n/ja.usage";
+import type { UsageKind } from "@zigzagumap/core";
+import { UsageService } from "./UsageService";
 import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
@@ -102,6 +105,8 @@ export class App implements ActionTarget {
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
+  /** 使われているフラグ・変数などの番号の索引（#227）。 */
+  readonly usage: UsageService;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -123,6 +128,7 @@ export class App implements ActionTarget {
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
+    this.usage = new UsageService(this);
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
@@ -169,6 +175,7 @@ export class App implements ActionTarget {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
+      pickUnused: (kind) => this.pickUnused(kind),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
@@ -600,6 +607,18 @@ export class App implements ActionTarget {
   }
 
   /** イベントの削除（#220。初めて使うときに読み込む）。 */
+  /** 範囲の中で使われていない最小の番号（#227）。無ければステータスバーに出して null。 */
+  async pickUnused(kind: UsageKind): Promise<number | null> {
+    const what = jaUsage.kind[kind] ?? kind;
+    if (!this.usage.now) this.state.setStatus(jaUsage.building);
+    const value = await this.usage.next(kind);
+    const error = this.usage.state().error;
+    if (error) this.state.setStatus(jaUsage.failed(error), undefined, true);
+    else if (value === null) this.state.setStatus(jaUsage.none(what), undefined, true);
+    else this.state.setStatus(jaUsage.picked(what, `0x${value.toString(16).toUpperCase()}`));
+    return value;
+  }
+
   eventDeleter(): Promise<import("../ui/event/EventDeleter").EventDeleter> {
     return (this.eventDeleterValue ??= import("../ui/event/EventDeleter").then(({ EventDeleter }) => new EventDeleter(this)));
   }
