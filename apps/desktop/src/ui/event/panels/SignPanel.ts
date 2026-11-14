@@ -1,4 +1,4 @@
-import { scriptEntry, showIfScriptEntry } from "../../script/ScriptEntry";
+import { SCRIPT_BUTTONS_SHOWN, showIfScriptEntry } from "../../script/ScriptEntry";
 import type { SignEvent } from "@zigzagumap/core";
 import { hex, ja } from "../../../i18n/ja";
 import { formLabel, pushButton, type ComboBox } from "../../form/valueControls";
@@ -83,7 +83,7 @@ export class SignPanel extends ListKindPanel<SignEvent> {
       }, "wide-button"),
     );
     this.element.append(open);
-    this.scriptPart = scriptEntry.available ? [offset, open] : [offset];
+    this.scriptPart = SCRIPT_BUTTONS_SHOWN ? [offset, open] : [offset];
 
     const itemLabel = formLabel(f.item);
     this.items = this.combo("item", [], 161, (e) => {

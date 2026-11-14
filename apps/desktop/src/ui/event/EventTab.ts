@@ -76,7 +76,7 @@ export class EventTab {
     const panelHost: PanelHost = {
       editor: this.editor,
       mapId: () => state.map?.id ?? null,
-      openScript: (pointer) => scriptEntry.open(pointer),
+      openScript: (pointer) => scriptEntry.openPointer(pointer),
       goTo: (bank, map, warpId) => void this.goTo(bank, map, warpId),
     };
     this.panels = {
@@ -304,17 +304,14 @@ export class EventTab {
         return void this.goTo(w.bank, w.map, w.warpId);
       }
       case "trap":
-        return scriptEntry.open(events.traps[hit.index]!.script);
+        return scriptEntry.open({ map: this.state.map!.id, kind: "trap", index: hit.index });
       case "sign": {
-        const s = events.signs[hit.index]!;
-        if (s.content.type === "script") scriptEntry.open(s.content.script);
+        // 隠しアイテムの看板（スクリプトを持たない）は開かない
+        if (events.signs[hit.index]!.content.type === "script") scriptEntry.open({ map: this.state.map!.id, kind: "sign", index: hit.index });
         return;
       }
-      case "person": {
-        const p = events.persons[hit.index]!;
-        if (p.script !== 0) scriptEntry.open(p.script);
-        return;
-      }
+      case "person":
+        return scriptEntry.open({ map: this.state.map!.id, kind: "person", index: hit.index });
       case "fly":
         return;
     }

@@ -7,6 +7,7 @@ import { PaintBorderCommand } from "./commands/PaintBorderCommand.js";
 import { PaintMovementCommand } from "./commands/PaintMovementCommand.js";
 import { registerEditCommands } from "./editCommands.js";
 import { registerRegionMapCommands } from "../regionmap/index.js";
+import { registerScriptsTableCommands } from "../script/project/ScriptsTableCommands.js";
 
 /** JSON の引数からコマンドを作る関数。 */
 export type CommandFactory = (args: Record<string, unknown>) => Command;
@@ -43,5 +44,5 @@ export function createDefaultRegistry(): CommandRegistry {
     .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
     .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
   registry.register(CommandGroup.NAME, (args) => CommandGroup.fromJson(args, (r) => registry.create(r)));
-  return registerRegionMapCommands(registerEditCommands(registry));
+  return registerScriptsTableCommands(registerRegionMapCommands(registerEditCommands(registry)));
 }
