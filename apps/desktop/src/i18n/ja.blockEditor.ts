@@ -115,6 +115,11 @@ export const jaBlockEditor = {
   tripleNoNext: "次のブロックが無いため、トリプルレイヤーに設定できません。",
   tripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3 層目に使われます。属性と上層を消します。`,
   undrawnLayer: "実機ではこのマスは描かれません",
+
+  /** ショートカット一覧（ヘルプ）。 */
+  shortcutTileKeys: "左クリック、右クリック",
+  shortcutTile: "選んでいるタイルを置く・そのマスのタイルを拾う（3 層のときは「3層目」の 4 マスも。書く先はブロック N+1 の下層）",
+  shortcutTileWhere: "ブロックエディタの 8 マス・3層目の 4 マス",
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */

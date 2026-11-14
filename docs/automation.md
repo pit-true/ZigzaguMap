@@ -27,7 +27,8 @@ python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFR
     # スクリプトエディタのテーマ 4 つで、ウィンドウの部品（帯・検索の欄・補完・ホバー・ビルドの欄・波線の一覧・ダイアログ・スクロールバー）が同じテーマの色になること
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
-    # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
+    # ROM を開いたあとのフォルダ選択、ヘルプ）と、Phase3 のフィードバック（#296 読み込み時間を出さない・#297 左下の ROM 情報の欄が無い）を
+    # ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
 python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...] [--chronos <Chronos の写し>]
     # Phase3 の表示・ホバー・スタンプ・クローン（配置の共有など）。名前はスクリプトの CHECKS の鍵。--chronos を付けると、
     # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直す窓（trainerEdit）も確かめる
@@ -46,11 +47,14 @@ python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り
 python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
     # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
     # --project を付けると「ここに落とし物を追加」も確かめる
+python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+    # Phase4 の描く道具（#300・#301・#310〜#313・#335〜#338）。名前は triple・tripleTools・autopen・autopenBand・assist・assistReopen・
+    # assistEdge・candidates。マップ作成補助のパーツは --work（既定は一時フォルダ）の maps\autopen\ に書く。ROM には書かない
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
 
-命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`scripts`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
+命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`hover`・`history`・`stamps`・`warpMap`・`blockUsage`・`view`・`process`・`script`・`scripts`・`link`・`usage`・`templates`・`trainers`・`neighbors`・`bag`・`composite`、Phase4 の `viewTools`・`tileset`・`pen`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
@@ -116,7 +120,7 @@ python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFR
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
 | `resize` | `width`、`height`（論理ピクセル） | メインウィンドウの大きさを変える。返事は中の大きさ |
 | `drop` | `paths`（パスの配列）か `path` | ファイル・フォルダのドラッグ＆ドロップと同じ処理で開く（先頭の 1 つ。フォルダならプロジェクト、`.gba` なら ROM、ほかはステータスバーに案内）。`.gba` は続けて組のフォルダを選ぶダイアログが出るので、ダイアログが出たところで返る（`queuePath` で答え、`null` でキャンセルすると ROM だけで開く）。返事は開いている ROM・プロジェクト、ステータスバー、開いているダイアログ |
-| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`scroll` / `view.scroll`（`id` の部品の枠。ブロック一覧は `be.blocks`、引数はメインと同じ）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う） |
+| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust` / `transplant`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`scroll` / `view.scroll`（`id` の部品の枠。ブロック一覧は `be.blocks`、引数はメインと同じ）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う）、移植の窓だけ `transplant.select`（下の「Phase4 の部品と命令」）。マップ作成補助（`map-assist`）は仕組みがワールドマップエディタと同じで、命令は下の Phase4 の節 |
 
 AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
 
@@ -260,12 +264,6 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `blockUsage` | `block`（省略で選んでいるブロック） | ブロックの使用回数（#235）。索引ができるまで待つ。`count`（全マップ）、`here`（表示中のマップ）、`movements`（移動許可 → 数）、`mostMovement`、`mismatches`（表示中のマップで移動許可がいちばん多い値と違うマス `x`・`y`・`movement`）、`selectedMovement`（選んでいる移動許可）、`marks`（今付けている印の数。`map`・`movement`） |
-| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
-| `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
-| `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
-| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
-| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
-| （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 
@@ -303,7 +301,6 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 ## Phase3 の部品と命令（未使用の番号・ひな形・トレーナー）
 
-- イベントの種類ごとの表示（#304）: `action` か `menu.run` の `view.eventKind.person`・`view.eventKind.sign`・`view.eventKind.trap`・`view.eventKind.warp`（個人設定 `hiddenEventKinds` に隠す種類が入る）。イベントの濃さは、表示 > 移動エリアの設定の透明度（`view.opacity`）の窓のスライダー `view.eventOpacity.slider`（`setField` に 10〜100）と値 `view.eventOpacity.value`（個人設定 `eventOpacity`、0.1〜1）。比較テストは `setting` で `hiddenEventKinds` を `[]`、`eventOpacity` を 1 にしてから比べる（既定のまま）。
 - 「未使用」ボタン（#227。プロジェクトフォルダを開いているときだけ出る）: `event.person.flagUnused`・`event.trap.variableUnused`・`event.sign.hiddenIdUnused`（`click` で押す。欄を変えるコマンドを実行する）。
 - イベントタブの右クリックのメニューの「ここにひな形を置く」は項目 `placeTemplate`（`mouse` の `rightClick` で開き、`contextMenu.press`）。窓の部品は `template.kind`（種類のコンボ。項目の文字で選ぶ）、`template.graphics`・`template.flag`・`template.variable`・`template.hiddenId`・`template.item`・`template.amount`・`template.ball`・`template.martItems`（複数選択）・`template.trainer`・`template.sight`・`template.facing`・`template.text.<文の名前>`（`text` / `before` / `after` / `intro` / `defeat`）、未使用のボタン `template.flagUnused` など、新しいトレーナーの `template.newTrainer`（チェック）・`template.newTrainer.id`・`.name`・`.class`・`.pic`・`.seed`・`.generate`・`.party`、「置く」`template.place`・「キャンセル」`template.cancel`（`dialog` の `ok` / `cancel` でも押せる）。
 
@@ -329,9 +326,32 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - 画像のコピー（#246）: `{"cmd":"image.composite","whole":true,"events":"none","png":true}` で接続している全マップ（`whole: false` なら今のマップ）の画像を作る。`events` は `none` / `persons` / `all`、`scale` で縮める割合（省くと辺が 16,384 画素を超えるときは収まるまで縮める。ダイアログは出さない）。返事は `width`・`height`・`scale`・`bounds`・`maps`（並べたマップと置き場所。最初のマップの左上が原点のマス）・`heapMb`（作っている間の JavaScript のヒープ）と、`png: true` なら PNG（Base64）。`clipboard: true` のときだけクリップボードへ渡す（既定は渡さない。テストでユーザーのクリップボードを汚さないため）。メニューは アクション `image.copyMap.<none|persons|all>`・`image.copyWhole.<none|persons|all>`。
 
 
+## Phase4 の部品と命令（トリプルレイヤー・描く道具・移植）
+
+命令は `apps/desktop/src/app/automation/` の `tileset`（`blockInfo`）と `pen`（`tripleChildCells`・`autopen.*`）、別ウィンドウの側は `windows/transplant/TransplantWindow.ts` と `windows/map-assist/MapAssistWindow.ts` です。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
+| `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
+| `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
+| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
+| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
+| （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`（`x`・`y`・`width`・`height`・選んだブロックの並び `blocks`。空きは null。#338）・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
+| `transplant.select`（移植の窓宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事は窓の `state` と同じ |
+
+- コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックを 3 層にする・やめる。N の 8 タイルと属性、N+1 の下層 4 タイルを書き、3 層にするときは N+1 の属性と上層を 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置も写す」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
+- ブロックエディタ（`"window": "block-editor"`）の 3 層の部品: 3層目の 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。窓の `state` には `third`（3 層目の 4 タイル）・`triple`・`thirdVisible` が出る。3 層の保存は `setTripleLayer` を通る。
+- 3 層の印: `action` の `view.tripleChildMarks`（個人設定 `tripleChildMarks`。既定 true）。
+- 自動ペンの欄（マップタブの右）: 「自動ペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
+- マップ作成補助（`action` の `tools.mapAssist`、`"window": "map-assist"`）の部品: タブ `assist.tabBlocks`・`assist.tabMap`、左の絵 `assist.source`、パーツの一覧 `assist.parts`（`setField` に番号）、追加 `assist.add.fill`・`assist.add.edge`・`assist.add.piece`・`assist.add.repeat`、`assist.remove`・`assist.up`・`assist.down`、名前 `assist.name`・役割 `assist.role`、「マップから候補を作る（自動）」`assist.analyze`、「Bochi の定義を読み込む…」`assist.importBochi`（ファイルのダイアログは `queuePath` で答える）、枠 `assist.slot.<枠名>`（`assist.slot.NW` など）、「← 左で選んだ所を入れる」`assist.put`・「枠を空にする」`assist.clearSlot`・「保存」`assist.save`、範囲の操作 `assist.fill`（選んだパーツで範囲を塗る）・`assist.tidy`（範囲を整える）とそのチェック `assist.tidyEdges`・`assist.tidyRepeats`・`assist.tidyMovement`（`setField` に true / false）。範囲はメインのマップの `mouse` の `ctrl: true` の右ドラッグで選ぶ。
+- 移植の窓（`action` の `tools.transplant`、`"window": "transplant"`）: 部品は上の `transplant_check.py` の説明のとおり（`tp.pickRom`・`tp.maps`・`tp.parts`・`tp.copyLayout`・`tp.import`・`tp.close`・`tp.preview`・`tp.primaryInfo`・`tp.secondaryInfo`・`tp.report`）と、元の ROM の表示 `tp.romLabel`。窓の `state` は `rom`・`game`・`mapCount`・`selected`・`selectedSize`（選んだマップの大きさ `[幅, 高さ]`）・`parts`・`copyLayout`・`report`・`conversion`・`target`・`jsHeap`（窓の JavaScript のヒープ、バイト）。
+
 ## Phase4 の表示・一覧・調査（列 3）
 
 命令は `apps/desktop/src/app/automation/viewTools.ts` にまとめています。
+
+- イベントの種類ごとの表示（#304）: `action` か `menu.run` の `view.eventKind.person`・`view.eventKind.sign`・`view.eventKind.trap`・`view.eventKind.warp`（個人設定 `hiddenEventKinds` に隠す種類が入る）。イベントの濃さは、表示 > 移動エリアの設定の透明度（`view.opacity`）の窓のスライダー `view.eventOpacity.slider`（`setField` に 10〜100）と値 `view.eventOpacity.value`（個人設定 `eventOpacity`、0.1〜1）。比較テストは `setting` で `hiddenEventKinds` を `[]`、`eventOpacity` を 1 にしてから比べる（既定のまま）。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
