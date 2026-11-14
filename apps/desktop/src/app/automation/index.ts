@@ -15,6 +15,7 @@ import { menuCommands } from "./menu";
 import { mouseCommands } from "./mouse";
 import { neighborCommands } from "./neighbors";
 import { bagCommands } from "./bag";
+import { compositeCommands } from "./composite";
 import { processCommands } from "./process";
 import { scriptCommands } from "./script";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
@@ -58,6 +59,7 @@ const registry: CommandRegistry = new CommandRegistry([
   trainerCommands,
   neighborCommands,
   bagCommands,
+  compositeCommands,
   { commands: () => registry.names() },
 ]);
 
