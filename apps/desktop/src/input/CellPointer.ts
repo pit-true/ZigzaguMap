@@ -6,6 +6,8 @@ export interface Gesture {
   readonly button: number;
   readonly ctrl: boolean;
   readonly shift: boolean;
+  /** Alt（Phase3 #233 の 2 マスの入れ替え）。 */
+  readonly alt: boolean;
 }
 
 /** マス目の上でのマウス操作の受け手。`move` はドラッグ中にマスが変わったときだけ呼ぶ。 */
@@ -41,7 +43,7 @@ export function attachCellPointer(
     } catch {
       /* 何もしない */
     }
-    gesture = { button: e.button, ctrl: e.ctrlKey, shift: e.shiftKey };
+    gesture = { button: e.button, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
     last = cell;
     handlers.down(cell, gesture);
   });

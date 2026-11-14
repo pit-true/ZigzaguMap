@@ -259,4 +259,5 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - 複数選択の移動許可（#225）: マップから Ctrl＋右ドラッグで拾った選択は、`selection`（とマウス操作の返事）の `block.movements` に移動許可を持つ（パレットから選んだものは持たない）。`selectBlock` に `movements`（`blocks` と同じ並び）を渡すと、マップから拾ったのと同じ選択になる。マップタブの右の欄の「移動許可も貼る」は `map.pasteMovements`（`setField` に true / false。個人設定 `pasteMovements`）。オンなら `paintCells`、オフなら `paintBlocks` で貼る。
 - `paintCells` コマンド: `{"cmd":"command","name":"paintCells","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9,"movement":12}]}}`（ブロックと移動許可を両方書く。ドラッグ中はまとめて 1 回の操作）。
 - コピーと貼り付け: マップタブで `{"cmd":"key","key":"c","ctrl":true}`（コピー）、`mouse` の `hover` でマスを指してから `{"cmd":"key","key":"v","ctrl":true}`（貼る）。
+- 矩形塗りと入れ替え（#233）: `mouse` に `alt` を足した。矩形塗りは `{"cmd":"mouse","target":"map","action":"drag","ctrl":true,"cell":[2,2],"to":[6,5]}`（移動エリアタブは `target: "movement"`）、入れ替えは `"alt":true`。取りやめは `down`・`move`（`button: "left"`）のあとに `{"cmd":"key","key":"Escape"}` を送ってから `up`。矩形塗りは選択が移動許可を持ち「移動許可も貼る」がオンなら `paintCells`、そうでなければ `paintBlocks`、入れ替えは `paintCells` の 2 マス。
 
