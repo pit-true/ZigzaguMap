@@ -24,5 +24,6 @@ export const jaRomScript = {
   importOk: "取り込む",
   cancel: ini.NewMapForm["16"],
   importDone: (label: string) => `${label} として取り込みました（元に戻すときはメインのウィンドウで Ctrl+Z）`,
+  noButton: (button: string) => `ボタンがありません: ${button}`,
   importFailed: (error: string) => `取り込めませんでした: ${error}`,
 };
