@@ -17,6 +17,8 @@ export const TILESET_INFO_FILE = "tileset.json";
 export const TILESET_IMAGE_FILE = "tiles.png";
 /** タウンマップ（maps/regionmap.json）のパス。 */
 export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
+/** スタンプのフォルダ（maps/stamps。1 つのスタンプが 1 ファイル）。 */
+export const STAMPS_DIR = `${MAPS_DIR}/stamps`;
 
 /** マップの JSON のパス（maps/BB/MM.json。2 桁にそろえる）。 */
 export function mapSourcePath(id: MapId): string {

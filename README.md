@@ -952,6 +952,7 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 | `maps\scripts.json` | ツール > スクリプトファイルの対応表で表を変えたとき（変えていなければ触らない） | 「[eventscripts と maps\scripts.json](#eventscripts-と-mapsscriptsjson)」 |
 | `assembly\overworld_scripts\<名前>.s` と `strings\<名前>.string` | 対応表の「新しい .s を作る」で足した行があるとき。既にあるファイルは書き換えない | `.s` は決まった先頭（「[scripts.json の編集画面](#scriptsjson-の編集画面)」）、`.string` は空 |
 | `maps\regionmap.json` | タウンマップ・フライトポジションを変えたとき。全部ベース ROM と同じに戻ったら消す | 「[maps\regionmap.json](#mapsregionmapjson)」 |
+| `maps\stamps\<名前>.json` | スタンプを保存・名前の変更・上書き・削除したとき、すぐ（出力を待たない。元に戻すの対象外）。書くときに `maps\project.json` が無ければ作る（Bochi 改造版は maps\ に JSON があって project.json が無いと開けない） | `format`・`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`（ポインタの 16 進の文字列）・`secondaryUsed`・`cells`（左上から行ごとの `[ブロック番号, 移動許可]`、`null` は貼らないマス）・`created`。名前は UTF-8 のまま、ファイル名に使えない字は `_`。読み書きは `packages/core/src/project/StampJson.ts`。Bochi と `map_project.py` は数字のフォルダだけを読むので無視される |
 
 JSON はどれも Bochi（.NET の System.Text.Json）と同じ整形です。2 空白の字下げ、改行は CRLF、末尾に改行 1 つ、バイト列は base64、文字列は ASCII の表示文字以外と `"` `&` `'` `+` `<` `>` と逆引用符を `\uXXXX` にします（`\` は `\\`）。同じタイルセットを使うマップはどれも、次に開いたときから `maps\tilesets` の内容で読みます。
 

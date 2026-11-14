@@ -408,6 +408,19 @@ export class CfruProject {
     return { written: writes.map((w) => w.path), removed: removals };
   }
 
+  /**
+   * maps\project.json が無ければ作る（中身は読み込んだもの、無ければベース ROM のバンクごとのマップ数）。
+   * スタンプ（maps\stamps\）のように出力を待たずに maps\ へ書くときに使う。BochiBochiEditor 改造版は
+   * maps\ に JSON があって project.json が無いと開けないため。戻り値は書いたパス（あれば null）。
+   */
+  async ensureManifest(): Promise<string | null> {
+    if (await this.fs.exists(PROJECT_MANIFEST_PATH)) return null;
+    const manifest = this.manifestValue ?? { format: PROJECT_MANIFEST_FORMAT, baseBankCounts: this.base.bankTable.counts() };
+    await this.fs.writeText(PROJECT_MANIFEST_PATH, ProjectManifestJson.stringify(manifest));
+    this.manifestValue = manifest;
+    return PROJECT_MANIFEST_PATH;
+  }
+
   /** 既にある（ベース ROM と maps\ の JSON の）マップのバンクごとの数。 */
   private existingBankCounts(): number[] {
     const counts = this.base.bankTable.counts();
