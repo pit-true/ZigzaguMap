@@ -134,6 +134,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
   readonly neighbors: NeighborService;
+  private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
+  private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
   readonly connectionHandles: ConnectionHandles;
   readonly edgeHandles: EdgeHandles;
@@ -210,6 +212,11 @@ export class App implements ActionTarget {
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.neighbors = new NeighborService(state);
+    // 境界をまたぐ描画（#234）: 描く道具に隣の帯を教える
+    mapTab.painter.cells.neighbors = this.neighbors;
+    movementTab.painter.cells.neighbors = this.neighbors;
+    this.mapTabPainter = mapTab.painter;
+    this.movementTabPainter = movementTab.painter;
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
       ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" }),
     );
@@ -542,6 +549,12 @@ export class App implements ActionTarget {
   }
 
   // ---- 編集 ----
+
+  /** 隣のマップを読み込んでから書く操作（境界をまたぐ描画。#234）が残っていないことを待つ（自動操作用）。 */
+  async settlePainting(): Promise<void> {
+    await this.mapTabPainter?.cells.settle();
+    await this.movementTabPainter?.cells.settle();
+  }
 
   /** 元に戻す。 */
   undo(): void {
