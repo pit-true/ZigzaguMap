@@ -16,7 +16,7 @@ import { describeSelection } from "./status";
  * - action: `click` / `dblclick` / `rightClick` / `drag`（`to` / `toPx` まで `steps` 回（既定 8）に分けて動かす）/ `hover` /
  *   `down` / `move` / `up`（1 つずつ送る）。
  * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）/ `middle` / `back`・`forward`（サイドボタン。`click` で
- *   マップの履歴を戻る・進む。#237）。ctrl・shift: 修飾キー。
+ *   マップの履歴を戻る・進む。#237）。ctrl・shift・alt: 修飾キー。
  * 返事は選択中のブロック・移動許可・イベントとステータスバー。
  */
 
@@ -107,6 +107,7 @@ class MouseSender {
     private readonly el: HTMLElement,
     private readonly ctrl: boolean,
     private readonly shift: boolean,
+    private readonly alt = false,
   ) {}
 
   private init(x: number, y: number, button: number, buttons: number, detail = 1): PointerEventInit {
@@ -123,6 +124,7 @@ class MouseSender {
       detail,
       ctrlKey: this.ctrl,
       shiftKey: this.shift,
+      altKey: this.alt,
       pointerId: 1,
       pointerType: "mouse",
       isPrimary: true,
@@ -183,7 +185,7 @@ async function mouse(app: App, req: AutomationRequest): Promise<unknown> {
   const action = optStr(req, "action") ?? "click";
   const at = pointOf(req, t, "cell", "px", "x", "y");
   if (!at) throw new Error("位置を cell: [x, y] か px: [x, y] で指定してください");
-  const m = new MouseSender(t.element, req["ctrl"] === true, req["shift"] === true);
+  const m = new MouseSender(t.element, req["ctrl"] === true, req["shift"] === true, req["alt"] === true);
   const [x, y] = at;
   switch (action) {
     case "hover":

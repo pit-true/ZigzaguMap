@@ -9,4 +9,11 @@ export const jaPaint = {
   shortcutCopy: "選んでいるブロック（複数選択）をコピー",
   shortcutPaste: "コピーしたものをマウスの位置に貼る",
   shortcutWhere: "マップタブ",
+  /** 矩形塗りと入れ替え（#233）。 */
+  dragCancelled: "ドラッグを取りやめました",
+  swapped: (ax: number, ay: number, bx: number, by: number) => `(${ax}, ${ay}) と (${bx}, ${by}) を入れ替えました`,
+  shortcutRectFill: "矩形塗り（スタンプは左上から敷き詰める）",
+  shortcutSwap: "押したマスと離したマスを入れ替える",
+  shortcutCancel: "矩形塗り・入れ替え・矩形の選択のドラッグを取りやめる",
+  shortcutDragWhere: "マップタブのマップ（矩形塗りは移動エリアタブでも）",
 } as const;
