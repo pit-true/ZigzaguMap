@@ -29,8 +29,9 @@ export const jaShortcuts = {
 
 /** ヘルプの Read me の窓。 */
 export const jaHelpViewer = {
-  back: "戻る",
   close: "閉じる",
+  /** 本文のリンクで別の文書へ移ったときに、本文の先頭に出す戻り先のリンク。 */
+  returnTo: (title: string) => `← ${title}に戻る`,
   /** ヘルプの中では開けない文書へのリンク。 */
   unknownDoc: (path: string) => `ヘルプの中では開けない文書です: ${path}`,
 } as const;

@@ -221,17 +221,32 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     check(field(z, "help.doc")["value"] == "README.md", "Read me で README を開く")
     check(field(z, "help.link:docs/compare-test.md")["visible"], "README のリンクが描かれている")
     save_png(z.call({"cmd": "screenshot"}), shot("08_help_readme.png"))
+    # #219: 「戻る」ボタンと文書の名前の表示は無い（help.doc は自動操作で読むだけで、画面に出さない）
+    check(not field(z, "help.doc")["visible"], "文書の名前は画面に出さない")
+    check(not any(x.get("autoId") == "help.back" for x in z.call({"cmd": "ui.list"})), "「戻る」ボタンが無い")
+    check(not has_id(z, "help.home"), "元の文書では戻り先のリンクを出さない")
     z.call({"cmd": "click", "id": "help.link:#ショートカット"})
-    check(z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"] > 0, "目次のリンクで見出しへ移る")
+    scrolled = z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"]
+    check(scrolled > 0, "目次のリンクで見出しへ移る")
     z.call({"cmd": "click", "id": "help.link:docs/automation.md"})
     check(field(z, "help.doc")["value"] == "docs/automation.md", "docs/ へのリンクをヘルプの中で開く")
-    z.call({"cmd": "click", "id": "help.back"})
-    check(field(z, "help.doc")["value"] == "README.md", "戻るで README へ戻る")
+    home = field(z, "help.home")
+    check(home["visible"] and home["value"] == "← Read meに戻る", f"移った先の本文の先頭に戻り先のリンクが出る（{home['value']}）")
+    save_png(z.call({"cmd": "screenshot"}), shot("08b_help_doc.png"))
+    z.call({"cmd": "click", "id": "help.home"})
+    check(field(z, "help.doc")["value"] == "README.md", "戻り先のリンクで README へ戻る")
+    back_at = z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"]
+    check(abs(back_at - scrolled) <= 2, f"README の離れたときの位置へ戻る（{scrolled} → {back_at}）")
     z.call({"cmd": "menu.run", "id": "help.shortcuts"})
     time.sleep(0.2)
     check(field(z, "help.doc")["value"] == "shortcuts.md", "ショートカット一覧を開く")
+    check(not has_id(z, "help.home"), "メニューから開いた文書には戻り先のリンクを出さない")
     save_png(z.call({"cmd": "screenshot"}), shot("09_help_shortcuts.png"))
     z.call({"cmd": "click", "id": "help.close"})
+
+
+def has_id(z, auto_id: str) -> bool:
+    return any(x.get("autoId") == auto_id for x in z.call({"cmd": "ui.list"}))
 
 
 def main() -> int:
