@@ -5,6 +5,8 @@
 - 自動操作の入口つき・一時フォルダの --profile で起動する（通常の設定には触れない。画面外・非アクティブ・音なし）。
 - 表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、ROM を開いたあとのフォルダ選択、
   ヘルプ（Read me の描画・リンク・ショートカット一覧・バージョン情報）を順に操作して確かめる。
+- Phase3 のフィードバックのうち、読み込み時間を出さない（#296）と左下の ROM 情報の欄が無い（#297）もここで見る
+  （クローンの見た目（#298）は phase3_view_check.py の clones）。
 - `--shots` を付けると、新しい画面のスクリーンショットをそのフォルダに PNG で書く。
 失敗があれば終了コード 1。
 """
@@ -76,6 +78,13 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     z.call({"cmd": "queuePath", "path": None})
     st = wait_state(z, lambda s: s["rom"] is not None)
     check(st["rom"] is not None and st["project"] is None, "キャンセルすると ROM だけで開く")
+    # ---- Phase3 のフィードバック（#296・#297）----
+    time.sleep(0.5)
+    panels = z.call({"cmd": "status"})["panels"]
+    check(not any("読み込みに" in p or "秒掛かりました" in p for p in panels), f"#296 ROM を開いても読み込み時間を出さない（{panels}）")
+    items = z.call({"cmd": "ui.list"})
+    texts = " ".join(str(i.get("text") or i.get("value") or "") for i in (items if isinstance(items, list) else []))
+    check("'romInfo'" not in str(z.call({"cmd": "commands"})) and "POKEMON" not in texts, "#297 左下の ROM 情報の欄（ゲーム名など）を出さない")
 
     notrom = pathlib.Path(project_dir).parent / "notrom.gba"
     notrom.write_bytes(b"not a rom" * 100)
