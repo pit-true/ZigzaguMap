@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { affectedMaps, flattenCommandRecords, isWorkMapId, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { isWorkMapId, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { inputDialog } from "../ui/InputDialog";
 import { messageBox, showError } from "../ui/MessageBox";
@@ -42,9 +42,9 @@ import { timings } from "./timings";
 import { UsageService } from "./UsageService";
 import { TrainerService } from "./TrainerService";
 import { EventActions } from "./EventActions";
+import { ChangeTracker } from "./ChangeTracker";
 import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
-import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
@@ -77,9 +77,6 @@ interface StartupArgs {
   readonly profile: string | null;
 }
 
-/** 未出力の印を確かめるまでの待ち時間（ドラッグ中に何度も調べないため）。 */
-const DIRTY_CHECK_DELAY = 150;
-
 /** アプリ全体。画面部品を組み立て、ROM・マップの読み込み、出力、終了を受け持つ。 */
 export class App implements ActionTarget {
   readonly state: EditorState;
@@ -107,8 +104,8 @@ export class App implements ActionTarget {
   readonly outsideBar: OutsideEventsBar;
   readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(withNeighbors?: boolean): string | null } }>;
   private unsubscribeBus: (() => void) | null = null;
-  private dirtyTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly pendingDirty = new Map<string, MapId>();
+  /** 操作のあとの描き直しと未出力の印。 */
+  readonly changes = new ChangeTracker(this);
   private closing = false;
   /** ワールドマップエディター（別ウィンドウ）の受け手。 */
   private readonly worldMap = new WorldMapHost({
@@ -451,7 +448,7 @@ export class App implements ActionTarget {
       state.mapImage = null;
       state.dirty = new Set();
       state.history.clear();
-      this.unsubscribeBus = session.bus.subscribe((e) => this.onCommand(e));
+      this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
       this.tree.clear();
       this.rebuildTree();
       this.romInfo.show(session.project.game);
@@ -610,71 +607,6 @@ export class App implements ActionTarget {
     if (bus && !bus.redo()) this.state.setStatus(ja.nothingToRedo);
   }
 
-  /** 操作の後: 表示中のマップなら描き直し、未出力の印を確かめる予約をする。 */
-  private onCommand(e: CommandEvent): void {
-    if (e.command && changesMapList(e.command)) void this.afterMapListChange();
-    // 名前表を書き換えたら（取り消し・やり直しも）、AdvanceMap と同じく一覧の名前も変える
-    else if (e.command && commandNames(e.command).includes(SET_MAP_NAME)) void this.refreshMapList();
-    if (this.onTilesetCommand(e)) return;
-    // 変わったマップ（group の中と targets も見る。2 枚のマップにまたがる操作でも両方に印を付ける）
-    const ids = affectedMaps(e.command);
-    if (ids.length === 0) return;
-    const current = this.state.map;
-    const others: MapId[] = [];
-    for (const id of ids) {
-      if (current && current.id.bank === id.bank && current.id.map === id.map) {
-        const doc = current.doc;
-        // 大きさ・タイルセットが変わったら（場所の設定タブなど）マップを読み直す。
-        if (doc.grid !== this.state.mapImage?.grid || current.tiles.key !== `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`) {
-          void this.openMap(id);
-        } else {
-          this.state.mapImage?.update();
-          this.state.emit("cells");
-        }
-      } else others.push(id);
-      this.pendingDirty.set(`${id.bank}.${id.map}`, id);
-    }
-    // 表示中でないマップが変わったことを知らせる（隣の帯の描き直し用）
-    if (others.length > 0) {
-      this.state.changedMaps = others;
-      this.state.emit("otherMaps");
-    }
-    if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
-    this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
-  }
-
-  /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */
-  private onTilesetCommand(e: CommandEvent): boolean {
-    const refs = tilesetRefsOf(e.command);
-    if (refs.length === 0) return false;
-    const changed = refs.flatMap((ref) => this.state.session?.refreshTilesets(ref) ?? []);
-    if (this.state.map && changed.includes(this.state.map.tiles)) {
-      this.state.mapImage?.redrawAll();
-      this.state.emit("cells");
-      this.state.emit("tiles");
-    }
-    return true;
-  }
-
-  /** 未出力の印を付け直す。 */
-  checkDirty(all = false): void {
-    if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
-    this.dirtyTimer = null;
-    const session = this.state.session;
-    if (!session) return;
-    const ids = all ? session.modifiedMaps() : [...this.pendingDirty.values()];
-    if (all) this.state.dirty = new Set(ids.map((id) => `${id.bank}.${id.map}`));
-    else {
-      for (const id of ids) {
-        const key = `${id.bank}.${id.map}`;
-        if (session.isModified(id)) this.state.dirty.add(key);
-        else this.state.dirty.delete(key);
-      }
-    }
-    this.pendingDirty.clear();
-    this.state.emit("dirty");
-  }
-
   /** マップ一覧を作り直す（マップを加えた・取り消した・差し替えたとき、マップファイルを登録したとき）。 */
   async refreshMapList(): Promise<void> {
     const session = this.state.session;
@@ -687,23 +619,7 @@ export class App implements ActionTarget {
       this.tree.setOpened(current.id);
       this.combo.setOpened(current.id);
     }
-    this.checkDirty(true);
-  }
-
-  /** マップの追加・作業用のマップの作成を取り消したら、表示中のマップが無くなっていれば前のマップへ戻る。一覧も作り直す。 */
-  private async afterMapListChange(): Promise<void> {
-    const session = this.state.session;
-    const current = this.state.map;
-    if (session && current && session.project.loaded(current.id) !== current.doc) {
-      const back = this.state.previousMap;
-      if (back && session.project.loaded(back)) await this.openMap(back);
-      else {
-        this.state.map = null;
-        this.state.mapImage = null;
-        this.state.emit("map");
-      }
-    }
-    await this.refreshMapList();
+    this.changes.checkDirty(true);
   }
 
   // ---- 出力 ----
@@ -723,7 +639,7 @@ export class App implements ActionTarget {
       await this.scripts.settle();
       const result = await session.export(target);
       if (target !== undefined) this.state.settings.addRecent({ rom: session.romPath, project: session.projectDir });
-      this.checkDirty(true);
+      this.changes.checkDirty(true);
       this.state.setStatus(ja.exported(result.written.length, result.removed.length));
       return true;
     } catch (e) {
@@ -885,21 +801,6 @@ export class App implements ActionTarget {
     this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
 }
-
-const SET_MAP_NAME = "setMapName";
-/** マップ一覧が変わるコマンド（マップ・バンクの追加、中身の差し替え、作業用のマップ）。 */
-const MAP_LIST_COMMANDS = new Set(["createMap", "insertMap", "replaceMap", "createWorkMap", "openMapFile"]);
-
-/** コマンドとその中のコマンド（まとめたもの）の名前。 */
-function commandNames(command: Command): string[] {
-  return flattenCommandRecords(command).map((r) => r.name);
-}
-
-function changesMapList(command: Command): boolean {
-  return commandNames(command).some((name) => MAP_LIST_COMMANDS.has(name));
-}
-
-
 
 function toolbarLabel(id: string): string {
   const map: Record<string, string> = {

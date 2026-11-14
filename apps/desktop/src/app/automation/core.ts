@@ -100,7 +100,7 @@ export const coreCommands: CommandTable = {
     const session = requireSession(app);
     if (dir === undefined && !session.projectDir) throw new Error("出力先 dir を指定してください");
     const result = await session.export(dir);
-    app.checkDirty(true);
+    app.changes.checkDirty(true);
     return result;
   },
   selectBlock: (app, req) => {
@@ -131,7 +131,7 @@ export const coreCommands: CommandTable = {
     return { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells], border: [...map.doc.border.cells] };
   },
   state: (app) => {
-    app.checkDirty(true);
+    app.changes.checkDirty(true);
     return describeState(app);
   },
   setting: (app, req) => {
