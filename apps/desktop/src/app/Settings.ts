@@ -29,9 +29,6 @@ export interface MapFileEntry {
   readonly path: string;
 }
 
-/** マップ一覧に出す根（設定 > マップの表示設定。両方 = 既定）。 */
-export type MapListSource = "both" | "header" | "ini";
-
 /** 個人設定（AppData の settings.json）。項目名は保存形式なので変えないこと。 */
 export interface SettingsData {
   grid: boolean;
@@ -60,8 +57,6 @@ export interface SettingsData {
   hideEventPanel: boolean;
   /** コンボボックス（左の一覧の代わりにコンボ 2 つを出す）。 */
   comboBox: boolean;
-  /** マップ一覧の根。 */
-  mapListSource: MapListSource;
   /** 自動的にオフセットを検索する（ROM へ書かないので設定として持つだけ）。 */
   autoSearch: boolean;
   /** 高度なヘッダーを表示。 */
@@ -105,7 +100,6 @@ export const DEFAULT_SETTINGS: SettingsData = {
   showObjects: false,
   hideEventPanel: true,
   comboBox: false,
-  mapListSource: "both",
   autoSearch: true,
   advancedHeader: true,
   romShortcut: false,

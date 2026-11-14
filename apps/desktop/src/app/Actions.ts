@@ -23,7 +23,6 @@ export interface ActionTarget {
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
-  createIniFromHeader(): Promise<void>;
   openToolWindow(kind: "block-editor"): Promise<void>;
   openWorldMap(): Promise<void>;
 }
@@ -94,9 +93,6 @@ export class Actions {
     h.set("tools.previousMap", () => target.openPreviousMap());
     h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
-    h.set("display.header", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "header" ? "both" : "header" }));
-    h.set("display.ini", () => target.changeSetting({ mapListSource: this.state.settings.data.mapListSource === "ini" ? "both" : "ini" }));
-    h.set("display.createIni", () => target.createIniFromHeader());
     h.set("image.map", () => target.saveImage("map"));
     h.set("image.mapEvent", () => target.saveImage("mapEvent"));
     h.set("image.palette", () => target.saveImage("palette"));
@@ -142,8 +138,6 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
-    if (id === "display.header") return this.state.settings.data.mapListSource === "header";
-    if (id === "display.ini") return this.state.settings.data.mapListSource === "ini";
     // 言語（日本語だけ）は、AdvanceMap と同じく選んでいる言語にもチェックを付けない
     return false;
   }

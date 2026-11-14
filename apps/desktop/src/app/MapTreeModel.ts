@@ -1,9 +1,8 @@
 import type { MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
-import { FR_INI_GROUPS, FR_INI_NAMES } from "./data/frIni";
 import { FR_TILESET_GROUPS, tilesetGroupOf, tilesetSuffixOf } from "./data/frTilesets";
 import type { MapCatalog, MapInfo } from "./MapCatalog";
-import type { MapFileEntry, MapListSource } from "./Settings";
+import type { MapFileEntry } from "./Settings";
 
 /** マップ一覧の 1 項目。`mapId` があればマップ、`children` があればグループ。 */
 export interface TreeNode {
@@ -27,23 +26,17 @@ export const SORT_BY_NAME_AND_TILESET = 4;
 export const HEADER_ROOT_KEY = "h";
 
 /**
- * マップ一覧を作る。根は AdvanceMap と同じく「ヘッダー」「iniファイル」「マップファイル」の 3 つ。
+ * マップ一覧を作る。根は「ヘッダー」と「マップファイル」の 2 つ（AdvanceMap の「iniファイル」はユーザーの要望で外した）。
  * 「ヘッダー」の下は並べ替えの種類でグループを作る。
- * 設定 > マップの表示設定 で「マップヘッダー」なら「ヘッダー」、「INIの表示」なら「iniファイル」を出す（「マップファイル」はどちらでも残す）。
  * 「マップファイル」の下は、保存・読み込みした `.map`（AdvanceMap の MapDateien.ini と同じく、登録した順）。
  */
-export function buildMapTree(catalog: MapCatalog, sortMode: number, source: MapListSource = "both", mapFiles: readonly MapFileEntry[] = []): TreeNode[] {
+export function buildMapTree(catalog: MapCatalog, sortMode: number, mapFiles: readonly MapFileEntry[] = []): TreeNode[] {
   const files: TreeNode = {
     key: "f",
     label: ja.rootMapFiles,
     children: mapFiles.map((f, i): TreeNode => ({ key: `f/${i}`, label: f.name, filePath: f.path })),
   };
-  const header = (): TreeNode => ({ key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) });
-  const ini = (): TreeNode => ({ key: "i", label: ja.rootIni, children: iniGroups(catalog) });
-  // 「マップファイル」はどの表示でも残す（AdvanceMap と同じ）
-  if (source === "header") return [header(), files];
-  if (source === "ini") return [ini(), files];
-  return [header(), ini(), files];
+  return [{ key: HEADER_ROOT_KEY, label: ja.rootHeader, children: headerGroups(catalog, sortMode) }, files];
 }
 
 function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
@@ -95,41 +88,13 @@ function headerGroups(catalog: MapCatalog, sortMode: number): TreeNode[] {
 }
 
 /**
- * コンボボックス表示のグループ（AdvanceMap と同じく ini のグループ名。ini に無いマップは最後の「名称なし」にまとめる）。
- * 各マップの文字列はヘッダーのマップ名。
+ * コンボボックス表示のグループ。左の一覧の「ヘッダー」と同じく、ヘッダーのマップ名（地名）でまとめる
+ * （AdvanceMap は ini のグループ名を使うが、ini 由来の項目はユーザーの要望で外した）。中身の無いグループは出さない。
  */
 export function comboGroups(catalog: MapCatalog): TreeNode[] {
-  const listed = new Set<string>();
-  const out = FR_INI_GROUPS.flatMap(([name, ids], i): TreeNode[] => {
-    const children = ids.flatMap((text): TreeNode[] => {
-      const info = catalog.get(parseId(text));
-      if (!info) return [];
-      listed.add(text);
-      return [{ key: `c/${i}/${text}`, label: ja.mapItem(info.name ?? ja.noName, "", info.id.bank, info.id.map), mapId: info.id }];
-    });
-    return children.length > 0 ? [{ key: `c/${i}`, label: name, children }] : [];
-  });
-  const rest = catalog.maps.filter((m) => !listed.has(`${m.id.bank}.${m.id.map}`));
-  if (rest.length > 0) out.push(group("c/rest", ja.noName, rest, () => ""));
-  return out;
-}
-
-function parseId(text: string): MapId {
-  const [bank, map] = text.split(".").map(Number) as [number, number];
-  return { bank, map };
-}
-
-function iniGroups(catalog: MapCatalog): TreeNode[] {
-  return FR_INI_GROUPS.map(([name, ids], i) => ({
-    key: `i/${i}`,
-    label: name,
-    children: ids.flatMap((text) => {
-      const [bank, map] = text.split(".").map(Number) as [number, number];
-      const id = { bank, map };
-      if (!catalog.has(id)) return [];
-      return [{ key: `i/${i}/${text}`, label: ja.mapItem(FR_INI_NAMES[text] ?? ja.noName, "", bank, map), mapId: id }];
-    }),
-  }));
+  return headerGroups(catalog, SORT_BY_NAME)
+    .filter((g) => (g.children?.length ?? 0) > 0)
+    .map((g) => (g.label === "" ? { ...g, label: ja.noName } : g));
 }
 
 function group(key: string, label: string, list: readonly MapInfo[], suffix: (m: MapInfo) => string): TreeNode {

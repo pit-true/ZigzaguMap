@@ -94,10 +94,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
           accel: "O",
           enable: "rom",
           children: [
-            { id: "display.header", label: ja.mapHeader },
-            { id: "display.ini", label: ja.showIni },
             { label: ja.headerSort, children: ja.sortModes.map((label, i) => ({ id: `sort.${i}`, label })) },
-            { id: "display.createIni", label: ja.createIniFromHeader },
           ],
         },
         { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },

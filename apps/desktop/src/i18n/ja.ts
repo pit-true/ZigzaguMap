@@ -52,10 +52,7 @@ export const ja = {
   zoomMovementPalette: M["1264"],
   comboBox: M["121"],
   mapDisplay: M["127"],
-  mapHeader: M["1270"],
-  showIni: M["1271"],
   headerSort: M["1272"],
-  createIniFromHeader: M["1273"],
   blockPaletteWidth: M["122"],
   movementOpacity: M["1217"],
   showToolbar: M["1211"],
@@ -150,8 +147,6 @@ export const ja = {
   contextMenuRemoveQuestion: "エクスプローラーの右クリックから「ZigzaguMapで開く」を外しますか？",
   skippedInAutomation: "自動操作で起動しているため、PC の設定は変えませんでした",
   notNeededWithoutRomWrite: "ZigzaguMap は ROM へ書き込まないため、この機能は不要です",
-  iniFolderTitle: "iniファイル（NewMain.ini と NewMaps.ini）を書き出すフォルダを選んでください",
-  iniCreated: (folder: string) => `NewMain.ini と NewMaps.ini を書き出しました: ${folder}`,
 
   // [Toolbar]（改訂版は番号の並びが 1.92 と違うので、ボタンの役割で対応させる）
   toolbar: {
@@ -231,7 +226,6 @@ export const ja = {
 
   // [Allgemein] マップ一覧
   rootHeader: A["60"],
-  rootIni: A["61"],
   rootMapFiles: A["62"],
   noName: A["63"],
   tilesetGroup: (n: number) => `${A["14"]} ${n}`,

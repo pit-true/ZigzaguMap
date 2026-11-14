@@ -25,8 +25,7 @@ import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
-import { FileDialogs, fileNameOf as fileName, writeFile } from "./FileDialogs";
-import { buildNewIni, NEW_MAIN_INI, NEW_MAPS_INI } from "./IniExport";
+import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
@@ -529,9 +528,7 @@ export class App implements ActionTarget {
   }
 
   changeSetting(patch: Partial<SettingsData>): void {
-    const rebuild = patch.mapListSource !== undefined && patch.mapListSource !== this.state.settings.data.mapListSource;
     this.state.settings.update(patch);
-    if (rebuild) this.rebuildTree();
     this.state.emit("view");
     this.state.emit("recent");
   }
@@ -540,18 +537,6 @@ export class App implements ActionTarget {
   async saveImage(kind: ImageKind): Promise<void> {
     const path = await new ImageExport(this.state, this.files, () => this.eventTab.exportOverlay()).save(kind);
     if (path) this.state.setStatus(ja.imageSaved(path));
-  }
-
-  /** 設定 > マップの表示設定 > ヘッダーから新たなIniファイルを作る。書き出し先のフォルダを選ばせる。 */
-  async createIniFromHeader(): Promise<void> {
-    const session = this.state.session;
-    if (!session) return;
-    const folder = await this.files.folder(ja.iniFolderTitle);
-    if (!folder) return;
-    const { main, maps } = buildNewIni(session.catalog);
-    await writeFile(`${folder}\\${NEW_MAIN_INI}`, main);
-    await writeFile(`${folder}\\${NEW_MAPS_INI}`, maps);
-    this.state.setStatus(ja.iniCreated(folder));
   }
 
   /** 別ウィンドウ（ブロックエディタなど）を開く。窓口のコードは初めて開くときに読み込む。 */
@@ -582,7 +567,7 @@ export class App implements ActionTarget {
     const session = this.state.session;
     if (!session) return;
     const s = this.state.settings.data;
-    this.tree.show(buildMapTree(session.catalog, s.sortMode, s.mapListSource, s.mapFiles));
+    this.tree.show(buildMapTree(session.catalog, s.sortMode, s.mapFiles));
     if (this.state.settings.data.comboBox) this.combo.show(comboGroups(session.catalog));
   }
 
@@ -602,7 +587,7 @@ export class App implements ActionTarget {
 
   private async setTitle(mapName: string | null): Promise<void> {
     const map = this.state.map;
-    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む。iniファイル側なら ini の名前）を使う。
+    // AdvanceMap と同じく、一覧で選んでいる項目の文字列（補足を含む）を使う。
     const item = map ? (this.tree.openedLabel() ?? (mapName ? ja.mapItem(mapName, "", map.id.bank, map.id.map) : null)) : null;
     await this.setRawTitle(item ? ja.windowTitle(item) : ja.appTitle);
   }
