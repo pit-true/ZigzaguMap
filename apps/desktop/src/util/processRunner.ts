@@ -35,13 +35,6 @@ export interface RunningProcess {
   kill(): Promise<boolean>;
 }
 
-/** 待たずに起動したもの（自動操作のときは起動せずに記録だけする）。 */
-export interface LaunchRecord {
-  readonly command: string;
-  readonly args: string[];
-  readonly cwd: string;
-}
-
 interface OutputEvent {
   readonly id: string;
   readonly stream: "stdout" | "stderr";
@@ -98,16 +91,6 @@ export class ProcessRunner {
       throw e instanceof Error ? e : new Error(String(e));
     }
     return { id, cwd, lines, done, kill: () => invoke<boolean>("process_kill", { id }) };
-  }
-
-  /** 待たずに起動する（エミュレータ）。起動したら true、自動操作で記録だけしたら false。 */
-  static launch(spec: ProcessSpec): Promise<boolean> {
-    return invoke<boolean>("process_launch", { command: spec.command, args: [...spec.args], cwd: spec.cwd ?? null });
-  }
-
-  /** 自動操作のときに記録した起動（古い順）。 */
-  static launched(): Promise<LaunchRecord[]> {
-    return invoke<LaunchRecord[]>("process_launched");
   }
 
   private onOutput(e: OutputEvent): void {

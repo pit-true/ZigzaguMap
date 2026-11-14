@@ -21,7 +21,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
     # どのウィンドウも画面内に出ず、前面にならないこと（--project でスクリプトエディタも開く）
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
-python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、エミュレータの起動を記録だけにすること
+python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
@@ -75,7 +75,6 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `exit` | | 確認なしで終了する |
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
-| `process.launch` | `command`、`args`、`cwd` | エミュレータと同じく待たずに起動する命令。自動操作のときは何も起動せず記録だけする（返事の `launched` は false）。記録は `state` の `launched` と `process.launched` |
 | `script.open` | `path`（と `line`、1 から）か、`bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index`（0 から） | スクリプトエディタでファイルかイベントのスクリプトを開く（イベントのダブルクリックと同じ）。返事は `opened`、イベントなら `location`（`path`・`line`・`label`・`from`）、ステータスバー。ウィンドウの準備は `windows` の `ready` で待つ |
 | `script.resolve` | `bank`・`map`・`kind`・`index` | イベントのスクリプトの場所（`path`・`line`・`label`・`from`: `label` か `scriptsJson`）。見つからなければ null。開かない |
 | `scripts.table` | `action`（省略で `get`）と、その引数（下の表） | maps\scripts.json の対応表（ツール > スクリプトファイルの対応表）。返事は `rows`（各行の `bank`・`map`（null はバンク全体）・`name`・`script`・`strings`（省いていれば null）・`resolvedStrings`（実際に使う `.string`）・`create`（出力で `.s` を作る行）・`unused`（前の行と同じバンク・マップで使われない行））、`pendingFiles`（出力で作る `.s` と `.string`）、`duplicates`、`modified`（未出力の変更）、`loadError`（scripts.json が読めなかった理由）、`open`（画面が開いているか）、`selected`（選んでいる行）、`dialogs` |

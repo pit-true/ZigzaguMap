@@ -46,7 +46,6 @@ const KNOWN_KEYS = [
   "dialect",
   "build",
   "outputRom",
-  "emulator",
   "widthCheck",
   "labelTemplate",
   "useGlobal",
@@ -61,7 +60,7 @@ const KNOWN_KEYS = [
  * 形（項目はどれも省略でき、省略すると方言ごとの既定値になる。パスは `/` 区切りの相対パス）:
  * ```json
  * { "script": { "dialect": "auto", "build": [{ "command": "python", "args": ["build.py"], "cwd": ".." }],
- *   "outputRom": "../build/Chronos.gba", "emulator": null,
+ *   "outputRom": "../build/Chronos.gba",
  *   "widthCheck": { "command": "python", "args": ["tools/check_text_width.py", "--source"], "cwd": ".." },
  *   "labelTemplate": "EventScript_{map}_{kind}{index}", "useGlobal": true,
  *   "lineMaxChars": 18, "linesPerPage": 2, "commandsCsv": null } }
@@ -79,7 +78,6 @@ export class ScriptConfigJson {
     if (o.dialect !== undefined) settings.dialect = readDialect(o.dialect, path);
     if (o.build !== undefined) settings.build = readSteps(o.build, "build", path);
     if (o.outputRom !== undefined) settings.outputRom = readPath(o.outputRom, "outputRom", path);
-    if (o.emulator !== undefined) settings.emulator = o.emulator === null ? null : readPath(o.emulator, "emulator", path);
     if (o.widthCheck !== undefined) {
       settings.widthCheck = o.widthCheck === null ? null : readStep(o.widthCheck, "widthCheck", path);
     }

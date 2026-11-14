@@ -22,8 +22,6 @@ export interface ScriptConfig {
   build: ScriptCommandStep[];
   /** ビルドで出来る ROM のパス。 */
   outputRom: string;
-  /** エミュレータの exe のパス。無ければ null（置き場所はまだ決まっていない）。 */
-  emulator: string | null;
   /** `.string` の幅検査のコマンド。無ければ null。 */
   widthCheck: ScriptCommandStep | null;
   /** ラベルの規則。`{map}`（マップ名）、`{kind}`（種別）、`{index}`（番号）を置き換える。 */
@@ -40,7 +38,7 @@ export interface ScriptConfig {
 
 /**
  * `zigzagumap.json` に書いてある分だけの設定。undefined の項目は方言ごとの既定値を使う。
- * null を書ける項目（emulator・widthCheck・commandsCsv）は、null なら「使わない」を明示したことになる。
+ * null を書ける項目（widthCheck・commandsCsv）は、null なら「使わない」を明示したことになる。
  */
 export type ScriptConfigSettings = Partial<Omit<ScriptConfig, "dialectSetting" | "dialect">> & {
   dialect?: ScriptDialectSetting;
@@ -62,7 +60,6 @@ export function defaultScriptConfig(dialect: ScriptDialect): ScriptConfig {
   const common = {
     dialectSetting: "auto" as const,
     dialect,
-    emulator: null,
     labelTemplate: DEFAULT_SCRIPT_LABEL_TEMPLATE,
     lineMaxChars: DEFAULT_SCRIPT_LINE_MAX_CHARS,
     linesPerPage: DEFAULT_SCRIPT_LINES_PER_PAGE,
@@ -94,7 +91,6 @@ export function resolveScriptConfig(settings: ScriptConfigSettings, dialect: Scr
     dialect,
     build: settings.build ? settings.build.map(copyStep) : d.build,
     outputRom: settings.outputRom ?? d.outputRom,
-    emulator: settings.emulator !== undefined ? settings.emulator : d.emulator,
     widthCheck: settings.widthCheck !== undefined ? (settings.widthCheck && copyStep(settings.widthCheck)) : d.widthCheck,
     labelTemplate: settings.labelTemplate ?? d.labelTemplate,
     useGlobal: settings.useGlobal ?? d.useGlobal,

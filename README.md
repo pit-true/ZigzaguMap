@@ -238,7 +238,6 @@ Phase2 で作っている途中の機能です。実装した分の仕様をこ�
 | `dialect` | 方言。`nd`・`chronos`・`auto` | `auto` | `auto` |
 | `build` | ビルドの手順の列。1 つの手順は `{ "command", "args", "cwd" }`。上から順に動かす | `python scripts/make.py`（`cwd` は `.`） | `python build.py`（`cwd` は `..`） |
 | `outputRom` | ビルドで出来る ROM | `test.gba` | `../build/Chronos.gba` |
-| `emulator` | エミュレータの exe。`null` なら無し | `null` | `null` |
 | `widthCheck` | `.string` の幅検査のコマンド（形は `build` の 1 手順と同じ）。`null` なら無し | `null` | `python tools/check_text_width.py --source`（`cwd` は `..`） |
 | `labelTemplate` | ラベルの規則。`{map}`（マップ名）・`{kind}`（種別）・`{index}`（番号）を置き換える | `EventScript_{map}_{kind}{index}` | 同じ |
 | `useGlobal` | 新しいラベルに `.global` を付けるか | `false` | `true` |
@@ -246,7 +245,7 @@ Phase2 で作っている途中の機能です。実装した分の仕様をこ�
 | `commandsCsv` | 命令の説明を足す commands.csv。`null` なら使わない | `null` | `null` |
 
 - `auto` のときは、プロジェクトフォルダの `xse_commands.s` の `loadpointer` マクロを見ます。引数が 3 つ（`destination, value, value_kanji`）なら ND、2 つなら Chronos です。`xse_commands.s` が無いときや `loadpointer` が見つからないときは、Chronos（素の CFRU と同じ 1 ポインタ）として扱います。
-- ND の既定のビルドは CFRU 側だけです。DPE 側へのコピーと DPE のビルドを既定に入れるかは、まだ決めていません（#198）。エミュレータの設定をどこに置くかも未定です（#199）。
+- ND の既定のビルドは CFRU 側だけです。DPE 側へのコピーと DPE のビルドを既定に入れるかは、まだ決めていません（#198）。エミュレータの起動は作りません（#199 は閉じた）。前の版にあった `emulator` の項目は読まず、書いてあれば知らない項目として残します。
 
 ### 命令表（xse_commands.s と commands.csv）
 
@@ -421,7 +420,7 @@ ROM のスクリプトのバイト列を、`xse_commands.s` の書き方の文�
 - コマンドは、設定（zigzagumap.json）に書いたものを、指定の作業フォルダで起動します。作業フォルダは開いているプロジェクトフォルダからの相対パス（`..` で上へ出てもよい。Chronos は 1 つ上の `Chronos` で動かす）か絶対パスです。黒いコンソールのウィンドウは出しません。
 - 標準出力と標準エラーは 1 行ずつ、呼んだウィンドウへイベント `process-output`（`{ id, stream, line }`）で届き、終わると `process-exit`（`{ id, code, killed }`）が届きます。Python の出力が文字化けしないよう、環境変数 `PYTHONUTF8=1` と `PYTHONIOENCODING=utf-8` を付けて起動します。UTF-8 として読めないバイトは置き換えます。
 - 途中で止めると、子プロセスごと止めます（Windows は `taskkill /T`）。ZigzaguMap を終了したときも、動いているコマンドを止めます。
-- エミュレータの起動は待たずに起動します。自動操作で起動したときは何も起動せず、起動しようとしたことだけを記録します（自動操作の `state` の `launched`）。
+- エミュレータの起動の入口（`process_launch`）は、#199 を閉じたので消しました。
 - ファイルの更新日時と大きさを返す `fs_stat` を足しました（無ければ null）。スクリプトエディタが外部の変更を見つけるのに使います。
 - 別ウィンドウは、大きさを変えられるもの（最小の大きさつき、最大化もできる）も開けます。位置と大きさはメインが個人設定に残し、次に開くときに当てます（自動操作のときは使わず、画面外に出します）。
 

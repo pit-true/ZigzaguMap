@@ -157,8 +157,6 @@ pub fn run() {
             process::process_spawn,
             process::process_kill,
             process::process_running,
-            process::process_launch,
-            process::process_launched,
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,

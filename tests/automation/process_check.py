@@ -4,7 +4,7 @@
 
 - 一時フォルダの --profile で起動する（通常の設定には触れない。画面外・非アクティブ・音なし）。
 - 一時フォルダで短いコマンドを動かし、出力の行と終了コードが届くこと、長いコマンドを途中で止められること、
-  待たずに起動する命令（エミュレータ用）が自動操作のときは何も起動せず記録だけを残すことを確かめる。
+  を確かめる。
 失敗があれば終了コード 1。
 """
 from __future__ import annotations
@@ -69,15 +69,6 @@ def main() -> int:
             except AppError as e:
                 check(True, f"無いコマンドはエラーになる（{e}）")
 
-            # 待たずに起動（エミュレータ用）: 自動操作のときは記録だけ
-            marker = work / "launched.txt"
-            r = z.call({"cmd": "process.launch", "command": py, "args": ["-c", f"open(r'{marker}','w').write('x')"], "cwd": str(work)})
-            check(r["launched"] is False, "自動操作のときは起動しない")
-            time.sleep(1.0)
-            check(not marker.exists(), "記録だけでコマンドは動いていない")
-            st = z.call({"cmd": "state"})
-            rec = st.get("launched") or []
-            check(len(rec) == 1 and rec[0]["command"] == py, "state の launched に起動しようとしたものが残る")
     if failures:
         print(f"\n失敗 {len(failures)} 件")
         return 1

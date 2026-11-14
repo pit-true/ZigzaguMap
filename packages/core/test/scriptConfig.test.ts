@@ -40,7 +40,6 @@ describe("既定値", () => {
     expect(c.outputRom).toBe("test.gba");
     expect(c.widthCheck).toBeNull();
     expect(c.useGlobal).toBe(false);
-    expect(c.emulator).toBeNull();
     expect(c.commandsCsv).toBeNull();
     expect(c.labelTemplate).toBe(DEFAULT_SCRIPT_LABEL_TEMPLATE);
     expect([c.lineMaxChars, c.linesPerPage]).toEqual([18, 2]);
@@ -56,10 +55,9 @@ describe("既定値", () => {
   });
 
   it("書いてある項目だけ既定値を上書きし、null は「使わない」になる", () => {
-    const c = resolveScriptConfig({ widthCheck: null, lineMaxChars: 20, emulator: "C:/mGBA/mGBA.exe" }, "chronos");
+    const c = resolveScriptConfig({ widthCheck: null, lineMaxChars: 20 }, "chronos");
     expect(c.widthCheck).toBeNull();
     expect(c.lineMaxChars).toBe(20);
-    expect(c.emulator).toBe("C:/mGBA/mGBA.exe");
     expect(c.build).toEqual(defaultScriptConfig("chronos").build);
   });
 
@@ -77,7 +75,6 @@ describe("zigzagumap.json の読み書き", () => {
       { command: "python", args: ["scripts/make.py"], cwd: "../NeoDark-DPE-main" },
     ],
     outputRom: "../NeoDark-DPE-main/test.gba",
-    emulator: null,
     widthCheck: { command: "python", args: ["check.py", "--source"], cwd: ".." },
     labelTemplate: "Script_{map}_{index}",
     useGlobal: true,

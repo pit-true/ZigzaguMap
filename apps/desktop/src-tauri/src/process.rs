@@ -1,10 +1,8 @@
-//! 外部コマンドの実行（ビルド・幅検査・エミュレータの起動）。
+//! 外部コマンドの実行（ビルド・幅検査）。
 //!
 //! - `process_spawn`: コマンドを作業フォルダで起動し、標準出力と標準エラーを 1 行ずつ、呼んだウィンドウへ
 //!   イベント `process-output`（`{ id, stream, line }`）で送る。終わったら `process-exit`（`{ id, code }`）を送る。
 //!   `process_kill` で止められる（子プロセスごと止める）。
-//! - `process_launch`: 待たずに起動する（エミュレータ用。出力は受け取らない）。自動操作で起動したときは何も起動せず、
-//!   起動しようとしたことだけを記録する（`process_launched` で返す。ヘルプのリンクの `openedUrls` と同じ考え方）。
 //!
 //! 作業フォルダは、開いているプロジェクトフォルダからの相対パス（`..` で上へ出てもよい）か絶対パス。
 //! コマンドは設定（zigzagumap.json）に書いたもので、画面には黒いコンソールのウィンドウを出さない。
@@ -20,13 +18,11 @@ use serde::Serialize;
 use tauri::{Emitter, State, WebviewWindow};
 
 use crate::project_fs::{display_path, ProjectRoot};
-use crate::StartupArgs;
 
-/// 動いているプロセス（呼んだ側が付けた ID → 子プロセス）と、自動操作で記録した起動。
+/// 動いているプロセス（呼んだ側が付けた ID → 子プロセス）。
 #[derive(Default)]
 pub struct Processes {
     running: Mutex<HashMap<String, Arc<Mutex<Child>>>>,
-    launched: Mutex<Vec<LaunchRecord>>,
 }
 
 /// 出力の 1 行。
@@ -45,15 +41,6 @@ struct ExitInfo<'a> {
     code: Option<i32>,
     /// `process_kill` で止めたか。
     killed: bool,
-}
-
-/// 自動操作のときに記録した起動（新しいものが後ろ）。
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LaunchRecord {
-    command: String,
-    args: Vec<String>,
-    cwd: String,
 }
 
 /// Windows でコンソールのウィンドウを出さない（CREATE_NO_WINDOW）。
@@ -190,40 +177,6 @@ pub fn process_kill(processes: State<'_, Arc<Processes>>, id: String) -> Result<
 #[tauri::command]
 pub fn process_running(processes: State<'_, Arc<Processes>>) -> Vec<String> {
     processes.running.lock().map(|r| r.keys().cloned().collect()).unwrap_or_default()
-}
-
-/// 待たずに起動する（エミュレータ用）。自動操作で起動したときは起動せず、記録だけする（返事は false）。起動したら true。
-#[tauri::command]
-pub fn process_launch(
-    root: State<'_, ProjectRoot>,
-    args_state: State<'_, StartupArgs>,
-    processes: State<'_, Arc<Processes>>,
-    command: String,
-    args: Vec<String>,
-    cwd: Option<String>,
-) -> Result<bool, String> {
-    let dir = match resolve_cwd(&root, cwd.as_deref()) {
-        Ok(d) => d,
-        // 作業フォルダが決まらないとき（プロジェクトを開いていない）は exe のフォルダで起動する。
-        Err(_) if cwd.is_none() => Path::new(&command).parent().map(Path::to_path_buf).unwrap_or_default(),
-        Err(e) => return Err(e),
-    };
-    if args_state.automation.is_some() {
-        processes.launched.lock().map_err(|e| e.to_string())?.push(LaunchRecord { command, args, cwd: display_path(&dir) });
-        return Ok(false);
-    }
-    let mut cmd = Command::new(&command);
-    cmd.args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
-    if dir.is_dir() {
-        cmd.current_dir(&dir);
-    }
-    cmd.spawn().map(|_| true).map_err(|e| format!("{command}: {e}"))
-}
-
-/// 自動操作のときに記録した起動（古い順）。
-#[tauri::command]
-pub fn process_launched(processes: State<'_, Arc<Processes>>) -> Vec<LaunchRecord> {
-    processes.launched.lock().map(|l| l.clone()).unwrap_or_default()
 }
 
 /// 終了時に動いているコマンドを止める。
