@@ -1,8 +1,7 @@
-import { showIfScriptEntry } from "../../script/ScriptEntry";
 import type { PersonEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
 import { formLabel, pushButton } from "../../form/valueControls";
-import { ListKindPanel, withByte, withScriptOffset, type PanelHost } from "./KindPanel";
+import { ListKindPanel, withByte, withScriptOffset, type LabelPart, type PanelHost } from "./KindPanel";
 
 /** ラベルの幅（入力欄は x=96 から）。 */
 const LABEL = 88;
@@ -15,6 +14,8 @@ const LABEL = 88;
  */
 export class PersonPanel extends ListKindPanel<PersonEvent> {
   private readonly script: HTMLButtonElement;
+  private readonly label: LabelPart;
+  private readonly offset: HTMLElement;
 
   constructor(host: PanelHost) {
     super(host, "person", "event-person");
@@ -70,7 +71,8 @@ export class PersonPanel extends ListKindPanel<PersonEvent> {
       LABEL,
       this.hex("sight", 4, 33, (e) => e.trainerRangeOrBerryTree, (_e, v) => ({ trainerRangeOrBerryTree: v }), { bits: 16 }),
     );
-    this.row(
+    this.label = this.labelField("person");
+    this.offset = this.row(
       ja.event.offset,
       LABEL,
       this.hex("script", 6, 65, (e) => e.script & 0xffffff, (e, v) => ({ script: withScriptOffset(e.script, v) }), { prefix: "$" }),
@@ -82,12 +84,15 @@ export class PersonPanel extends ListKindPanel<PersonEvent> {
       this.hex("unknown5", 2, 25, (e) => e.padding3 & 0xff, (e, v) => ({ padding3: withByte(e.padding3, v, false) }), { bits: 8 }),
       this.hex("unknown6", 2, 25, (e) => e.padding3 >> 8, (e, v) => ({ padding3: withByte(e.padding3, v, true) }), { bits: 8 }),
     );
-    this.script = showIfScriptEntry(
-      pushButton("event.person.openScript", ja.event.openScript, () => {
-        if (this.current) host.openScript(this.current.event.script);
-      }, "wide-button"),
-    );
+    this.script = pushButton("event.person.openScript", ja.event.openScript, () => {
+      if (this.current) host.openScript("person", this.current.index);
+    }, "wide-button");
     this.element.append(this.script);
+  }
+
+  protected override afterShow(): void {
+    // ラベルが付いていればオフセット（ROM のポインタ）の代わりにラベルを出す
+    this.offset.hidden = this.label.update();
   }
 }
 

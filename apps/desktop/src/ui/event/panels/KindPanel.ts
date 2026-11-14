@@ -1,6 +1,11 @@
 import { SetEventFieldsCommand, type MapId } from "@zigzagumap/core";
-import { CheckBox, ComboBox, HexInput, SpinEdit, formRow, type ValueControl } from "../../form/valueControls";
+import { jaScriptLabel } from "../../../i18n/ja.scriptLabel";
+import { ScriptLabelField, type ScriptLabelSource } from "../../script/ScriptLabelField";
+import { CheckBox, ComboBox, HexInput, SpinEdit, formLabel, formRow, type ValueControl } from "../../form/valueControls";
 import type { EventEditor } from "../EventEditor";
+
+/** スクリプトを持つイベントの種別。 */
+export type ScriptEventKind = "person" | "sign" | "trap";
 
 /** 項目名 → 書く値（core のコマンドの fields）。 */
 export type FieldPatch = Record<string, number | boolean>;
@@ -10,10 +15,18 @@ export interface PanelHost {
   readonly editor: EventEditor;
   /** 表示中のマップ。 */
   mapId(): MapId | null;
-  /** 「スクリプトを開く」（オフセットはポインタの下位 3 バイト）。 */
-  openScript(pointer: number): void;
+  /** 「スクリプトを開く」（ラベルが付いていればエディタのその行、素の ROM のスクリプトなら読み取り専用の表示）。 */
+  openScript(kind: ScriptEventKind, index: number): void;
+  /** スクリプトのラベルの欄の中身（`index` は表示中のイベントの番号）。 */
+  labelSource(kind: ScriptEventKind, index: () => number | null): ScriptLabelSource;
   /** 「マップの移動」。 */
   goTo(bank: number, map: number, warpId: number): void;
+}
+
+/** スクリプトのラベルの欄と、表示を合わせる関数（ラベルが付いていれば true）。 */
+export interface LabelPart {
+  readonly field: ScriptLabelField;
+  update(hide?: boolean): boolean;
 }
 
 /** 欄と、イベントから値を読む関数の組。 */
@@ -82,6 +95,32 @@ export abstract class KindPanel<E> {
     const row = formRow(label, labelWidth, ...controls);
     this.element.append(row);
     return row;
+  }
+
+  /**
+   * スクリプトのラベルの欄（見出しと欄の 2 行）を足す。プロジェクトフォルダを開いているときだけ見える。
+   * 返す `rows` は、見せる・隠すを切り替える行。
+   */
+  protected labelField(kind: ScriptEventKind): LabelPart {
+    const field = new ScriptLabelField(
+      this.host.labelSource(kind, () => this.current?.index ?? null),
+      `${this.idPrefix}.label`,
+    );
+    const caption = formLabel(jaScriptLabel.caption);
+    const row = document.createElement("div");
+    row.className = "form-row";
+    row.append(field.element);
+    this.element.append(caption, row);
+    return {
+      field,
+      update: (hide = false) => {
+        field.show();
+        const on = !hide && !field.element.hidden;
+        caption.hidden = !on;
+        row.hidden = !on;
+        return on && field.hasLabel;
+      },
+    };
   }
 
   /** 16 進欄。`bits` で書く値をマスクする。 */

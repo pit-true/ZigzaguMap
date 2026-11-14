@@ -1,0 +1,63 @@
+/* スクリプトのラベルの欄（ui/script/ScriptLabelField.ts）。 */
+.script-label {
+  position: relative;
+  display: inline-flex;
+  height: 19px;
+  flex: none;
+}
+
+.script-label-input {
+  height: 19px;
+  padding: 0 2px;
+  border: 1px solid #7a7a7a;
+  border-right: none;
+  background: var(--window);
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+
+.script-label-input.missing {
+  color: #c00000;
+}
+
+.script-label-input.invalid {
+  background: #ffe0e0;
+}
+
+.script-label-drop {
+  width: 17px;
+  height: 19px;
+  padding: 0;
+  border: 1px solid #7a7a7a;
+  background: var(--face);
+  color: var(--text);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.script-label-list {
+  position: absolute;
+  left: 0;
+  top: 19px;
+  z-index: 20;
+  min-width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #7a7a7a;
+  background: var(--window);
+  color: var(--text);
+  box-shadow: 1px 2px 4px rgb(0 0 0 / 25%);
+}
+
+.script-label-item {
+  padding: 1px 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.script-label-item.selected,
+.script-label-item:hover {
+  background: var(--select);
+  color: var(--select-text);
+}

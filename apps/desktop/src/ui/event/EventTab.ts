@@ -3,6 +3,8 @@ import {
   MoveEventCommand,
   RemoveEventCommand,
   SetEventCountsCommand,
+  RealignEventLabelsCommand,
+  SetEventLabelCommand,
   SetFlyPositionCommand,
   eventsOutsideMap,
   type MapDocument,
@@ -21,16 +23,28 @@ import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
 import { EventMapInput, type RawCell } from "./EventMapInput";
 import { EventOffsets, hasAnyEvent, listCount, mapFly, type UiKind } from "./eventModel";
 import { FlyPanel } from "./panels/FlyPanel";
-import type { PanelHost } from "./panels/KindPanel";
+import type { PanelHost, ScriptEventKind } from "./panels/KindPanel";
 import { PersonPanel } from "./panels/PersonPanel";
 import { SignPanel } from "./panels/SignPanel";
 import { TrapPanel } from "./panels/TrapPanel";
 import { WarpPanel } from "./panels/WarpPanel";
 import { scriptEntry } from "../script/ScriptEntry";
+import type { ScriptLabelSource } from "../script/ScriptLabelField";
+import type { ScriptFiles } from "../script/ScriptFiles";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
   openMap(id: MapId): Promise<void>;
+  /** `.s` の読み書きとラベルの一覧。 */
+  readonly scriptFiles: ScriptFiles;
+}
+
+/** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
+const LABEL_TARGET: Readonly<Record<ScriptEventKind, "person" | "sign" | "tile">> = { person: "person", sign: "sign", trap: "tile" };
+
+/** 看板のスクリプトのポインタ（隠しアイテムなら undefined）。 */
+function signScript(sign: { content: { type: string; script?: number } } | undefined): number | undefined {
+  return sign?.content.type === "script" ? sign.content.script : undefined;
 }
 
 /**
@@ -46,6 +60,8 @@ export class EventTab {
   private readonly common: EventCommonPanel;
   private readonly manager: EventManagerPanel;
   private readonly sorry: HTMLElement;
+  /** scripts_MM.json の座標と合わないラベルの知らせ（#204。Bochi などでイベントの順を変えたとき）。 */
+  private readonly labelWarn: HTMLElement;
   private readonly panels: { person: PersonPanel; sign: SignPanel; warp: WarpPanel; trap: TrapPanel; fly: FlyPanel };
   private kind: UiKind = "person";
   private index = 0;
@@ -76,7 +92,8 @@ export class EventTab {
     const panelHost: PanelHost = {
       editor: this.editor,
       mapId: () => state.map?.id ?? null,
-      openScript: (pointer) => scriptEntry.openPointer(pointer),
+      openScript: (kind, index) => this.openScript(kind, index),
+      labelSource: (kind, index) => this.labelSource(kind, index),
       goTo: (bank, map, warpId) => void this.goTo(bank, map, warpId),
     };
     this.panels = {
@@ -99,10 +116,14 @@ export class EventTab {
     this.sorry.className = "event-sorry";
     this.sorry.textContent = ja.event.none;
     this.manager = new EventManagerPanel((counts) => this.setCounts(counts));
+    this.labelWarn = document.createElement("div");
+    this.labelWarn.className = "event-label-warn";
+    this.labelWarn.dataset["autoId"] = "event.labelWarn";
+    this.labelWarn.hidden = true;
     const side = document.createElement("div");
     side.className = "event-side";
     side.dataset["autoId"] = "event.panel";
-    side.append(this.common.element, ...Object.values(this.panels).map((p) => p.element), this.sorry, this.manager.element);
+    side.append(this.labelWarn, this.common.element, ...Object.values(this.panels).map((p) => p.element), this.sorry, this.manager.element);
     this.element.append(area, side);
 
     new EventMapInput(this.view, {
@@ -196,6 +217,7 @@ export class EventTab {
     this.noEvents.hidden = !doc || hasEvents;
     const fly = this.fly();
     this.placed = placedEvents(doc?.events ?? null, fly);
+    this.showLabelWarn();
     this.draw();
     if (this.state.tab === "event") this.showNote();
   }
@@ -304,14 +326,14 @@ export class EventTab {
         return void this.goTo(w.bank, w.map, w.warpId);
       }
       case "trap":
-        return scriptEntry.open({ map: this.state.map!.id, kind: "trap", index: hit.index });
+        return this.openScript("trap", hit.index);
       case "sign": {
         // 隠しアイテムの看板（スクリプトを持たない）は開かない
-        if (events.signs[hit.index]!.content.type === "script") scriptEntry.open({ map: this.state.map!.id, kind: "sign", index: hit.index });
+        if (events.signs[hit.index]!.content.type === "script") this.openScript("sign", hit.index);
         return;
       }
       case "person":
-        return scriptEntry.open({ map: this.state.map!.id, kind: "person", index: hit.index });
+        return this.openScript("person", hit.index);
       case "fly":
         return;
     }
@@ -324,6 +346,64 @@ export class EventTab {
     if (!hit) return this.state.setStatus(ja.event.status(cell.x, cell.y, ja.event.noEventAtCell, null));
     const offset = hit.kind === "fly" ? (this.offsets?.fly(hit.index) ?? null) : (this.offsets?.entry(this.state.map.id, hit.kind, hit.index) ?? null);
     this.state.setStatus(ja.event.status(cell.x, cell.y, `${ja.event.kindNames[hit.kind]}${hit.kind === "fly" ? 0 : hit.index}`, offset));
+  }
+
+  // ---- スクリプト ----
+
+  /** 「スクリプトを開く」とダブルクリック: ラベルが付いていればエディタのその行、無ければ ROM のスクリプトを読み取り専用で。 */
+  openScript(kind: ScriptEventKind, index: number): void {
+    const map = this.state.map;
+    const events = map?.doc.events;
+    if (!map || !events) return;
+    const pointer = kind === "person" ? events.persons[index]?.script : kind === "trap" ? events.traps[index]?.script : signScript(events.signs[index]);
+    scriptEntry.open({ map: map.id, kind, index }, pointer ?? null);
+  }
+
+  /** scripts_MM.json に書いた座標と、今のイベントの座標が合わないラベルを知らせる（付け直すボタンつき）。 */
+  private showLabelWarn(): void {
+    const session = this.state.session;
+    const id = this.state.map?.id;
+    const positions = id && session?.projectDir ? session.eventPositions(id.bank, id.map) : null;
+    const found = id && positions ? session!.labels.store.mismatches(id.bank, id.map, positions) : [];
+    this.labelWarn.hidden = found.length === 0;
+    if (found.length === 0) return;
+    const text = document.createElement("span");
+    text.textContent = ja.event.labelMismatch(found.length, found.filter((x) => x.candidate !== null).length);
+    text.title = found.map((x) => ja.event.labelMismatchItem(x.label, x.target, x.index, x.expected.x, x.expected.y, x.candidate)).join(String.fromCharCode(10));
+    const fix = document.createElement("button");
+    fix.type = "button";
+    fix.textContent = ja.event.labelRealign;
+    fix.dataset["autoId"] = "event.labelRealign";
+    fix.disabled = !found.some((x) => x.candidate !== null);
+    fix.addEventListener("click", () => this.editor.run(new RealignEventLabelsCommand({ ...id! })));
+    this.labelWarn.replaceChildren(text, fix);
+  }
+
+  /** スクリプトのラベルの欄の中身。 */
+  private labelSource(kind: ScriptEventKind, index: () => number | null): ScriptLabelSource {
+    const files = this.host.scriptFiles;
+    const target = LABEL_TARGET[kind];
+    return {
+      available: () => !!this.state.session?.projectDir,
+      current: () => {
+        const id = this.state.map?.id;
+        const i = index();
+        if (!id || i === null) return null;
+        return this.state.session?.labels.store.label(id.bank, id.map, target, i)?.label ?? null;
+      },
+      candidates: async () => {
+        const id = this.state.map?.id;
+        const resolved = id ? this.state.session?.scriptsTable.document.resolve(id.bank, id.map) : null;
+        return resolved ? files.labelsOf(resolved.script) : [];
+      },
+      commit: (label) => {
+        const id = this.state.map?.id;
+        const i = index();
+        if (!id || i === null) return;
+        this.editor.run(new SetEventLabelCommand({ ...id, target, index: i, label }));
+      },
+      onCandidatesChanged: (listener) => files.onChange(listener),
+    };
   }
 
   // ---- ボタン ----

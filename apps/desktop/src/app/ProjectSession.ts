@@ -1,6 +1,7 @@
 import {
   CfruProject,
   CommandBus,
+  EventLabelProject,
   OverworldSprites,
   RegionMapProject,
   Rom,
@@ -9,8 +10,12 @@ import {
   createDefaultRegistry,
   detectGame,
   withRegionMap,
+  withEventLabels,
   withScriptsTable,
   type CommandRegistry,
+  type EventLabelSavePlan,
+  type EventLabelTrackHooks,
+  type EventPositions,
   type MapDocument,
   type MapId,
   type SaveResult,
@@ -57,10 +62,31 @@ export class ProjectSession {
     readonly loadMs: number,
     /** maps\scripts.json の対応表（開いたときに読む。小さなファイル 1 つだけ）。 */
     readonly scriptsTable: ScriptsTableProject,
+    /** イベントのラベル（eventscripts と maps\BB\scripts_MM.json。開いたときに読む）。 */
+    readonly labels: EventLabelProject,
   ) {
     const context = withRegionMap(project.editorContext(), () => this.requireRegionMap().document);
-    this.bus = new CommandBus(withScriptsTable(context, () => this.requireScriptsTable().document));
+    this.bus = new CommandBus(
+      withEventLabels(
+        withScriptsTable(context, () => this.requireScriptsTable().document),
+        () => this.requireLabels(),
+        (bank, map) => this.eventPositions(bank, map) ?? { person: [], sign: [], tile: [] },
+      ),
+    );
+    // ラベルの番号の付け直しは、画面の描き直しより先に済ませる（最初に購読する）
+    labels.track(this.bus, {
+      counts: (id) => {
+        const doc = this.project.loaded(id);
+        if (!doc) return null;
+        return { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 };
+      },
+      added: (events, command) => this.labelHooks?.added?.(events, command),
+      undone: (command) => this.labelHooks?.undone?.(command),
+    });
   }
+
+  /** イベントを置いたときのひな形（App が入れる）。 */
+  labelHooks: Pick<EventLabelTrackHooks, "added" | "undone"> | null = null;
 
   /** ROM と（あれば）プロジェクトフォルダを開く。 */
   static async open(romPath: string, projectDir: string | null, romBytes?: Uint8Array): Promise<ProjectSession> {
@@ -72,7 +98,8 @@ export class ProjectSession {
     const project = await CfruProject.open(bytes, fs);
     const catalog = await MapCatalog.build(project);
     const scripts = await ScriptsTableProject.open(fs.root ? fs : null);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts);
+    const labels = await EventLabelProject.open(fs.root ? fs : null);
+    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels);
   }
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
@@ -118,6 +145,7 @@ export class ProjectSession {
     this.tilesets.set(key, tiles);
     while (this.tilesets.size > TILESET_CACHE_SIZE) this.tilesets.delete(this.tilesets.keys().next().value!);
     this.opened.set(mapKey(id), id);
+    this.labels.observe(id, { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 });
     return { id, doc, tiles };
   }
 
@@ -167,6 +195,20 @@ export class ProjectSession {
     return this.regionMapValue;
   }
 
+  private requireLabels() {
+    if (!this.fs.root) throw new Error("イベントのラベルを付けるには、プロジェクトフォルダ（CFRU-JP のフォルダ）を開いてください");
+    return this.labels.store;
+  }
+
+  /** 読み込み済みのマップのイベントの座標（ラベルの照合用）。読み込んでいなければ null。 */
+  eventPositions(bank: number, map: number): EventPositions | null {
+    const doc = this.project.loaded({ bank, map });
+    if (!doc) return null;
+    const e = doc.events;
+    const xy = (list: readonly { x: number; y: number }[] | undefined) => (list ?? []).map((v) => ({ x: v.x, y: v.y }));
+    return { person: xy(e?.persons), sign: xy(e?.signs), tile: xy(e?.traps) };
+  }
+
   private requireScriptsTable(): ScriptsTableProject {
     const error = this.scriptsTable.loadError;
     if (error !== null) throw new Error(`maps/scripts.json を読めないため編集できません: ${error}`);
@@ -190,7 +232,7 @@ export class ProjectSession {
 
   /** 未出力の変更があるか（マップ・タイルセット・マップ名・scripts.json の対応表）。 */
   hasUnsavedChanges(): boolean {
-    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified();
+    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified() || this.labels.isModified();
   }
 
   /**
@@ -241,7 +283,19 @@ export class ProjectSession {
     }
     // scripts.json と、対応表で新しく作った .s・.string（既にあるファイルは書き換えない）。
     parts.push(await this.scriptsTable.save(this.fs));
+    // イベントのラベル（maps\BB\scripts_MM.json と eventscripts）と、.s のマップスクリプトの表。
+    const labels = await this.labels.save(this.fs, (bank, map) => this.eventPositions(bank, map));
+    parts.push(labels);
+    if (labels.plan.tables.length > 0 && this.writeTables) parts.push(await this.writeTables(labels.plan.tables));
     return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };
+  }
+
+  /** 出力のときに .s のマップスクリプトの表を書き直す（App が入れる。エディタで開いていればエディタの本文を書き換える）。 */
+  writeTables: ((tables: EventLabelSavePlan["tables"]) => Promise<{ written: string[]; removed: string[] }>) | null = null;
+
+  /** プロジェクトフォルダのファイルの読み書き（ひな形を書くときなど）。 */
+  get files(): TauriProjectFs {
+    return this.fs;
   }
 
   /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */

@@ -1,8 +1,7 @@
-import { showIfScriptEntry } from "../../script/ScriptEntry";
 import type { TrapEvent } from "@zigzagumap/core";
 import { ja } from "../../../i18n/ja";
 import { pushButton } from "../../form/valueControls";
-import { ListKindPanel, withByte, withScriptOffset, type PanelHost } from "./KindPanel";
+import { ListKindPanel, withByte, withScriptOffset, type LabelPart, type PanelHost } from "./KindPanel";
 
 const LABEL = 96;
 
@@ -11,6 +10,9 @@ const LABEL = 96;
  * 「フラグバリュー」は +4 の 2 バイト（core の elevation と padding1）、不明 ×2 は +10 の 2 バイト（padding2）の下位・上位。
  */
 export class TrapPanel extends ListKindPanel<TrapEvent> {
+  private readonly label: LabelPart;
+  private readonly offset: HTMLElement;
+
   constructor(host: PanelHost) {
     super(host, "trap", "event-trap");
     const f = ja.event.trap;
@@ -33,17 +35,20 @@ export class TrapPanel extends ListKindPanel<TrapEvent> {
       this.hex("unknown1", 2, 25, (e) => e.padding2 & 0xff, (e, v) => ({ padding2: withByte(e.padding2, v, false) }), { bits: 8 }),
       this.hex("unknown2", 2, 25, (e) => e.padding2 >> 8, (e, v) => ({ padding2: withByte(e.padding2, v, true) }), { bits: 8 }),
     );
-    this.row(
+    this.label = this.labelField("trap");
+    this.offset = this.row(
       ja.event.offset,
       LABEL,
       this.hex("script", 6, 65, (e) => e.script & 0xffffff, (e, v) => ({ script: withScriptOffset(e.script, v) }), { prefix: "$" }),
     );
     this.element.append(
-      showIfScriptEntry(
-        pushButton("event.trap.openScript", ja.event.openScript, () => {
-          if (this.current) host.openScript(this.current.event.script);
-        }, "wide-button"),
-      ),
+      pushButton("event.trap.openScript", ja.event.openScript, () => {
+        if (this.current) host.openScript("trap", this.current.index);
+      }, "wide-button"),
     );
+  }
+
+  protected override afterShow(): void {
+    this.offset.hidden = this.label.update();
   }
 }

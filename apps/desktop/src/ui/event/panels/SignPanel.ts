@@ -1,8 +1,7 @@
-import { SCRIPT_BUTTONS_SHOWN, showIfScriptEntry } from "../../script/ScriptEntry";
 import type { SignEvent } from "@zigzagumap/core";
 import { hex, ja } from "../../../i18n/ja";
 import { formLabel, pushButton, type ComboBox } from "../../form/valueControls";
-import { ListKindPanel, withByte, withScriptOffset, type FieldPatch, type PanelHost } from "./KindPanel";
+import { ListKindPanel, withByte, withScriptOffset, type FieldPatch, type LabelPart, type PanelHost } from "./KindPanel";
 import { wrap } from "./PersonPanel";
 
 const LABEL = 96;
@@ -40,6 +39,8 @@ function hiddenPatch(e: SignEvent, part: "item" | "flag" | "amount", value: numb
 export class SignPanel extends ListKindPanel<SignEvent> {
   private readonly scriptPart: HTMLElement[];
   private readonly hiddenPart: HTMLElement[];
+  private readonly label: LabelPart;
+  private readonly offset: HTMLElement;
   private readonly items: ComboBox;
   private itemCount = 0;
 
@@ -64,6 +65,7 @@ export class SignPanel extends ListKindPanel<SignEvent> {
       this.hex("unknown1", 2, 25, (e) => e.padding & 0xff, (e, v) => ({ padding: withByte(e.padding, v, false) }), { bits: 8 }),
       this.hex("unknown2", 2, 25, (e) => e.padding >> 8, (e, v) => ({ padding: withByte(e.padding, v, true) }), { bits: 8 }),
     );
+    this.label = this.labelField("sign");
     const offset = this.row(
       ja.event.offset,
       LABEL,
@@ -76,14 +78,13 @@ export class SignPanel extends ListKindPanel<SignEvent> {
         { prefix: "$" },
       ),
     );
-    const open = showIfScriptEntry(
-      pushButton("event.sign.openScript", ja.event.openScript, () => {
-        const e = this.current?.event;
-        if (e?.content.type === "script") host.openScript(e.content.script);
-      }, "wide-button"),
-    );
+    const open = pushButton("event.sign.openScript", ja.event.openScript, () => {
+      const c = this.current;
+      if (c?.event.content.type === "script") host.openScript("sign", c.index);
+    }, "wide-button");
     this.element.append(open);
-    this.scriptPart = SCRIPT_BUTTONS_SHOWN ? [offset, open] : [offset];
+    this.offset = offset;
+    this.scriptPart = [offset, open];
 
     const itemLabel = formLabel(f.item);
     this.items = this.combo("item", [], 161, (e) => {
@@ -107,5 +108,7 @@ export class SignPanel extends ListKindPanel<SignEvent> {
     const hidden = showsHiddenItem(event.kind);
     for (const el of this.scriptPart) el.hidden = hidden;
     for (const el of this.hiddenPart) el.hidden = !hidden;
+    // 隠しアイテムの看板にはラベルを付けない。ラベルが付いていればオフセットの代わりにラベルを出す
+    this.offset.hidden = this.label.update(hidden) || hidden;
   }
 }
