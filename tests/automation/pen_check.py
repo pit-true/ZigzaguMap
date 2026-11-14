@@ -364,7 +364,198 @@ def check_assist_reopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> No
     check("テストの面" in [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]], "開き直しても保存したパーツが残る")
 
 
-CHECKS = {"triple": check_triple, "autopen": check_autopen, "autopenBand": check_autopen_band, "assist": check_assist, "assistReopen": check_assist_reopen}
+def status(z: Zigzagu) -> dict:
+    return z.call({"cmd": "state"})["status"]
+
+
+def check_triple_tools(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """3 層の次の番号を、スタンプの貼り付け・ミキシングバッグ・Ctrl+V・Alt の入れ替え・隣のマップの帯の上でも書かない（#301・#337）。
+
+    トキワシティ 3.1 の下の帯が 1 番道路 3.19（主タイルセットは同じ、副タイルセットが違う）。
+    """
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    z.call({"cmd": "tab", "name": "map"})
+    make_triple(z, 0x10)
+    w, before = map_cells(z, 3, 1)
+
+    # スタンプの貼り付け: [0x010, 0x011, 0x012] のスタンプを貼ると 0x011 のマスは今のまま
+    z.call({"cmd": "selectBlock", "blocks": [0x10, 0x11, 0x12], "width": 3})
+    z.call({"cmd": "stamps.save", "name": "3層の確認", "overwrite": True})
+    z.call({"cmd": "selectBlock", "block": 0x01})
+    z.call({"cmd": "stamps.select", "name": "3層の確認"})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [2, 2]})
+    _, c = map_cells(z, 3, 1)
+    check(block_at(c, w, 2, 2) == 0x10 and c[2 * w + 3] == before[2 * w + 3] and block_at(c, w, 4, 2) == 0x12, "スタンプを貼っても 0x011 のマスは今のまま")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "stamps.remove", "name": "3層の確認"})
+
+    # ミキシングバッグ: 袋に 0x010 と 0x011 を入れて矩形塗りしても 0x011 は書かない
+    z.call({"cmd": "bag.set", "blocks": [0x10, 0x11], "seed": 7})
+    z.call({"cmd": "selectBlock", "block": 0x10})
+    check(z.call({"cmd": "bag.state"})["active"] is True, "袋を使う選択になる")
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [2, 4], "to": [7, 7]})
+    _, c = map_cells(z, 3, 1)
+    rect = [(x, y) for y in range(4, 8) for x in range(2, 8)]
+    wrote = [block_at(c, w, x, y) for x, y in rect if c[y * w + x] != before[y * w + x]]
+    check(0x11 not in wrote and 0x10 in wrote, f"ミキシングバッグで 0x011 を書かない（書いたマス {len(wrote)}）")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "bag.set", "blocks": []})
+
+    # Ctrl+V: 0x011 を含む選択を写して貼っても 0x011 は書かない
+    z.call({"cmd": "selectBlock", "blocks": [0x10, 0x11], "width": 2})
+    z.call({"cmd": "key", "key": "c", "ctrl": True})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [2, 9]})
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    _, c = map_cells(z, 3, 1)
+    check(block_at(c, w, 2, 9) == 0x10 and c[9 * w + 3] == before[9 * w + 3], "Ctrl+V でも 0x011 のマスは今のまま")
+    z.call({"cmd": "undo"})
+
+    # Alt の入れ替え: どちらかが 0x011 なら入れ替えない
+    z.call({"cmd": "command", "name": "paintBlocks", "args": {"bank": 3, "map": 1, "cells": [{"x": 8, "y": 9, "block": 0x11}]}})
+    _, placed = map_cells(z, 3, 1)
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "alt": True, "cell": [8, 9], "to": [9, 9]})
+    _, c = map_cells(z, 3, 1)
+    st = status(z)
+    check(c == placed and z.call({"cmd": "state"})["history"] == hist and st["error"] and "3層" in st["left"], f"Alt の入れ替えで 0x011 を動かさない（{st['left']}）")
+    z.call({"cmd": "undo"})
+
+    # 帯の上（1 番道路 3.19）: 主タイルセットの 0x011 は帯の上にも書かない
+    n = z.call({"cmd": "neighbors.state", "wait": True})
+    band = next(b for b in n["neighbors"] if b["bank"] == 3 and b["map"] == 19)
+    at = band["bandAt"]
+    cell = [at["x"] + 3, at["y"] + 1]
+    _, r0 = map_cells(z, 3, 19)
+    z.call({"cmd": "selectBlock", "block": 0x11})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": cell})
+    time.sleep(0.5)  # 隣のマップを編集用に読み込むのを待つ
+    check(map_cells(z, 3, 19)[1] == r0, "帯の上にも 0x011 を書かない")
+
+    # 帯の上は、そのマップのタイルセットで見る（#337）。1 番道路の副タイルセットの 0 番（0x280）だけを 3 層にすると、
+    # 0x281 は 1 番道路では置けず、トキワシティ（副タイルセットが違う）では置ける
+    seams = z.call({"cmd": "seams.state", "wait": True})
+    route = next(c for c in seams["connections"] if c["bank"] == 3 and c["map"] == 19)
+    check(route["secondary"] != seams["tilesets"]["secondary"], f"1 番道路とトキワシティの副タイルセットが違う（{route['secondary']:#x}、{seams['tilesets']['secondary']:#x}）")
+    # 1 番道路のタイルセットを編集できるよう、一度開いてから戻る
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "command", "name": "setBlock", "args": {"tileset": route["secondary"], "secondary": True, "block": 0, "attribute": 0x30000000}})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    z.call({"cmd": "neighbors.state", "wait": True})
+    check(z.call({"cmd": "blockInfo", "block": 0x281})["tripleChild"] is False, "トキワシティでは 0x281 は 3 層の次の番号でない")
+    z.call({"cmd": "selectBlock", "block": 0x281})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": cell})
+    time.sleep(0.5)
+    st = status(z)
+    check(map_cells(z, 3, 19)[1] == r0 and st["error"] and "3層" in st["left"], f"帯の上では 1 番道路のタイルセットで見て 0x281 を書かない（{st['left']}）")
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [5, 5]})
+    check(block_at(map_cells(z, 3, 1)[1], w, 5, 5) == 0x281, "主マップには 0x281 を書ける")
+    if shots:
+        (shots / "pen_triple_band.png").write_bytes(base64.b64decode(z.call({"cmd": "canvasPng", "target": "map", "neighbors": True})["png"]))
+
+
+def check_assist_edge(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """マップ作成補助で縁つきのパーツを作って保存し、自動ペンで使う（#312）。"""
+    with tempfile.TemporaryDirectory(prefix="zzm-pene-", ignore_cleanup_errors=True) as work:
+        z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        z.call({"cmd": "tab", "name": "map"})
+        z.call({"cmd": "autopen.set", "active": True})
+        tinted = set(z.call({"cmd": "autopen.state"})["tinted"])
+        # 既定のパーツに入っていない主タイルセットのブロックを 9 個（縁つきの外側の 9 マス）
+        free = [b for b in range(0x1C0, 0x280) if b not in tinted][:9]
+        z.call({"cmd": "autopen.set", "active": False})
+        slots = ["NW", "N", "NE", "W", "C", "E", "SW", "S", "SE"]
+        open_assist(z)
+        win(z, {"cmd": "click", "id": "assist.add.edge"})
+        win(z, {"cmd": "setField", "id": "assist.name", "value": "テストの縁"})
+        for slot, b in zip(slots, free):
+            win(z, {"cmd": "click", "id": f"assist.slot.{slot}"})
+            x, y = (b % 8) * 32 + 8, (b // 8) * 32 + 8
+            win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": x, "y": y})
+            win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": x, "y": y})
+            win(z, {"cmd": "click", "id": "assist.put"})
+        part = next(p for p in win(z, {"cmd": "state"})["parts"] if p["name"] == "テストの縁")
+        check(part["kind"] == "edge" and set(slots) <= set(part["slots"]), f"縁つきの 9 マスを枠に入れる（{part['slots']}）")
+        if shots:
+            save_png(z.call({"cmd": "screenshot", "window": "map-assist"}), shots / "pen_assist_edge.png")
+        win(z, {"cmd": "click", "id": "assist.save"})
+        win(z, {"cmd": "close"})
+        st = z.call({"cmd": "autopen.state"})
+        check("テストの縁" in [p["name"] for p in st["parts"]], "保存した縁つきのパーツが自動ペンの一覧に入る")
+        # 自動ペンで真ん中（C）を 3 マスの筆で押すと、筆の範囲の外周に縁が付く
+        z.call({"cmd": "autopen.set", "active": True, "size": 3})
+        z.call({"cmd": "selectBlock", "block": free[4]})
+        check(z.call({"cmd": "autopen.state"})["part"] == "テストの縁", "真ん中のブロックを選ぶと作ったパーツで描く")
+        w, _ = map_cells(z, 3, 0)
+        z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 13]})
+        _, c = map_cells(z, 3, 0)
+        got = [[block_at(c, w, x, y) for x in range(9, 12)] for y in range(12, 15)]
+        want = [free[0:3], free[3:6], free[6:9]]
+        check(got == want, f"作った縁つきのパーツで描くと 9 マスの縁が付く（{[[hex(b) for b in r] for r in got]}）")
+        screenshot(z, shots, "pen_assist_edge_drawn.png")
+
+
+def check_candidates(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """パーツの定義が無い主タイルセットのマップで、候補を作って自動ペンで描く（#313）。
+
+    素の BPRJ で既定のパーツがあるのは主タイルセット 0x298B44 だけなので、家の中（4.1。主タイルセットが違う）で確かめる。
+    """
+    with tempfile.TemporaryDirectory(prefix="zzm-penc-", ignore_cleanup_errors=True) as work:
+        z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
+        z.call({"cmd": "selectMap", "bank": 4, "map": 1})
+        z.call({"cmd": "tab", "name": "map"})
+        m = z.call({"cmd": "state"})["map"]
+        check(m["primaryTileset"] != PRIMARY, f"主タイルセットが既定のパーツのものと違う（{m['primaryTileset']:#x}）")
+        check(z.call({"cmd": "autopen.state"})["parts"] == [], "定義が無いので、自動ペンを入れる前はパーツが無い")
+        # 自動ペンを入れる（P キー）と、マップから候補を作って使う（保存はしない）
+        z.call({"cmd": "autopen.set", "size": 1})
+        z.call({"cmd": "key", "key": "p"})
+        st: dict = {}
+        for _ in range(150):
+            st = z.call({"cmd": "autopen.state"})
+            if st["parts"]:
+                break
+            time.sleep(0.2)
+        names = [p["name"] for p in st["parts"]]
+        check(bool(names) and all(n.startswith("自動: ") for n in names), f"自動ペンを入れると候補を作る（{len(names)} 個）")
+        saved = pathlib.Path(work) / "maps" / "autopen"
+        check(not saved.exists() or not any(saved.iterdir()), "候補は保存しない")
+        # 候補のパーツのブロックを選んで描く（面があれば面、無ければ最初に見つかったもの）
+        kinds = {p["name"]: p["kind"] for p in st["parts"]}
+        found: list[tuple[int, str]] = []
+        for b in st["tinted"]:
+            z.call({"cmd": "selectBlock", "block": b})
+            name = z.call({"cmd": "autopen.state"})["part"]
+            if name:
+                found.append((b, name))
+                if kinds.get(name) == "fill":
+                    break
+        check(bool(found), f"候補のパーツのブロックを選べる（{sorted(set(kinds.values()))}）")
+        if not found:
+            return
+        b, name = found[-1]
+        z.call({"cmd": "selectBlock", "block": b})
+        w, before = map_cells(z, 4, 1)
+        hist = z.call({"cmd": "state"})["history"]
+        z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [3, 3]})
+        _, c = map_cells(z, 4, 1)
+        drawn = c != before and z.call({"cmd": "state"})["history"] == hist + 1
+        if kinds[name] == "fill":
+            drawn = drawn and block_at(c, w, 3, 3) == b
+        check(drawn, f"候補のパーツ「{name}」（{kinds[name]}）で描ける（{block_at(c, w, 3, 3):#x}）")
+        screenshot(z, shots, "pen_candidates_drawn.png")
+
+
+CHECKS = {
+    "triple": check_triple,
+    "tripleTools": check_triple_tools,
+    "autopen": check_autopen,
+    "autopenBand": check_autopen_band,
+    "assist": check_assist,
+    "assistReopen": check_assist_reopen,
+    "assistEdge": check_assist_edge,
+    "candidates": check_candidates,
+}
 
 
 def main() -> None:
