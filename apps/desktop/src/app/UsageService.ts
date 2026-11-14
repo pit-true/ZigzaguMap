@@ -12,6 +12,7 @@ import {
 } from "@zigzagumap/core";
 import type { App } from "./App";
 import type { ProjectSession } from "./ProjectSession";
+import { scheduleIdleGc } from "../util/idleGc";
 
 /** ROM を開いてから索引を作り始めるまでの待ち（起動からマップの表示を遅らせないため）。 */
 const START_DELAY_MS = 1200;
@@ -149,6 +150,8 @@ export class UsageService {
         if (doc) project.setMap(id, contentOf(doc));
       }
       await this.flush();
+      // 全マップと C のソースを読んだごみを片付け、空いた領域も OS へ返す（待機時のメモリを 150MB 以下に保つ）
+      scheduleIdleGc(true);
       return project;
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);

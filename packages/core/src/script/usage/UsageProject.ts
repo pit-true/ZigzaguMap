@@ -12,7 +12,7 @@ import type { DisasmCommandSet } from "../disasm/DisasmCommandSet.js";
 import type { ScriptTextCodec } from "../disasm/scriptText.js";
 import { listProjectFiles, listScriptSourcePaths } from "../index/buildScriptIndex.js";
 import { asmUsage } from "./asmUsage.js";
-import { C_SOURCE_DIRS, cSourceUsage } from "./cUsage.js";
+import { C_SOURCE_DIRS, CSourceScanner } from "./cUsage.js";
 import { eventUsage, romScriptEntries } from "./eventUsage.js";
 import { romOffsetOf, romScriptUsage } from "./romUsage.js";
 import { UsageIndex, type UsageSite } from "./UsageIndex.js";
@@ -98,26 +98,27 @@ export class UsageProject {
     let asmFiles = 0;
     let cFiles = 0;
     if (sources.fs) {
-      const files: { path: string; text: string }[] = [];
-      for (const path of await listScriptSourcePaths(sources.fs)) files.push({ path, text: await sources.fs.readText(path) });
-      for (const f of files) project.equs.set(f.path, equsOf(f.text));
+      // .equ は全ファイルを先に読む（ほかのファイルの名前も引くため）。本文は 2 回目に読み直す（全部を同時に持たない）
+      const paths = await listScriptSourcePaths(sources.fs);
+      for (const path of paths) project.equs.set(path, equsOf(await sources.fs.readText(path)));
       if (sources.table) {
-        for (const f of files) {
-          if (!f.path.startsWith("assembly/")) continue;
-          project.index.setSource(ASM_KEY(f.path), asmUsage(f.path, f.text, sources.table, project.resolver()));
+        const resolve = project.resolver();
+        for (const path of paths) {
+          if (!path.startsWith("assembly/")) continue;
+          project.index.setSource(ASM_KEY(path), asmUsage(path, await sources.fs.readText(path), sources.table, resolve));
           asmFiles++;
           if (asmFiles % 8 === 0) await pause();
         }
       }
-      const cs: { path: string; text: string }[] = [];
+      // C のソースは 1 ファイルずつ読んで捨てる（全部の本文を同時に持たない）
+      const scan = new CSourceScanner();
       for (const dir of C_SOURCE_DIRS) {
         for (const path of await listProjectFiles(sources.fs, dir, /\.(c|h)$/i)) {
-          cs.push({ path, text: await sources.fs.readText(path) });
-          if (cs.length % 32 === 0) await pause();
+          scan.add(path, await sources.fs.readText(path));
+          if (++cFiles % 32 === 0) await pause();
         }
       }
-      project.index.setSource(C_KEY, cSourceUsage(cs));
-      cFiles = cs.length;
+      project.index.setSource(C_KEY, scan.result());
     }
     project.stats = { ms: Date.now() - start, maps, asmFiles, cFiles, sites: project.index.siteCount };
     return project;

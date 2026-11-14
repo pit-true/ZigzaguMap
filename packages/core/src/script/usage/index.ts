@@ -3,5 +3,5 @@ export { HIDDEN_ITEM_FLAG_START, HIDDEN_ITEM_ID_MAX, UsageIndex, nextUnused, typ
 export { eventUsage, isVariableNumber, romScriptEntries } from "./eventUsage.js";
 export { lineUsage, romOffsetOf, romScriptUsage } from "./romUsage.js";
 export { asmUsage, type AsmConstantResolver } from "./asmUsage.js";
-export { C_CONSTANT_HEADERS, C_SOURCE_DIRS, cSourceUsage } from "./cUsage.js";
+export { C_CONSTANT_HEADERS, C_SOURCE_DIRS, CSourceScanner, cSourceUsage } from "./cUsage.js";
 export { UsageProject, type UsageBuildStats, type UsageMapContent, type UsageSources } from "./UsageProject.js";

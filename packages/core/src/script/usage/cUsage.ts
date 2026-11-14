@@ -25,42 +25,62 @@ function stripComments(text: string): string {
  * - 番号にできない名前（引数つきのマクロなど）は数えない。
  */
 export function cSourceUsage(files: readonly { readonly path: string; readonly text: string }[]): UsageSite[] {
-  const defines = new Map<string, string>();
-  const uses: { name: string; path: string; line: number }[] = [];
-  for (const f of files) {
-    const constants = C_CONSTANT_HEADERS.includes(f.path);
-    const lines = stripComments(f.text).split(/\r?\n/);
+  const scan = new CSourceScanner();
+  for (const f of files) scan.add(f.path, f.text);
+  return scan.result();
+}
+
+/**
+ * cSourceUsage を 1 ファイルずつ読むもの（全部の本文を同時に持たないため。#227 の索引を作るときのメモリを抑える）。
+ * ファイルごとに `add` し、最後に `result`。同じファイルの同じ名前は最初の行だけを覚える。
+ */
+export class CSourceScanner {
+  private readonly defines = new Map<string, string>();
+  private readonly uses: { name: string; path: string; line: number }[] = [];
+
+  add(path: string, text: string): void {
+    const constants = C_CONSTANT_HEADERS.includes(path);
+    const seen = new Set<string>();
+    const lines = stripComments(text).split(/\r?\n/);
     lines.forEach((raw, i) => {
       const def = DEFINE_RE.exec(raw);
       if (def) {
         const [, name, value] = def;
-        if (!defines.has(name!)) defines.set(name!, value!.trim());
+        // 長い値（表など）は番号にならないので持たない
+        if (!this.defines.has(name!) && value!.length < 200) this.defines.set(name!, value!.trim());
         if (constants) return;
       }
-      for (const m of raw.matchAll(NAME_RE)) uses.push({ name: m[0], path: f.path, line: i + 1 });
+      for (const m of raw.matchAll(NAME_RE)) {
+        if (seen.has(m[0])) continue;
+        seen.add(m[0]);
+        this.uses.push({ name: m[0], path, line: i + 1 });
+      }
     });
   }
-  const cache = new Map<string, number | null>();
-  const resolve = (name: string): number | null => {
-    if (cache.has(name)) return cache.get(name)!;
-    const text = defines.get(name);
-    if (text === undefined) return null;
-    cache.set(name, null);
-    const v = text === "" ? null : evaluateMacroExpression(text.replace(/\bu\b|(?<=[0-9a-fA-F])[uUlL]+\b/g, ""), resolve);
-    cache.set(name, v);
-    return v;
-  };
-  const out: UsageSite[] = [];
-  const seen = new Set<string>();
-  for (const u of uses) {
-    const value = resolve(u.name);
-    if (value === null || value < 0) continue;
-    const kind = u.name.startsWith("FLAG_") ? "flag" : "var";
-    if (kind === "var" && !isVariableNumber(value)) continue;
-    const key = `${kind}:${value}:${u.path}`;
-    if (seen.has(key)) continue; // 同じファイルの同じ番号は 1 つにまとめる（一覧を短くするため）
-    seen.add(key);
-    out.push({ kind, value, source: "c", where: `${u.path}:${u.line}（${u.name}）`, path: u.path, line: u.line });
+
+  result(): UsageSite[] {
+    const cache = new Map<string, number | null>();
+    const resolve = (name: string): number | null => {
+      if (cache.has(name)) return cache.get(name)!;
+      const text = this.defines.get(name);
+      if (text === undefined) return null;
+      cache.set(name, null);
+      const v = text === "" ? null : evaluateMacroExpression(text.replace(/\bu\b|(?<=[0-9a-fA-F])[uUlL]+\b/g, ""), resolve);
+      cache.set(name, v);
+      return v;
+    };
+    const out: UsageSite[] = [];
+    const seen = new Set<string>();
+    for (const u of this.uses) {
+      const value = resolve(u.name);
+      if (value === null || value < 0) continue;
+      const kind = u.name.startsWith("FLAG_") ? "flag" : "var";
+      if (kind === "var" && !isVariableNumber(value)) continue;
+      const key = `${kind}:${value}:${u.path}`;
+      if (seen.has(key)) continue; // 同じファイルの同じ番号は 1 つにまとめる（一覧を短くするため）
+      seen.add(key);
+      out.push({ kind, value, source: "c", where: `${u.path}:${u.line}（${u.name}）`, path: u.path, line: u.line });
+    }
+    return out;
   }
-  return out;
 }
