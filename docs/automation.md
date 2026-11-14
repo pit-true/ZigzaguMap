@@ -250,4 +250,6 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - `paintCells` コマンド: `{"cmd":"command","name":"paintCells","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9,"movement":12}]}}`（ブロックと移動許可を両方書く。ドラッグ中はまとめて 1 回の操作）。
 - コピーと貼り付け: マップタブで `{"cmd":"key","key":"c","ctrl":true}`（コピー）、`mouse` の `hover` でマスを指してから `{"cmd":"key","key":"v","ctrl":true}`（貼る）。
 - 矩形塗りと入れ替え（#233）: `mouse` に `alt` を足した。矩形塗りは `{"cmd":"mouse","target":"map","action":"drag","ctrl":true,"cell":[2,2],"to":[6,5]}`（移動エリアタブは `target: "movement"`）、入れ替えは `"alt":true`。取りやめは `down`・`move`（`button: "left"`）のあとに `{"cmd":"key","key":"Escape"}` を送ってから `up`。矩形塗りは選択が移動許可を持ち「移動許可も貼る」がオンなら `paintCells`、そうでなければ `paintBlocks`、入れ替えは `paintCells` の 2 マス。
+- 辺のつまみのドラッグでリサイズ（#231）: `{"cmd":"mouse","target":"connectionHandle","handle":"edge:left","action":"drag","cell":[0,0],"to":[-3,0]}`（左へ 3 広げる。`to` はマス単位のずらしで、その辺の外向きが広げる向き）。離すと `group`（`resizeMapEdge` と、プロジェクトがあれば `shiftEventLabelPositions`）を 1 回実行する。`{"cmd":"resize.refs"}` で、最後に左・上をずらしたときに見つけた、直していない `.s` の座標の行（`path`・`line`・`text`・`kind`（`warp` / `object`））を返す。見つかったときは「直していない座標」のダイアログも出る（`dialog` の `press: "ok"` で閉じる）。
+- コマンド: `resizeMapEdge`（`bank`・`map`・`side`（`up` / `down` / `left` / `right`）・`amount`（広げるマス数。負なら縮める）・`targets`（自分と、ずれを直す接続の相手））、`shiftEventLabelPositions`（`bank`・`map`・`dx`・`dy`。scripts_MM.json の照合用の座標をずらす）。
 

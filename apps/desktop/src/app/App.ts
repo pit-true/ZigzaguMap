@@ -57,6 +57,7 @@ import { installViewExtras } from "../ui/map/viewExtras";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { EdgeMenu } from "../ui/connection/EdgeMenu";
+import { EdgeResize } from "../ui/connection/EdgeResize";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -127,6 +128,8 @@ export class App implements ActionTarget {
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
   readonly connectionHandles: ConnectionHandles;
   readonly edgeHandles: EdgeHandles;
+  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
+  readonly edgeResize: EdgeResize;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -197,7 +200,8 @@ export class App implements ActionTarget {
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
-    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state));
+    this.edgeResize = new EdgeResize(state);
+    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
     // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
     for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) installViewExtras(view, state, tab, this.neighbors);
     const tabControl = new TabControl(

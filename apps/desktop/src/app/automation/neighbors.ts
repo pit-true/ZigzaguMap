@@ -62,7 +62,13 @@ async function menu(app: App, req: AutomationRequest): Promise<unknown> {
   return (openContextMenu()?.items ?? []).map((i) => ({ id: i.id, label: i.label, enabled: i.enabled !== false }));
 }
 
+/** `resize.refs`: 最後の辺のつまみのリサイズ（左・上）で見つけた、直していない `.s` の座標の行（#231）。 */
+function refs(app: App): unknown {
+  return app.edgeResize.lastRefs;
+}
+
 export const neighborCommands: CommandTable = {
+  "resize.refs": refs,
   "neighbors.state": state,
   "connection.handles": handles,
   "connection.menu": menu,
