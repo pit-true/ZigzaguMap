@@ -54,6 +54,7 @@ def _shot(z: Zigzagu, name: str) -> None:
 
 
 def template_one(fx: Fixture, z: Zigzagu, check, log, timeout: int, extra=None) -> None:
+    extra = extra or TrainerExtra()
     proj = fx.project_path
     snap = TextSnapshot(proj, fx.copy_root)
     trainers_json = proj / "maps" / "trainers.json"
@@ -227,7 +228,7 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int, 
         if kind == "person":
             check(item["flag"] == person_flag, f"「未使用」ボタンで入れた人のフラグ {hex(person_flag)} が出力され ROM に入る（{hex(item['flag'])}）")
         if kind == "trainer":
-            tid = r["values"]["trainerId"]
+            tid = r["values"]["newTrainer"]["id"] if r["values"].get("newTrainer") else r["values"]["trainerId"]
             check(rom[at] == 0x5C and rom[at + 1] == 0 and struct.unpack_from("<H", rom, at + 2)[0] == tid, f"トレーナー: trainerbattle 0 {tid}（{rom[at:at + 4].hex()}）")
             check(item["trainerType"] == 1 and item["trainerRangeOrBerryTree"] == r["values"]["sight"], f"トレーナーの人: 種類 1、視界 {r['values']['sight']}")
     if extra:
@@ -267,3 +268,54 @@ def _cross_check(fx: Fixture, proj: pathlib.Path, nexts: dict, check, log) -> No
                     used_in_c[k].append(f"{p.relative_to(proj)}:{n}")
     for k in ("flag", "var"):
         check(not hits[k] and not used_in_c[k], f"未使用の {k} {hex(nexts[k])} は .s にも C にも出てこない（.s {hits[k][:3]}、C {used_in_c[k][:3]}、定義名 {names[k][:3]}）")
+
+
+class TrainerExtra:
+    """トレーナー（#244 の既存の番号、#245 の新しいトレーナーと trainers.json）を足す確認。"""
+
+    def __init__(self):
+        self.new = None
+        self.existing = None
+
+    def places(self, z: Zigzagu, nexts: dict) -> list:
+        lst = z.call({"cmd": "trainer.list"}, timeout=120)
+        free = [t for t in lst if t["uses"] == 0 and t["partySize"] > 0 and not t["edited"]]
+        self.existing = free[0]["id"]
+        new_id = next(t["id"] for t in lst if t["uses"] == 0 and t["id"] != self.existing)
+        gen = z.call({"cmd": "trainer.generate", "bank": BANK, "map": MAP, "seed": 12345})
+        party = gen["party"] or [{"iv": 0, "level": 5, "species": 16}]
+        base = z.call({"cmd": "trainer.get", "id": self.existing})
+        self.new = {
+            "id": new_id, "partyFlags": 0, "trainerClass": base["trainerClass"], "music": base["music"], "female": base["female"],
+            "pic": base["pic"], "name": "タロウ", "items": [0, 0, 0, 0], "doubleBattle": False, "aiFlags": base["aiFlags"], "party": party,
+        }
+        self.gen = gen
+        return [("trainer", (14, 4), {"trainerId": self.existing, "sight": 4}), ("trainer", (15, 4), {"newTrainer": self.new})]
+
+    def after_export(self, z: Zigzagu, proj: pathlib.Path, check, log) -> None:
+        log(f"自動生成（種 12345、マップ {self.gen['maps']}）: {self.gen['party']}")
+        path = proj / "maps" / "trainers.json"
+        check(path.is_file(), "出力で maps\trainers.json ができる")
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            t = data["Trainers"][0] if data.get("Trainers") else {}
+            check(data.get("Format") == 1 and t.get("Id") == self.new["id"] and t.get("Name") == self.new["name"]
+                  and [(m["Species"], m["Level"]) for m in t.get("Party", [])] == [(m["species"], m["level"]) for m in self.new["party"]],
+                  f"trainers.json に新しいトレーナー {self.new['id']} が書かれる")
+            check(b"\r\n" in path.read_bytes(), "trainers.json は CRLF")
+
+    def check_rom(self, fx: Fixture, rom: bytes, check, log) -> None:
+        base = fx.rom_path.read_bytes()
+        tb = struct.unpack_from("<I", base, 0xF5C0)[0] - 0x08000000
+        to = struct.unpack_from("<I", rom, 0xF5C0)[0] - 0x08000000
+        check(tb == to, f"トレーナーの表の位置は変わらない（{hex(tb + 0x08000000)}）")
+        nid = self.new["id"]
+        e = rom[to + nid * 0x20: to + nid * 0x20 + 0x20]
+        party_at = struct.unpack_from("<I", e, 0x1C)[0] - 0x08000000
+        party = [struct.unpack_from("<HHH", rom, party_at + i * 8) for i in range(e[0x18])]
+        check(e[1] == self.new["trainerClass"] and e[3] == self.new["pic"] and e[0x18] == len(self.new["party"])
+              and [(p[2], p[1]) for p in party] == [(m["species"], m["level"]) for m in self.new["party"]],
+              f"ROM のトレーナー {nid} が trainers.json のとおり（クラス {e[1]}、絵 {e[3]}、手持ち {[(p[2], p[1]) for p in party]}）")
+        check(e[4] != 0xFF and 0xFF in e[4:10], f"名前が書かれる（{e[4:10].hex()}）")
+        others = [i for i in range(743) if i != nid and rom[to + i * 0x20: to + i * 0x20 + 0x20] != base[tb + i * 0x20: tb + i * 0x20 + 0x20]]
+        check(not others, f"ほかのトレーナーの行は元の ROM と同じ（違う行 {others[:5]}）")
