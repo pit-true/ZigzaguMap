@@ -14,7 +14,7 @@ describe("メニューの構成（Phase1 のフィードバック）", () => {
   it("見た目の項目は「表示」にあり、「設定」には無い", () => {
     const view = ids(menu[1]!.children!);
     const settings = ids(menu[2]!.children!);
-    const looks = ["view.grid", "view.objects", "zoom.map", "zoom.movement", "zoom.event", "zoom.palette", "zoom.movementPalette", "view.opacity", "view.paletteWidth", "view.toolbar", "view.combobox", "view.hideEventPanel", "opt.advancedHeader", "sort.0", "sort.4", "neighbors.band", "neighbors.all", "neighbors.off", "view.usageMarks", "view.clones"];
+    const looks = ["view.grid", "view.objects", "zoom.map", "zoom.movement", "zoom.event", "zoom.palette", "zoom.movementPalette", "view.opacity", "view.paletteWidth", "view.toolbar", "view.combobox", "view.hideEventPanel", "opt.advancedHeader", "sort.0", "sort.4", "neighbors.band", "neighbors.all", "neighbors.off", "view.usageMarks", "view.tripleChildMarks", "view.clones"];
     for (const id of looks) {
       expect(view).toContain(id);
       expect(settings).not.toContain(id);
