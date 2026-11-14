@@ -16,6 +16,8 @@ export interface MapTreeHost {
   showThumbnails?(): boolean;
   /** マップの縮小（まだできていなければ null）。 */
   thumbnail?(id: MapId): ImageData | null;
+  /** 開いている枝に見えているマップ（縮小を作る対象。枝を開閉・一覧を作り直したときに知らせる。#315）。 */
+  thumbnailsWanted?(ids: readonly MapId[]): void;
 }
 
 /** 一覧の項目の情報（自動操作の `tree.list`）。 */
@@ -36,6 +38,8 @@ interface Row {
   readonly node: TreeNode;
   readonly element: HTMLElement;
   readonly depth: number;
+  /** 親の行（根なら null）。 */
+  readonly parent: Row | null;
   childBox: HTMLElement | null;
 }
 
@@ -60,6 +64,8 @@ export class MapTree {
   private savedExpanded: Set<string> | null = null;
   private selectedKey: string | null = null;
   private openedId: MapId | null = null;
+  /** 見えているマップを知らせる待ち（枝の開閉が続いても 1 回にまとめる）。 */
+  private wantedPending = false;
 
   constructor(private readonly host: MapTreeHost) {
     this.element = document.createElement("div");
@@ -119,10 +125,11 @@ export class MapTree {
     // 根が 1 つだけ（マップの表示設定で片方だけ）のときは開いておく。
     if (roots.length === 1) this.expanded.add(roots[0]!.key);
     const fragment = document.createDocumentFragment();
-    for (const node of roots) fragment.append(this.build(node, 0));
+    for (const node of roots) fragment.append(this.build(node, 0, null));
     this.element.replaceChildren(fragment);
     if (this.selectedKey && this.rows.has(this.selectedKey)) this.select(this.selectedKey);
     else if (this.openedId) this.reveal(this.openedId, true);
+    this.scheduleWanted();
   }
 
   /** 空にする。 */
@@ -134,6 +141,7 @@ export class MapTree {
     this.selectedKey = null;
     this.openedId = null;
     this.element.replaceChildren();
+    this.scheduleWanted();
   }
 
   /**
@@ -187,10 +195,11 @@ export class MapTree {
     return out;
   }
 
-  /** サムネイルを描き直す（`id` のマップの行だけ。null なら全部。#315）。行は開いた枝の分しか無いので、軽い。 */
+  /** サムネイルを描き直す（`id` のマップの行だけ。null なら全部。#315）。見えている行の分しか描かないので、軽い。 */
   refreshThumbnails(id: MapId | null = null): void {
     for (const row of this.rows.values()) {
       if (!row.node.mapId || (id && !sameId(row.node.mapId, id))) continue;
+      if (!this.isShown(row)) continue;
       const thumb = row.element.querySelector<HTMLCanvasElement>("canvas.tree-thumb");
       if (thumb) delete thumb.dataset["drawn"];
       this.decorateThumbnail(row);
@@ -204,11 +213,51 @@ export class MapTree {
     return n;
   }
 
-  /** マップの行の縮小（#315。設定でオフなら外す）。 */
+  /** 開いている枝に見えているマップ（同じマップが 2 つの根の下にあれば 1 つ。#315）。 */
+  wantedMapIds(): MapId[] {
+    const out = new Map<string, MapId>();
+    for (const row of this.visibleRows()) {
+      const id = row.node.mapId;
+      if (id && row.node.filePath === undefined) out.set(`${id.bank}.${id.map}`, id);
+    }
+    return [...out.values()];
+  }
+
+  /** 行が見えているか（親が全部開いている）。 */
+  private isShown(row: Row): boolean {
+    for (let p = row.parent; p; p = p.parent) if (!this.expanded.has(p.node.key)) return false;
+    return true;
+  }
+
+  /** 見えているマップが変わったかもしれないので、まとめてから知らせる。 */
+  private scheduleWanted(): void {
+    if (this.wantedPending || !this.host.thumbnailsWanted) return;
+    this.wantedPending = true;
+    queueMicrotask(() => {
+      this.wantedPending = false;
+      this.host.thumbnailsWanted?.(this.wantedMapIds());
+    });
+  }
+
+  /** 枝を開閉したあと、その下の行の縮小を付け外しする（閉じた枝の縮小の Canvas は捨てる）。 */
+  private decorateBranch(row: Row): void {
+    if (!this.host.showThumbnails?.()) return;
+    const walk = (nodes: readonly TreeNode[]): void => {
+      for (const n of nodes) {
+        const r = this.rows.get(n.key);
+        if (!r) continue;
+        if (n.mapId) this.decorateThumbnail(r);
+        else if (n.children) walk(n.children);
+      }
+    };
+    walk(row.node.children ?? []);
+  }
+
+  /** マップの行の縮小（#315。設定でオフか、閉じた枝の中なら外す）。 */
   private decorateThumbnail(row: Row): void {
     const id = row.node.mapId;
     let thumb = row.element.querySelector<HTMLCanvasElement>("canvas.tree-thumb");
-    if (!id || !this.host.showThumbnails?.()) {
+    if (!id || !this.host.showThumbnails?.() || !this.isShown(row)) {
       thumb?.remove();
       row.element.classList.remove("with-thumb");
       return;
@@ -240,7 +289,7 @@ export class MapTree {
     return this.rows.get(key)?.element ?? null;
   }
 
-  private build(node: TreeNode, depth: number): HTMLElement {
+  private build(node: TreeNode, depth: number, parent: Row | null): HTMLElement {
     const wrap = document.createElement("div");
     wrap.className = "tree-node";
     const element = document.createElement("div");
@@ -253,7 +302,7 @@ export class MapTree {
     label.className = "tree-label";
     element.append(icon, label);
     wrap.append(element);
-    const row: Row = { node, element, depth, childBox: null };
+    const row: Row = { node, element, depth, parent, childBox: null };
     this.rows.set(node.key, row);
     this.decorate(row);
     if (node.children && this.expanded.has(node.key)) this.expand(row);
@@ -286,18 +335,24 @@ export class MapTree {
     if (!row.childBox) {
       const box = document.createElement("div");
       box.className = "tree-children";
-      for (const child of row.node.children ?? []) box.append(this.build(child, row.depth + 1));
-      row.element.parentElement!.append(box);
+      // 子の行は、開いた印を付けてから作る（見えている行にだけ縮小を付けるため）
       row.childBox = box;
+      for (const child of row.node.children ?? []) box.append(this.build(child, row.depth + 1, row));
+      row.element.parentElement!.append(box);
+    } else {
+      this.decorateBranch(row);
     }
     row.childBox.hidden = false;
     this.decorate(row);
+    this.scheduleWanted();
   }
 
   private collapse(row: Row): void {
     this.expanded.delete(row.node.key);
     if (row.childBox) row.childBox.hidden = true;
     this.decorate(row);
+    this.decorateBranch(row);
+    this.scheduleWanted();
   }
 
   private toggle(row: Row): void {

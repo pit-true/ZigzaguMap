@@ -193,6 +193,8 @@ export class App implements ActionTarget {
       // マップ一覧のサムネイル（#315）
       showThumbnails: () => state.settings.data.treeThumbnails,
       thumbnail: (id) => this.views.thumbnails.get(id),
+      // 開いている枝に見えているマップの分だけ作る（枝を閉じたら捨てる）
+      thumbnailsWanted: (ids) => this.views?.thumbnails.setWanted(ids),
     });
     this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
