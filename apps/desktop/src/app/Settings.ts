@@ -130,6 +130,11 @@ export class Settings {
     this.scheduleSave();
   }
 
+  /** 値を変えるが保存はしない（スライダーを動かしている間の描き直し用。離したときに `update` で保存する）。 */
+  preview(patch: Partial<SettingsData>): void {
+    Object.assign(this.data, patch);
+  }
+
   /** 最近開いたものの先頭に加える（同じものは前から消す）。 */
   addRecent(entry: RecentEntry): void {
     const rest = this.data.recent.filter((r) => r.rom.toLowerCase() !== entry.rom.toLowerCase());

@@ -22,6 +22,8 @@ export interface ActionTarget {
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
+  /** 表示 > 移動エリアの透明度（スライダーの小窓）。 */
+  openOpacity(): Promise<void>;
   saveImage(kind: ImageKind): Promise<void>;
   openToolWindow(kind: "block-editor"): Promise<void>;
   openWorldMap(): Promise<void>;
@@ -84,7 +86,7 @@ export class Actions {
     h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
     h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
     h.set("view.paletteWidth", () => target.prompts.paletteWidth());
-    h.set("view.opacity", () => target.prompts.opacity());
+    h.set("view.opacity", () => target.openOpacity());
     h.set("recent.max", () => target.prompts.recentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
     h.set("tools.openMap", () => target.openMapByNumber());

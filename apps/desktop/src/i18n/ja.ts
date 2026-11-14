@@ -1,6 +1,7 @@
 import { formatHex } from "@zigzagumap/core";
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
+import { jaView } from "./ja.view";
 import { jaWild } from "./ja.wild";
 import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
 
@@ -205,7 +206,6 @@ export const ja = {
   mapNotFound: A["100"],
   blockWidthTitle: A["45"],
   blockWidthPrompt: A["46"],
-  opacityPrompt: M["12170"],
   recentMaxPrompt: M["12161"],
   ok: ini.EndnutzerForm["13"],
   /** Delphi の入力ダイアログのボタン（ini に無い）。 */
@@ -262,6 +262,9 @@ export const ja = {
   // [GehDaten] 移動許可の説明（無いものは ???）
   movementNames: hexRecord(ini.GehDaten) as Readonly<Record<number, string>>,
   movementUnknown: "???",
+
+  // 表示メニュー（ZigzaguMap 独自。別ファイル）
+  view: jaView,
 
   // 場所の設定タブ・コネクションマネージャー・出現ポケモンタブ（別ファイル）
   header: jaHeader,

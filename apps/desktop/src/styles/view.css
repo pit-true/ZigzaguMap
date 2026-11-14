@@ -1,0 +1,33 @@
+/* 表示メニューの小窓（移動エリアの透明度のスライダー）。 */
+.opacity-popup {
+  width: 300px;
+}
+
+.opacity-popup .dialog-body {
+  padding: 12px 12px 8px;
+}
+
+.opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.opacity-row input[type="range"] {
+  flex: 1;
+  margin: 0;
+}
+
+.opacity-value {
+  width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.opacity-scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 48px 8px 0;
+  color: #555;
+  font-size: 11px;
+}

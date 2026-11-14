@@ -14,6 +14,7 @@ import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
+import type { OpacityPopup } from "../ui/view/OpacityPopup";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
 import { EventTab } from "../ui/event/EventTab";
@@ -87,6 +88,8 @@ export class App implements ActionTarget {
     exportMaps: () => this.exportMaps(false),
   });
   private connections: ConnectionManager | null = null;
+  /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
+  opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
   readonly newMaps: NewMapController;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
@@ -364,6 +367,15 @@ export class App implements ActionTarget {
       this.connections = new ConnectionManager(this.state, (id) => this.openMap(id));
     }
     this.connections.show();
+  }
+
+  /** 表示 > 移動エリアの設定の透明度。スライダーの小窓を開く（初めて開くときに読み込む）。 */
+  async openOpacity(): Promise<void> {
+    if (!this.opacityPopup) {
+      const { OpacityPopup } = await import("../ui/view/OpacityPopup");
+      this.opacityPopup = new OpacityPopup(this.state);
+    }
+    this.opacityPopup.open();
   }
 
   // ---- 編集 ----
