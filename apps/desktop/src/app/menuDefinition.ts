@@ -123,6 +123,15 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
             { id: "recent.showPath", label: ja.recentShowPath },
           ],
         },
+        // ZigzaguMap 独自（Phase2）。メインと道具のウィンドウの配色（スクリプトエディタは自分のテーマを持つ）。
+        {
+          label: ja.themeMenu,
+          accel: "T",
+          children: [
+            { id: "theme.light", label: ja.themeLight, accel: "L" },
+            { id: "theme.dark", label: ja.themeDark, accel: "D" },
+          ],
+        },
       ],
     },
     {

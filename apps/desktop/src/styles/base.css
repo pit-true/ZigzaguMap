@@ -67,6 +67,70 @@
   background: var(--face);
 }
 
+/*
+ * ダーク（個人設定 `theme`。util/theme.ts が <html data-theme="dark"> にする）。
+ * 部品の色だけを変える。マップ・タイル・パレットの canvas は描いた色のまま（データなので）。
+ * color-scheme で、入力欄・コンボ・スクロールバーなどの標準の部品も暗くなる。
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --face: #2b2b2b;
+  --window: #1e1e1e;
+  --text: #e0e0e0;
+  --gray-text: #9a9a9a;
+  --shadow: #5a5a5a;
+  --highlight: #444444;
+  --border: #555555;
+  --select: #0e639c;
+  --select-text: #ffffff;
+  --hot: #2a4a66;
+  --hot-border: #3d6f99;
+  --menu-bg: #2b2b2b;
+  --menu-border: #555555;
+  --menu-active: #094771;
+  --menu-disabled-active: #3a3a3a;
+  --menu-separator: #4a4a4a;
+  --toolbar-hot: #3a3a3a;
+  --toolbar-pressed: #1f1f1f;
+  --field-border: #6a6a6a;
+  --field-disabled-border: #454545;
+  --spin-disabled-border: #454545;
+  --group-border: #4a4a4a;
+  --groupbox-border: #4a4a4a;
+  --button-face: #3a3a3a;
+  --button-border: #5f5f5f;
+  --button-hot: #2a4a66;
+  --button-pressed: #1d3a54;
+  --button-pressed-border: #4a90d0;
+  --disabled-text: #6f6f6f;
+  --disabled-face: #2f2f2f;
+  --disabled-border: #444444;
+  --dialog-border: #5f5f5f;
+  --dialog-close-text: #cccccc;
+  --link-text: #6cb6ff;
+  --memo-bg: #333333;
+  --rule: #4a4a4a;
+  --frame-border: #555555;
+  --row-rule: #383838;
+  --note-text: #a8a8a8;
+  --tree-inactive-select: #3f3f3f;
+  --notice-bg: #463d1c;
+  --notice-border: #7a6a2c;
+  --warn-bg: #463d1c;
+  --warn-border: #9a7d10;
+  --warn-text: #f0e2b0;
+  --error-bg: #5a2a2a;
+  --error-text: #ff7a7a;
+  --error-text-strong: #ff8a8a;
+  --help-text: #d4d4d4;
+  --md-rule: #4a4a4a;
+  --md-rule-soft: #3c3c3c;
+  --md-code-bg: #333333;
+  --md-pre-bg: #262626;
+  --md-cell-border: #4a4a4a;
+  --md-link: #6cb6ff;
+}
+
 * {
   box-sizing: border-box;
 }
