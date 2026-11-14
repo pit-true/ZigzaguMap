@@ -98,6 +98,8 @@ export interface SettingsData {
   autoMovement: boolean;
   /** 移動許可だけ違うマスと、選んだ移動許可のマスに印を付ける（表示メニュー。Phase3 #235）。 */
   usageMarks: boolean;
+  /** 人を隣のマップの境界の近くへ動かしたとき、隣のマップにクローンを作る（設定メニュー。Phase3 #242）。 */
+  autoClones: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -138,6 +140,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   pasteMovements: true,
   autoMovement: true,
   usageMarks: true,
+  autoClones: true,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

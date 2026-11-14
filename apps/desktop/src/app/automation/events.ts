@@ -1,4 +1,4 @@
-import { ROM_BASE, type RomEraseSpan } from "@zigzagumap/core";
+import { ROM_BASE, cloneTargetOf, type RomEraseSpan } from "@zigzagumap/core";
 import { jaEventDelete } from "../../i18n/ja.eventDelete";
 import { openContextMenu } from "../../ui/ContextMenu";
 import { openDialogs } from "../../ui/Dialog";
@@ -115,6 +115,11 @@ export const eventCommands: CommandTable = {
       itemBalls: map?.doc.itemBalls ?? [],
       /** ワープできないブロックの上にあるワープの番号（#240）。 */
       warpWarnings: tab.warpWarnings(),
+      /** クローンの人（#242）: 番号と参照先（バンク・マップ・人の番号）。 */
+      clones: (map?.doc.events?.persons ?? []).flatMap((p, index) => {
+        const target = cloneTargetOf(p);
+        return target ? [{ index, target }] : [];
+      }),
     };
   },
 };

@@ -1,5 +1,9 @@
 import {
+  CloneSyncCommand,
+  CommandGroup,
   ItemNameTable,
+  mapTargets,
+  type Command,
   MoveEventCommand,
   SetEventCountsCommand,
   RealignEventLabelsCommand,
@@ -38,6 +42,7 @@ import { EventHover } from "./EventHover";
 import { eventHoverSource } from "./eventHoverSource";
 import { drawWarpWarnings, unusableWarps } from "./warpCheck";
 import { ctrlPeek } from "../map/ctrlPeek";
+import { reportClones } from "../../app/cloneSync";
 import type { ScriptSummaries } from "./ScriptSummaries";
 
 /** タブの外の機能（App が渡す）。 */
@@ -57,6 +62,8 @@ export interface EventTabHost {
   summaries?(): Promise<ScriptSummaries>;
   /** ワープの行き先のマップを作る（#241。右クリックのメニュー）。 */
   createWarpMap?(index: number): void;
+  /** クローンを合わせる隣のマップ（#242。読み込んでから返す。設定がオフか、隣が無ければ null）。 */
+  cloneTargets?(id: MapId): Promise<MapId[] | null>;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -87,6 +94,8 @@ export class EventTab {
   private index = 0;
   private showCursor = true;
   private placed: PlacedEvent[] = [];
+  /** ドラッグで最後に実行した動かすコマンド（離したときにクローンを合わせる。#242）。 */
+  private lastDrag: { command: Command; id: MapId; key: string; kind: string } | null = null;
   /** イベントの上にカーソルを止めたときの吹き出し（#226）。 */
   readonly hoverTip: EventHover;
   private offsets: EventOffsets | null = null;
@@ -363,12 +372,27 @@ export class EventTab {
     const y = cell.y & 0xffff;
     const command =
       d.kind === "fly" ? new SetFlyPositionCommand({ index: d.index, fields: { x, y } }) : new MoveEventCommand({ ...id, kind: d.kind, index: d.index, x, y });
-    this.editor.run(command, d.key);
+    if (this.editor.run(command, d.key)) this.lastDrag = { command, id, key: d.key, kind: d.kind };
   }
 
   release(): void {
     this.drag = null;
+    const last = this.lastDrag;
+    this.lastDrag = null;
+    // 人を動かしたら、隣のマップのクローンを合わせる（#242。動かしたのと同じ 1 回の操作にまとめる）
+    if (last && last.kind === "person" && this.host.cloneTargets) {
+      void this.syncClones(last.command, last.id, last.key).finally(() => this.editor.endSession());
+      return;
+    }
     this.editor.endSession();
+  }
+
+  /** 最後の動かすコマンドに、クローンを合わせるコマンドを足して実行し直す（同じ `key` なので 1 回の操作のまま）。 */
+  private async syncClones(command: Command, id: MapId, key: string): Promise<void> {
+    const targets = await this.host.cloneTargets?.(id);
+    if (!targets || this.state.map?.id.bank !== id.bank || this.state.map?.id.map !== id.map) return;
+    const sync = new CloneSyncCommand({ ...id, targets: mapTargets(targets) });
+    if (this.editor.run(CommandGroup.of([command, sync]), key)) reportClones(this.state, sync.changes);
   }
 
   /** ダブルクリック: ワープは「マップの移動」、看板・スクリプト・人は「スクリプトを開く」（入口が使えるときだけ）。 */

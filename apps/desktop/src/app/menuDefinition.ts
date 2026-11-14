@@ -3,6 +3,7 @@ import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
+import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -131,6 +132,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
         // ZigzaguMap 独自（Phase3）。コネクションマネージャーでずれを変えたとき相手側もそろえる
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
+        // クローンの自動作成（Phase3 #242。ZigzaguMap 独自）
+        { id: "opt.autoClones", label: jaClone.menu },
         {
           label: ja.recentSettings,
           accel: "Z",
