@@ -89,9 +89,16 @@ export class HelpViewer {
     if (!content || !this.label || !this.backButton) return;
     const text = this.docs[page.path];
     if (this.current?.path !== page.path) {
+      // 窓の題名は、README なら「Read me」、ほかの文書は最初の見出し（無ければパス）
+      let title = page.path === "README.md" ? ja.readMe : page.path;
       if (text === undefined) content.innerHTML = `<p>${escapeHtml(ja.helpViewer.unknownDoc(page.path))}</p>`;
-      else if (/\.md$/i.test(page.path)) content.innerHTML = renderMarkdown(text, page.path).html;
-      else content.innerHTML = `<pre class="md-code">${escapeHtml(text)}</pre>`;
+      else if (/\.md$/i.test(page.path)) {
+        const rendered = renderMarkdown(text, page.path);
+        content.innerHTML = rendered.html;
+        if (page.path !== "README.md") title = rendered.headings[0]?.text ?? title;
+      } else content.innerHTML = `<pre class="md-code">${escapeHtml(text)}</pre>`;
+      const titleText = this.frame?.titleBar.querySelector("span");
+      if (titleText) titleText.textContent = title;
       // 自動操作から押せるよう、リンクに行き先の ID を付ける
       for (const a of content.querySelectorAll<HTMLElement>("a[data-link]")) a.dataset["autoId"] = `help.link:${a.dataset["link"]}`;
     }
