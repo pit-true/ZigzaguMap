@@ -58,6 +58,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "opt.advancedHeader": "advancedHeader",
   "opt.romShortcut": "romShortcut",
   "opt.contextMenu": "contextMenu",
+  "opt.alignConnections": "alignConnections",
 };
 
 /**

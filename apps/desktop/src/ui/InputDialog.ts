@@ -31,8 +31,8 @@ export function inputDialog(title: string, prompt: string, initial: string): Pro
       title,
       text: prompt,
       ...pressable([
-        { label: ja.ok, run: () => finish(input.value) },
-        { label: ja.cancel, run: () => finish(null) },
+        { label: ja.ok, aliases: ["ok"], run: () => finish(input.value) },
+        { label: ja.cancel, aliases: ["cancel"], run: () => finish(null) },
       ]),
       setInput: (v) => {
         input.value = v;

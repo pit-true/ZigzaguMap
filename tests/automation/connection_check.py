@@ -7,6 +7,12 @@
 - 223: 隣のマップの帯。マサラタウンで 1 番道路（上）と 21 番水道（下）の帯が出る。ずれが 0 でないマップも含め、帯の画素が
   隣のマップを開いたときの画像の同じ部分を暗くしたものと一致する。帯の上のダブルクリックでそのマップへ移る。
   設定（マップ全体・出さない）の切り替え、移動エリア・イベントのタブにも帯が出る、マップの切り替えの時間。
+- 229: 角のつまみをドラッグして接続のずれを変える。マサラタウンの上の 1 番道路のつまみを 3 マス動かすと、両方の接続が +3 と -3 になり、
+  両方に未出力の印が付く。1 回の取り消しで両方戻る。出力して開き直しても同じ。コネクションマネージャーでずれを変えても相手がそろう
+  （設定で切ればそろえない）。
+- 230: 辺のつまみの右クリックのメニュー。右の辺から新しいマップを作ってつなぐ（両側の接続、1 回の取り消しでマップも消える、
+  出力して開き直しても残る）、左の辺に既存のマップ（3.1）をつなぐ（ずれは中央）、上の接続を消す（相手の逆の接続も）、
+  ダイブ先をつなぐ（2 つ目はできない）。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -18,6 +24,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import Zigzagu  # noqa: E402
@@ -189,7 +196,175 @@ def check_223(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     check(nmed <= 200, f"隣を描き終えるまでの中央値が 200ms 以内（{nmed:.1f}ms）")
 
 
-CHECKS = {"222": check_222, "223": check_223}
+def offset_to(z: Zigzagu, bank: int, map_: int, target: int) -> int | None:
+    """マップ bank.map の、target（同じバンク）への接続のずれ（帯で見えているもの）。"""
+    z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+    st = z.call({"cmd": "neighbors.state", "wait": True})
+    return next((n["offset"] for n in st["neighbors"] if n["bank"] == bank and n["map"] == target), None)
+
+
+def check_229(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "neighbors.state", "wait": True})
+    handles = z.call({"cmd": "connection.handles"})
+    ids = {h["id"] for h in handles}
+    check({"corner:0:start", "corner:0:end", "corner:1:start", "corner:1:end"} <= ids, f"帯の両端に角のつまみが出る {sorted(ids)}")
+    z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "corner:0:start", "action": "drag", "cell": [0, 0], "to": [3, 0]})
+    st = z.call({"cmd": "state"})
+    check("3.0" in st["dirty"] and "3.19" in st["dirty"], "両方のマップに未出力の印が付く")
+    if shots:
+        z.call({"cmd": "neighbors.state", "wait": True})
+        (shots / "p3c_229_after_drag.png").write_bytes(base64.b64decode(z.call({"cmd": "canvasPng", "target": "map", "neighbors": True})["png"]))
+    check(offset_to(z, 3, 0, 19) == 3 and offset_to(z, 3, 19, 0) == -3, "つまみを 3 マス動かすと、自分のずれが +3、相手のずれが -3 になる")
+    z.call({"cmd": "undo"})
+    check(offset_to(z, 3, 0, 19) == 0 and offset_to(z, 3, 19, 0) == 0, "1 回の取り消しで両方が戻る")
+    st = z.call({"cmd": "state"})
+    check("3.0" not in st["dirty"] and "3.19" not in st["dirty"], "取り消すと両方の印が消える")
+    z.call({"cmd": "redo"})
+    out = work / "out229"
+    out.mkdir(parents=True, exist_ok=True)
+    r = z.call({"cmd": "export", "dir": str(out)})
+    check(written(r, 3, 0) and written(r, 3, 19), "出力で両方の JSON が書かれる")
+    z.call({"cmd": "open", "rom": z.rom, "project": str(out)})
+    check(offset_to(z, 3, 0, 19) == 3 and offset_to(z, 3, 19, 0) == -3, "出力したフォルダで開き直しても +3 と -3")
+    # コネクションマネージャー（相手もそろえる。既定オン）
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "action", "id": "tools.connections"})
+    z.call({"cmd": "setField", "id": "conn.offset", "value": "5"})
+    z.call({"cmd": "click", "id": "conn.save"})
+    check(offset_to(z, 3, 0, 19) == 5 and offset_to(z, 3, 19, 0) == -5, "コネクションマネージャーでずれを 5 にすると相手が -5 になる")
+    z.call({"cmd": "undo"})
+    check(offset_to(z, 3, 0, 19) == 3 and offset_to(z, 3, 19, 0) == -3, "マネージャーの変更も 1 回の取り消しで両方戻る")
+    z.call({"cmd": "action", "id": "opt.alignConnections"})
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "setField", "id": "conn.offset", "value": "6"})
+    z.call({"cmd": "click", "id": "conn.save"})
+    check(offset_to(z, 3, 0, 19) == 6 and offset_to(z, 3, 19, 0) == -3, "設定でそろえないにすると、相手は変わらない")
+    z.call({"cmd": "action", "id": "opt.alignConnections"})
+
+
+def wait_dialog(z: Zigzagu, title: str, timeout: float = 10) -> dict | None:
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        for d in z.call({"cmd": "dialogs"})["dialogs"]:
+            if d.get("title") == title:
+                return d
+        time.sleep(0.1)
+    return None
+
+
+def conns(z: Zigzagu, bank: int, map_: int) -> list[dict]:
+    z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+    return z.call({"cmd": "neighbors.state", "wait": True})["connections"]
+
+
+def open_main(z: Zigzagu) -> None:
+    z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "neighbors.state", "wait": True})
+
+
+def map_exists(z: Zigzagu, bank: int, map_: int) -> bool:
+    try:
+        z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def check_230(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    ids = {h["id"] for h in z.call({"cmd": "connection.handles"})}
+    check({"edge:up", "edge:down", "edge:left", "edge:right"} <= ids, "主マップの 4 辺に辺のつまみが出る")
+    items = {i["id"]: i for i in z.call({"cmd": "connection.menu", "side": "right"})}
+    check({"newMap", "connect", "diveNew", "diveConnect", "emergeNew", "emergeConnect"} <= set(items), f"右クリックのメニューの項目 {sorted(items)}")
+    if shots:
+        shot(z, shots, "p3c_230_edge_menu.png")
+    # 新しいマップを作ってつなぐ
+    z.call({"cmd": "contextMenu.press", "id": "newMap"})
+    d = wait_dialog(z, "新しいマップのバンク")
+    check(d is not None and d.get("input") == "3", f"バンクを聞く（既定は今のマップのバンク 3）{d and d.get('input')}")
+    if shots:
+        shot(z, shots, "p3c_230_bank_dialog.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    st = z.call({"cmd": "neighbors.state", "wait": True})
+    right = next((n for n in st["neighbors"] if n["side"] == "right"), None)
+    check(right is not None and right["bank"] == 3 and right["offset"] == 0 and right["placement"]["width"] == 20 and right["placement"]["height"] == 20,
+          f"右に新しいマップ（20×20、ずれ 0）がつながる {right and (right['bank'], right['map'], right['placement'])}")
+    if right is None:
+        return
+    new = right["map"]
+    st = z.call({"cmd": "state"})
+    check(f"3.{new}" in st["dirty"] and "3.0" in st["dirty"], f"両方に未出力の印が付く {st['dirty']}")
+    if shots:
+        shot(z, shots, "p3c_230_new_map.png")
+    back = conns(z, 3, new)
+    check(back == [{"index": 0, "direction": 3, "offset": 0, "bank": 3, "map": 0}], f"新しいマップには左向きにマサラタウンへの接続がある {back}")
+    z.call({"cmd": "undo"})
+    check(not map_exists(z, 3, new) and all(c["direction"] != 4 for c in conns(z, 3, 0)), "1 回の取り消しで新しいマップも接続も消える")
+    # 既存のマップとつなぐ（左に 3.1 トキワシティ）
+    open_main(z)
+    z.call({"cmd": "connection.menu", "side": "left"})
+    z.call({"cmd": "contextMenu.press", "id": "connect"})
+    check(wait_dialog(z, "つなぐマップ") is not None, "つなぐマップを選ぶダイアログが出る")
+    if shots:
+        z.call({"cmd": "dialog", "input": "トキワ"})
+        shot(z, shots, "p3c_230_pick_map.png")
+    z.call({"cmd": "dialog", "input": "3.1", "press": "ok"})
+    time.sleep(0.3)
+    mine = next((c for c in conns(z, 3, 0) if c["direction"] == 3), None)
+    other = next((c for c in conns(z, 3, 1) if c["direction"] == 4 and c["map"] == 0), None)
+    check(mine is not None and mine["map"] == 1 and other is not None and other["offset"] == -mine["offset"],
+          f"左にトキワシティがつながり、相手に右向きの逆の接続（ずれは逆）ができる {mine} {other}")
+    z.call({"cmd": "undo"})
+    check(all(c["direction"] != 3 for c in conns(z, 3, 0)) and not any(c["map"] == 0 and c["direction"] == 4 for c in conns(z, 3, 1)), "取り消すと両方の接続が消える")
+    # 接続を消す（上の 1 番道路）
+    open_main(z)
+    items = z.call({"cmd": "connection.menu", "side": "up"})
+    rm = next((i for i in items if i["id"].startswith("remove:")), None)
+    check(rm is not None and "3.19" in rm["label"], f"上の辺のメニューに「接続を消す（3.19 …）」がある {rm}")
+    if rm:
+        z.call({"cmd": "contextMenu.press", "id": rm["id"]})
+        time.sleep(0.3)
+        check(bool(z.call({"cmd": "dialogs"})["dialogs"]), "消す前に確かめる")
+        z.call({"cmd": "dialog", "press": "yes"})
+        time.sleep(0.3)
+        check(all(c["map"] != 19 for c in conns(z, 3, 0)) and all(c["map"] != 0 for c in conns(z, 3, 19)), "消すと相手（1 番道路）の逆の接続も消える")
+        z.call({"cmd": "undo"})
+        check(any(c["map"] == 19 for c in conns(z, 3, 0)) and any(c["map"] == 0 for c in conns(z, 3, 19)), "1 回の取り消しで両方戻る")
+    # ダイブ先をつなぐ
+    open_main(z)
+    z.call({"cmd": "connection.menu", "side": "down"})
+    z.call({"cmd": "contextMenu.press", "id": "diveConnect"})
+    wait_dialog(z, "ダイブ・浮上でつなぐマップ")
+    z.call({"cmd": "dialog", "input": "3.40", "press": "ok"})
+    time.sleep(0.3)
+    dive = next((c for c in conns(z, 3, 0) if c["direction"] == 5), None)
+    emerge = next((c for c in conns(z, 3, 40) if c["direction"] == 6), None)
+    check(dive is not None and dive["map"] == 40 and emerge is not None and emerge["map"] == 0, f"ダイブ先をつなぐと、相手に浮上の接続ができる {dive} {emerge}")
+    open_main(z)
+    items = {i["id"]: i for i in z.call({"cmd": "connection.menu", "side": "down"})}
+    check(not items["diveConnect"]["enabled"] and not items["diveNew"]["enabled"], "ダイブ先があると、ダイブの項目は押せない")
+    z.call({"cmd": "key", "key": "Escape"})
+    z.call({"cmd": "undo"})
+    # 新しいマップを作って出力し、開き直す
+    open_main(z)
+    z.call({"cmd": "connection.menu", "side": "right"})
+    z.call({"cmd": "contextMenu.press", "id": "newMap"})
+    wait_dialog(z, "新しいマップのバンク")
+    z.call({"cmd": "dialog", "press": "ok"})
+    st = z.call({"cmd": "neighbors.state", "wait": True})
+    right = next((n for n in st["neighbors"] if n["side"] == "right"), None)
+    out = work / "out230"
+    out.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "export", "dir": str(out)})
+    z.call({"cmd": "open", "rom": z.rom, "project": str(out)})
+    again = next((c for c in conns(z, 3, 0) if c["direction"] == 4), None)
+    back = conns(z, 3, right["map"]) if right else []
+    check(right is not None and again is not None and again["map"] == right["map"] and any(c["direction"] == 3 and c["map"] == 0 for c in back),
+          "出力して開き直しても、新しいマップと両側の接続が残る")
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230}
 
 
 def main() -> int:
@@ -211,6 +386,7 @@ def main() -> int:
             print(f"== #{number}")
             # issue ごとに起動し直す（前の確認の状態を持ち越さない）
             with Zigzagu(args.exe, profile=work / f"profile{number}", extra=["--mute-audio"]) as z:
+                z.rom = args.rom
                 z.call({"cmd": "open", "rom": args.rom})
                 CHECKS[number](z, work, shots)
     print(f"\n失敗 {len(failures)} 件")

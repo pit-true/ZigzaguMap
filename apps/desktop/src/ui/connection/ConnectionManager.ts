@@ -3,6 +3,8 @@ import {
   ConnectionDirection,
   RemoveConnectionCommand,
   SetConnectionCommand,
+  ShiftConnectionCommand,
+  inverseOf,
   type Command,
   type MapConnection,
   type MapId,
@@ -110,7 +112,7 @@ export class ConnectionManager {
     this.map = edit("conn.map", 96, 120, 49);
     this.unknown = edit("conn.unknown", 96, 144, 49);
     this.removeButton = button("conn.remove", c.remove, 48, 191, 73, 17, () => void this.remove());
-    this.saveButton = button("conn.save", c.save, 48, 207, 73, 17, () => this.save());
+    this.saveButton = button("conn.save", c.save, 48, 207, 73, 17, () => void this.save());
     side.append(
       label(c.group, 8, 8),
       label(c.number, 8, 24),
@@ -273,13 +275,36 @@ export class ConnectionManager {
     this.showCurrent();
   }
 
-  private save(): void {
+  private async save(): Promise<void> {
     const map = this.state.map;
     const draft = this.draft;
     if (!map || !draft) return;
     this.store();
-    const commands: Command[] = draft.plan(map.doc.connections ?? [], connectionOps(map.id));
+    let commands: Command[] = draft.plan(map.doc.connections ?? [], connectionOps(map.id));
+    // 設定 > 接続のずれを相手のマップにもそろえる（既定オン。Phase3 #229）: ずれだけを変えた接続は、相手の逆向きの接続も -offset にする
+    if (this.state.settings.data.alignConnections) commands = await this.alignPartners(map.id, map.doc.connections ?? [], commands);
     if (commit(this.state, commands)) this.reload(false);
+  }
+
+  /** ずれだけを変える setConnection を、相手もそろえる shiftConnection に置き換える（相手に逆の接続が無ければそのまま）。 */
+  private async alignPartners(id: MapId, before: readonly MapConnection[], commands: Command[]): Promise<Command[]> {
+    const session = this.state.session;
+    if (!session) return commands;
+    const out: Command[] = [];
+    for (const c of commands) {
+      const a = c.args as { index?: unknown; offset?: unknown };
+      const keys = Object.keys(c.args).filter((k) => k !== "bank" && k !== "map" && k !== "index");
+      const old = typeof a.index === "number" ? before[a.index] : undefined;
+      const partner = old ? { bank: old.bank, map: old.map } : null;
+      if (c.name !== SetConnectionCommand.NAME || keys.length !== 1 || typeof a.offset !== "number" || !old || !partner || !session.catalog.has(partner)) {
+        out.push(c);
+        continue;
+      }
+      const other = await session.project.load(partner).catch(() => null);
+      if (!other || inverseOf(other.connections, id, old.direction, old.offset) === null) out.push(c);
+      else out.push(ShiftConnectionCommand.of(id, a.index as number, a.offset, partner));
+    }
+    return out;
   }
 
   /** 矢印ボタン: そのコネクションの相手のマップを開く。 */

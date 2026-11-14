@@ -60,6 +60,20 @@ export class NeighborLayer {
     this.draw();
   }
 
+  /** つまみのドラッグ中の下見: 接続の番号 `index` の帯を (dx, dy) マスずらして見せる（0, 0 で元へ）。 */
+  preview(index: number, dx: number, dy: number): void {
+    const bands = this.frame?.bands ?? [];
+    const size = this.view.cellSize;
+    const origin = this.view.originPx;
+    bands.forEach((band, i) => {
+      const canvas = this.canvases[i];
+      if (!canvas || band.placement.index !== index) return;
+      const at = band.placement.bandAt;
+      canvas.style.left = `${origin.x + (at.x + dx) * size}px`;
+      canvas.style.top = `${origin.y + (at.y + dy) * size}px`;
+    });
+  }
+
   /** 帯を描き直す（表示の大きさ・透明度が変わったときも）。タブが隠れていれば Canvas を捨てる（`force` なら描く）。 */
   draw(force = false): void {
     const bands = force || this.state.tab === this.options.tab ? (this.frame?.bands ?? []) : [];
