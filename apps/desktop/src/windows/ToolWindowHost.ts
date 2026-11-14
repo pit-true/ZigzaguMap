@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { CommandGroup, EditError, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
 import type { App } from "../app/App";
@@ -18,6 +17,7 @@ import {
 import { tilesetRefsOf } from "./tilesetRefs";
 import { errorText } from "../util/errors";
 import { editErrorMessage } from "../ui/form/inputErrors";
+import { closeToolWindow, onToolWindowClosed, openToolWindow } from "./toolWindowCommands";
 
 /**
  * メインウィンドウ側の、別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の窓口。
@@ -52,7 +52,7 @@ export class ToolWindowHost {
 
   private async start(): Promise<void> {
     await listen<ToolRequest>(TOOL_REQUEST_EVENT, (e) => void this.onRequest(e.payload));
-    await listen<string>("tool-closed", (e) => this.onClosed(e.payload as ToolKind));
+    await onToolWindowClosed((label) => this.onClosed(label as ToolKind));
     const state = this.app.state;
     state.on("session", () => {
       this.subscribeBus();
@@ -72,7 +72,7 @@ export class ToolWindowHost {
     const title = kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : kind === "transplant" ? jaTransplant.title : t.adjustTitle;
     this.opened.add(kind);
     try {
-      await invoke("open_tool_window", { label: kind, title, width: size.width, height: size.height });
+      await openToolWindow(kind, title, size);
     } catch (e) {
       this.opened.delete(kind);
       throw e;
@@ -171,7 +171,7 @@ export class ToolWindowHost {
   }
 
   private closeAll(): void {
-    for (const kind of [...this.opened]) void invoke("close_tool_window", { label: kind });
+    for (const kind of [...this.opened]) void closeToolWindow(kind);
     this.opened.clear();
     this.ui = { palette: 0, preview: {} };
   }
