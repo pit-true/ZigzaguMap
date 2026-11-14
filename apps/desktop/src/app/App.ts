@@ -231,9 +231,19 @@ export class App implements ActionTarget {
    */
   async openRomAskingFolder(rom: string): Promise<void> {
     if (!(await this.confirmDiscard())) return;
+    // ROM でないファイルなら、フォルダを聞く前にエラーを出す（開いていたものはそのまま）
+    let bytes: Uint8Array;
+    try {
+      bytes = await ProjectSession.readRom(rom);
+    } catch (e) {
+      await this.showOpenError(e);
+      return;
+    }
+    const before = this.state.status;
     this.state.setStatus(ja.choosePairFolder);
     const project = await this.files.folder(ja.pairFolderTitle);
-    await this.openSession(rom, project, false, true);
+    this.state.setStatus(before.left, before.right, before.error);
+    await this.openSession(rom, project, { confirmed: true, bytes });
   }
 
   /** 最近開いたものに記録した、その ROM と組のフォルダ（無ければ null）。 */
@@ -277,26 +287,26 @@ export class App implements ActionTarget {
   async reload(): Promise<void> {
     const s = this.state.session;
     // AdvanceMap と同じく、読み直したあとはマップを開かない（題名はアプリ名、ステータスは「マップを選択してください」）
-    if (s) await this.openSession(s.romPath, s.projectDir, true);
+    if (s) await this.openSession(s.romPath, s.projectDir, { reload: true });
   }
 
   /**
    * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
-   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。`confirmed` なら未出力の確認は済んでいる。
+   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
+   * `reload` は ROM の再読み込み（マップを開かない）、`confirmed` は未出力の確認が済んでいる、`bytes` は読み済みの ROM。
    */
-  async openSession(rom: string, project: string | null, reload = false, confirmed = false): Promise<void> {
-    if (!confirmed && !(await this.confirmDiscard())) return;
+  async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
+    const reload = options.reload ?? false;
+    if (!options.confirmed && !(await this.confirmDiscard())) return;
     const state = this.state;
     const previous = state.session;
     state.setStatus(ja.loading);
     let session: ProjectSession;
     try {
-      session = await ProjectSession.open(rom, project);
+      session = await ProjectSession.open(rom, project, options.bytes);
     } catch (e) {
       await previous?.reattach().catch(() => undefined);
-      state.setStatus(previous ? ja.statusRomLoaded : ja.statusOpenRom);
-      if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
-      else await showError(errorText(e));
+      await this.showOpenError(e);
       return;
     }
     try {
@@ -329,6 +339,13 @@ export class App implements ActionTarget {
     } catch (e) {
       this.showError(e);
     }
+  }
+
+  /** 開けなかったときのエラー（ステータスバーを元に戻してから出す）。 */
+  private async showOpenError(e: unknown): Promise<void> {
+    this.state.setStatus(this.state.session ? ja.statusRomLoaded : ja.statusOpenRom);
+    if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
+    else await showError(errorText(e));
   }
 
   // ---- マップ ----

@@ -77,6 +77,16 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     st = wait_state(z, lambda s: s["rom"] is not None)
     check(st["rom"] is not None and st["project"] is None, "キャンセルすると ROM だけで開く")
 
+    notrom = pathlib.Path(project_dir).parent / "notrom.gba"
+    notrom.write_bytes(b"not a rom" * 100)
+    z.call({"cmd": "menu.run", "id": "file.open"})
+    z.call({"cmd": "queuePath", "path": str(notrom)})
+    time.sleep(0.5)
+    r = z.call({"cmd": "dialogs"})["dialogs"]
+    check(not any(d.get("kind") == "native" for d in r) and any("Unknown Rom Type" in str(d.get("text")) for d in r),
+          "ROM でないファイルは、フォルダを聞かずにエラーを出す")
+    z.call({"cmd": "dialog", "press": "ok"})
+
     z.call({"cmd": "menu.run", "id": "file.open"})
     z.call({"cmd": "queuePath", "path": rom})
     check(any(d.get("type") == "folder" for d in wait_native(z)), "ファイル > ROMを開く のあともフォルダを選ぶダイアログが出る")
