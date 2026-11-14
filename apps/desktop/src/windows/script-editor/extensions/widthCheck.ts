@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { parseWidthCheckOutput, parseWidthRegistryListing, planWidthRegistry, type ScriptCommandStep, type WidthCheckError } from "@zigzagumap/core";
+import { parseWidthCheckOutput, parseWidthRegistryListing, planWidthRegistry, readTextIfExists, type ScriptCommandStep, type WidthCheckError } from "@zigzagumap/core";
 import { jaScriptEditorAssist as t } from "../../../i18n/ja.scriptEditorAssist";
 import { errorText } from "../../../util/errors";
 import { ProcessRunner, type ProcessLine } from "../../../util/processRunner";
@@ -91,7 +91,7 @@ export class WidthCheck {
       if (reg && step.args.length > 0) {
         const listing = parseWidthRegistryListing((await this.exec({ ...step, args: [step.args[0]!, "--list-registry"] })).stdout);
         const fs = this.host.project.fs;
-        const registryText = (await fs.exists(reg.path)) ? await fs.readText(reg.path) : null;
+        const registryText = await readTextIfExists(fs, reg.path);
         const plan = planWidthRegistry({
           registryText,
           listing,

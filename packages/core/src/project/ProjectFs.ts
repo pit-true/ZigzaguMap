@@ -23,6 +23,11 @@ export interface ProjectFs {
   readonly inflate?: InflateFunction;
 }
 
+/** テキストファイルがあれば読む（無ければ null）。 */
+export async function readTextIfExists(fs: ProjectFs, path: string): Promise<string | null> {
+  return (await fs.exists(path)) ? fs.readText(path) : null;
+}
+
 /** メモリ上の ProjectFs（テスト・プレビュー用）。 */
 export class MemoryProjectFs implements ProjectFs {
   /** パス → 中身。 */

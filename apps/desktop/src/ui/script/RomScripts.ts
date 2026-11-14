@@ -18,6 +18,7 @@ import {
   movementNamesFromDefines,
   newScriptLabel,
   planScriptImport,
+  readTextIfExists,
   renderDisassembly,
   retargetMapScriptAddress,
   scriptLabelMapName,
@@ -52,7 +53,7 @@ export class RomScripts {
     const session = this.app.state.session;
     const fs = session?.files;
     if (!session?.projectDir || !fs) return { commands: DisasmCommandSet.bundled(), text: ScriptTextCodec.japanese };
-    const read = async (path: string): Promise<string | null> => ((await fs.exists(path)) ? fs.readText(path) : null);
+    const read = (path: string): Promise<string | null> => readTextIfExists(fs, path);
     const xse = await read("xse_commands.s");
     const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((x): x is string => x !== null);
     const charmap = await read("charmap.tbl");

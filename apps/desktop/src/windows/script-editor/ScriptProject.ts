@@ -7,6 +7,7 @@ import {
   isScriptSourcePath,
   listScriptSourcePaths,
   loadScriptConfig,
+  readTextIfExists,
   type ScriptConfig,
 } from "@zigzagumap/core";
 import { TauriProjectFs } from "../../app/TauriProjectFs";
@@ -66,13 +67,7 @@ export class ScriptProject {
     } catch (e) {
       this.problems.push(String(e instanceof Error ? e.message : e));
     }
-    const read = async (path: string): Promise<string | null> => {
-      try {
-        return (await fs.exists(path)) ? await fs.readText(path) : null;
-      } catch {
-        return null;
-      }
-    };
+    const read = (path: string): Promise<string | null> => readTextIfExists(fs, path).catch(() => null);
     const xse = await read("xse_commands.s");
     if (xse !== null) {
       const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((t): t is string => t !== null);
