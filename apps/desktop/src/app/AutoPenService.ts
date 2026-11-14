@@ -11,6 +11,7 @@ import {
   type AutoPenTilesetInfo,
   type BochiImportResult,
 } from "@zigzagumap/core";
+import { scheduleIdleGc } from "../util/idleGc";
 import type { EditorState } from "./EditorState";
 import type { OpenMap } from "./ProjectSession";
 
@@ -166,6 +167,8 @@ export class AutoPenService {
         this.candidates.set(key, parts);
         this.refresh(true);
       }
+      // 全マップを読んだごみを片付け、空いた領域も OS へ返す（待機時のメモリを 150MB 以下に保つ）
+      scheduleIdleGc(true);
       return parts;
     })();
     this.analyzing = run;
