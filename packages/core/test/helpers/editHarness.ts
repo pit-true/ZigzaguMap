@@ -11,6 +11,7 @@ import {
   createDefaultRegistry,
   type Command,
   type DocumentContext,
+  type EditorContext,
   type MapId,
   type TilesetRef,
 } from "../../src/index.js";
@@ -47,16 +48,17 @@ export async function openLoaded(rom: Uint8Array, fs = new MemoryProjectFs(), ti
 /**
  * コマンドを実行し、undo で元に戻り、redo で同じ状態になることを確かめる。
  * さらに JSON にした引数から作り直したコマンドを別のプロジェクトで実行し、同じ状態になることを確かめる。
- * 実行後のプロジェクトを返す（`check` で中身を確かめる）。
+ * 実行後のプロジェクトを返す（`check` で中身を確かめる）。`contextOf` はコマンドに渡す入口（既定は editorContext()）。
  */
 export async function roundTrip(
   open: () => Promise<CfruProject>,
   make: () => Command,
   check?: (project: CfruProject) => void,
   extra: (project: CfruProject) => string = () => "",
+  contextOf: (project: CfruProject) => EditorContext = (p) => p.editorContext(),
 ): Promise<CfruProject> {
   const project = await open();
-  const bus = new CommandBus(project.editorContext());
+  const bus = new CommandBus(contextOf(project));
   const print = () => fingerprint(project) + extra(project);
   const before = print();
   const command = make();
@@ -71,7 +73,7 @@ export async function roundTrip(
 
   const replay = await open();
   const record = JSON.parse(JSON.stringify({ name: command.name, args: command.args })) as { name: string; args: Record<string, unknown> };
-  new CommandBus(replay.editorContext()).execute(createDefaultRegistry().create(record));
+  new CommandBus(contextOf(replay)).execute(createDefaultRegistry().create(record));
   expect(fingerprint(replay) + extra(replay)).toBe(after);
   return project;
 }
