@@ -227,3 +227,6 @@ export * from "./script/index/index.js";
 export * from "./script/strings/index.js";
 export * from "./script/project/index.js";
 export * from "./script/disasm/index.js";
+export * from "./script/edit/index.js";
+export * from "./script/link/index.js";
+export * from "./script/build/index.js";
