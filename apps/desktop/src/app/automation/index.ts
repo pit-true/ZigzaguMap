@@ -25,7 +25,7 @@ interface AutomationEvent {
 }
 
 /** 命令の登録表（分野ごとのファイルの表をまとめたもの）。 */
-const registry = new CommandRegistry([
+const registry: CommandRegistry = new CommandRegistry([
   coreCommands,
   fieldCommands,
   mouseCommands,
