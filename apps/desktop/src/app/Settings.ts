@@ -74,6 +74,8 @@ export interface SettingsData {
   imageDir: string | null;
   /** ウィンドウの位置と大きさ。 */
   window: WindowPlacement | null;
+  /** 大きさを変えられる別ウィンドウ（スクリプトエディタなど）の位置と大きさ（ウィンドウのラベル → 位置）。 */
+  toolWindows: Record<string, WindowPlacement>;
   /** 保存・読み込みした `.map`（マップ一覧の「マップファイル」）。 */
   mapFiles: MapFileEntry[];
   /** `.map` を保存・読み込みしたフォルダ（次のダイアログの初期フォルダ）。 */
@@ -108,6 +110,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   contextMenu: false,
   imageDir: null,
   window: null,
+  toolWindows: {},
   mapFiles: [],
   mapFileDir: null,
 };

@@ -5,6 +5,8 @@
 # - exe を `--automation <ポート> --profile <一時フォルダ>` で起動し（通常の設定には触れない。画面外・非アクティブ）、
 #   自動操作の入口で操作しながら、各場面のあと 10 秒待ってから測る（JavaScript のヒープは GC されるまで縮まないため。-Settle で変えられる）。
 # - 場面: 起動直後 / ROM を開いた後（3.0 を表示）/ マップを 10 枚切り替えた後 / 別ウィンドウ（ブロックエディタ）を開いた後 / 閉じた後
+#   -Project（CFRU-JP のフォルダ。写しを渡す。読むだけで書き込まない）を付けると、ROM と一緒に開き、
+#   続けてスクリプトエディタを開いた後 / 閉じた後 も測る（開くファイルは -ScriptFile、省略で assembly\overworld_scripts の最初の .s）
 # - 測る値（MB = 1024*1024 バイト）:
 #     private  … プライベート（コミット）バイト。Process.PrivateMemorySize64
 #     ws       … ワーキングセット。Process.WorkingSet64（共有ページを含むので、合計は実際より大きく出る）
@@ -16,6 +18,8 @@
 param(
   [Parameter(Mandatory = $true)][string]$Exe,
   [string]$Rom = "",
+  [string]$Project = "",
+  [string]$ScriptFile = "",
   [int]$Port = 17995,
   [int]$Settle = 10,
   [string]$Out = "",
@@ -113,7 +117,7 @@ try {
     Write-Host ("入口が応答するまで {0} ms" -f $readyMs)
     $results += Get-Snapshot "起動直後" $proc.Id
     if ($Rom) {
-      Call @{ cmd = "open"; rom = $Rom } | Out-Null
+      if ($Project) { Call @{ cmd = "open"; rom = $Rom; project = $Project } | Out-Null } else { Call @{ cmd = "open"; rom = $Rom } | Out-Null }
       Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
       $results += Get-Snapshot "ROM を開いた後（3.0）" $proc.Id
       $maps = @(@(3, 1), @(3, 3), @(3, 19), @(4, 1), @(1, 1), @(3, 37), @(3, 45), @(3, 50), @(5, 0), @(3, 0))
@@ -131,6 +135,21 @@ try {
       $results += Get-Snapshot "別ウィンドウ（ブロックエディタ）を開いた後" $proc.Id
       Call @{ cmd = "close"; window = "block-editor" } | Out-Null
       $results += Get-Snapshot "別ウィンドウを閉じた後" $proc.Id
+      if ($Project) {
+        if (-not $ScriptFile) {
+          $first = Get-ChildItem -Path (Join-Path $Project "assembly\overworld_scripts") -Filter *.s | Sort-Object Name | Select-Object -First 1
+          $ScriptFile = "assembly/overworld_scripts/" + $first.Name
+        }
+        Call @{ cmd = "script.open"; path = $ScriptFile } | Out-Null
+        for ($i = 0; $i -lt 100; $i++) {
+          $w = Call @{ cmd = "windows" }
+          if (@($w | Where-Object { $_.label -eq "script-editor" -and $_.ready }).Count -gt 0) { break }
+          Start-Sleep -Milliseconds 100
+        }
+        $results += Get-Snapshot "スクリプトエディタを開いた後" $proc.Id
+        Call @{ cmd = "close"; window = "script-editor" } | Out-Null
+        $results += Get-Snapshot "スクリプトエディタを閉じた後" $proc.Id
+      }
     }
   }
 } finally {

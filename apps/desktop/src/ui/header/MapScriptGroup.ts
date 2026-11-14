@@ -203,6 +203,6 @@ export class MapScriptGroup {
   private openScript(): void {
     const d = this.current;
     if (!d) return;
-    scriptEntry.open(isTableType(d.type) ? d.flagOffset : d.pointer);
+    scriptEntry.openPointer(isTableType(d.type) ? d.flagOffset : d.pointer);
   }
 }
