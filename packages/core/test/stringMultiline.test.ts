@@ -92,6 +92,10 @@ describe("複数行の本文の書き戻し", () => {
     expect(() => splitStringBodyLines("あ\\n\n")).toThrow(StringFileError);
     expect(() => splitStringBodyLines("あ\\n\n// い")).toThrow(StringFileError);
     expect(() => splitStringBodyLines("あ\\n\n#org @X")).toThrow(StringFileError);
+    // Chronos の幅検査が指定・設定として読む行も続きにしない
+    expect(() => splitStringBodyLines("あ\\n\n#1")).toThrow(StringFileError);
+    expect(() => splitStringBodyLines("あ\\n\nMAX_LENGTH")).toThrow(StringFileError);
+    expect(wrapStringBody("あ\\n#いち\\nFILL_FF")).toBe("あ\\n#いち\\nFILL_FF");
   });
 
   it("1 行の本文を複数行に替え、ほかの行は変えない", () => {

@@ -271,20 +271,23 @@ export function splitStringBodyLines(text: string): string[] {
     if (i < parts.length - 1 && !endsWithBreakControl(part)) {
       throw new StringFileError(`改行は制御記号（\\n・\\p・\\l・\\m）のすぐ後ろにだけ書けます: ${part.slice(-20)}`);
     }
-    if (classify(part, true) !== "body") {
+    if (i === 0 ? classify(part, true) !== "body" : !isContinuationText(part)) {
       throw new StringFileError(
         i === 0
           ? `本文として読まれない文字列です（空、// で始まる、#org などの指定と同じ形）: ${part}`
-          : `改行の後ろの行が本文として読まれません（空、// で始まる、#org などの指定と同じ形）: ${part}`,
+          : `改行の後ろの行は続きになりません（空、// か # で始まる、MAX_LENGTH・FILL_FF を含む）: ${part}`,
       );
     }
   }
   return parts;
 }
 
-/** 本文の行として読まれるか（空白だけ・`//`・`#org`・`#include` などの指定ではない）。 */
-function isBodyText(text: string): boolean {
-  return classify(text, true) === "body";
+/**
+ * 続きの行として書けるか。本文の行として読まれる（空白だけ・`//`・`#org`・`#include` などの指定ではない）うえに、
+ * `#` で始まらず `MAX_LENGTH` と `FILL_FF` を含まない（Chronos の check_text_width.py がその行を指定や設定として読むため）。
+ */
+function isContinuationText(text: string): boolean {
+  return classify(text, true) === "body" && !pythonStrip(text).startsWith("#") && !text.includes("MAX_LENGTH") && !text.includes("FILL_FF");
 }
 
 /**
@@ -305,7 +308,7 @@ export function wrapStringBody(text: string): string {
       // 次に分ける位置までを、分けた後ろの行として調べる
       const next = /\\[nplm]/.exec(rest);
       const segment = next ? rest.slice(0, next.index + 2) : rest;
-      if (rest !== "" && endsWithBreakControl(line) && isBodyText(segment)) {
+      if (rest !== "" && endsWithBreakControl(line) && isContinuationText(segment)) {
         out.push(line);
         line = "";
       }
