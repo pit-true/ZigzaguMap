@@ -33,6 +33,11 @@ impl ProjectRoot {
         Ok(root.join(rel))
     }
 
+    /// 開いているプロジェクトフォルダ（外部コマンドの作業フォルダの基準）。
+    pub(crate) fn dir(&self) -> Option<PathBuf> {
+        self.0.lock().ok().and_then(|r| r.clone())
+    }
+
     /// プロジェクトフォルダが開かれているか。
     fn is_open(&self) -> bool {
         self.0.lock().map(|r| r.is_some()).unwrap_or(false)
@@ -141,6 +146,37 @@ pub fn fs_list(root: State<'_, ProjectRoot>, path: String) -> Result<Vec<String>
         .collect();
     names.sort();
     Ok(names)
+}
+
+/// ファイルの更新日時と大きさ（`fs_stat`）。
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStat {
+    /// 更新日時（UNIX 時刻のミリ秒）。
+    modified_ms: f64,
+    /// 大きさ（バイト）。
+    size: u64,
+    /// フォルダか。
+    dir: bool,
+}
+
+/// ファイルの更新日時と大きさ。無ければ null（外部の変更を見つけるのに使う）。
+#[tauri::command]
+pub fn fs_stat(root: State<'_, ProjectRoot>, path: String) -> Result<Option<FileStat>, String> {
+    if !root.is_open() {
+        return Ok(None);
+    }
+    let full = root.resolve(&path)?;
+    let Ok(meta) = std::fs::metadata(&full) else {
+        return Ok(None);
+    };
+    let modified_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs_f64() * 1000.0)
+        .unwrap_or(0.0);
+    Ok(Some(FileStat { modified_ms, size: meta.len(), dir: meta.is_dir() }))
 }
 
 /// `\\?\` を外した表示用のパス。
