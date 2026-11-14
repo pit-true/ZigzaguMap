@@ -35,7 +35,7 @@ import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { MapNavigation } from "./MapNavigation";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import type { ProjectSession } from "./ProjectSession";
+import { ProjectSession } from "./ProjectSession";
 import { SessionOpener } from "./SessionOpener";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
@@ -59,15 +59,7 @@ import { MapExtras } from "./mapExtras";
 import { registerEventKindActions } from "../ui/event/eventVisibility";
 import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
-
-/** 起動引数（Rust の StartupArgs）。 */
-interface StartupArgs {
-  readonly rom: string | null;
-  readonly project: string | null;
-  readonly automation: number | null;
-  /** 個人設定と WebView2 のデータの置き場所（`--profile`、自動操作なら一時フォルダ。通常の場所なら null）。 */
-  readonly profile: string | null;
-}
+import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 
 /** アプリ全体。画面部品を組み立て、ROM・マップの読み込み、出力、終了を受け持つ。 */
 export class App implements ActionTarget {
@@ -296,27 +288,38 @@ export class App implements ActionTarget {
   async start(): Promise<void> {
     installShortcuts(this);
     installHistoryMouse(this.nav);
-    await this.worldMap.start();
-    // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
-    await getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget());
-    await getCurrentWebview().onDragDropEvent((event) => {
-      const p = event.payload;
-      this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
-      if (p.type === "drop") void this.opener.drop(p.paths);
-    });
-    await getCurrentWindow().onCloseRequested(async (event) => {
-      if (this.closing) return;
-      if (!(await this.confirmScriptEditor()) || !(await this.confirmDiscard())) event.preventDefault();
-      else await this.state.settings.flush();
-    });
-    const args = await invoke<StartupArgs>("startup_args");
+    // 起動引数と ROM は main.ts で先に読み始めている（Phase4 #318）
+    const prefetch = takeStartupPrefetch();
+    // 出来事の受け付けは互いに関わらないので、まとめて頼む（1 つずつ待つと、その分だけ起動が遅れる）
+    const [args] = await Promise.all([
+      prefetch?.args ?? invoke<StartupArgs>("startup_args"),
+      this.worldMap.start(),
+      // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
+      getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget()),
+      getCurrentWebview().onDragDropEvent((event) => {
+        const p = event.payload;
+        this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
+        if (p.type === "drop") void this.opener.drop(p.paths);
+      }),
+      getCurrentWindow().onCloseRequested(async (event) => {
+        if (this.closing) return;
+        if (!(await this.confirmScriptEditor()) || !(await this.confirmDiscard())) event.preventDefault();
+        else await this.state.settings.flush();
+      }),
+    ]);
     this.automation = args.automation !== null;
     this.profileDir = args.profile;
     // 自動操作の入口のコードは、自動操作で起動したときだけ読み込む（通常の起動では読まない）。
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
+    timings.mark("started");
     // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
-    if (args.rom) await this.opener.openSession(args.rom, args.project ?? this.opener.recordedProject(args.rom));
+    if (args.rom) {
+      // 先に読んだバイト列は、対応している ROM のときだけ使う（違えば読み直して、いつもどおりエラーを出す）
+      const pre = await prefetch?.rom;
+      const bytes = pre && pre.path === args.rom && ProjectSession.isSupported(pre.bytes) ? pre.bytes : undefined;
+      await this.opener.openSession(args.rom, args.project ?? this.opener.recordedProject(args.rom), bytes ? { bytes } : {});
+    }
   }
 
   // ---- 開く ----

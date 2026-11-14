@@ -29,10 +29,11 @@ import {
   type SaveResult,
   type TilesetRef,
 } from "@zigzagumap/core";
-import { readFile } from "./FileDialogs";
 import { MapCatalog } from "./MapCatalog";
 import { TauriProjectFs } from "./TauriProjectFs";
 import { TilesetView } from "./TilesetView";
+import { timings } from "./timings";
+import { readRomBytes } from "./romRead";
 import { jaScriptLink } from "../i18n/ja.scriptLink";
 
 /** 開いているマップ。 */
@@ -112,6 +113,7 @@ export class ProjectSession {
   static async open(romPath: string, projectDir: string | null, romBytes?: Uint8Array): Promise<ProjectSession> {
     // フォルダの許可を切り替える前に、ROM の種類を確かめる（開いているものを壊さないため）。
     const bytes = romBytes ?? (await ProjectSession.readRom(romPath));
+    timings.mark("romRead");
     const fs = new TauriProjectFs();
     await fs.setRoot(projectDir);
     const project = await CfruProject.open(bytes, fs);
@@ -125,15 +127,18 @@ export class ProjectSession {
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
   static async readRom(romPath: string): Promise<Uint8Array> {
-    const bytes = await readFile(romPath);
-    let supported = false;
-    try {
-      supported = detectGame(new Rom(bytes)).offsets !== null;
-    } catch {
-      supported = false;
-    }
-    if (!supported) throw new UnknownRomError(romPath);
+    const bytes = await readRomBytes(romPath);
+    if (!ProjectSession.isSupported(bytes)) throw new UnknownRomError(romPath);
     return bytes;
+  }
+
+  /** 対応している ROM のバイト列か。 */
+  static isSupported(bytes: Uint8Array): boolean {
+    try {
+      return detectGame(new Rom(bytes)).offsets !== null;
+    } catch {
+      return false;
+    }
   }
 
   /** マップ一覧用の情報。 */

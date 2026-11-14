@@ -1776,7 +1776,9 @@ Phase4 の表示・一覧・調査（#304〜#308・#315・#316）を入れたあ
 
 ### 起動とマップ切り替えの時間
 
-`scripts/measure-startup.mjs` で測ります。毎回、一時フォルダの `--profile` に前回のマップ（3.0）を覚えた設定を置き、`zigzagumap.exe --automation <ポート> --profile <一時フォルダ> <ROM>` で起動して（画面外・非アクティブ。通常の設定には触れない）、exe を起動してからマップを描き終えるまで（画面側の記録 `mapShown`）を測ります。続けてマップを 10 枚切り替え、自動操作の `selectMap` の返事の `switchMs`（読み込み・描画・一覧の更新まで）を集めます。
+`scripts/measure-startup.mjs` で測ります。毎回、一時フォルダの `--profile` に前回のマップ（3.0）を覚えた設定を置き、`zigzagumap.exe --automation <ポート> --profile <一時フォルダ> <ROM>` で起動して（画面外・非アクティブ。通常の設定には触れない）、exe を起動してからマップを描き終えるまで（画面側の記録 `mapShown`）を測ります。続けてマップを 10 枚切り替え、自動操作の `selectMap` の返事の `switchMs`（読み込み・描画・一覧の更新まで）を集めます。最後に、起動の内訳（exe を起動してからページの読み込み開始まで、画面のコードの読み込み、個人設定、画面の組み立て、ROM の読み込み、マップの表示までのそれぞれの中央値）も出します。
+
+起動を速くするため、起動引数の ROM は、画面のコードを読み込む前に読み始めます（`app/startupPrefetch.ts`。個人設定を受け取ってから頼み、画面を組み立てる間に読み終える）。ROM は 4 つに分けて同時に受け取ります（Rust の `read_rom_part`。16MB を 1 本で受け取ると約 150ms、4 本同時なら約 100ms）。
 
 ```sh
 node scripts/measure-startup.mjs --exe <zigzagumap.exe> --rom <素の BPRJ> [--port 17996] [--runs 5]

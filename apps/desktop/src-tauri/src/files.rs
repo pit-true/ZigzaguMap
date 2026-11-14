@@ -55,6 +55,26 @@ pub async fn read_rom(path: String) -> Result<Response, String> {
     std::fs::read(&path).map(Response::new).map_err(|e| format!("{path}: {e}"))
 }
 
+/// ROM を `parts` 個に分けたうちの `part` 番目を読む（Phase4 #318）。画面へ渡すのは 1 本ずつより何本か同時のほうが速いので、
+/// 大きな ROM は分けて頼んで画面側でつなぐ。分け目は ROM の大きさを `parts` で割って切り上げた位置。ROM へは書き込まない。
+#[tauri::command]
+pub async fn read_rom_part(path: String, part: u32, parts: u32) -> Result<Response, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let err = |e: std::io::Error| format!("{path}: {e}");
+    if parts == 0 || part >= parts {
+        return Err(format!("{path}: 分け方が正しくありません（{part}/{parts}）"));
+    }
+    let mut file = std::fs::File::open(&path).map_err(err)?;
+    let len = file.metadata().map_err(err)?.len();
+    let chunk = len.div_ceil(u64::from(parts));
+    let start = (chunk * u64::from(part)).min(len);
+    let end = (start + chunk).min(len);
+    let mut buf = vec![0u8; (end - start) as usize];
+    file.seek(SeekFrom::Start(start)).map_err(err)?;
+    file.read_exact(&mut buf).map_err(err)?;
+    Ok(Response::new(buf))
+}
+
 /// パスがフォルダか。
 #[tauri::command]
 pub fn is_dir(path: String) -> bool {
