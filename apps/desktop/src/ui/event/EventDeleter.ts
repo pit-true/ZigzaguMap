@@ -10,6 +10,7 @@ import {
   eventScriptLabel,
   formatRomEraseAddress,
   keepStringsInPlan,
+  mapLabelsFilePath,
   listProjectFiles,
   mapHeaderCodec,
   parseWidthRegistryListing,
@@ -203,7 +204,7 @@ export class EventDeleter {
       const table = session.labels.store.get(t.bank, t.map).table;
       for (const item of table?.items ?? []) {
         for (const s of [item.script, ...item.conditions.map((c) => c.script)]) {
-          if (/^0x[0-9A-Fa-f]+$/.test(s)) references.push({ address: Number.parseInt(s.slice(2), 16), where: `maps/${t.bank}/scripts_${t.map}.json` });
+          if (/^0x[0-9A-Fa-f]+$/.test(s)) references.push({ address: Number.parseInt(s.slice(2), 16), where: mapLabelsFilePath(t.bank, t.map) });
         }
       }
     }
