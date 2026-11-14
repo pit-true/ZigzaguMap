@@ -1,4 +1,5 @@
-import { EditError, type Command, type CommandBus } from "@zigzagumap/core";
+import { CommandGroup, EditError, type Command, type CommandBus, type MapId } from "@zigzagumap/core";
+import { cloneSyncFor, reportClones } from "../../app/cloneSync";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { showEditError } from "../form/inputErrors";
@@ -18,6 +19,8 @@ export class EventEditor {
   /** 直前に自分が実行し、まだ履歴の先頭にあるコマンド。 */
   private top: Command | null = null;
   private running = false;
+  /** `key` の無い操作にクローンを足すときの、仮の key の番号。 */
+  private cloneKeys = 0;
 
   constructor(private readonly state: EditorState) {}
 
@@ -59,6 +62,27 @@ export class EventEditor {
     } finally {
       this.running = false;
     }
+  }
+
+  /**
+   * 人を置く・動かす・欄を変えるコマンドを実行し、そのあと隣のマップのクローンを合わせる（#242）。
+   * クローンを合わせるコマンドは、同じ `key` で元のコマンドと 1 つにして実行し直す（1 回の取り消しで両方戻る）。
+   */
+  runWithClones(command: Command, id: MapId, key: string | null = null): boolean {
+    const k = key ?? `clones.${++this.cloneKeys}`;
+    if (!this.run(command, k)) return false;
+    void this.syncClones(command, id, k);
+    return true;
+  }
+
+  /**
+   * 直前に `key` で実行した `command` に、クローンを合わせるコマンドを足して実行し直す。
+   * そのあいだにほかの操作をしていたら（`command` が履歴の先頭でなければ）何もしない。
+   */
+  async syncClones(command: Command, id: MapId, key: string): Promise<void> {
+    const sync = await cloneSyncFor(this.state, id);
+    if (!sync || this.top !== command || this.key !== key) return;
+    if (this.run(CommandGroup.of([command, sync]), key)) reportClones(this.state, sync.changes);
   }
 
   /** 続けての入力を区切る（欄からフォーカスが外れた、ドラッグを離した）。 */

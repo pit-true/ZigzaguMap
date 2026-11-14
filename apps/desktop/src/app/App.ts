@@ -65,7 +65,6 @@ import { installViewExtras } from "../ui/map/viewExtras";
 import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
 import { UsageMarks } from "../ui/usage/UsageMarks";
 import { BlockUsageService } from "./BlockUsageService";
-import { cloneTargets } from "./cloneSync";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { EdgeMenu } from "../ui/connection/EdgeMenu";
@@ -225,7 +224,6 @@ export class App implements ActionTarget {
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
       pickUnused: (kind) => this.pickUnused(kind),
       createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
-      cloneTargets: (id) => cloneTargets(this.state, id),
       placeTemplate: (x, y) => void this.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       summaries: () => this.eventSummaries(),
@@ -241,7 +239,7 @@ export class App implements ActionTarget {
     this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", (id) => this.openMap(id)), new DiveOverlay(eventTab.view, state, "event", (id) => this.openMap(id))];
     this.movementTabPainter = movementTab.painter;
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
-      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" }),
+      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement", clones: tab === "event" }),
     );
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);

@@ -96,6 +96,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         },
         // 移動許可だけ違うマスと、選んだ移動許可のマスの印（Phase3 #235。ZigzaguMap 独自）
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
+        // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
+        { id: "view.clones", label: jaClone.menu },
         {
           label: ja.mapSize,
           accel: "M",
@@ -133,8 +135,6 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
         // ZigzaguMap 独自（Phase3）。コネクションマネージャーでずれを変えたとき相手側もそろえる
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
-        // クローンの自動作成（Phase3 #242。ZigzaguMap 独自）
-        { id: "opt.autoClones", label: jaClone.menu },
         {
           label: ja.recentSettings,
           accel: "Z",

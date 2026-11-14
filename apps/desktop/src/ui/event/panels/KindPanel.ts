@@ -1,4 +1,5 @@
 import { SetEventFieldsCommand, type MapId } from "@zigzagumap/core";
+import { touchesClones } from "../../../app/cloneSync";
 import { jaScriptLabel } from "../../../i18n/ja.scriptLabel";
 import { ScriptLabelField, type ScriptLabelSource } from "../../script/ScriptLabelField";
 import { jaUsage } from "../../../i18n/ja.usage";
@@ -219,6 +220,9 @@ export abstract class ListKindPanel<E> extends KindPanel<E> {
   protected override commit(index: number, fields: FieldPatch, key: string): void {
     const id = this.host.mapId();
     if (!id) return;
-    this.host.editor.run(new SetEventFieldsCommand({ ...id, kind: this.kind, index, fields }), key);
+    const command = new SetEventFieldsCommand({ ...id, kind: this.kind, index, fields });
+    // 人の位置・見た目・フラグを欄で変えたら、隣のマップのクローンも合わせる（#242）
+    if (this.kind === "person" && touchesClones(fields)) this.host.editor.runWithClones(command, id, key);
+    else this.host.editor.run(command, key);
   }
 }
