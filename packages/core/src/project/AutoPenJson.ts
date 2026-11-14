@@ -17,7 +17,7 @@ import {
 import { BOCHI_NEWLINE } from "./BochiJson.js";
 import { asRecord, parseJsonObject, readArray, readInt, readString, type JsonRecord } from "./jsonRead.js";
 import { ProjectFormatError } from "./ProjectFormatError.js";
-import { AUTOPEN_DIR } from "./paths.js";
+import { AUTOPEN_DIR, tilesetFileBase } from "./paths.js";
 
 /**
  * 自動ペンのパーツの定義のファイル `maps\autopen\<識別子>.json`（#303。タイルセット 1 つが 1 ファイル。ビルドは読まない）。
@@ -58,7 +58,7 @@ const PART_KNOWN = new Set(["name", "kind", "role", "order", "slots", "primary"]
 
 /** タイルセットの識別子（ファイル名の元。maps\tilesets のフォルダ名と同じ `primary_298B44` の形）。 */
 export function autoPenFileBase(info: Pick<AutoPenTilesetInfo, "secondary" | "headerAddress">): string {
-  return `${info.secondary ? "secondary" : "primary"}_${formatHex(info.headerAddress >>> 0, 6)}`;
+  return tilesetFileBase(info.headerAddress, info.secondary);
 }
 
 /** パーツの定義のファイルのパス。 */
