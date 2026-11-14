@@ -158,10 +158,16 @@ export class BlockPaletteView {
     this.stage.style.height = `${dh}px`;
     this.overlay.width = dw;
     this.overlay.height = dh;
-    this.gridCanvas.width = dw;
-    this.gridCanvas.height = dh;
+    // 等倍でグリッドを出さないときは、グリッドの Canvas に領域を持たず、描き足すもの（境目の線）はブロックの絵の上に描く
+    // （パレットと同じ大きさの Canvas を 1 枚減らす。Phase4 #318。ブロックの絵は等倍なので、拡大表示のときは今までどおり）
+    const onBase = !this.grid && this.zoom === 1;
+    this.gridCanvas.width = onBase ? 0 : dw;
+    this.gridCanvas.height = onBase ? 0 : dh;
     if (this.grid && dw > 0) drawGrid(this.gridCanvas, size);
-    if (tiles && dw > 0) for (const d of this.gridDecorators) d(this.gridCanvas.getContext("2d")!, size, this.width);
+    if (tiles && dw > 0) {
+      const target = (onBase ? this.base : this.gridCanvas).getContext("2d")!;
+      for (const d of this.gridDecorators) d(target, size, this.width);
+    }
     this.drawSelection(null);
   }
 

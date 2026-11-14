@@ -165,6 +165,8 @@ export class ProjectSession {
     }
     this.tilesets.set(key, tiles);
     while (this.tilesets.size > TILESET_CACHE_SIZE) this.tilesets.delete(this.tilesets.keys().next().value!);
+    // 表示中でない組は、タイルセットだけ持ち、描いたブロックとパレットの画像は捨てる（戻ったときに描き直す）
+    for (const view of this.tilesets.values()) if (view !== tiles) view.trim();
     this.opened.set(mapKey(id), id);
     this.labels.observe(id, eventLabelCountsOf(doc.events), this.eventPositions(id.bank, id.map) ?? undefined);
     return { id, doc, tiles };

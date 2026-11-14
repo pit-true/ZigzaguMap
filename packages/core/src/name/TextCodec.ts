@@ -52,13 +52,29 @@ export class TextCodec {
     this.maxTextLength = max;
   }
 
-  /** charmap.tbl の文字列から作る。 */
+  /**
+   * charmap.tbl の文字列から作る。同梱の表と同じ中身（改行の違いと末尾の空行は見ない）なら、作らずに {@link TextCodec.japanese} を返す
+   * （変換器は作ったあと変わらない。表 1 つで約 1MB あるので、ND のプロジェクトで同じものを 2 つ持たない）。
+   */
   static fromCharmap(text: string): TextCodec {
+    const bundled = TextCodec.japanese;
+    if (bundled.sourceKey !== null && charmapKey(text) === bundled.sourceKey) return bundled;
     return new TextCodec(CharmapTable.parse(text));
   }
 
+  /** 同梱の表から作った変換器のときだけ、表の中身の見分け（`charmapKey`）。 */
+  private sourceKey: string | null = null;
+
   /** 同梱の文字コード表（NeoDark-CFRU の charmap.tbl）を使う変換器。 */
-  static readonly japanese = TextCodec.fromCharmap(ND_CHARMAP_TBL);
+  static readonly japanese = TextCodec.bundled();
+
+  private static bundled(): TextCodec {
+    // 同梱の表の文字列は、ここで 1 回だけ使う（参照するたびに画面の束へ表の文字列が入るため）
+    const text = ND_CHARMAP_TBL;
+    const codec = new TextCodec(CharmapTable.parse(text));
+    codec.sourceKey = charmapKey(text);
+    return codec;
+  }
 
   /** `offset` から終端の手前までを文字列にする。終端が無ければ末尾まで。 */
   decode(bytes: Uint8Array, offset = 0): string {
@@ -151,6 +167,22 @@ export class TextCodec {
       return null;
     }
   }
+}
+
+/**
+ * charmap.tbl の中身の見分け。先頭の BOM・CRLF の違い・末尾の空行は見ない（読み方の CharmapTable.parse が同じになる違いだけ）。
+ * 文字数と 2 つの 32 ビットのハッシュ（FNV-1a と djb2）を並べたもの。
+ */
+function charmapKey(text: string): string {
+  const body = text.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  let fnv = 0x811c9dc5;
+  let djb = 5381;
+  for (let i = 0; i < body.length; i++) {
+    const c = body.charCodeAt(i);
+    fnv = Math.imul(fnv ^ c, 0x01000193);
+    djb = (Math.imul(djb, 33) + c) | 0;
+  }
+  return `${body.length}:${(fnv >>> 0).toString(16)}:${(djb >>> 0).toString(16)}`;
 }
 
 function matchesAt(bytes: Uint8Array, at: number, pattern: Uint8Array): boolean {

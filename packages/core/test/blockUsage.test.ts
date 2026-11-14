@@ -51,6 +51,17 @@ describe("ブロックの使用回数（#235）", () => {
     expect(u.count(9, doc.primaryTileset, doc.secondaryTileset)).toBe(1);
     expect(u.mostMovement(9, doc.primaryTileset, doc.secondaryTileset)).toBe(3);
   });
+  it("合成 ROM: ベース ROM のままの配置は持たずに数え、全部外すと ROM から読み直して引く", async () => {
+    const project = await CfruProject.open(buildSyntheticRom(), new MemoryProjectFs());
+    const u = await BlockUsage.build(project);
+    const doc = await project.peek({ bank: 0, map: 0 });
+    const block = doc!.grid.cells[0]! & 0x3ff;
+    const before = u.count(block, doc!.primaryTileset, doc!.secondaryTileset);
+    expect(before).toBeGreaterThan(0);
+    for (const id of project.mapIds()) u.remove(id);
+    expect(u.size).toBe(0);
+    expect(u.count(block, doc!.primaryTileset, doc!.secondaryTileset)).toBe(0);
+  });
 });
 
 const romPath = process.env.ZIGZAGU_TEST_ROM;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BPRJ_OFFSETS, DataError, JP_CHARSET, MapNameTable, Rom, TextCodec, hasMapName } from "../src/index.js";
+import { ND_CHARMAP_TBL } from "../src/name/charmapNd.js";
 import { NAME_BYTES, buildSyntheticRom } from "./helpers/syntheticRom.js";
 
 describe("マップ名と文字コード", () => {
@@ -64,6 +65,14 @@ describe("マップ名と文字コード", () => {
     expect(codec.canEncode("☃")).toBe(false);
     expect(codec.firstInvalidChar("あ☃")).toBe("☃");
     expect(codec.firstInvalidChar("あい")).toBeNull();
+  });
+
+  it("同梱の表と同じ中身の charmap.tbl は、同梱の変換器を使い回す", () => {
+    expect(TextCodec.fromCharmap(ND_CHARMAP_TBL)).toBe(TextCodec.japanese);
+    expect(TextCodec.fromCharmap("﻿" + ND_CHARMAP_TBL.replace(/\n/g, "\r\n") + "\r\n")).toBe(TextCodec.japanese);
+    const other = TextCodec.fromCharmap("F0=☆\n" + ND_CHARMAP_TBL);
+    expect(other).not.toBe(TextCodec.japanese);
+    expect(other.decode(Uint8Array.of(0xf0, 0x01, 0xff))).toBe("☆あ");
   });
 
   it("名前表を読む", () => {

@@ -20,7 +20,6 @@ export class TilesetView {
   triple: TripleLayerIndex;
   /** 副タイルセットのブロック数（パレットに並べる数）。 */
   secondaryCount: number;
-  private readonly paletteImages = new Map<number, RgbaImage>();
 
   constructor(
     readonly key: string,
@@ -42,7 +41,14 @@ export class TilesetView {
     this.renderer = new BlockRenderer(primary, secondary);
     this.triple = new TripleLayerIndex(primary, secondary);
     this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
-    this.paletteImages.clear();
+  }
+
+  /**
+   * 描いたブロックを捨てる（表示中のマップの組でなくなったとき）。
+   * タイルセットはそのまま持つので、隣の帯などで使えば、そのとき要るブロックだけ描き直す。
+   */
+  trim(): void {
+    if (this.renderer.cachedCount > 0) this.renderer = new BlockRenderer(this.primary, this.secondary);
   }
 
   /** パレットに並べるブロックの総数（主の 640 個 + 副）。 */
@@ -82,20 +88,20 @@ export class TilesetView {
     return base + (isPrimary ? block : block - PRIMARY_BLOCK_COUNT) * BLOCK_DEFINITION_SIZE;
   }
 
-  /** ブロックパレットの画像（幅 `width` ブロック）。データの無い位置は黒。 */
+  /**
+   * ブロックパレットの画像（幅 `width` ブロック）。データの無い位置は黒。
+   * 呼ぶたびに作る（パレットの Canvas に写したら要らないので持たない）。マップに使っていないブロックは、描いても覚えない。
+   */
   paletteImage(width: number): RgbaImage {
-    let image = this.paletteImages.get(width);
-    if (image) return image;
-    image = createImage(width * BLOCK_PIXELS, this.paletteRows(width) * BLOCK_PIXELS);
+    const image = createImage(width * BLOCK_PIXELS, this.paletteRows(width) * BLOCK_PIXELS);
     for (let i = 3; i < image.data.length; i += 4) image.data[i] = 255;
     const rows = this.paletteRows(width);
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < width; col++) {
         const block = this.blockAt(col, row, width);
-        if (block !== null) this.renderer.blit(block, image.data, image.width, col * BLOCK_PIXELS, row * BLOCK_PIXELS);
+        if (block !== null) this.renderer.blit(block, image.data, image.width, col * BLOCK_PIXELS, row * BLOCK_PIXELS, false);
       }
     }
-    this.paletteImages.set(width, image);
     return image;
   }
 }
