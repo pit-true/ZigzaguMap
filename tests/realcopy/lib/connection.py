@@ -3,7 +3,8 @@ r"""接続の編集の写しでの確認（--connection。Phase3 #229〜#231）�
 写しの ROM とプロジェクトを開き、次を順に確かめる（ND と Chronos のどちらでも）。
 1. マップ 3.0 の上の接続の角のつまみを 3 マス動かす（#229）。両方のマップのずれが +3 と -3 になる。
 2. 右の辺のメニューから新しいマップを作ってつなぐ（#230）。
-3. 出力して写しをビルドし、できた ROM を ZigzaguMap で開き直すと、両方の接続のずれが ROM に入っている（境界がずれていない）。
+3. 左の辺のつまみで左へ 2 広げる（#231）。上下の接続のずれ（相手も）とイベントがずれ、直していない `.s` の座標の一覧を記録する。
+4. 出力して写しをビルドし、できた ROM を ZigzaguMap で開き直すと、両方の接続のずれが ROM に入っている（境界がずれていない）。
    新しいマップが ROM にあり、両側の接続（右と左）も入っている。
 写しのテキストファイル（eventscripts、maps、assembly\overworld_scripts、strings、zigzagumap.json）は、最後に元へ戻す。
 """
@@ -69,6 +70,22 @@ def connection_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log
         z.call({"cmd": "dialog", "press": "ok"})
         new = next((n for n in _neighbors(z, BANK, MAP) if n["side"] == "right" and n["map"] not in [c["map"] for c in right_before]), None)
         check(new is not None, f"右の辺から新しいマップを作ってつなぐ {new and (new['bank'], new['map'], new['offset'])}")
+        # 左へ 2 広げる（#231）
+        z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
+        z.call({"cmd": "neighbors.state", "wait": True})
+        width = z.call({"cmd": "state"})["map"]["width"]
+        z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "edge:left", "action": "drag", "cell": [0, 0], "to": [-2, 0]})
+        time.sleep(0.5)
+        for d in z.call({"cmd": "dialogs"})["dialogs"]:
+            log(f"知らせ: {d.get('title')}: {str(d.get('text'))[:200]}")
+            z.call({"cmd": "dialog", "press": "ok"})
+        refs = z.call({"cmd": "resize.refs"})
+        log(f"直していない .s の座標: {len(refs)} 行 {[(r['path'], r['line']) for r in refs[:5]]}")
+        resized = z.call({"cmd": "state"})["map"]["width"]
+        check(resized == width + 2, f"左の辺のつまみで左へ 2 広がる（{width} → {resized}）")
+        after_up = _offset(z, BANK, MAP, other)
+        after_back = _offset(z, *other, (BANK, MAP))
+        check(after_up == before + SHIFT + 2 and after_back == -(before + SHIFT + 2), f"上の接続のずれが +2、相手が -2（{after_up}、{after_back}）")
         res = z.export()
         log(f"出力: 書いた {len(res.get('written', []))} 件")
         r = build_fixture(fx, log_dir, timeout or 3600)
@@ -79,7 +96,9 @@ def connection_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log
         z.open(fx.path(f"{fx.build.cwd}/{fx.build.output}"), None)
         built = _offset(z, BANK, MAP, other)
         built_back = _offset(z, *other, (BANK, MAP))
-        check(built == before + SHIFT and built_back == -(before + SHIFT), f"ビルドした ROM の両方の接続のずれが {before + SHIFT} と {-(before + SHIFT)}（{built}、{built_back}）")
+        check(built == after_up and built_back == after_back, f"ビルドした ROM の両方の接続のずれが {after_up} と {after_back}（{built}、{built_back}）")
+        z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
+        check(z.call({"cmd": "state"})["map"]["width"] == width + 2, "ビルドした ROM のマップの幅が 2 増えている")
         if new is not None:
             right = _offset(z, BANK, MAP, (new["bank"], new["map"]))
             left = _offset(z, new["bank"], new["map"], (BANK, MAP))

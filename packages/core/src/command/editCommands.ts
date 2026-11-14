@@ -17,6 +17,7 @@ import { SetHeaderFieldsCommand } from "./commands/header/SetHeaderFieldsCommand
 import { SetMapNameCommand } from "./commands/header/SetMapNameCommand.js";
 import { SetRawHeaderCommand } from "./commands/header/SetRawHeaderCommand.js";
 import { ResizeMapCommand } from "./commands/layout/ResizeMapCommand.js";
+import { ResizeMapEdgeCommand } from "./commands/layout/ResizeMapEdgeCommand.js";
 import { SetBorderCommand } from "./commands/layout/SetBorderCommand.js";
 import { SetRawFooterCommand } from "./commands/layout/SetRawFooterCommand.js";
 import { SetTilesetsCommand } from "./commands/layout/SetTilesetsCommand.js";
@@ -61,6 +62,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetMapNameCommand,
   // 配置の大きさ・ボーダー・タイルセットの参照
   ResizeMapCommand,
+  ResizeMapEdgeCommand,
   SetBorderCommand,
   SetTilesetsCommand,
   SetRawFooterCommand,

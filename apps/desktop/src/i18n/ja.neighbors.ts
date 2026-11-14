@@ -13,7 +13,7 @@ export const jaNeighbors = {
   shifted: (offset: number, other: number) => `接続のずれを ${offset} にしました（相手のマップは ${other}）`,
   shiftedOneSide: (offset: number) => `接続のずれを ${offset} にしました。相手のマップに逆向きの接続が無いので、このマップだけ変えました`,
   /** 辺のつまみと右クリックのメニュー（#230）。 */
-  edgeHint: "右クリックで接続のメニュー",
+  edgeHint: "ドラッグで広げる・縮める。右クリックで接続のメニュー",
   menuNewMap: "新しいマップを作ってつなぐ…",
   menuConnect: "既存のマップとつなぐ…",
   menuRemove: (name: string) => `接続を消す（${name}）…`,
@@ -35,4 +35,10 @@ export const jaNeighbors = {
   connected: (bank: number, map: number, offset: number) => `${bank}.${map} とつなぎました（ずれ ${offset}）`,
   confirmRemove: (bank: number, map: number) => `${bank}.${map} との接続を消しますか？\n相手のマップの逆向きの接続も消します。`,
   removed: (bank: number, map: number) => `${bank}.${map} との接続を消しました`,
+  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
+  resizing: (w: number, h: number) => `大きさ: ${w}×${h}`,
+  resized: (w: number, h: number) => `大きさを ${w}×${h} にしました`,
+  refsTitle: "直していない座標",
+  refsText: "マップの左・上をずらしましたが、次の .s の行の座標は直していません。必要なら手で直してください。",
+  refsMore: (n: number) => `ほかに ${n} 行`,
 } as const;
