@@ -1,6 +1,7 @@
 import { formatHex } from "@zigzagumap/core";
 import { jaEvent } from "./ja.event";
 import { jaConnection, jaHeader } from "./ja.header";
+import { jaHelpViewer } from "./ja.help";
 import { jaView } from "./ja.view";
 import { jaWild } from "./ja.wild";
 import { fmt, hexList, hexRecord, ini, numbered } from "./ini";
@@ -103,6 +104,8 @@ export const ja = {
     version: (v: string) => `バージョン ${v}`,
     repositoryUrl: "https://github.com/pit-true/ZigzaguMap",
   },
+
+  helpViewer: jaHelpViewer,
 
   // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）
   saveAsTitle: "名前を付けて保存",

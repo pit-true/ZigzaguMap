@@ -1,13 +1,16 @@
 import { getVersion } from "@tauri-apps/api/app";
 import license from "../../../../../LICENSE?raw";
+import automationDoc from "../../../../../docs/automation.md?raw";
+import compareDoc from "../../../../../docs/compare-test.md?raw";
 import readme from "../../../../../README.md?raw";
 import { ja } from "../../i18n/ja";
 import { createDialog, dialogButton, type DialogFrame } from "../Dialog";
 import { openExternal } from "../../util/externalLinks";
+import { HelpViewer } from "./HelpViewer";
 
 /**
  * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me）。
- * このモジュールはメニューで初めて開いたときに読み込む（README と LICENSE の本文を含むため）。
+ * このモジュールはメニューで初めて開いたときに読み込む（README・docs・LICENSE の本文と Markdown の変換を含むため）。
  */
 
 /** OK だけの窓を出し、閉じるまで待つ。 */
@@ -64,9 +67,20 @@ export function openEula(): Promise<void> {
   return okWindow(ja.eula, "eula-window", (frame) => frame.body.append(memo(license)));
 }
 
-/** ヘルプ > Read me。README.md の本文を出す。 */
-export function openReadme(): Promise<void> {
-  return okWindow(ja.readMe, "readme-window", (frame) => frame.body.append(memo(readme)));
+/** ヘルプの中で開ける文書（README からリンクしているもの）。 */
+const DOCS = {
+  "README.md": readme,
+  "docs/automation.md": automationDoc,
+  "docs/compare-test.md": compareDoc,
+  LICENSE: license,
+};
+
+/** 文書の窓（1 つを使い回す）。 */
+export const helpViewer = new HelpViewer(DOCS);
+
+/** ヘルプ > Read me。README.md を Markdown として描いて出す。 */
+export function openReadme(): void {
+  helpViewer.open("README.md");
 }
 
 function memo(text: string): HTMLElement {

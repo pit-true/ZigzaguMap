@@ -197,8 +197,7 @@
   text-align: initial;
 }
 
-.eula-window,
-.readme-window {
+.eula-window {
   width: 576px;
 }
 
@@ -213,8 +212,3 @@
   user-select: text;
 }
 
-.readme-window .help-memo {
-  height: 420px;
-  background: var(--window);
-  font-family: Consolas, "MS Gothic", monospace;
-}
