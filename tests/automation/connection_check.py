@@ -23,6 +23,8 @@
   鉛筆のドラッグ・拾う・矩形の選択・入れ替え・移動エリアタブの矩形塗りも境界をまたぐ。帯の外には描かない。出力で両方の JSON。
 - 232: Space でダイブ先を重ねる。素の BPRJ にはダイブの接続が無いので、マサラタウンから 1 番道路へダイブの接続を作って確かめる。
   接続が無いと知らせる。Space を押している間、カーソルのまわりに相手のマップが出て、ダブルクリックで相手を開く。離すと消える。
+- 236: ミキシングバッグ。Ctrl＋パレットの左クリックで出し入れし、草 3 種を袋に入れて 6×6 を矩形塗りすると 3 種が混ざる。
+  取り消しとやり直しで同じ絵に戻る。種を決めると同じ並びになる。Ctrl＋袋のクリックで空にする。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -663,7 +665,47 @@ def check_232(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     z.call({"cmd": "tab", "name": "map"})
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232}
+def check_236(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    z.call({"cmd": "tab", "name": "map"})
+    # Ctrl＋パレットの左クリックで出し入れ（パレットの 1 行目の 3 つ）
+    for x in (1, 2, 3):
+        z.call({"cmd": "mouse", "target": "palette", "action": "click", "ctrl": True, "cell": [x, 0]})
+    st = z.call({"cmd": "bag.state"})
+    check(len(st["blocks"]) == 3, f"Ctrl＋パレットの左クリックで袋に入る {st['blocks']}")
+    z.call({"cmd": "mouse", "target": "palette", "action": "click", "ctrl": True, "cell": [3, 0]})
+    check(len(z.call({"cmd": "bag.state"})["blocks"]) == 2, "もう一度 Ctrl＋左クリックすると袋から出る")
+    # 草 3 種（種を決める）で 6×6 を矩形塗り
+    width, before = cells_of(z)
+    grass = [0x0D, 0x0E, 0x0F]
+    z.call({"cmd": "bag.set", "blocks": grass, "seed": 42})
+    z.call({"cmd": "selectBlock", "block": grass[0]})
+    check(z.call({"cmd": "bag.state"})["active"], "袋の中のブロックを選ぶと袋を使う")
+    if shots:
+        shot(z, shots, "p3c_236_bag.png")
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [2, 2], "to": [7, 7]})
+    _, after = cells_of(z)
+    got = [c & 0x3FF for c in region(width, after, 2, 2, 6, 6)]
+    check(set(got) == set(grass), f"6×6 に 3 種が混ざる {sorted(set(got))}")
+    z.call({"cmd": "undo"})
+    check(cells_of(z)[1] == before, "1 回の取り消しで戻る")
+    z.call({"cmd": "redo"})
+    check(cells_of(z)[1] == after, "やり直すと同じ絵に戻る")
+    z.call({"cmd": "undo"})
+    # 同じ種なら同じ並び
+    z.call({"cmd": "bag.set", "blocks": grass, "seed": 42})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [2, 2], "to": [7, 7]})
+    check(cells_of(z)[1] == after, "同じ種なら同じ並びになる")
+    z.call({"cmd": "undo"})
+    # 袋に無いブロックを選ぶと袋を使わない
+    z.call({"cmd": "selectBlock", "block": 5})
+    check(not z.call({"cmd": "bag.state"})["active"], "袋に無いブロックを選ぶと袋を使わない")
+    # Ctrl＋袋のクリックで空にする
+    z.call({"cmd": "mouse", "id": "map.bag", "action": "click", "ctrl": True, "px": [4, 4]})
+    check(z.call({"cmd": "bag.state"})["blocks"] == [], "Ctrl＋袋のクリックで空にする")
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236}
 
 
 def main() -> int:

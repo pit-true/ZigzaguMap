@@ -58,6 +58,7 @@ import { startMainTheme, toTheme } from "../util/theme";
 import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
 import { DiveOverlay } from "../ui/map/DiveOverlay";
+import type { MixingBag } from "./MixingBag";
 import { installViewExtras } from "../ui/map/viewExtras";
 import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
 import { UsageMarks } from "../ui/usage/UsageMarks";
@@ -138,6 +139,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
   readonly neighbors: NeighborService;
+  /** ミキシングバッグ（#236。マップタブ）。 */
+  readonly mixingBag: MixingBag;
   /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
   diveOverlays: DiveOverlay[] = [];
   /** ブロックの使用回数の索引（#235）。 */
@@ -239,6 +242,9 @@ export class App implements ActionTarget {
     this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
     // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
     this.blockUsage = new BlockUsageService(state);
+    // ミキシングバッグで描くときの移動許可（#236）
+    mapTab.painter.usage = this.blockUsage;
+    this.mixingBag = mapTab.bag;
     mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);
     this.usageMarks = { map: new UsageMarks(mapTab.view, state, "map", this.blockUsage), movement: new UsageMarks(movementTab.view, state, "movement", this.blockUsage) };
     // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）

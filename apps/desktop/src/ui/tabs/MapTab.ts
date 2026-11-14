@@ -2,6 +2,8 @@ import { PaintBorderCommand } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { BlockPainter } from "../../input/BlockPainter";
 import { StampClipboard } from "../../input/StampClipboard";
+import { MixingBag } from "../../app/MixingBag";
+import { MixingBagView } from "../map/MixingBagView";
 import { jaPaint } from "../../i18n/ja.paint";
 import { ja } from "../../i18n/ja";
 import { BlockPaletteView } from "../map/BlockPaletteView";
@@ -20,6 +22,8 @@ export class MapTab {
   readonly painter: BlockPainter;
   /** Ctrl+C / Ctrl+V（Phase3 #225）。 */
   readonly clipboard: StampClipboard;
+  /** ミキシングバッグ（#236）。 */
+  readonly bag = new MixingBag();
   /** スタンプの一覧（Phase3 #239）。 */
   readonly stamps: StampPanel;
 
@@ -29,6 +33,7 @@ export class MapTab {
     this.view = new MapView("map-tab-view");
     this.painter = new BlockPainter(this.view, state, () => this.palette.scrollToSelection());
     this.clipboard = new StampClipboard(state, this.painter);
+    this.painter.bag = this.bag;
 
     this.palette = new BlockPaletteView({
       select: (selection, stamp) => {
@@ -40,6 +45,7 @@ export class MapTab {
       hover: (block, offset) => {
         if (block !== null) state.setStatus(ja.statusPaletteBlock(block, offset));
       },
+      toggleBag: (block) => state.setStatus(this.bag.toggle(block) ? jaPaint.bagAdded(block) : jaPaint.bagRemoved(block)),
     });
     this.border = new BorderView({
       place: (cell) => this.placeBorder(cell.x, cell.y),
@@ -61,7 +67,7 @@ export class MapTab {
     this.selected.className = "selected-block";
     borderBox.append(borderLabel, this.border.element, this.selected);
     this.stamps = new StampPanel(state);
-    side.append(borderBox, pasteMovementsToggle(state), this.stamps.element, this.palette.element);
+    side.append(borderBox, pasteMovementsToggle(state), this.stamps.element, this.palette.element, new MixingBagView(state, this.bag).element);
     this.element.append(this.view.element, side);
 
     state.on("map", () => this.showMap());

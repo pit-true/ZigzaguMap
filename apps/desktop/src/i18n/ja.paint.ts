@@ -16,4 +16,14 @@ export const jaPaint = {
   shortcutSwap: "押したマスと離したマスを入れ替える",
   shortcutCancel: "矩形塗り・入れ替え・矩形の選択のドラッグを取りやめる",
   shortcutDragWhere: "マップタブのマップ（矩形塗りは移動エリアタブでも）",
+  /** ミキシングバッグ（#236）。 */
+  bagLabel: (n: number) => `ミキシングバッグ（${n} 個）`,
+  bagHint: "Ctrl＋パレットの左クリックで出し入れ。袋の中のブロックを選んで描くと、袋の中から乱数で選んで描く。Ctrl＋クリックで空にする",
+  bagAdded: (block: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")} を袋に入れました`,
+  bagRemoved: (block: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")} を袋から出しました`,
+  bagCleared: "袋を空にしました",
+  shortcutBag: "ミキシングバッグにブロックを出し入れする",
+  shortcutBagWhere: "マップタブのブロックパレット",
+  shortcutBagClear: "ミキシングバッグを空にする",
+  shortcutBagClearWhere: "マップタブのミキシングバッグ",
 } as const;

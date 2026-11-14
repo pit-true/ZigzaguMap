@@ -11,11 +11,14 @@ export interface BlockPaletteHost {
   select(selection: BlockSelection, stamp: boolean): void;
   /** マウスの下のブロック（無ければ null）。 */
   hover(block: number | null, offset: number | null): void;
+  /** Ctrl＋左クリック: ミキシングバッグにブロックを出し入れする（#236。無ければ普通の左クリックと同じ）。 */
+  toggleBag?(block: number): void;
 }
 
 /**
  * 右のブロックパレット（主の 640 個の後に副を並べる、1 行 8 個が既定）。
  * 左・右クリックで 1 つ選び、Ctrl＋右ドラッグで矩形を選ぶ。選択中は赤い枠で囲む。
+ * Ctrl＋左クリックはミキシングバッグへの出し入れ（#236。窓口が受けるとき）。
  */
 export class BlockPaletteView {
   readonly element: HTMLElement;
@@ -48,6 +51,9 @@ export class BlockPaletteView {
         if (g.button === 2 && g.ctrl) {
           this.anchor = cell;
           this.drawSelection(rectOf(cell, cell));
+        } else if (g.button === 0 && g.ctrl && this.host.toggleBag) {
+          const block = this.tiles?.blockAt(cell.x, cell.y, this.width);
+          if (block !== null && block !== undefined) this.host.toggleBag(block);
         } else {
           this.pick(cell);
         }
