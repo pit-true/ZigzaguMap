@@ -9,6 +9,7 @@ import {
   type ScriptConfig,
 } from "@zigzagumap/core";
 import { TauriProjectFs } from "../../app/TauriProjectFs";
+import { scheduleIdleGc } from "../../util/idleGc";
 import type { FileStat } from "./EditorTab";
 
 /** 文字列のファイルを探すフォルダ。 */
@@ -97,6 +98,8 @@ export class ScriptProject {
     this.loaded = true;
     this.loadMs = Math.round(performance.now() - t0);
     this.emit();
+    // 読み込みの一時的なもの（ファイルの本文・行の解析・IPC の受け取り）を片付ける
+    scheduleIdleGc(true);
   }
 
   /** 索引に入れるファイルか（`.s` は assembly と直下の 3 ファイル、`.string` は strings）。 */
