@@ -14,4 +14,8 @@ export const jaTownMini = {
   current: (region: number, name: string | null) => `今のマップ: ${hex(region, 2)} ${name ?? ""}`,
   notPlaced: (region: number, name: string | null) => `今のマップの地名 ${hex(region, 2)} ${name ?? ""} はタウンマップに置かれていません`,
   none: "今のマップの地名はありません",
+  /** ショートカット一覧（ヘルプ）。 */
+  shortcutKeys: "マスの左クリック",
+  shortcut: "その地名のマップだけにマップ一覧を絞る（場所:<番号>）",
+  shortcutWhere: "タウンマップの小窓",
 };

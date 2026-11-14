@@ -6,6 +6,12 @@ import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaPen } from "../i18n/ja.pen";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { jaMapZoom } from "../i18n/ja.mapZoom";
+import { jaPaletteInfo } from "../i18n/ja.paletteInfo";
+import { jaSeams } from "../i18n/ja.seams";
+import { jaTownMini } from "../i18n/ja.townMini";
+import { jaPointers } from "../i18n/ja.pointers";
+import { jaAssist } from "../i18n/ja.assist";
+import { jaBlockEditor } from "../i18n/ja.blockEditor";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
 /** ショートカットの一覧の 1 行。 */
@@ -20,7 +26,8 @@ export interface ShortcutRow {
 
 /**
  * メニューに無いキー操作（`Shortcuts.ts`、`MenuBar.ts`、`MapTree.ts`、`Dialog.ts`、`form/controls.ts`、
- * `wild/WildTab.ts`、別ウィンドウの `startBlockTool.ts` と `WorldMapWindow.ts` で受けているもの）。
+ * `wild/WildTab.ts`、Phase4 の欄と窓（`ui/map/RecentBlocks.ts`・`ui/view/TownMiniView.ts`・`ui/pointer/PointerDialog.ts`・
+ * `ui/connection/SeamNotice.ts`）、別ウィンドウの `startBlockTool.ts`・`BlockEditPanel.ts`・`MapAssistWindow.ts` と `WorldMapWindow.ts` で受けているもの）。
  * キーの処理を足したら、ここにも足す（README の「ショートカット」の節と同じ内容）。
  */
 const OTHER_KEYS: readonly ShortcutRow[] = [
@@ -40,6 +47,7 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
   { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
   { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
+  { keys: "↓、Enter", action: jaMapFind.filterToTree, where: jaMapFind.filterWhere },
   // マップタブのコピーと貼り付け（Phase3 #225。input/StampClipboard.ts）
   { keys: "Ctrl+C", action: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },
   { keys: "Ctrl+V", action: jaPaint.shortcutPaste, where: jaPaint.shortcutWhere },
@@ -54,10 +62,14 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Ctrl＋クリック", action: jaPaint.shortcutBagClear, where: jaPaint.shortcutBagClearWhere },
   // 矩形の選択（移動許可も拾う。#225）と、Ctrl を押している間の表示（#238。ui/map/ctrlPeek.ts）
   { keys: "Ctrl＋右ドラッグ", action: jaPaint.shortcutPick, where: jaPaint.shortcutPickWhere },
+  // ブロックパレットの矩形の選択（Phase3。3 層の扱いは Phase4 #300。ui/map/BlockPaletteView.ts）
+  { keys: jaPen.shortcutPalettePickKeys, action: jaPen.shortcutPalettePick, where: jaPen.shortcutPalettePickWhere },
   { keys: "Ctrl（押している間）", action: jaPaint.shortcutPeek, where: jaPaint.shortcutPeekWhere },
   { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
   // 自動ペン（Phase4 #310。app/penExtras.ts）
   { keys: "P", action: jaPen.shortcutAutoPen, where: jaPen.shortcutAutoPenWhere },
+  // 最近使ったブロック（Phase4 #308。ui/map/RecentBlocks.ts）
+  { keys: jaPaletteInfo.shortcutRecentKeys, action: jaPaletteInfo.shortcutRecent, where: jaPaletteInfo.shortcutRecentWhere },
   // 接続のつまみと隣の帯（#223・#229〜#231。ui/map/ConnectionHandles.ts・EdgeHandles.ts・NeighborLayer.ts）
   { keys: jaNeighbors.shortcutCornerKeys, action: jaNeighbors.shortcutCorner, where: jaNeighbors.shortcutCornerWhere },
   { keys: jaNeighbors.shortcutEdgeMenuKeys, action: jaNeighbors.shortcutEdgeMenu, where: jaNeighbors.shortcutEdgeWhere },
@@ -66,8 +78,20 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   // マップの拡大と中ボタンのスクロール（Phase4 #316。ui/map/MapZoomControls.ts）
   { keys: jaMapZoom.shortcutZoomKeys, action: jaMapZoom.shortcutZoom, where: jaMapZoom.shortcutWhere },
   { keys: jaMapZoom.shortcutScrollKeys, action: jaMapZoom.shortcutScroll, where: jaMapZoom.shortcutWhere },
+  // 接続の境目の注意（Phase4 #305。ui/connection/SeamNotice.ts）
+  { keys: jaSeams.shortcutKeys, action: jaSeams.shortcut, where: jaSeams.shortcutWhere },
+  // タウンマップの小窓（Phase4 #306。ui/view/TownMiniView.ts）
+  { keys: jaTownMini.shortcutKeys, action: jaTownMini.shortcut, where: jaTownMini.shortcutWhere },
+  // ポインタ一覧と参照元の検索（Phase4 #307。ui/pointer/PointerDialog.ts）
+  { keys: jaPointers.shortcutRowKeys, action: jaPointers.shortcutRow, where: jaPointers.shortcutWhere },
+  { keys: jaPointers.shortcutCopyKeys, action: jaPointers.shortcutCopy, where: jaPointers.shortcutWhere },
+  { keys: "Enter", action: jaPointers.shortcutSearch, where: jaPointers.shortcutSearchWhere },
   // イベントタブの右クリックのメニュー（ui/event/EventTab.ts）
   { keys: "右クリック", action: jaEventDelete.shortcutMenu, where: jaEventDelete.shortcutWhere },
+  // ブロックエディタの 8 マスと 3 層目の 4 マス（Phase4 #302。windows/block-editor/BlockEditPanel.ts）
+  { keys: jaBlockEditor.shortcutTileKeys, action: jaBlockEditor.shortcutTile, where: jaBlockEditor.shortcutTileWhere },
+  // マップ作成補助の窓（Phase4 #312・#338。windows/map-assist/MapAssistWindow.ts）
+  { keys: jaAssist.shortcutPickKeys, action: jaAssist.shortcutPick, where: jaAssist.shortcutPickWhere },
   ...scriptEditorKeys(),
 ];
 

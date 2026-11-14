@@ -11,6 +11,7 @@ export const jaMapFind = {
   filterPlaceholder: "マップ名・番号で絞り込み",
   filterClear: "絞り込みを消す",
   filterWhere: "マップ一覧の絞り込みの欄",
+  filterToTree: "マップ一覧へ移る（続けて ↑↓ と Enter で選んで開く）",
   shortcutBack: "前のマップへ戻る",
   shortcutForward: "次のマップへ進む",
   mouseBack: "マウスの戻るボタン",
