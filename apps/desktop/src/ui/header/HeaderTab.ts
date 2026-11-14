@@ -4,6 +4,7 @@ import { ja } from "../../i18n/ja";
 import { watchCommands } from "../form/commit";
 import { panel } from "../form/controls";
 import { FooterGroups } from "./FooterGroups";
+import { LayoutSharedNote } from "./LayoutSharedNote";
 import type { HeaderContext } from "./HeaderContext";
 import { SizeGroup, TilesetGroup } from "./LayoutGroups";
 import { MapScriptGroup } from "./MapScriptGroup";
@@ -39,6 +40,8 @@ export class HeaderTab {
   private readonly modes: Record<HeaderViewMode, HTMLInputElement>;
   private readonly advanced: HTMLInputElement;
   private readonly advancedLabel: HTMLElement;
+  /** くわしく表示の下の「配置の共有」（#228。AdvanceMap の部品の枠の外に置く）。 */
+  private readonly layoutShared: LayoutSharedNote;
   private stale = true;
 
   constructor(
@@ -74,7 +77,8 @@ export class HeaderTab {
     this.advancedLabel.append(this.advanced, t.advanced);
     bar.append(this.modes.simple.parentElement!, this.modes.classic.parentElement!, this.advancedLabel);
 
-    this.element.append(bar, this.simple.element, this.normal.element, this.pro.element);
+    this.layoutShared = new LayoutSharedNote("header", (id) => host.openMap(id), false);
+    this.element.append(bar, this.simple.element, this.normal.element, this.pro.element, this.layoutShared.element);
     const refresh = (): void => {
       this.stale = true;
       this.render();
@@ -111,10 +115,15 @@ export class HeaderTab {
     this.simple.element.hidden = !simple || !s.map;
     this.normal.element.hidden = simple || pro || !s.map;
     this.pro.element.hidden = !pro || !s.map;
-    if (!s.map || !s.session) return;
+    if (!s.map || !s.session) {
+      this.layoutShared.element.hidden = true;
+      return;
+    }
     const ctx = { state: s, session: s.session, map: s.map, doc: s.map.doc };
     if (simple) this.simple.render(ctx);
     else (pro ? this.pro : this.normal).render(ctx);
+    if (simple) this.layoutShared.element.hidden = true;
+    else this.layoutShared.render(ctx);
   }
 }
 
