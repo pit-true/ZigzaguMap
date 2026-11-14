@@ -2,6 +2,7 @@ import { EditError } from "@zigzagumap/core";
 import "../../styles/valueControls.css";
 import { hex } from "../../i18n/ja";
 import { parseInteger } from "./integerInput";
+import { isTyping, watchTyping } from "./typing";
 
 /**
  * AdvanceMap の入力部品（TEdit の 16 進欄、TSpinEdit、TComboBox、TCheckBox）の再現。
@@ -12,7 +13,7 @@ import { parseInteger } from "./integerInput";
 /** 値を出す部品。 */
 export interface ValueControl {
   readonly element: HTMLElement;
-  /** 値を表示する（入力中の欄は書き換えない）。null は空欄・選択なし。 */
+  /** 値を表示する（打ちかけの文字がある欄は書き換えない）。null は空欄・選択なし。 */
   set(value: number | null): void;
   /** 有効・無効（灰色）。 */
   setEnabled(enabled: boolean): void;
@@ -49,11 +50,14 @@ export class HexInput implements ValueControl {
     input.dataset["autoId"] = options.id;
     if (options.maxLength) input.maxLength = options.maxLength;
     input.addEventListener("input", () => this.commit());
+    watchTyping(input);
     this.element = input;
   }
 
   set(value: number | null): void {
-    if (document.activeElement === this.element) return;
+    // 入力のたびに決めるので、打ちかけのあいだは自分の入力の結果が返ってくる。それで欄を書き換えない
+    // （フォーカスがあっても、Enter のあとや外からの変更（元に戻すなど）では書き換える）
+    if (isTyping(this.element)) return;
     this.element.value = value === null ? "" : (this.options.prefix ?? "") + hex(value >>> 0, this.options.digits);
   }
 
@@ -125,6 +129,7 @@ export class SpinEdit implements ValueControl {
       }
     });
     this.input.addEventListener("input", () => this.commit());
+    watchTyping(this.input);
     // 確定したとき（Enter・フォーカスを外したとき）は、丸めた値を表示し直す。
     const reformat = (): void => {
       this.input.value = String(this.value);
@@ -141,7 +146,7 @@ export class SpinEdit implements ValueControl {
 
   set(value: number | null): void {
     this.value = value ?? 0;
-    if (document.activeElement === this.input) return;
+    if (isTyping(this.input)) return;
     this.input.value = String(this.value);
   }
 
