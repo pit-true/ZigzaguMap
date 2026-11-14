@@ -1,4 +1,4 @@
-import { BLOCK_PIXELS } from "@zigzagumap/core";
+import { BLOCK_PIXELS, type Margins } from "@zigzagumap/core";
 import type { MapImage } from "./MapImage";
 
 /** マス目の位置。 */
@@ -25,6 +25,14 @@ export class MapView {
   private drawnVersion = -1;
   private zoomValue = 1;
   private gridOn = false;
+  /** 主マップのまわりの余白（マス。隣のマップの帯の分）。 */
+  private marginsValue: Margins = NO_MARGINS;
+  /** 主マップの枠（隣のマップがあるときだけ出す）。 */
+  private readonly frame: HTMLElement;
+  /** `toPng` の前に呼ぶ（隠れているタブの隣の帯を描くため。NeighborLayer が入れる）。 */
+  beforePng: (() => void) | null = null;
+  /** 新しいマップを出したあと、最初に余白が付いたらスクロールを合わせる。 */
+  private scrollPending = false;
 
   constructor(className: string) {
     this.element = document.createElement("div");
@@ -36,7 +44,10 @@ export class MapView {
     this.layer = canvas("map-layer");
     this.layerContext = this.layer.getContext("2d")!;
     this.gridCanvas = canvas("map-grid");
-    this.stage.append(this.base, this.layer, this.gridCanvas);
+    this.frame = document.createElement("div");
+    this.frame.className = "map-frame";
+    this.frame.hidden = true;
+    this.stage.append(this.base, this.layer, this.gridCanvas, this.frame);
     this.element.append(this.stage);
     this.element.addEventListener("contextmenu", (e) => e.preventDefault());
   }
@@ -53,6 +64,7 @@ export class MapView {
 
   /** 表示するマップを変える（null で空）。 */
   setImage(image: MapImage | null): void {
+    if (image !== this.image) this.scrollPending = true;
     this.image = image;
     this.drawnVersion = -1;
     this.layout();
@@ -76,6 +88,59 @@ export class MapView {
     this.drawnVersion = image.version;
   }
 
+  /** 主マップの大きさ（マス。マップが無ければ 0）。 */
+  get mapSize(): { width: number; height: number } {
+    return { width: this.image?.width ?? 0, height: this.image?.height ?? 0 };
+  }
+
+  /** 主マップのまわりの余白（マス）。 */
+  get margins(): Margins {
+    return this.marginsValue;
+  }
+
+  /** 主マップの左上の、ステージの中の位置（表示上の画素）。 */
+  get originPx(): { x: number; y: number } {
+    return { x: this.marginsValue.left * this.cellSize, y: this.marginsValue.top * this.cellSize };
+  }
+
+  /**
+   * 主マップのまわりに余白を付ける（隣のマップの帯を描く場所）。主マップが画面の同じ位置に見えるようにスクロールをずらす。
+   * 新しいマップを出したあとの最初の余白では、帯が少し見える位置へスクロールする。
+   */
+  setMargins(margins: Margins): void {
+    const old = this.marginsValue;
+    const same = old.left === margins.left && old.top === margins.top && old.right === margins.right && old.bottom === margins.bottom;
+    const initial = this.scrollPending && (margins.left > 0 || margins.top > 0);
+    if (same && !initial) return;
+    const size = this.cellSize;
+    const left = this.element.scrollLeft + (margins.left - old.left) * size;
+    const top = this.element.scrollTop + (margins.top - old.top) * size;
+    this.marginsValue = { ...margins };
+    this.layout();
+    if (initial) {
+      this.scrollPending = false;
+      this.element.scrollLeft = Math.max(0, (margins.left - Math.min(margins.left, SCROLL_PEEK)) * size);
+      this.element.scrollTop = Math.max(0, (margins.top - Math.min(margins.top, SCROLL_PEEK)) * size);
+    } else {
+      this.element.scrollLeft = left;
+      this.element.scrollTop = top;
+    }
+  }
+
+  /** マウスの位置のマス（主マップの左上が原点。主マップの外も返す）。ステージの外かマップが無ければ null。 */
+  cellAtAny(e: MouseEvent): Cell | null {
+    if (!this.image) return null;
+    const s = this.stage.getBoundingClientRect();
+    if (e.clientX < s.left || e.clientY < s.top || e.clientX >= s.right || e.clientY >= s.bottom) return null;
+    return this.rawCellAt(e);
+  }
+
+  /** マウスの位置のマス（主マップの左上が原点。ステージの外でも範囲を調べずに返す。ドラッグ用）。 */
+  rawCellAt(e: MouseEvent): Cell {
+    const r = this.base.getBoundingClientRect();
+    return { x: Math.floor((e.clientX - r.left) / this.cellSize), y: Math.floor((e.clientY - r.top) / this.cellSize) };
+  }
+
   /** マウスの位置のマス。マップ外なら null。 */
   cellAt(e: MouseEvent): Cell | null {
     if (!this.image) return null;
@@ -86,17 +151,33 @@ export class MapView {
     return { x, y };
   }
 
-  /** 表示中の画像を PNG にする（重ね描きとグリッドも含め、表示の大きさで）。 */
-  toPng(): string | null {
+  /**
+   * 表示中の画像を PNG にする（重ね描きとグリッドも含め、表示の大きさで）。
+   * `withNeighbors` なら余白の隣のマップの帯（`canvas.map-neighbor`）と主マップの枠も含めて、ステージ全体を描く。
+   */
+  toPng(withNeighbors = false): string | null {
     if (!this.image) return null;
     const out = document.createElement("canvas");
-    out.width = this.layer.width;
-    out.height = this.layer.height;
+    const o = withNeighbors ? this.originPx : { x: 0, y: 0 };
+    // タブが隠れていても撮れるよう、大きさと位置は CSS の値から読む
+    out.width = withNeighbors ? Math.round(parseFloat(this.stage.style.width) || this.layer.width) : this.layer.width;
+    out.height = withNeighbors ? Math.round(parseFloat(this.stage.style.height) || this.layer.height) : this.layer.height;
     const c = out.getContext("2d")!;
     c.imageSmoothingEnabled = false;
-    c.drawImage(this.base, 0, 0, out.width, out.height);
-    c.drawImage(this.layer, 0, 0);
-    c.drawImage(this.gridCanvas, 0, 0);
+    if (withNeighbors) {
+      this.beforePng?.();
+      for (const n of this.stage.querySelectorAll<HTMLCanvasElement>("canvas.map-neighbor")) {
+        if (!n.hidden) c.drawImage(n, parseFloat(n.style.left), parseFloat(n.style.top), parseFloat(n.style.width), parseFloat(n.style.height));
+      }
+    }
+    c.drawImage(this.base, o.x, o.y, this.layer.width, this.layer.height);
+    c.drawImage(this.layer, o.x, o.y);
+    c.drawImage(this.gridCanvas, o.x, o.y);
+    if (withNeighbors && !this.frame.hidden) {
+      c.strokeStyle = FRAME_COLOR;
+      c.lineWidth = 1;
+      c.strokeRect(o.x + 0.5, o.y + 0.5, this.layer.width - 1, this.layer.height - 1);
+    }
     return out.toDataURL("image/png");
   }
 
@@ -110,12 +191,19 @@ export class MapView {
     }
     const dw = w * this.zoomValue;
     const dh = h * this.zoomValue;
-    this.stage.style.width = `${dw}px`;
-    this.stage.style.height = `${dh}px`;
-    for (const c of [this.base, this.layer, this.gridCanvas]) {
+    const m = this.marginsValue;
+    const size = this.cellSize;
+    const ox = m.left * size;
+    const oy = m.top * size;
+    this.stage.style.width = `${dw + (m.left + m.right) * size}px`;
+    this.stage.style.height = `${dh + (m.top + m.bottom) * size}px`;
+    for (const c of [this.base, this.layer, this.gridCanvas, this.frame]) {
+      c.style.left = `${ox}px`;
+      c.style.top = `${oy}px`;
       c.style.width = `${dw}px`;
       c.style.height = `${dh}px`;
     }
+    this.frame.hidden = !this.image || (m.left === 0 && m.top === 0 && m.right === 0 && m.bottom === 0);
     if (this.layer.width !== dw || this.layer.height !== dh) {
       this.layer.width = dw;
       this.layer.height = dh;
@@ -126,6 +214,13 @@ export class MapView {
     this.sync();
   }
 }
+
+/** 余白なし。 */
+const NO_MARGINS: Margins = { left: 0, top: 0, right: 0, bottom: 0 };
+/** 新しいマップを出したとき、上と左の帯を何マス見せる位置へスクロールするか。 */
+const SCROLL_PEEK = 2;
+/** 主マップの枠の色（styles/map.css の .map-frame と同じ）。 */
+const FRAME_COLOR = "rgba(0, 0, 0, 0.75)";
 
 function canvas(className: string): HTMLCanvasElement {
   const c = document.createElement("canvas");

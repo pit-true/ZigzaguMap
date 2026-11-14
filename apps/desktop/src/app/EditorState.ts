@@ -51,7 +51,9 @@ export type StateTopic =
   | "recent"
   | "opacity"
   /** 表示中でないマップが操作で変わった（`changedMaps` に一覧。隣の帯の描き直し用） */
-  | "otherMaps";
+  | "otherMaps"
+  /** 隣のマップの帯を作り直した（NeighborService.frame） */
+  | "neighbors";
 
 type Listener = () => void;
 

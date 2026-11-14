@@ -4,9 +4,12 @@ import type { ImageKind } from "./ImageExport";
 import type { SettingPrompts } from "./SettingPrompts";
 import type { SystemSettings } from "./SystemSettings";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
-import type { SettingsData } from "./Settings";
+import type { NeighborView, SettingsData } from "./Settings";
 import { errorText } from "../util/errors";
 import { toTheme, type Theme } from "../util/theme";
+
+/** 表示 > 隣のマップの項目（`neighbors.band` / `neighbors.all` / `neighbors.off`）。 */
+const NEIGHBOR_VIEWS: readonly NeighborView[] = ["band", "all", "off"];
 
 /** 設定 > テーマの項目（`theme.light` / `theme.dark`）。 */
 const THEMES: readonly Theme[] = ["light", "dark"];
@@ -77,6 +80,7 @@ export class Actions {
     }
     for (let i = 0; i < ja.sortModes.length; i++) h.set(`sort.${i}`, () => target.setSort(i));
     for (const theme of THEMES) h.set(`theme.${theme}`, () => target.changeSetting({ theme }));
+    for (const view of NEIGHBOR_VIEWS) h.set(`neighbors.${view}`, () => target.changeSetting({ neighborView: view }));
     // 確認してから切り替えるもの（TOGGLES の既定の動作を上書きする）。
     h.set("opt.romShortcut", () => target.system.toggleRomShortcut());
     h.set("opt.contextMenu", () => target.system.toggleContextMenu());
@@ -145,6 +149,7 @@ export class Actions {
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
     if (id.startsWith("theme.")) return id.slice(6) === toTheme(this.state.settings.data.theme);
+    if (id.startsWith("neighbors.")) return id.slice(10) === this.state.settings.data.neighborView;
     return false;
   }
 }
