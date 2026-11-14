@@ -1,3 +1,4 @@
+import { TOTAL_BLOCK_COUNT } from "@zigzagumap/core";
 import type { BlockSelection } from "../app/EditorState";
 import { jaPen } from "../i18n/ja.pen";
 
@@ -62,6 +63,13 @@ export function tripleStatusSuffix(triple: TripleLookup | null, block: number): 
   if (info.unresolved) return jaPen.tripleUnresolvedSuffix;
   if (info.triple) return jaPen.tripleSuffix;
   return "";
+}
+
+/** 通し番号ごとの「3 層の次の番号か」の印（1 なら次の番号。隣のマップの帯で、タイルセットの組を持たずに判定するため。#337）。 */
+export function tripleChildFlags(triple: Pick<TripleLookup, "isTripleChild">, count = TOTAL_BLOCK_COUNT): Uint8Array {
+  const flags = new Uint8Array(count);
+  for (let b = 0; b < count; b++) if (triple.isTripleChild(b)) flags[b] = 1;
+  return flags;
 }
 
 /** 書くマスから 3 層の次の番号を落とす（#301）。`skipped` は落としたマスの数。 */
