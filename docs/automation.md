@@ -76,7 +76,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240） |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
@@ -257,6 +257,8 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
 
+- クローンの自動作成（#242）: イベントタブで人を `mouse` の `drag` で動かすと、離したときに隣のマップのクローンを合わせる。設定は `action` の `opt.autoClones`（個人設定 `autoClones`）。比較テストは `setting` で `autoClones` を false にしてから比べる。
+
 ## Phase3 の部品と命令（接続・描画）
 
 - 隣のマップの帯（#223）: `{"cmd":"neighbors.state","wait":true}` で、見せ方の設定（`view`: `band` / `all` / `off`）、帯の幅（`range`。マップ全体なら null）、隣の一覧（`index`・`direction`・`side`・`bank`・`map`・`offset`・`placement`（隣のマップ全体の置き場所）・`band`（見せる部分。隣のマップの中の座標）・`bandAt`（見せる部分の置き場所）。座標はどれも主マップの左上を (0, 0) としたマス）、主マップのまわりの余白 `margins`、接続のある辺 `connectedSides`、描き終えたか `done`、マップを切り替え始めてから帯を描き終えるまで `neighborsMs`、帯を作るのにかかった時間 `buildMs` を返す。`wait: true` なら描き終えるまで待つ。
@@ -300,4 +302,5 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。同じ番号が無ければ足す）と `removeTrainer`（`{"id": 700}`）でもできます（元に戻せる）。
 - ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
+- 画像のコピー（#246）: `{"cmd":"image.composite","whole":true,"events":"none","png":true}` で接続している全マップ（`whole: false` なら今のマップ）の画像を作る。`events` は `none` / `persons` / `all`、`scale` で縮める割合（省くと辺が 16,384 画素を超えるときは収まるまで縮める。ダイアログは出さない）。返事は `width`・`height`・`scale`・`bounds`・`maps`（並べたマップと置き場所。最初のマップの左上が原点のマス）・`heapMb`（作っている間の JavaScript のヒープ）と、`png: true` なら PNG（Base64）。`clipboard: true` のときだけクリップボードへ渡す（既定は渡さない。テストでユーザーのクリップボードを汚さないため）。メニューは アクション `image.copyMap.<none|persons|all>`・`image.copyWhole.<none|persons|all>`。
 

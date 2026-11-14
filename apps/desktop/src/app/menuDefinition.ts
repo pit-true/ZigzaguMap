@@ -1,8 +1,10 @@
 import { ja } from "../i18n/ja";
 import { jaNeighbors } from "../i18n/ja.neighbors";
+import { jaComposite } from "../i18n/ja.composite";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
+import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -131,6 +133,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.contextMenu", label: ja.addContextMenu, accel: "A" },
         // ZigzaguMap 独自（Phase3）。コネクションマネージャーでずれを変えたとき相手側もそろえる
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
+        // クローンの自動作成（Phase3 #242。ZigzaguMap 独自）
+        { id: "opt.autoClones", label: jaClone.menu },
         {
           label: ja.recentSettings,
           accel: "Z",
@@ -186,6 +190,25 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "image.map", label: ja.saveMapImage, accel: "Y", enable: "map" },
         { id: "image.mapEvent", label: ja.saveMapEventImage, enable: "map" },
         { id: "image.palette", label: ja.savePaletteImage, accel: "Z", enable: "map" },
+        // ZigzaguMap 独自（Phase3 #246）。画像をクリップボードへ
+        {
+          label: jaComposite.menuCopyMap,
+          enable: "map",
+          children: [
+            { id: "image.copyMap.none", label: jaComposite.eventsNone, enable: "map" },
+            { id: "image.copyMap.persons", label: jaComposite.eventsPersons, enable: "map" },
+            { id: "image.copyMap.all", label: jaComposite.eventsAll, enable: "map" },
+          ],
+        },
+        {
+          label: jaComposite.menuCopyWhole,
+          enable: "map",
+          children: [
+            { id: "image.copyWhole.none", label: jaComposite.eventsNone, enable: "map" },
+            { id: "image.copyWhole.persons", label: jaComposite.eventsPersons, enable: "map" },
+            { id: "image.copyWhole.all", label: jaComposite.eventsAll, enable: "map" },
+          ],
+        },
       ],
     },
     {

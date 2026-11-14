@@ -15,6 +15,7 @@
     名前の変更。続けて別の起動で開き直し・削除・素の ROM だけのときのメモリと出力（作業フォルダは一時フォルダ）。
   - usage: 移動許可の自動選択・使用回数・移動許可だけ違うマスの印（#235）。
   - warpMap: ワープの右クリックから行き先のマップを作る（#241）。見本の窓、バンク、新しいマップの戻りのワープ、1 回の取り消し、見本なしの 9×9。
+  - clones: クローンの自動作成（#242）。1 番道路の人を南の端へ動かすとマサラタウンにクローン、北へ動かすと消える、取り消し、設定で切る。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -444,6 +445,62 @@ def check_warp_map(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
 
 
+def clones_in(z: Zigzagu, bank: int, map_: int) -> list:
+    z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+    z.call({"cmd": "tab", "name": "event"})
+    return z.call({"cmd": "event.state"})["clones"]
+
+
+def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """クローンの自動作成（#242）。1 番道路（3.19）の人を南の端へ動かすと、マサラタウン（3.0）にクローンができる。"""
+    z.call({"cmd": "resize", "width": 1280, "height": 900})
+    before = len(clones_in(z, 3, 0))
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    st = z.call({"cmd": "event.state"})
+    cells = z.call({"cmd": "cells"})
+    p = st["events"]["persons"][0]
+    south = [10, cells["height"] - 2]
+    z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
+    time.sleep(1.0)
+    status = z.call({"cmd": "getField", "id": "status.info"})["value"]
+    clones = clones_in(z, 3, 0)
+    check(len(clones) == before + 1 and clones[-1]["target"] == {"bank": 3, "map": 19, "localId": p["localId"]}, f"1 番道路の南の端に人を動かすとマサラタウンにクローン（{clones}）")
+    check("クローンを作りました" in status, f"ステータスバーで知らせる（{status}）")
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": south, "to": [10, cells["height"] - 12]})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before, "北へ 8 マスより外へ動かすとクローンが消える")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before + 1, "1 回の取り消しで人もクローンも戻る")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before, "もう 1 回の取り消しで作る前に戻る")
+    # 元の人を消すとクローンも消える（イベントの削除。確かめずに消す）
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
+    time.sleep(1.0)
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "event.delete", "kind": "person", "index": 0, "confirm": False})
+    check(len(clones_in(z, 3, 0)) == before, "元の人を消すとクローンも消える")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before + 1, "削除を取り消すとクローンも戻る")
+    z.call({"cmd": "undo"})
+    # 設定で切れる
+    z.call({"cmd": "action", "id": "opt.autoClones"})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before, "設定を切るとクローンを作らない")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "action", "id": "opt.autoClones"})
+
+
 CHECKS_RESTART = {"stampsReopen": check_stamps_reopen}
 
 
@@ -477,6 +534,7 @@ CHECKS = {
     "stamps": check_stamps,
     "usage": check_usage,
     "warpMap": check_warp_map,
+    "clones": check_clones,
 }
 
 

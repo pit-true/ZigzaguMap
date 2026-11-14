@@ -36,7 +36,7 @@ export class MoveEventCommand extends EventsCommand<MoveEventArgs> {
   }
 }
 
-/** マップの外にあるイベント（AdvanceMap のステータスバーの「マップの外にイベントがあります。」用）。 */
+/** マップの外にあるイベント（AdvanceMap のステータスバーの「マップの外にイベントがあります。」用）。クローンの人は数えない（#242）。 */
 export function eventsOutsideMap(doc: MapDocument): { kind: EventKind; index: number }[] {
   const out: { kind: EventKind; index: number }[] = [];
   if (!doc.events) return out;
@@ -48,6 +48,8 @@ export function eventsOutsideMap(doc: MapDocument): { kind: EventKind; index: nu
   ];
   for (const [kind, list] of lists) {
     list.forEach((e, index) => {
+      // クローン（人の種類 1。#242）は隣のマップの人の写しで、マップの外に置くものなので数えない
+      if (kind === "person" && (e as { kind?: number }).kind === 1) return;
       if (e.x >= doc.width || e.y >= doc.height) out.push({ kind, index });
     });
   }

@@ -48,6 +48,19 @@ export { WarpCodec, warpCodec } from "./event/WarpCodec.js";
 export { TrapCodec, trapCodec } from "./event/TrapCodec.js";
 export { SignCodec, isHiddenItemKind, signCodec } from "./event/SignCodec.js";
 export { EventReader } from "./event/EventReader.js";
+export {
+  CLONE_RANGE,
+  CloneSyncCommand,
+  PERSON_KIND_CLONE,
+  clonePlacements,
+  clonePosition,
+  cloneTargetOf,
+  syncClones,
+  type CloneChange,
+  type ClonePlacement,
+  type CloneSyncArgs,
+  type CloneTarget,
+} from "./event/CloneSync.js";
 export * from "./event/templates/index.js";
 export * from "./trainer/index.js";
 
@@ -317,3 +330,4 @@ export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
+export { COMPOSITE_MAX_SIDE, compositeScale, layoutComposite, type CompositeLayout, type CompositeMap, type CompositeSource } from "./render/MapComposite.js";

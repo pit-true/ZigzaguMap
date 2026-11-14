@@ -25,6 +25,9 @@
   接続が無いと知らせる。Space を押している間、カーソルのまわりに相手のマップが出て、ダブルクリックで相手を開く。離すと消える。
 - 236: ミキシングバッグ。Ctrl＋パレットの左クリックで出し入れし、草 3 種を袋に入れて 6×6 を矩形塗りすると 3 種が混ざる。
   取り消しとやり直しで同じ絵に戻る。種を決めると同じ並びになる。Ctrl＋袋のクリックで空にする。
+- 246: 接続している全マップの画像。マサラタウンから、つながっている屋外のマップ全部が接続のずれどおりに並ぶ（マサラタウンの部分の画素が
+  マップの画像と同じ）。今のマップ 1 枚、イベントの有無、縮め方。作っている間と後のメモリ（専用ワーキングセット）を記録する。
+  クリップボードには書かない（`clipboard` を付けない）。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -705,7 +708,63 @@ def check_236(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     check(z.call({"cmd": "bag.state"})["blocks"] == [], "Ctrl＋袋のクリックで空にする")
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236}
+def private_ws_mb(pid: int) -> float | None:
+    """exe と子孫のプロセスの専用ワーキングセットの合計（MB。psutil が無ければ None）。"""
+    try:
+        import psutil
+    except ImportError:
+        return None
+    root = psutil.Process(pid)
+    total = 0
+    for p in [root, *root.children(recursive=True)]:
+        try:
+            info = p.memory_full_info()
+            total += getattr(info, "private", 0) or info.uss
+        except Exception:  # noqa: BLE001
+            pass
+    return round(total / 1048576, 1)
+
+
+def check_246(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    z.call({"cmd": "tab", "name": "map"})
+    pallet = png_of(z, {"cmd": "canvasPng", "target": "map"})
+    time.sleep(3)
+    before = private_ws_mb(z.proc.pid)
+    r = z.call({"cmd": "image.composite", "events": "none", "png": True}, timeout=600)
+    right_after = private_ws_mb(z.proc.pid)
+    maps = {(m["bank"], m["map"]): m for m in r["maps"]}
+    print(f"     全マップ: {len(r['maps'])} 枚、{r['width']}×{r['height']}（1/{r['scale']}）、範囲 {r['bounds']}、ヒープ {r['heapMb']}MB")
+    check((3, 19) in maps and (3, 39) in maps and maps[(3, 19)]["y"] == -40 and maps[(3, 39)]["y"] == 20 and len(r["maps"]) > 10,
+          f"マサラタウンから、つながっている屋外のマップが接続のずれどおりに並ぶ（{len(r['maps'])} 枚）")
+    b = r["bounds"]
+    check(r["width"] == -(-b["width"] * 16 // r["scale"]) and r["height"] == -(-b["height"] * 16 // r["scale"]), "画像の大きさは並べた範囲 × 16 画素（縮めたら割る）")
+    if Image is not None and r["png"]:
+        img = Image.open(io.BytesIO(base64.b64decode(r["png"]))).convert("RGB")
+        if shots:
+            img.save(shots / "p3c_246_composite.png")
+        if r["scale"] == 1:
+            x0, y0 = -b["x"] * 16, -b["y"] * 16
+            diff = max(hi for _lo, hi in ImageChops.difference(img.crop((x0, y0, x0 + pallet.size[0], y0 + pallet.size[1])), pallet).getextrema())
+            check(diff == 0, f"マサラタウンの部分の画素がマップの画像と同じ（差 {diff}）")
+        else:
+            check(True, f"辺が 16,384 画素を超えるので 1/{r['scale']} に縮めた")
+    time.sleep(6)
+    settled = private_ws_mb(z.proc.pid)
+    print(f"     メモリ（専用ワーキングセット）: 前 {before}MB、作った直後 {right_after}MB、6 秒後 {settled}MB")
+    if before is not None and settled is not None:
+        check(settled - before < 30, f"作ったあと、メモリが元の近くへ戻る（増え {settled - before:.1f}MB）")
+    one = z.call({"cmd": "image.composite", "whole": False, "events": "none"})
+    check(one["width"] == 24 * 16 and one["height"] == 20 * 16 and len(one["maps"]) == 1, "今のマップ 1 枚の画像")
+    ev = z.call({"cmd": "image.composite", "whole": False, "events": "all", "png": True})
+    no = z.call({"cmd": "image.composite", "whole": False, "events": "none", "png": True})
+    pe = z.call({"cmd": "image.composite", "whole": False, "events": "persons", "png": True})
+    check(ev["png"] != no["png"] and pe["png"] != no["png"] and pe["png"] != ev["png"], "イベントなし・人だけ・全部で画像が違う")
+    half = z.call({"cmd": "image.composite", "whole": False, "scale": 2})
+    check(half["width"] == 12 * 16 and half["height"] == 10 * 16, "縮めると 1/2 の大きさ")
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236, "246": check_246}
 
 
 def main() -> int:
