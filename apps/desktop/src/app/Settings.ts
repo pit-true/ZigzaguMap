@@ -94,6 +94,10 @@ export interface SettingsData {
   alignConnections: boolean;
   /** マップから拾った複数選択を貼るとき、移動許可も貼る（マップタブの右の欄。Phase3 #225）。 */
   pasteMovements: boolean;
+  /** ブロックを 1 つ選ぶと、そのブロックにいちばん多い移動許可を選ぶ（マップタブの右の欄。Phase3 #235）。 */
+  autoMovement: boolean;
+  /** 移動許可だけ違うマスと、選んだ移動許可のマスに印を付ける（表示メニュー。Phase3 #235）。 */
+  usageMarks: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -132,6 +136,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   neighborView: "band",
   alignConnections: true,
   pasteMovements: true,
+  autoMovement: true,
+  usageMarks: true,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

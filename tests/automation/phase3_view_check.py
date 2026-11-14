@@ -13,6 +13,7 @@
     （ブロックの番号・移動許可・挙動、矩形選択の大きさ、隣のマップの帯の座標）。
   - stamps: スタンプ（#239）。2×3 の木を保存して主タイルセットが同じ街で貼る、副タイルセットを含むものは組が違うと出ない、
     名前の変更。続けて別の起動で開き直し・削除・素の ROM だけのときのメモリと出力（作業フォルダは一時フォルダ）。
+  - usage: 移動許可の自動選択・使用回数・移動許可だけ違うマスの印（#235）。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -337,6 +338,55 @@ def check_stamps_reopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> No
     check((out / "maps" / "stamps" / "メモリの木.json").exists(), "出力先を選んで出力するとスタンプも書く")
 
 
+def check_usage(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """移動許可の自動選択・使用回数・移動許可だけ違うマスの印（#235）。"""
+    z.call({"cmd": "resize", "width": 1280, "height": 900})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    cells = z.call({"cmd": "cells"})
+    tree = cells["cells"][5 * cells["width"] + 0] & 0x3FF
+    z.call({"cmd": "blockUsage", "block": tree})
+    z.call({"cmd": "selectBlock", "block": 0})
+    t0 = time.time()
+    z.call({"cmd": "selectBlock", "block": tree})
+    u = z.call({"cmd": "blockUsage"})
+    sel = z.call({"cmd": "selection"})
+    check(u["mostMovement"] == 1 and sel.get("movement") == 1, f"木のブロック {tree:#x} を選ぶと移動許可が「壁」（1）になる（{sel.get('movement')}）")
+    shown = z.call({"cmd": "getField", "id": "map.blockUsage"})["value"]
+    check(f"使用回数: {u['count']}" in shown and f"このマップ {u['here']}" in shown, f"使用回数の表示（{shown}）")
+    # わざと 1 マスの移動許可を変えると、そのマスに印が付く
+    z.call({"cmd": "command", "name": "paintMovement", "args": {"bank": 3, "map": 0, "cells": [{"x": 0, "y": 5, "movement": 0x0C}]}})
+    u = z.call({"cmd": "blockUsage"})
+    check({"x": 0, "y": 5, "movement": 0x0C} in u["mismatches"] and u["marks"]["map"] >= 1, f"移動許可だけ違うマスに印（{len(u['mismatches'])} 個、印 {u['marks']['map']}）")
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_usage_marks.png")
+    z.call({"cmd": "action", "id": "view.usageMarks"})
+    u2 = z.call({"cmd": "blockUsage"})
+    check(u2["marks"]["map"] == 0, "表示 > 移動許可の強調 を切ると印が消える")
+    z.call({"cmd": "action", "id": "view.usageMarks"})
+    z.call({"cmd": "undo"})
+    # 移動エリアタブ: 選んだ移動許可のマス
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "selectMovement", "value": 1})
+    u = z.call({"cmd": "blockUsage"})
+    check(u["marks"]["movement"] > 0, f"移動エリアタブで選んだ移動許可のマスを強調（{u['marks']['movement']} マス）")
+    if shots:
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_usage_movement.png")
+    # 自動で選ぶを切る
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "setField", "id": "map.autoMovement", "value": False})
+    before = z.call({"cmd": "selection"}).get("movement")
+    z.call({"cmd": "selectBlock", "block": 0x001})
+    after = z.call({"cmd": "selection"}).get("movement")
+    check(before == after, "「移動許可を自動で選ぶ」を切ると移動許可は変わらない")
+    z.call({"cmd": "setField", "id": "map.autoMovement", "value": True})
+    z.call({"cmd": "selectMovement", "value": 0x0C})
+    # マップから拾った複数選択（移動許可を持つ）には当てない
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [0, 4], "to": [0, 4]})
+    after2 = z.call({"cmd": "selection"}).get("movement")
+    check(after2 == 0x0C, f"移動許可を持つ選択（マップから拾ったもの）では移動許可を変えない（{after2}）")
+
+
 CHECKS_RESTART = {"stampsReopen": check_stamps_reopen}
 
 
@@ -368,6 +418,7 @@ CHECKS = {
     "history": check_history,
     "ctrl": check_ctrl,
     "stamps": check_stamps,
+    "usage": check_usage,
 }
 
 

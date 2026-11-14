@@ -3,6 +3,7 @@ import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
 import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
+import { jaBlockUsage } from "../i18n/ja.blockUsage";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -91,6 +92,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
             { id: "neighbors.off", label: jaNeighbors.viewOff },
           ],
         },
+        // 移動許可だけ違うマスと、選んだ移動許可のマスの印（Phase3 #235。ZigzaguMap 独自）
+        { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
         {
           label: ja.mapSize,
           accel: "M",

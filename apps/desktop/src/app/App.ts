@@ -59,6 +59,9 @@ import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
 import { DiveOverlay } from "../ui/map/DiveOverlay";
 import { installViewExtras } from "../ui/map/viewExtras";
+import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
+import { UsageMarks } from "../ui/usage/UsageMarks";
+import { BlockUsageService } from "./BlockUsageService";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { EdgeMenu } from "../ui/connection/EdgeMenu";
@@ -137,6 +140,10 @@ export class App implements ActionTarget {
   readonly neighbors: NeighborService;
   /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
   diveOverlays: DiveOverlay[] = [];
+  /** ブロックの使用回数の索引（#235）。 */
+  readonly blockUsage: BlockUsageService;
+  /** 使用の印（#235。マップタブと移動エリアタブ）。 */
+  readonly usageMarks: { readonly map: UsageMarks; readonly movement: UsageMarks };
   private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
@@ -230,6 +237,10 @@ export class App implements ActionTarget {
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
     this.edgeResize = new EdgeResize(state);
     this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
+    // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
+    this.blockUsage = new BlockUsageService(state);
+    mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);
+    this.usageMarks = { map: new UsageMarks(mapTab.view, state, "map", this.blockUsage), movement: new UsageMarks(movementTab.view, state, "movement", this.blockUsage) };
     // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
     for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) installViewExtras(view, state, tab, this.neighbors);
     const tabControl = new TabControl(
