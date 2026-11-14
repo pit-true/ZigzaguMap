@@ -19,4 +19,8 @@ export const jaPaletteInfo = {
   recentTitle: "最近使ったブロック",
   recentHint: "パレットで選んだブロックとスポイトで拾ったブロック（8 件）。押すと選び直します",
   recentEmpty: "（まだありません）",
+  /** ショートカット一覧（ヘルプ）。 */
+  shortcutRecentKeys: "左クリック",
+  shortcutRecent: "そのブロックを選び直す（パレットの選択も動く）",
+  shortcutRecentWhere: "マップタブの最近使ったブロック",
 };
