@@ -764,6 +764,8 @@ class ZigzaguDriver(Driver):
                 self.call({"cmd": "setting", "key": "headerView", "value": "classic"})
                 # 隣のマップの帯（Phase3）は AdvanceMap に無いので、比べるときは出さない（tests/automation/connection_check.py で確かめる）
                 self.call({"cmd": "setting", "key": "neighborView", "value": "off"})
+                # コネクションマネージャーでずれを変えても相手のマップを変えない（AdvanceMap と同じ。Phase3 の既定はそろえる）
+                self.call({"cmd": "setting", "key": "alignConnections", "value": False})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e
