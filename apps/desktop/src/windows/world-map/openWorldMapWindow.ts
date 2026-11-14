@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { openToolWindow } from "../toolWindowCommands";
 import { WORLD_MAP_WINDOW } from "./protocol";
 
 /** AdvanceMap の TWeltkarteForm のクライアントの大きさ（683×345）に、幅/高さの行の 16px を足したもの。 */
@@ -11,5 +11,5 @@ const HEIGHT = 361;
  * main.ts がウィンドウのラベルを見てエディターを組み立てる。
  */
 export async function openWorldMapWindow(title: string): Promise<void> {
-  await invoke("open_tool_window", { label: WORLD_MAP_WINDOW, title, width: WIDTH, height: HEIGHT });
+  await openToolWindow(WORLD_MAP_WINDOW, title, { width: WIDTH, height: HEIGHT });
 }
