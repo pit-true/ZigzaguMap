@@ -54,12 +54,21 @@ def _shot(z: Zigzagu, name: str, window: str | None = None) -> None:
 LONG_WRAPPED = "こんにちは！\\n\nきょうは いいてんきだね\\p\nまたね\\n\nげんきでね"
 
 
-def _apply_patch(cwd: pathlib.Path, patch: pathlib.Path, log) -> bool:
-    """パッチを当てる（もう当ててあれば何もしない）。"""
+def _apply_patch(cwd: pathlib.Path, patch: pathlib.Path, log, marker: tuple[str, str] | None = None) -> bool:
+    """パッチを当てる（もう当ててあれば何もしない）。
+
+    `marker`（写しの中のファイルと、パッチが足す目印の文字列）を渡すと、パッチが当たらず逆向きでも確かめられないとき、
+    目印がファイルにあれば当て済みとみなす（本体に別の形で同じ変更が入ったとき。#290）。
+    """
     git = ["git", "-c", "core.autocrlf=false", "apply"]
     if subprocess.run(git + ["--check", "-R", str(patch)], cwd=cwd, capture_output=True).returncode == 0:
         log(f"当て済み: {patch.name}")
         return True
+    if subprocess.run(git + ["--check", str(patch)], cwd=cwd, capture_output=True).returncode != 0 and marker:
+        target = cwd / marker[0]
+        if target.is_file() and marker[1] in target.read_text(encoding="utf-8", errors="replace"):
+            log(f"当て済み（本体に入っている）: {patch.name}")
+            return True
     r = subprocess.run(git + [str(patch)], cwd=cwd, capture_output=True, text=True)
     log(f"当てた: {patch.name}（{r.returncode}）{r.stderr.strip()}")
     return r.returncode == 0
@@ -68,8 +77,8 @@ def _apply_patch(cwd: pathlib.Path, patch: pathlib.Path, log) -> bool:
 def prepare_build_side(fx: Fixture, real: pathlib.Path | None, check, log) -> None:
     proj = fx.project_path
     if fx.name == "nd":
-        check(_apply_patch(proj, PATCHES / "string-multiline.patch", log), "写しの string.py に複数行のパッチを当てる")
-        check(_apply_patch(proj, PATCHES / "map_project-rom-erase-nd.patch", log), "写しの map_project.py に rom_erase のパッチを当てる")
+        check(_apply_patch(proj, PATCHES / "string-multiline.patch", log, ("scripts/string.py", "def ContinuesOnNextLine")), "写しの string.py に複数行のパッチを当てる")
+        check(_apply_patch(proj, PATCHES / "map_project-rom-erase-nd.patch", log, ("scripts/map_project.py", "ROM_ERASE_FILE")), "写しの map_project.py に rom_erase のパッチを当てる")
     else:
         assert real is not None
         for rel in ["cfru/scripts/string.py", "cfru/scripts/map_project.py", "tools/check_text_width.py"]:
