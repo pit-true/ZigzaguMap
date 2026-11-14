@@ -16,6 +16,7 @@
   - usage: 移動許可の自動選択・使用回数・移動許可だけ違うマスの印（#235）。
   - warpMap: ワープの右クリックから行き先のマップを作る（#241）。見本の窓、バンク、新しいマップの戻りのワープ、1 回の取り消し、見本なしの 9×9。
   - clones: クローンの自動作成（#242）。1 番道路の人を南の端へ動かすとマサラタウンにクローン、北へ動かすと消える、取り消し、設定で切る。
+    クローンの見た目（#298）: 元の人の画像番号で、文字の箱か OW 画像（帯の上もマップの中も）、吹き出しに元の人。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -451,6 +452,58 @@ def clones_in(z: Zigzagu, bank: int, map_: int) -> list:
     return z.call({"cmd": "event.state"})["clones"]
 
 
+def check_clone_look(z: Zigzagu, shots: pathlib.Path | None, p: dict) -> None:
+    """クローンの見た目（#298）。マサラタウン（3.0）に 1 番道路の人 0（`p`）のクローンがある状態で呼ぶ。クローンはほかの人と同じ
+    文字の箱か OW 画像で、元の人の画像番号で描く（クローン自身の見た目の欄を変えても元の人のまま）。帯の上もマップの中も同じ。"""
+    st = z.call({"cmd": "event.state"})
+    mine = [c for c in st["clones"] if c["target"] == {"bank": 3, "map": 19, "localId": p["localId"]}]
+    check(len(mine) == 1 and mine[0]["originIndex"] == 0 and mine[0]["graphicsId"] == p["graphicsId"],
+          f"クローンの元の人は 1 番道路の人 0 で、元の人の画像番号で描く（{mine}）")
+    if not mine:
+        return
+    index = mine[0]["index"]
+    other = (p["graphicsId"] + 1) % 0x98
+    z.call({"cmd": "event.select", "kind": "person", "index": index})
+    z.call({"cmd": "setField", "id": "event.person.graphics", "value": str(other)})
+    time.sleep(0.3)
+    st = z.call({"cmd": "event.state"})
+    own = st["events"]["persons"][index]["graphicsId"]
+    drawn = next(c["graphicsId"] for c in st["clones"] if c["index"] == index)
+    ns = z.call({"cmd": "neighbors.state", "wait": True})
+    band = next((c for c in ns["clones"] if c["index"] == index), None)
+    check(own == other and drawn == p["graphicsId"] and band is not None and band["graphicsId"] == p["graphicsId"],
+          f"クローン自身の見た目の欄を変えても、帯の上でも元の人の画像で描く（欄 {own}、描く {drawn}、帯 {band}）")
+    letters = z.call({"cmd": "canvasPng", "target": "event", "neighbors": True})
+    z.call({"cmd": "action", "id": "view.objects"})
+    time.sleep(0.3)
+    ow = z.call({"cmd": "canvasPng", "target": "event", "neighbors": True})
+    check(letters["png"] != ow["png"], "オブジェクトの表示を切り替えると帯の上のクローンの絵も変わる")
+    if shots:
+        save_png(letters, shots / "fb3_band_letters.png")
+        save_png(ow, shots / "fb3_band_ow.png")
+    # マップの中へ動かしても同じ見た目（吹き出しに元の人）
+    z.call({"cmd": "event.select", "kind": "person", "index": index})
+    z.call({"cmd": "setField", "id": "event.person.x", "value": "5"})
+    z.call({"cmd": "setField", "id": "event.person.y", "value": "3"})
+    time.sleep(0.3)
+    text = hover_text(z, "person", index)
+    check("クローン（元: マップ 3.19 の人 0）" in text, f"マップの中のクローンの吹き出しに元の人を出す（{text!r}）")
+    if shots:
+        save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "fb3_inmap_ow.png")
+    z.call({"cmd": "action", "id": "view.objects"})
+    time.sleep(0.3)
+    if shots:
+        save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "fb3_inmap_letters.png")
+        z.call({"cmd": "event.hover", "kind": "person", "index": index})
+        save_png(z.call({"cmd": "screenshot"}), shots / "fb3_inmap_hover.png")
+        z.call({"cmd": "event.hover.hide"})
+    for _ in range(3):
+        z.call({"cmd": "undo"})
+    st = z.call({"cmd": "event.state"})
+    back = st["events"]["persons"][index]
+    check(back["graphicsId"] == p["graphicsId"] and back["y"] >= 0x8000, f"3 回の取り消しでクローンの欄と位置が戻る（{back['graphicsId']}, {back['x']}, {back['y']}）")
+
+
 def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     """クローンの自動作成（#242）。表示 > クローン（既定オフ）に印を付けたときだけ、1 番道路（3.19）の人を南の端へ動かすと
     マサラタウン（3.0）にクローンができる。ドラッグ・削除・欄の入力・イベント数・ひな形のどれでも同じ規則で合わせる。"""
@@ -484,6 +537,7 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     if shots:
         save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "p3_clone_band.png")
         save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
+    check_clone_look(z, shots, p)
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": south, "to": [10, cells["height"] - 12]})

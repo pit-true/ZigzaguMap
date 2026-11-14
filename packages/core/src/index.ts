@@ -180,13 +180,21 @@ export {
 } from "./project/StampJson.js";
 export { StampLibrary, type StampLibraryOptions, type StampProblem } from "./stamp/StampLibrary.js";
 
+// 自動ペンのパーツ（maps\autopen\、Phase4 #303）
+export * from "./autopen/index.js";
+export { AUTOPEN_FORMAT, PART_GRID_MAX_SIDE, autoPenFileBase, autoPenPath, parseAutoPenFile, stringifyAutoPenFile } from "./project/AutoPenJson.js";
+export { sha1 } from "./binary/sha1.js";
+
 // タイルセットの編集
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
 export {
   BLOCK_TILE_COUNT,
+  LAYER_MODE_TRIPLE,
   attributeBytes,
   attributeFromBytes,
   bgr555ToRgb,
+  isUndrawnLayerMode,
+  layerMode,
   packTileRef,
   rgbToBgr555,
   unpackBlockAttribute,
@@ -194,6 +202,16 @@ export {
   type BlockAttributeFields,
   type TileRef,
 } from "./tileset/blockFormat.js";
+export {
+  TripleLayerIndex,
+  isLocalTripleChild,
+  isTripleLayer,
+  localAttribute,
+  tableBlockCount,
+  thirdLayerLocal,
+  type BlockTable,
+  type TripleLayerInfo,
+} from "./tileset/tripleLayer.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
 export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
@@ -313,6 +331,7 @@ export { SetPaletteColorsCommand, type SetPaletteColorsArgs } from "./command/co
 export { SetTilesCommand, type SetTilesArgs } from "./command/commands/tileset/SetTilesCommand.js";
 export { RemapBlockPalettesCommand, type RemapBlockPalettesArgs } from "./command/commands/tileset/RemapBlockPalettesCommand.js";
 export { SetTilesetHeaderCommand, type SetTilesetHeaderArgs } from "./command/commands/tileset/SetTilesetHeaderCommand.js";
+export { SetTripleLayerCommand, THIRD_LAYER_TILE_COUNT, type SetTripleLayerArgs } from "./command/commands/tileset/SetTripleLayerCommand.js";
 
 // タウンマップ（ワールドマップエディター）
 export * from "./regionmap/index.js";

@@ -33,6 +33,10 @@ python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagum
     # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直す窓（trainerEdit）も確かめる
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
+python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>]
+    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタで 3 層にする・3 層目の 4 マス・確かめの窓・1 回の取り消し・
+    # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
+    # third（3 層目の 4 タイル）・triple・thirdVisible が出る。3 層の保存は `setTripleLayer` コマンド
 python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
     # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
     # --project を付けると「ここに落とし物を追加」も確かめる
@@ -77,10 +81,9 @@ python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFR
 | `menu.run` | `path`（`"設定 > グリッドの表示"` か `["設定", "グリッドの表示"]`）か `id`、`wait`（ms、既定 100） | メニューの項目を実行する。メニューバーで選んだときと同じく、無効な項目とサブメニューは実行しない（失敗）。返事はステータスバーと開いているダイアログ |
 | `tree.list` | `visibleOnly`（省略可） | マップ一覧の全項目（`text`: 未出力の印 ` *` を含む文字列、`depth`、`hasChildren`、`expanded`、`selected`、`opened`（開いているマップ）、`dirty`、`mapId`、`key`）。`visibleOnly: true` で開いている枝の中だけ |
 | `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
-| `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242） |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
@@ -251,6 +254,8 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `blockUsage` | `block`（省略で選んでいるブロック） | ブロックの使用回数（#235）。索引ができるまで待つ。`count`（全マップ）、`here`（表示中のマップ）、`movements`（移動許可 → 数）、`mostMovement`、`mismatches`（表示中のマップで移動許可がいちばん多い値と違うマス `x`・`y`・`movement`）、`selectedMovement`（選んでいる移動許可）、`marks`（今付けている印の数。`map`・`movement`） |
+| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
+| `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 
@@ -261,7 +266,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
 
-- クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置。主マップの左上が原点で負もある）と `clonesShown`（帯の上に印を描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
+- クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置 `x`・`y`（主マップの左上が原点で負もある）、人の番号 `index`、描く画像番号 `graphicsId`。#298）と `clonesShown`（帯の上にクローンを描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
 
 ## Phase3 の部品と命令（接続・描画）
 

@@ -11,6 +11,7 @@ import { watchCommands } from "../form/commit";
 import { blockAttribute } from "./warpCheck";
 import { WarpPreview } from "./WarpPreview";
 import { ctrlPeek } from "../map/ctrlPeek";
+import { cloneOrigin } from "../map/cloneLook";
 
 /** 吹き出しの中身を作るのに要るもの（イベントタブと App が渡す）。 */
 export interface EventHoverDeps {
@@ -88,7 +89,8 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
         case "person": {
           const p = ev.persons[e.index];
           const lines: string[] = [];
-          if (p?.kind === 1) lines.push(t.clone(p.trainerRangeOrBerryTree, p.trainerType, p.elevation));
+          const origin = p ? cloneOrigin(state.session, p) : null;
+          if (origin) lines.push(t.clone(origin.map.bank, origin.map.map, origin.index, origin.localId));
           else if (p && p.trainerType !== 0) lines.push(t.trainerPerson(p.trainerRangeOrBerryTree));
           return { title, lines };
         }

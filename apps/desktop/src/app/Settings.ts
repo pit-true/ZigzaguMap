@@ -98,6 +98,8 @@ export interface SettingsData {
   autoMovement: boolean;
   /** 移動許可だけ違うマスと、選んだ移動許可のマスに印を付ける（表示メニュー。Phase3 #235）。 */
   usageMarks: boolean;
+  /** 3 層の次の番号（単独では置けないブロック）が置かれているマスに印を付ける（表示メニュー。Phase4 #301。既定オン）。 */
+  tripleChildMarks: boolean;
   /**
    * クローン（表示メニュー。Phase3 #242。既定オフ）。オンのときだけ、人を隣のマップの境界の近くへ置く・動かすと隣のマップに
    * クローンを作り（離れたら・消したら消す）、イベントタブの隣の帯にこのマップのクローンを見せる。オフのときは作りも消しもしない。
@@ -153,6 +155,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   pasteMovements: true,
   autoMovement: true,
   usageMarks: true,
+  tripleChildMarks: true,
   showClones: false,
   rememberRomProject: true,
   romProjects: {},

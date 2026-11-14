@@ -5,6 +5,7 @@ import {
   PRIMARY_PALETTE_COUNT,
   PRIMARY_TILE_COUNT,
   TILE_BYTES,
+  TripleLayerIndex,
   decodeBase64,
   writeBgr555,
   type Tileset,
@@ -28,6 +29,8 @@ export class TilesetModel {
   readonly secondary: TilesetData | null;
   /** 確定した色でブロックを描く（ブロック一覧用）。 */
   readonly renderer: BlockRenderer | null;
+  /** 3 層のブロックと、3 枚目に使われている番号（3 層の次の番号）を引く表。 */
+  readonly triple: TripleLayerIndex | null;
   /** 表示の色（BGR555 × 256、一時適用を重ねたもの）。 */
   readonly palettes = new Uint16Array(256);
   private readonly tiles: [Uint8Array, Uint8Array];
@@ -45,8 +48,9 @@ export class TilesetModel {
       for (let c = 0; c < 16; c++) this.palettes[pal * 16 + c] = preview?.[c] ?? source?.palettes[pal * 16 + c] ?? 0;
     }
     for (let i = 0; i < 256; i++) writeBgr555(this.rgba, i, this.palettes[i]!);
-    this.renderer =
-      this.primary && this.secondary ? new BlockRenderer(toTileset(this.primary, this.tiles[0], this.blocks[0]), toTileset(this.secondary, this.tiles[1], this.blocks[1])) : null;
+    const pair = this.primary && this.secondary ? [toTileset(this.primary, this.tiles[0], this.blocks[0]), toTileset(this.secondary, this.tiles[1], this.blocks[1])] as const : null;
+    this.renderer = pair ? new BlockRenderer(pair[0], pair[1]) : null;
+    this.triple = pair ? new TripleLayerIndex(pair[0], pair[1]) : null;
   }
 
   /** 副タイルセットのブロック数。 */

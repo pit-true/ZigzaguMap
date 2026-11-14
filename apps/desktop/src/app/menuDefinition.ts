@@ -9,6 +9,7 @@ import { jaBlockUsage } from "../i18n/ja.blockUsage";
 import { jaEventView } from "../i18n/ja.eventView";
 import { jaTownMini } from "../i18n/ja.townMini";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
+import { jaPen } from "../i18n/ja.pen";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -101,6 +102,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         },
         // 移動許可だけ違うマスと、選んだ移動許可のマスの印（Phase3 #235。ZigzaguMap 独自）
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
+        // 3 層の次の番号が置かれているマスの印（Phase4 #301。ZigzaguMap 独自）
+        { id: "view.tripleChildMarks", label: jaPen.tripleChildMarks },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
         // タウンマップの小窓（#306。ZigzaguMap 独自）

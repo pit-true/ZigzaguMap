@@ -1,7 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
-import { BLOCK_PIXELS, COMPOSITE_MAX_SIDE, compositeScale, layoutComposite, type CompositeLayout, type MapDocument, type MapId } from "@zigzagumap/core";
+import { BLOCK_PIXELS, COMPOSITE_MAX_SIDE, cloneTargetOf, compositeScale, layoutComposite, type CompositeLayout, type MapDocument, type MapId } from "@zigzagumap/core";
 import { jaComposite as t } from "../i18n/ja.composite";
-import { drawEventsOn, type PlacedEvent } from "../ui/map/EventLayer";
+import { drawEventsOn, placedPerson, type PersonGraphics, type PlacedEvent } from "../ui/map/EventLayer";
+import { personGraphicsId } from "../ui/map/cloneLook";
 import { spriteSourceFor } from "../ui/map/spriteCanvases";
 import { messageBox } from "../ui/MessageBox";
 import { scheduleIdleGc } from "../util/idleGc";
@@ -30,11 +31,11 @@ export interface CompositeOptions {
   readonly ask: boolean;
 }
 
-/** マップのイベントを、イベントタブと同じ印の並びにする（`persons` なら人だけ）。 */
-function placedEvents(doc: MapDocument, events: CompositeEvents): PlacedEvent[] {
+/** マップのイベントを、イベントタブと同じ印の並びにする（`persons` なら人だけ。クローンの見た目は `graphics` で引く。#298）。 */
+function placedEvents(doc: MapDocument, events: CompositeEvents, graphics: PersonGraphics): PlacedEvent[] {
   const e = doc.events;
   if (!e || events === "none") return [];
-  const out: PlacedEvent[] = e.persons.map((p, index) => ({ kind: "person", index, x: p.x, y: p.y, graphicsId: p.graphicsId }));
+  const out: PlacedEvent[] = e.persons.map((p, index) => placedPerson(p, index, graphics));
   if (events === "persons") return out;
   e.warps.forEach((w, index) => out.push({ kind: "warp", index, x: w.x, y: w.y }));
   e.traps.forEach((s, index) => out.push({ kind: "trap", index, x: s.x, y: s.y }));
@@ -85,6 +86,12 @@ export class CompositeImage {
     const out = canvas.getContext("2d")!;
     out.imageSmoothingEnabled = scale > 1;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(session) : null;
+    // クローンは元の人の見た目で描く（元のマップは並べたマップから先に引く。#298）
+    const graphics: PersonGraphics = (p) => {
+      const target = cloneTargetOf(p);
+      const origin = target ? docs.get(`${target.bank}.${target.map}`)?.events?.persons.find((q) => q.localId === target.localId) : undefined;
+      return origin?.graphicsId ?? personGraphicsId(session, p);
+    };
     const tilesets = new Map<string, TilesetView>();
     for (const m of layout.maps) {
       const doc = await read(m.id);
@@ -103,7 +110,7 @@ export class CompositeImage {
       const c = one.getContext("2d")!;
       c.drawImage(bitmap, 0, 0);
       bitmap.close();
-      drawEventsOn(c, placedEvents(doc, options.events), BLOCK_PIXELS, null, sprites);
+      drawEventsOn(c, placedEvents(doc, options.events, graphics), BLOCK_PIXELS, null, sprites);
       out.drawImage(one, ((m.x - b.x) * BLOCK_PIXELS) / scale, ((m.y - b.y) * BLOCK_PIXELS) / scale, one.width / scale, one.height / scale);
       one.width = 0;
       one.height = 0;

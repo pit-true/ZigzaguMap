@@ -22,6 +22,7 @@ import { showError } from "../MessageBox";
 import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
 import { spriteSourceFor } from "../map/spriteCanvases";
+import { personGraphicsId } from "../map/cloneLook";
 import { EventCommonPanel } from "./EventCommonPanel";
 import { EventEditor } from "./EventEditor";
 import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
@@ -95,6 +96,11 @@ export class EventTab {
   private index = 0;
   private showCursor = true;
   private placed: PlacedEvent[] = [];
+  /** クローンの元のマップを読み終えたら、元の人の見た目で描き直す（#298。同じ関数を渡して 1 回だけ呼ばせる）。 */
+  private readonly onCloneOrigin = (): void => {
+    this.placed = this.placeEvents();
+    this.draw();
+  };
   /** ドラッグで最後に実行した動かすコマンド（離したときにクローンを合わせる。#242）。 */
   private lastDrag: { command: Command; id: MapId; key: string; kind: string } | null = null;
   /** イベントの上にカーソルを止めたときの吹き出し（#226）。 */
@@ -279,9 +285,14 @@ export class EventTab {
     if (this.state.tab === "event") this.showNote();
   }
 
-  /** マップの上の印（表示メニューで隠した種類は除く。隠したものは描かず、クリック・ホバーでも選ばない。#304）。 */
+  /**
+   * 表示中のマップのイベントを印の並びにする（クローンは元の人の画像番号で。#298）。
+   * 表示メニューで隠した種類は除く（隠したものは描かず、クリック・ホバーでも選ばない。#304）。
+   */
   private placeEvents(): PlacedEvent[] {
-    return visibleEvents(placedEvents(this.state.map?.doc.events ?? null, this.fly()), this.state.settings.data.hiddenEventKinds);
+    const session = this.state.session;
+    const all = placedEvents(this.state.map?.doc.events ?? null, this.fly(), (p) => personGraphicsId(session, p, this.onCloneOrigin));
+    return visibleEvents(all, this.state.settings.data.hiddenEventKinds);
   }
 
   private showPanel(doc: MapDocument): void {

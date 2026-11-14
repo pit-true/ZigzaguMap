@@ -10,7 +10,6 @@ import { MapTree } from "../ui/MapTree";
 import { MapTreeFilter } from "../ui/MapTreeFilter";
 import { installHistoryMouse } from "./historyMouse";
 import { MenuBar } from "../ui/MenuBar";
-import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
@@ -58,6 +57,7 @@ import type { MixingBag } from "./MixingBag";
 import { MapExtras } from "./mapExtras";
 import { registerEventKindActions } from "../ui/event/eventVisibility";
 import { ViewFeatures } from "./viewFeatures";
+import { PenExtras } from "./penExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -89,7 +89,6 @@ export class App implements ActionTarget {
   readonly treeFilter: MapTreeFilter;
   private readonly combo: MapCombo;
   private readonly splitter: Splitter;
-  private readonly romInfo = new RomInfoPanel();
   private readonly statusBar = new StatusBar();
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
@@ -130,6 +129,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** Phase3 でマップの表示に足したもの（隣の帯・つまみ・使用の印・画像のコピーなど）。 */
   readonly extras: MapExtras;
+  /** Phase4 の描く道具の追加分（3 層の印・自動ペン・マップ作成補助）。 */
+  readonly pen: PenExtras;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
   /** Phase4 の表示・一覧・調査（接続の境目の注意など）。 */
@@ -212,6 +213,7 @@ export class App implements ActionTarget {
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.extras = new MapExtras(state, this.actions, { map: mapTab, movement: movementTab, event: eventTab }, (id) => this.openMap(id));
     this.mixingBag = mapTab.bag;
+    this.pen = new PenExtras(state, mapTab);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -228,7 +230,7 @@ export class App implements ActionTarget {
     this.left.className = "left-panel";
     this.left.style.width = `${settings.data.leftWidth}px`;
     this.treeFilter = new MapTreeFilter(this.tree, () => this.state.session?.catalog ?? null);
-    this.left.append(this.treeFilter.element, this.tree.element, this.romInfo.element);
+    this.left.append(this.treeFilter.element, this.tree.element);
     this.views = new ViewFeatures({ state, actions: this.actions, extras: this.extras, statusBar: this.statusBar, treeFilter: this.treeFilter });
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
@@ -307,14 +309,13 @@ export class App implements ActionTarget {
     this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
     this.tree.clear();
     this.rebuildTree();
-    this.romInfo.show(session.project.game);
     this.hint.hidden = true;
     state.settings.addRecent({ rom, project: session.projectDir });
     void this.system.updateRomShortcut(rom);
     state.emit("session");
     state.emit("map");
     await this.setTitle(null);
-    state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
+    state.setStatus(ja.statusRomLoaded, "");
   }
 
   // ---- マップ ----

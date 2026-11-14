@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import { CommandGroup, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
+import { CommandGroup, EditError, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
 import type { App } from "../app/App";
 import { jaBlockEditor as t } from "../i18n/ja.blockEditor";
 import {
@@ -16,6 +16,7 @@ import {
 } from "./protocol";
 import { tilesetRefsOf } from "./tilesetRefs";
 import { errorText } from "../util/errors";
+import { editErrorMessage } from "../ui/form/inputErrors";
 
 /**
  * メインウィンドウ側の、別ウィンドウ（ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の窓口。
@@ -99,7 +100,9 @@ export class ToolWindowHost {
     try {
       result = await this.handle(req);
     } catch (e) {
-      await this.send(req.from, { type: "reply", id: req.id, ok: false, error: errorText(e) });
+      // 編集コマンドの入力エラーは画面の文言にして返す（別ウィンドウがそのまま出す）
+      const error = e instanceof EditError ? editErrorMessage(e).text : errorText(e);
+      await this.send(req.from, { type: "reply", id: req.id, ok: false, error });
       return;
     }
     await this.send(req.from, { type: "reply", id: req.id, ok: true, result });

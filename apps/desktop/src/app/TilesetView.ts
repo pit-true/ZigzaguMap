@@ -4,6 +4,7 @@ import {
   BlockRenderer,
   PRIMARY_BLOCK_COUNT,
   TOTAL_BLOCK_COUNT,
+  TripleLayerIndex,
   createImage,
   type RgbaImage,
   type Tileset,
@@ -15,6 +16,8 @@ import {
  */
 export class TilesetView {
   renderer: BlockRenderer;
+  /** 3 層のブロックと、3 枚目に使われている番号（3 層の次の番号）を引く表。 */
+  triple: TripleLayerIndex;
   /** 副タイルセットのブロック数（パレットに並べる数）。 */
   secondaryCount: number;
   private readonly paletteImages = new Map<number, RgbaImage>();
@@ -25,6 +28,7 @@ export class TilesetView {
     public secondary: Tileset,
   ) {
     this.renderer = new BlockRenderer(primary, secondary);
+    this.triple = new TripleLayerIndex(primary, secondary);
     this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
   }
 
@@ -36,6 +40,7 @@ export class TilesetView {
     this.primary = primary;
     this.secondary = secondary;
     this.renderer = new BlockRenderer(primary, secondary);
+    this.triple = new TripleLayerIndex(primary, secondary);
     this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
     this.paletteImages.clear();
   }

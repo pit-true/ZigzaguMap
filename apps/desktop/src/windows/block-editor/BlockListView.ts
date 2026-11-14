@@ -1,5 +1,6 @@
 import { BLOCK_PIXELS } from "@zigzagumap/core";
 import { place } from "../../ui/form/controls";
+import { shadeTripleChild } from "../../ui/tripleLayerShade";
 import type { TilesetModel } from "../TilesetModel";
 import { pixelCanvas, pointIn, putRgba, resizePixelCanvas } from "./pixelCanvas";
 
@@ -11,6 +12,7 @@ const SCALE = 2;
 /**
  * 左のブロック一覧（AdvanceMap の BlockPaletteBox。8 列、1 ブロック 32px、主の 640 個のあとに副）。
  * 左・右クリックでブロックを選ぶ。AdvanceMap と同じく選択の枠は出さない。
+ * 3 層の次の番号（3 層のブロックの 3 枚目に使われている番号）は薄くして斜線を引く（押すと 1 つ前の 3 層のブロックを選ぶ）。
  */
 export class BlockListView {
   readonly element: HTMLElement;
@@ -43,7 +45,10 @@ export class BlockListView {
     if (renderer) {
       for (let block = 0; block < this.blocks; block++) {
         if (!model.owner(block)) continue;
-        renderer.blit(block, data, width, (block % COLUMNS) * BLOCK_PIXELS, Math.floor(block / COLUMNS) * BLOCK_PIXELS);
+        const x = (block % COLUMNS) * BLOCK_PIXELS;
+        const y = Math.floor(block / COLUMNS) * BLOCK_PIXELS;
+        renderer.blit(block, data, width, x, y);
+        if (model.triple?.isTripleChild(block)) shadeTripleChild(data, width, x, y);
       }
     }
     if (rows > 0) putRgba(this.canvas, data);
