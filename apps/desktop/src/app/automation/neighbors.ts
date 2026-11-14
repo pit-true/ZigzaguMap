@@ -3,6 +3,7 @@ import { neighborRange } from "../neighbors/NeighborService";
 import type { Side } from "@zigzagumap/core";
 import { openContextMenu } from "../../ui/ContextMenu";
 import { settle, str, type AutomationRequest, type CommandTable } from "./registry";
+import { outsideClones } from "../../ui/map/NeighborLayer";
 
 /**
  * 隣のマップの帯（Phase3 #223）。
@@ -30,11 +31,14 @@ async function state(app: App, req: AutomationRequest): Promise<unknown> {
     buildMs: Math.round(service.lastBuildMs * 10) / 10,
     margins: current?.layout.margins ?? { left: 0, top: 0, right: 0, bottom: 0 },
     connectedSides: current?.layout.connectedSides ?? [],
+    // このマップの外にあるクローン（#242。表示 > クローンがオンならイベントタブの帯の上に印を描く）
+    clones: main ? outsideClones(main.doc) : [],
+    clonesShown: app.state.settings.data.showClones,
     // 主マップの接続の全部（ダイブ・浮上も。帯に出ないものも含む）
     connections: (main?.doc.connections ?? []).map((c, index) => ({ index, direction: c.direction, offset: c.offset, bank: c.bank, map: c.map })),
     neighbors: (current?.bands ?? []).map((b) => {
       const p = b.placement;
-      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt, clones: b.clones };
+      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt };
     }),
   };
 }

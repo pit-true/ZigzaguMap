@@ -1,7 +1,6 @@
 import {
   BLOCK_ID_MASK,
   BLOCK_PIXELS,
-  cloneTargetOf,
   createImage,
   layoutNeighbors,
   type BlockGrid,
@@ -32,8 +31,6 @@ export interface NeighborBand {
   readonly bitmap: ImageBitmap;
   /** 隣のマップの配置（移動許可の重ね描きに使う。読み取り専用）。 */
   readonly grid: BlockGrid;
-  /** 隣のマップにある、主マップの人のクローンの位置（隣のマップの中の座標。表示 > クローンがオンのときに帯の上へ描く。#242）。 */
-  readonly clones: readonly { readonly x: number; readonly y: number }[];
 }
 
 /** 表示中のマップの隣の帯の一式。 */
@@ -207,7 +204,7 @@ export class NeighborService {
         }
       }
       this.bands.set(key, bitmap);
-      bands.push({ placement: p, bitmap, grid: nd.grid, clones: clonesOf(nd, main.id) });
+      bands.push({ placement: p, bitmap, grid: nd.grid });
     }
     // 主マップと違うタイルセットの組（帯のために作ったもの）は捨て、落ち着いたら空いた領域も OS へ返す
     if (temporary.size > 0) scheduleIdleGc(true);
@@ -256,16 +253,6 @@ export class NeighborService {
 }
 
 /** 隣のマップの帯の部分を等倍の画像にする（ダイブ先の重ね表示でも使う）。 */
-/** 隣のマップ `doc` にある、`main` の人のクローンの位置。 */
-function clonesOf(doc: MapDocument, main: MapId): { x: number; y: number }[] {
-  const out: { x: number; y: number }[] = [];
-  for (const p of doc.events?.persons ?? []) {
-    const t = cloneTargetOf(p);
-    if (t && t.bank === main.bank && t.map === main.map) out.push({ x: p.x, y: p.y });
-  }
-  return out;
-}
-
 export async function renderBand(grid: BlockGrid, band: { x: number; y: number; width: number; height: number }, tiles: TilesetView): Promise<ImageBitmap> {
   const image = createImage(band.width * BLOCK_PIXELS, band.height * BLOCK_PIXELS);
   for (let y = 0; y < band.height; y++) {

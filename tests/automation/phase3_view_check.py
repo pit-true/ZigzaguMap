@@ -478,15 +478,14 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     clones = clones_in(z, 3, 0)
     check(len(clones) == before + 1 and clones[-1]["target"] == {"bank": 3, "map": 19, "localId": p["localId"]}, f"1 番道路の南の端に人を動かすとマサラタウンにクローン（{clones}）")
     check("クローンを作りました" in status, f"ステータスバーで知らせる（{status}）")
-    # 1 番道路の帯（マサラタウン）にクローンの印が出る
-    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
-    z.call({"cmd": "tab", "name": "event"})
+    # マサラタウンを開くと、上の帯（1 番道路）の上にクローンの印が出る
     ns = z.call({"cmd": "neighbors.state", "wait": True})
-    shown = [c for n in ns["neighbors"] if n["bank"] == 3 and n["map"] == 0 for c in n.get("clones", [])]
-    check(len(shown) >= 1, f"隣の帯にこのマップのクローンを見せる（{shown}）")
+    check(ns["clonesShown"] and len(ns["clones"]) >= 1 and all(c["y"] < 0 for c in ns["clones"]), f"マップの外のクローンを帯の上に見せる（{ns['clones']}）")
     if shots:
         save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "p3_clone_band.png")
         save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": south, "to": [10, cells["height"] - 12]})
     time.sleep(1.0)
     check(len(clones_in(z, 3, 0)) == before, "北へ 8 マスより外へ動かすとクローンが消える")
