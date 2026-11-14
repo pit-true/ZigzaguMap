@@ -1,0 +1,21 @@
+#include "src/config.h"
+MAX_LENGTH=16
+
+// 見本の文字列
+#org @gText_Sample_Hello
+こんにちは！\nいい　てんきですね。
+
+#org @gText_Sample_Hello_k
+こんにちは！\n良い　天気ですね。
+
+#org @gText_Sample_Alias
+#org @gText_Sample_Shared
+[PLAYER]は　{Lv}を　みた。\p<FC 09>[FD][01]
+
+#ifdef SAMPLE_FLAG
+#org @gText_Sample_Flag
+  まえに　くうはく 
+#else
+#org @gText_Sample_NoFlag
+ちがう　もじれつ
+#endif
