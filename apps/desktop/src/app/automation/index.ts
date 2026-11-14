@@ -10,6 +10,7 @@ import { menuCommands } from "./menu";
 import { mouseCommands } from "./mouse";
 import { processCommands } from "./process";
 import { CommandRegistry, nextFrame, type AutomationRequest } from "./registry";
+import { scriptsCommands } from "./scripts";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
 import { viewCommands } from "./view";
@@ -34,6 +35,7 @@ const registry = new CommandRegistry([
   eventCommands,
   viewCommands,
   processCommands,
+  scriptsCommands,
   { commands: () => registry.names() },
 ]);
 

@@ -26,7 +26,7 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
 
-命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
+命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`scripts`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
@@ -73,6 +73,7 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
 | `process.launch` | `command`、`args`、`cwd` | エミュレータと同じく待たずに起動する命令。自動操作のときは何も起動せず記録だけする（返事の `launched` は false）。記録は `state` の `launched` と `process.launched` |
+| `scripts.table` | `action`（省略で `get`）と、その引数（下の表） | maps\scripts.json の対応表（ツール > スクリプトファイルの対応表）。返事は `rows`（各行の `bank`・`map`（null はバンク全体）・`name`・`script`・`strings`（省いていれば null）・`resolvedStrings`（実際に使う `.string`）・`create`（出力で `.s` を作る行）・`unused`（前の行と同じバンク・マップで使われない行））、`pendingFiles`（出力で作る `.s` と `.string`）、`duplicates`、`modified`（未出力の変更）、`loadError`（scripts.json が読めなかった理由）、`open`（画面が開いているか）、`selected`（選んでいる行）、`dialogs` |
 | `scroll` | `target`（`map` / `movement` / `event` / `palette` / `movementPalette`）か `id`、`to`（`end` で右下の端、`start` で左上）・`x`・`y`（位置、px）・`dx`・`dy`（今の位置からの量、px）のどれか | 部品を載せたスクロールの枠を動かす（スクロールバーを動かしたときと同じく `scroll` の出来事を起こす）。返事は `view.scroll` と同じ |
 | `view.scroll` | `target` か `id` | スクロールの状態。`h`・`v`（横・縦のスクロールバーが出ていて使えるか）、`inside`（枠がウィンドウに収まっているか）、`scrollLeft`・`scrollTop`・`scrollWidth`・`scrollHeight`・`clientWidth`・`clientHeight` |
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
@@ -89,6 +90,27 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 イベントタブの部品の ID（`getField` / `setField` / `click` の `id`）は `event.kind`、`event.number`、`event.cursor`、`event.remove`、`event.person.x` のような形です（`event.<種別>.<欄>`、イベントマネージャーは `event.manager.persons` と `event.manager.apply`）。
 
 部品の ID は `<場所>.<名前>` の形です（例: 場所の設定タブ `header.music`・`header.saveScripts`、高度な表示 `pro.footer`・`pro.saveFooter`、コネクションマネージャー `conn.direction`・`conn.save`・`conn.down1`、出現ポケモンタブ `wild.type`・`wild.rate`・`wild.rateBar`・`wild.min.1`・`wild.species.1`・`wild.save`、追加ダイアログ `wildAdd.0`〜`wildAdd.3`・`wildAdd.ok`、ブロックエディタ `be.blocks`・`be.tiles`・`be.block`・`be.palette`・`be.xflip`・`be.attr0`〜`be.attr3`・`be.behavior`・`be.save`、パレットエディタ `pal.color.0`〜`pal.color.15`・`pal.red`・`pal.hex`・`pal.apply`・`pal.pick`、一括変更 `adj.tileset2`・`adj.to.0`〜`adj.to.14`・`adj.save`、新しいマップ `newMap.name`・`newMap.width`・`newMap.tileset1`・`newMap.create`、マップの追加/挿入 `mapInsert.replaceBank`・`mapInsert.replaceMap`・`mapInsert.replace`・`mapInsert.countBank`・`mapInsert.count`・`mapInsert.countApply`、マップバンクヘッダー `bankHeader.remaining.<バンク>`・`bankHeader.newBank`・`bankHeader.apply`、マップタブの `map.makeMap`・`map.makeBank`、マップ一覧の根 `tree.root.h`・`tree.root.i`・`tree.root.f` と「マップファイル」の項目 `tree.mapFile.<番号>`（根と項目は `key` の `Enter` で開く）。一覧は各部品を作るコードの第 1 引数です。作業用のマップ（新規作成・`.map`。バンク -1）は `selectMap` では開けません（`action` の `tools.previousMap` で戻れます）。
+
+`scripts.table` の `action`:
+
+| action | 引数 | 動作 |
+|---|---|---|
+| `get` | | 対応表を読むだけ |
+| `open` / `close` | | 画面を開く／閉じる（メニューの `tools.scriptsTable` と同じ。CFRU-JP のフォルダが無ければ案内のダイアログを出す） |
+| `select` | `index` | 画面で行を選び、下の欄に入れる（行のクリックと同じ） |
+| `add` | `entry`（`bank`・`map`・`name`・`script`・`strings`）、`index`（入れる位置。省略で末尾）、`create`（true で出力のときに `.s` と `.string` を作る） | 行を足す（コマンド `addScriptsTableEntry`） |
+| `set` | `index`、`entry` | 行を書き換える（`setScriptsTableEntry`。知らない項目と `create` は残す） |
+| `remove` | `index` | 行を消す（`removeScriptsTableEntry`。ファイルは消さない） |
+| `move` | `index`、`to` | 行を動かす（`moveScriptsTableEntry`） |
+| `resolve` | `bank`、`map` | そのマップのスクリプトを書く `.s` と `.string`（`entry`・`entryIndex`・`script`・`strings`）。無ければ null |
+| `newScript` | `bank`・`map`・`fileName`（どれも省略可） | 「.s を新しく作る」の入力を出す（答えを待たずに返す。`setField` と `click`、または `dialog` で答える） |
+| `ensure` | `bank`、`map` | 対応表にあれば `resolved` に返し、無ければ「.s を新しく作る」の入力を出す（イベントを置いたときと同じ。待たずに返し、`resolved` は null） |
+
+編集（`add` など）は `command` 命令（`{"cmd":"command","name":"addScriptsTableEntry","args":{"entry":{...}}}`）でも同じです。誤った入力（範囲外のバンク、`..` や絶対パス、拡張子の違い、新しく作るファイルの名前に使えない字、行の番号の範囲外）はエラーになり、表は変わりません。
+
+対応表の画面の部品の ID: 表 `scriptsTable.list`・行 `scriptsTable.row.<番号>`（`click` で選ぶ）、下の欄 `scriptsTable.bank`・`scriptsTable.map`・`scriptsTable.name`・`scriptsTable.script`・`scriptsTable.strings`、ボタン `scriptsTable.newScript`・`scriptsTable.add`・`scriptsTable.save`・`scriptsTable.remove`・`scriptsTable.up`・`scriptsTable.down`・`scriptsTable.close`、警告 `scriptsTable.warning`、案内 `scriptsTable.note`。「.s を新しく作る」の入力は `scriptsTable.new.name`（ファイル名）・`scriptsTable.new.bank`・`scriptsTable.new.map`・`scriptsTable.new.mapName`・`scriptsTable.new.strings`・`scriptsTable.new.preview`（作るファイル）・`scriptsTable.new.intro`・`scriptsTable.new.create`・`scriptsTable.new.cancel` です。
+
+確かめるスクリプト `python tests/automation/scripts_table_check.py --nd <NeoDark-CFRU-main> --chronos <Chronos> --copy-root <写し先> [--exe <zigzagumap.exe>] [--shot <png>]` は、ND と Chronos のフォルダを写し先へ写して（実フォルダには書かない）、画面と `scripts.table` で表を編集し、出力・開き直し・写しでのビルドまでを確かめます。
 
 ## 別ウィンドウ（ワールドマップエディタ）
 
