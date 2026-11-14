@@ -69,7 +69,14 @@ export class AddRomEraseRangesCommand implements Command<AddRomEraseRangesArgs &
     });
   }
 
-  constructor(readonly args: AddRomEraseRangesArgs & JsonObject) {}
+  readonly args: AddRomEraseRangesArgs & JsonObject;
+
+  constructor(args: AddRomEraseRangesArgs) {
+    // 記録用の範囲（RomEraseRange）を渡しても、決まった項目だけを引数に持つ
+    this.args = {
+      ranges: args.ranges.map((r) => ({ address: r.address, length: r.length, type: r.type, bank: r.bank, map: r.map, event: r.event, index: r.index })),
+    } as AddRomEraseRangesArgs & JsonObject;
+  }
 
   do(context: EditorContext): void {
     if (!isRomEraseContext(context)) throw new Error("このコマンドには埋める範囲の記録（romErase()）が必要です");
