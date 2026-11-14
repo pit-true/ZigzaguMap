@@ -1,6 +1,7 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaMapFind } from "../i18n/ja.mapFind";
+import { jaPaint } from "../i18n/ja.paint";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -36,6 +37,9 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
   { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
   { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
+  // マップタブのコピーと貼り付け（Phase3 #225。input/StampClipboard.ts）
+  { keys: "Ctrl+C", action: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },
+  { keys: "Ctrl+V", action: jaPaint.shortcutPaste, where: jaPaint.shortcutWhere },
   ...scriptEditorKeys(),
 ];
 

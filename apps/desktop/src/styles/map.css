@@ -92,3 +92,14 @@
 .movement-palette canvas {
   display: block;
 }
+
+/* マップタブの右の欄の「移動許可も貼る」（Phase3 #225） */
+.paste-movements {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--shadow);
+  white-space: nowrap;
+}

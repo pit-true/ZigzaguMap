@@ -15,6 +15,8 @@ export interface BlockSelection {
   readonly width: number;
   readonly height: number;
   readonly blocks: readonly number[];
+  /** 移動許可（`blocks` と同じ並び）。マップから拾ったときだけ持つ（パレットから選んだものは持たない。Phase3 #225）。 */
+  readonly movements?: readonly number[];
 }
 
 /** ステータスバーの 2 欄。 */
