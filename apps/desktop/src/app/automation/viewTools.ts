@@ -130,7 +130,59 @@ async function thumbsState(app: App, req: AutomationRequest): Promise<unknown> {
   return { ...t.status(), rows: app.tree.thumbnailRows() };
 }
 
+/** マップのタブの名前（`map` / `movement` / `event`）。 */
+function zoomTab(req: AutomationRequest): "map" | "movement" | "event" {
+  const tab = typeof req["tab"] === "string" ? req["tab"] : "map";
+  if (tab !== "map" && tab !== "movement" && tab !== "event") throw new Error(`tab は map / movement / event のどれかです: ${tab}`);
+  return tab;
+}
+
+/**
+ * `zoom.state {tab?}`: マップの拡大（#316）。倍率 `zoom`、描く大きさ `cellSize`、画面の上の大きさ `screenCellSize`、CSS で広げる割合
+ * `scale`、重ね描きの Canvas の画素数 `layer`（`width`・`height`）、スクロールの大きさ `scrollSize` と位置 `scroll`、個人設定 `mapZoom`。
+ */
+function zoomState(app: App, req: AutomationRequest): unknown {
+  const tab = zoomTab(req);
+  const view = app.tabs[tab].view;
+  const el = view.element;
+  return {
+    tab,
+    zoom: view.zoom,
+    cellSize: view.cellSize,
+    screenCellSize: view.screenCellSize,
+    scale: view.screenScale,
+    layer: { width: view.layer.width, height: view.layer.height },
+    scrollSize: { width: el.scrollWidth, height: el.scrollHeight },
+    scroll: { left: el.scrollLeft, top: el.scrollTop },
+    mapZoom: app.state.settings.data.mapZoom,
+  };
+}
+
+/**
+ * `zoom.wheel {tab?, cell, delta}`: マスの上で Ctrl＋ホイールを回したのと同じ（`delta` が負なら拡大、正なら縮小。既定 -1）。
+ * `cell` は主マップの左上が原点のマス。返事は `zoom.state` と、回したあとの同じマスの画面の上の位置 `at`（マウスの位置との差 `drift`）。
+ */
+function zoomWheel(app: App, req: AutomationRequest): unknown {
+  const tab = zoomTab(req);
+  const view = app.tabs[tab].view;
+  const c = req["cell"];
+  if (!Array.isArray(c) || c.length !== 2) throw new Error("cell は [x, y] で指定してください");
+  const where = (): { x: number; y: number } => {
+    const r = view.stage.getBoundingClientRect();
+    const o = view.originPx;
+    const k = view.screenScale;
+    return { x: r.left + (o.x + (Number(c[0]) + 0.5) * view.cellSize) * k, y: r.top + (o.y + (Number(c[1]) + 0.5) * view.cellSize) * k };
+  };
+  const before = where();
+  const delta = typeof req["delta"] === "number" ? req["delta"] : -1;
+  view.element.dispatchEvent(new WheelEvent("wheel", { deltaY: delta * 100, ctrlKey: true, clientX: before.x, clientY: before.y, bubbles: true, cancelable: true }));
+  const after = where();
+  return { ...(zoomState(app, req) as object), at: after, drift: Math.round(Math.hypot(after.x - before.x, after.y - before.y)) };
+}
+
 export const viewToolCommands: CommandTable = {
+  "zoom.state": zoomState,
+  "zoom.wheel": zoomWheel,
   "thumbs.state": thumbsState,
   "recent.state": recentState,
   "pointers.state": pointersState,

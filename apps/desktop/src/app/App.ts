@@ -5,6 +5,7 @@ import { isWorkMapId, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
 import { messageBox } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
+import type { MapView } from "../ui/map/MapView";
 import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
 import { MapTreeFilter } from "../ui/MapTreeFilter";
@@ -96,7 +97,7 @@ export class App implements ActionTarget {
   private readonly eventTab: EventTab;
   /** マップの外のイベントの帯。 */
   readonly outsideBar: OutsideEventsBar;
-  readonly tabs: Record<"map" | "movement" | "event", { view: { toPng(withNeighbors?: boolean): string | null } }>;
+  readonly tabs: Record<"map" | "movement" | "event", { view: MapView }>;
   private unsubscribeBus: (() => void) | null = null;
   /** 操作のあとの描き直しと未出力の印。 */
   readonly changes = new ChangeTracker(this);

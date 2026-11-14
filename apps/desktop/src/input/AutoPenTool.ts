@@ -49,8 +49,10 @@ export class AutoPenTool {
     const r = view.stage.getBoundingClientRect();
     const o = view.originPx;
     const size = view.cellSize;
-    const fx = (e.clientX - r.left - o.x) / size;
-    const fy = (e.clientY - r.top - o.y) / size;
+    // ステージを CSS で広げているとき（#316）は、画面の上の位置をステージの中の位置に直す
+    const k = view.screenScale;
+    const fx = ((e.clientX - r.left) / k - o.x) / size;
+    const fy = ((e.clientY - r.top) / k - o.y) / size;
     this.frac = { x: fx - Math.floor(fx), y: fy - Math.floor(fy) };
   }
 

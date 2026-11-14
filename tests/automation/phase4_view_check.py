@@ -442,8 +442,79 @@ def check_thumbs(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(not st["enabled"] and st["maps"] == 0 and st["rows"] == 0, "オフにすると捨てて、行からも消える")
 
 
+# ---- #316 ----
+
+
+def check_zoom(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "map"})
+    st = z.call({"cmd": "state"})
+    w, h = st["map"]["width"], st["map"]["height"]
+    s1 = z.call({"cmd": "zoom.state"})
+    check(s1["zoom"] == 1 and s1["layer"]["width"] == w * 16 and s1["scale"] == 1, f"初めは 1 倍（{s1['layer']}）")
+    center = [w // 2, h // 2]
+    drifts = []
+    for want in (2, 3, 4, 5, 6, 7, 8):
+        r = z.call({"cmd": "zoom.wheel", "cell": center, "delta": -1})
+        drifts.append(r["drift"])
+        check(r["zoom"] == want, f"Ctrl＋ホイールで {want} 倍（{r['zoom']}）")
+    r = z.call({"cmd": "zoom.wheel", "cell": center, "delta": -1})
+    check(r["zoom"] == 8, "8 倍より大きくならない")
+    s8 = z.call({"cmd": "zoom.state"})
+    check(s8["layer"]["width"] == w * 32 and s8["scale"] == 4, f"8 倍でも重ね描きは 2 倍の大きさ（{s8['layer']}、CSS で 4 倍）")
+    check(abs(s8["scrollSize"]["width"] - w * 128) <= w * 128 * 0.2 + 8 * 128 * 2, f"スクロールの大きさは 8 倍（{s8['scrollSize']}）")
+    check(max(drifts) <= 3, f"マウスの位置のマスが動かない（ずれ {drifts}px）")
+    check(z.call({"cmd": "state"})["settings"]["mapZoom"]["map"] == 8, "倍率を個人設定に残す")
+    shot(z, shots, "view_zoom8.png")
+    # 8 倍で描く（マウスの位置からマスを正しく求める）
+    z.call({"cmd": "selectBlock", "block": 9})
+    cell = [center[0] + 1, center[1]]
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": cell})
+    cells = z.call({"cmd": "cells"})["cells"]
+    got = cells[cell[1] * w + cell[0]] & 0x3FF
+    check(got == 9, f"8 倍でも押したマスに描く（{got}）")
+    z.call({"cmd": "undo"})
+    cells = z.call({"cmd": "cells"})["cells"]
+    # 中ボタンのドラッグでスクロール
+    before = z.call({"cmd": "zoom.state"})["scroll"]
+    z.call({"cmd": "mouse", "id": "map-tab-view", "action": "drag", "button": "middle", "px": [300, 200], "toPx": [200, 150], "steps": 4})
+    after = z.call({"cmd": "zoom.state"})["scroll"]
+    check(after["left"] - before["left"] == 100 and after["top"] - before["top"] == 50, f"中ボタンのドラッグでスクロール（{before} → {after}）")
+    check(z.call({"cmd": "cells"})["cells"] == cells, "中ボタンでは描かない")
+    # 8 倍のまま切り替え
+    times = []
+    for m in (0, 1, 19):
+        times.append(z.call({"cmd": "selectMap", "bank": 3, "map": m}).get("switchMs", 0))
+    check(max(times) < 100, f"8 倍でもマップの切り替えは 100ms 以内（{[round(t, 1) for t in times]}）")
+    ctx.setdefault("timings", []).append(("zoom8 switch", max(times)))
+    # イベントタブも 8 倍にして、イベントを押して選ぶ
+    z.call({"cmd": "tab", "name": "event"})
+    for _ in range(7):
+        z.call({"cmd": "zoom.wheel", "tab": "event", "cell": center, "delta": -1})
+    ev = z.call({"cmd": "event.state"})
+    p = ev["events"]["persons"][-1] if ev["events"]["persons"] else None
+    if p:
+        z.call({"cmd": "event.select", "kind": "sign", "index": 0})
+        z.call({"cmd": "mouse", "target": "event", "action": "click", "cell": [p["x"], p["y"]]})
+        ev2 = z.call({"cmd": "event.state"})
+        check(ev2["kind"] == "person", f"8 倍のイベントタブで人を押すと選べる（{ev2['kind']} {ev2['index']}）")
+    shot(z, shots, "view_zoom8_event.png")
+    # メニューの「拡大表示」は今までどおり 1 倍と 2 倍
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "menu.run", "id": "zoom.map"})
+    s = z.call({"cmd": "zoom.state"})
+    check(s["zoom"] == 1 and s["layer"]["width"] == w * 16, f"メニューの拡大表示を押すと 1 倍に戻る（{s['zoom']}）")
+    z.call({"cmd": "menu.run", "id": "zoom.map"})
+    s = z.call({"cmd": "zoom.state"})
+    check(s["zoom"] == 2 and s["scale"] == 1, f"もう一度で 2 倍（{s['zoom']}）")
+    z.call({"cmd": "menu.run", "id": "zoom.map"})
+    z.call({"cmd": "menu.run", "id": "zoom.event"})
+    z.call({"cmd": "menu.run", "id": "zoom.event"})
+
+
 CHECKS = {
     "events": check_events,
+    "zoom": check_zoom,
     "thumbs": check_thumbs,
     "palette": check_palette,
     "pointers": check_pointers,

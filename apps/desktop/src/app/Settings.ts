@@ -127,6 +127,8 @@ export interface SettingsData {
   paletteBoundary: boolean;
   /** マップ一覧にマップの縮小（48px）を出す（表示メニュー。既定オフ。#315・Q13）。 */
   treeThumbnails: boolean;
+  /** Ctrl＋ホイールで決めたタブごとの表示倍率（1〜8。0 なら「拡大表示」のチェックに従う。#316）。 */
+  mapZoom: { map: number; movement: number; event: number };
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -180,6 +182,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   showTownMap: false,
   paletteBoundary: true,
   treeThumbnails: false,
+  mapZoom: { map: 0, movement: 0, event: 0 },
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

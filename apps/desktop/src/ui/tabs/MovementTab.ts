@@ -1,4 +1,5 @@
 import type { EditorState } from "../../app/EditorState";
+import { tabZoom } from "../../app/mapZoom";
 import { MovementPainter, movementName } from "../../input/MovementPainter";
 import { ja } from "../../i18n/ja";
 import { MapView } from "../map/MapView";
@@ -49,7 +50,7 @@ export class MovementTab {
 
   private configure(): void {
     const s = this.state.settings.data;
-    this.view.configure(s.zoomMovement ? 2 : 1, s.grid);
+    this.view.configure(tabZoom(s, "movement"), s.grid);
     this.palette.configure(s.zoomMovementPalette ? 2 : 1);
     this.resetLayer();
   }

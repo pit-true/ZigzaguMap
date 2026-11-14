@@ -43,6 +43,7 @@ import { drawWarpWarnings, unusableWarps } from "./warpCheck";
 import { ctrlPeek } from "../map/ctrlPeek";
 import type { ScriptSummaries } from "./ScriptSummaries";
 import { EventQuickAdd } from "./EventQuickAdd";
+import { tabZoom } from "../../app/mapZoom";
 import { visibleEvents } from "./eventVisibility";
 
 /** タブの外の機能（App が渡す）。 */
@@ -259,7 +260,7 @@ export class EventTab {
 
   private configure(): void {
     const s = this.state.settings.data;
-    this.view.configure(s.zoomEvent ? 2 : 1, s.grid);
+    this.view.configure(tabZoom(s, "event"), s.grid);
     // 表示メニューで隠す種類が変わったかもしれない（#304）
     this.placed = this.placeEvents();
     this.draw();

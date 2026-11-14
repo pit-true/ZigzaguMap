@@ -43,7 +43,8 @@ export const hoverCommands: CommandTable = {
     const r = tab.view.stage.getBoundingClientRect();
     const o = tab.view.originPx;
     const size = tab.view.cellSize;
-    const shown = await tab.hoverTip.showAt(cell, r.left + o.x + (cell.x + 0.5) * size, r.top + o.y + (cell.y + 0.5) * size);
+    const k = tab.view.screenScale;
+    const shown = await tab.hoverTip.showAt(cell, r.left + (o.x + (cell.x + 0.5) * size) * k, r.top + (o.y + (cell.y + 0.5) * size) * k);
     const out = describe(tab, shown);
     if (req["show"] === false) tab.hoverTip.hide();
     return out;

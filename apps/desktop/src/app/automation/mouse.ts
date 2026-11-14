@@ -30,9 +30,9 @@ interface Target {
 }
 
 /** マップのタブの、主マップの左上の位置（ステージの中の画素。隣の帯の余白が無ければ 0）。 */
-function mapOrigin(stage: HTMLElement): { x: number; y: number } {
+function mapOrigin(stage: HTMLElement, scale = 1): { x: number; y: number } {
   const base = stage.querySelector<HTMLElement>(".map-base");
-  return { x: parseFloat(base?.style.left ?? "") || 0, y: parseFloat(base?.style.top ?? "") || 0 };
+  return { x: (parseFloat(base?.style.left ?? "") || 0) * scale, y: (parseFloat(base?.style.top ?? "") || 0) * scale };
 }
 
 export const MOUSE_TARGETS: Readonly<Record<string, string>> = {
@@ -53,7 +53,7 @@ function resolveTarget(app: App, req: AutomationRequest): Target {
     const id = str(req, "handle");
     const element = document.querySelector<HTMLElement>(`.map-tab-view [data-auto-id="${CSS.escape(id)}"]`);
     if (!element) throw new Error(`つまみが見つかりません: ${id}`);
-    const size = app.state.settings.data.zoomMap ? 32 : 16;
+    const size = app.tabs.map.view.screenCellSize;
     const r = element.getBoundingClientRect();
     return { element, cell: { w: size, h: size }, origin: { x: r.width / 2 - size / 2, y: r.height / 2 - size / 2 } };
   }
@@ -64,12 +64,13 @@ function resolveTarget(app: App, req: AutomationRequest): Target {
   const s = app.state.settings.data;
   const zoom = (on: boolean): number => (on ? 32 : 16);
   switch (name) {
+    // マップのタブは画面の上のマスの大きさ（3〜8 倍の拡大も。#316）
     case "map":
-      return { element, cell: { w: zoom(s.zoomMap), h: zoom(s.zoomMap) }, origin: mapOrigin(element) };
     case "movement":
-      return { element, cell: { w: zoom(s.zoomMovement), h: zoom(s.zoomMovement) }, origin: mapOrigin(element) };
-    case "event":
-      return { element, cell: { w: zoom(s.zoomEvent), h: zoom(s.zoomEvent) }, origin: mapOrigin(element) };
+    case "event": {
+      const view = app.tabs[name].view;
+      return { element, cell: { w: view.screenCellSize, h: view.screenCellSize }, origin: mapOrigin(element, view.screenScale) };
+    }
     case "palette":
       return { element, cell: { w: zoom(s.zoomBlockPalette), h: zoom(s.zoomBlockPalette) } };
     case "movementPalette":

@@ -115,7 +115,8 @@ export class EdgeHandles {
     const main = this.state.map;
     if (!d || !main || e.pointerId !== d.pointerId) return;
     e.stopPropagation();
-    const size = this.view.cellSize;
+    // 画面の上の動き（拡大していれば CSS で広げた分も。#316）をマスに直す
+    const size = this.view.screenCellSize;
     const raw = d.side === "left" ? -(e.clientX - d.x) : d.side === "right" ? e.clientX - d.x : d.side === "up" ? -(e.clientY - d.y) : e.clientY - d.y;
     const amount = clampEdgeAmount(main.doc.width, main.doc.height, d.side, Math.round(raw / size));
     if (amount === d.amount) return;

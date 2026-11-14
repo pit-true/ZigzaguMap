@@ -111,7 +111,7 @@ export class ConnectionHandles {
     el.addEventListener("pointermove", (e) => {
       if (!drag) return;
       e.stopPropagation();
-      const size = this.view.cellSize;
+      const size = this.view.screenCellSize;
       const vertical = isVertical(h.placement.direction);
       const delta = Math.round((vertical ? e.clientX - drag.x : e.clientY - drag.y) / size);
       if (delta === drag.delta) return;
