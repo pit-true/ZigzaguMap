@@ -13,6 +13,8 @@
 #     pws      … 専用ワーキングセット（タスクマネージャーの「メモリ」の列と同じ）。Win32_PerfFormattedData_PerfProc_Process.WorkingSetPrivate
 #   目標（150MB 以下）は「専用ワーキングセットの合計」で判定する（利用者がタスクマネージャーで見る値で、共有ページを二重に数えない）。
 # - 対象: exe と、その子孫（WebView2 のブラウザ・レンダラー・GPU・ユーティリティ・crashpad）。種類はコマンドラインの --type= で分ける。
+# - -Actions に自動操作のアクション ID（`view.treeThumbnails` など。`,` 区切り）を渡すと、ROM を開いたあとに実行してから測る。
+#   -Zoom に 3〜8 を渡すと、マップタブを Ctrl＋ホイールでその倍率にしてから切り替える（Phase4 #315・#316 のオンのときの増え方を測る）。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
 #   （下限の比較用。-BrowserArgs をそのアプリの WebView2 に渡す）。
 param(
@@ -24,6 +26,8 @@ param(
   [int]$Settle = 10,
   [string]$Out = "",
   [switch]$Baseline,
+  [string]$Actions = "",
+  [int]$Zoom = 0,
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -119,6 +123,9 @@ try {
     if ($Rom) {
       if ($Project) { Call @{ cmd = "open"; rom = $Rom; project = $Project } | Out-Null } else { Call @{ cmd = "open"; rom = $Rom } | Out-Null }
       Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+      foreach ($a in ($Actions -split "," | Where-Object { $_ })) { Call @{ cmd = "action"; id = $a.Trim() } | Out-Null }
+      for ($z = 1; $z -lt $Zoom; $z++) { Call @{ cmd = "zoom.wheel"; cell = @(10, 10); delta = -1 } | Out-Null }
+      if ($Actions -match "treeThumbnails") { Call @{ cmd = "thumbs.state"; wait = $true } | Out-Null }
       $results += Get-Snapshot "ROM を開いた後（3.0）" $proc.Id
       $maps = @(@(3, 1), @(3, 3), @(3, 19), @(4, 1), @(1, 1), @(3, 37), @(3, 45), @(3, 50), @(5, 0), @(3, 0))
       $ms = @()
