@@ -22,10 +22,16 @@ export {
 export { detectLabelRename, findLabelOccurrences, renameLabelInText, type LabelOccurrence } from "./LabelRename.js";
 export {
   MAP_SCRIPT_TYPE_NAMES,
+  MAP_SCRIPT_TYPE_SUFFIXES,
   findMapScriptTable,
   isMapScriptTableType,
   isMapScriptTarget,
+  mapScriptAddress,
   mapScriptConditionTableLabel,
+  mapScriptTableFromEntries,
+  mapScriptTargetLabel,
+  mapScriptTypeOfAddress,
+  retargetMapScriptAddress,
   mapScriptTableLines,
   parseMapScriptTable,
   replaceMapScriptTable,

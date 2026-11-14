@@ -1,3 +1,4 @@
+import type { MapScriptEntry } from "../../mapscript/types.js";
 import { isScriptLabelName } from "./LabelNaming.js";
 
 /** マップスクリプトの種類（1〜7）。2 と 4 は条件表を指す。 */
@@ -167,4 +168,61 @@ export function replaceMapScriptTable(text: string, label: string, table: MapScr
 /** 行き先がラベルかアドレスとして書けるか。 */
 export function isMapScriptTarget(script: string): boolean {
   return isScriptLabelName(script) || /^0x[0-9A-Fa-f]{1,8}$/.test(script);
+}
+
+/** 種類ごとの行き先のラベルの後ろの名前（xse_defines.s の名前の後ろの部分）。 */
+export const MAP_SCRIPT_TYPE_SUFFIXES: Readonly<Record<number, string>> = {
+  1: "OnLoad",
+  2: "OnFrame",
+  3: "OnTransition",
+  4: "OnWarpInto",
+  5: "OnResume",
+  6: "OnDiveWarp",
+  7: "OnReturnToField",
+};
+
+/**
+ * 表の行き先に付ける新しいラベル（`<表のラベル>_<種類の名前>`。例 `Moegi_MapScripts_OnLoad`）。
+ * 「種類を足す」のひな形と ROM の取り込みで使う。`taken` にある名前と重なれば `2` から番号を付ける。
+ */
+export function mapScriptTargetLabel(tableLabel: string, type: number, taken: (name: string) => boolean): string {
+  const base = `${tableLabel}_${MAP_SCRIPT_TYPE_SUFFIXES[type] ?? type}`;
+  if (!taken(base)) return base;
+  for (let n = 2; ; n++) if (!taken(`${base}${n}`)) return `${base}${n}`;
+}
+
+/** 行き先に書くアドレス（`0x0816F58D`）。 */
+export function mapScriptAddress(pointer: number): string {
+  return `0x${(pointer >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
+}
+
+/** 行き先がそのアドレスか（`0x` の書き方の違いは見ない）。 */
+function isAddressOf(script: string, pointer: number): boolean {
+  return /^0x[0-9A-Fa-f]{1,8}$/.test(script) && parseInt(script, 16) >>> 0 === pointer >>> 0;
+}
+
+/** 今の ROM（か maps\ の JSON）のマップスクリプトを、アドレスのまま表にする（「表を作る」）。種類 1〜7 だけを使う。 */
+export function mapScriptTableFromEntries(label: string, entries: readonly MapScriptEntry[]): MapScriptTableModel {
+  const items: MapScriptItem[] = entries
+    .filter((e) => e.type >= 1 && e.type <= 7)
+    .map((e) =>
+      isMapScriptTableType(e.type)
+        ? { type: e.type, script: "", conditions: (e.table?.entries ?? []).map((c) => ({ variable: c.variable, value: c.value, script: mapScriptAddress(c.script) })) }
+        : { type: e.type, script: mapScriptAddress(e.pointer), conditions: [] },
+    );
+  return { label, items };
+}
+
+/** 行き先がそのアドレスの、最初の件の種類（無ければ null）。 */
+export function mapScriptTypeOfAddress(table: MapScriptTableModel, pointer: number): number | null {
+  for (const item of table.items) {
+    if (isMapScriptTableType(item.type) ? item.conditions.some((c) => isAddressOf(c.script, pointer)) : isAddressOf(item.script, pointer)) return item.type;
+  }
+  return null;
+}
+
+/** 行き先がそのアドレスの件（条件表の行も）をすべて `label` にする。 */
+export function retargetMapScriptAddress(table: MapScriptTableModel, pointer: number, label: string): MapScriptTableModel {
+  const swap = (script: string): string => (isAddressOf(script, pointer) ? label : script);
+  return { ...table, items: table.items.map((i) => ({ ...i, script: swap(i.script), conditions: i.conditions.map((c) => ({ ...c, script: swap(c.script) })) })) };
 }
