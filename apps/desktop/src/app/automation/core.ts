@@ -1,3 +1,4 @@
+import { openedUrls } from "../../util/externalLinks";
 import type { App } from "../App";
 import { TAB_ORDER, type TabId } from "../EditorState";
 import { timings } from "../timings";
@@ -44,6 +45,8 @@ export function describeState(app: App): unknown {
     title: document.title,
     timings: timings.toJson(),
     jsHeap: jsHeap(),
+    /** 開こうとした外部の URL（新しい順。自動操作中はブラウザを開かない）。 */
+    openedUrls,
   };
 }
 

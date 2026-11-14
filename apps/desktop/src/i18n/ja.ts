@@ -97,33 +97,11 @@ export const ja = {
   about: M["141"],
   aboutApp: "ZigzaguMapについて",
   eula: M["142"],
-  /** ZigzaguMapについて（[AboutBox] の並び）。 */
+  /** ZigzaguMapについて（アプリ名・バージョン・リポジトリへのリンクだけ）。 */
   help: {
     aboutTitle: ini.AboutBox.Title,
-    credits: ini.AboutBox["11"],
-    sections: [
-      [
-        ini.AboutBox["20"],
-        [
-          [ini.AboutBox["21"], "pit-true"],
-          [ini.AboutBox["23"], "https://github.com/pit-true/ZigzaguMap"],
-          [ini.AboutBox["25"], "AdvanceMap 1.92 を再現した CFRU-JP 用のマップエディタです。ROM へは書き込まず、maps\\ の JSON に出力します。"],
-        ],
-      ],
-      [
-        "元にしたソフト:",
-        [
-          [ini.AboutBox["21"], "Advance Map 1.92 (LU-HO Poké)"],
-          [
-            ini.AboutBox["30"],
-            `${ini["INI-Version"].Sprache} ${ini["INI-Version"].Version} (${ini["INI-Version"].Ersteller})`,
-          ],
-        ],
-      ],
-    ] as readonly (readonly [string, readonly (readonly [string, string])[]])[],
-    version: (v: string) => `ZigzaguMap バージョン: ${v}`,
-    license: "ライセンス: MIT",
-    copyright: "Copyright (c) 2026 pit-true",
+    version: (v: string) => `バージョン ${v}`,
+    repositoryUrl: "https://github.com/pit-true/ZigzaguMap",
   },
 
   // 画像の保存（保存ダイアログの文言は AdvanceMap のまま。「Intependent」の綴りも原文どおり）

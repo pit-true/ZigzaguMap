@@ -3,7 +3,7 @@ import license from "../../../../../LICENSE?raw";
 import readme from "../../../../../README.md?raw";
 import { ja } from "../../i18n/ja";
 import { createDialog, dialogButton, type DialogFrame } from "../Dialog";
-import { ICONS } from "../icons";
+import { openExternal } from "../../util/externalLinks";
 
 /**
  * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me）。
@@ -34,53 +34,28 @@ function okWindow(title: string, className: string, build: (frame: DialogFrame) 
   });
 }
 
-/** ヘルプ > ZigzaguMapについて（F1）。AdvanceMap の About と同じ並び（黒い帯の見出し、クレジット、バージョン）。 */
+/** ヘルプ > ZigzaguMapについて（F1）。アプリ名、バージョン、GitHub のリポジトリへのリンク（既定のブラウザで開く）だけを出す。 */
 export async function openAbout(): Promise<void> {
   const version = await getVersion().catch(() => "0.0.0");
   const h = ja.help;
   await okWindow(h.aboutTitle, "about-window", (frame) => {
-    const band = document.createElement("div");
-    band.className = "about-band";
-    const icon = document.createElement("span");
-    icon.className = "about-icon";
-    icon.innerHTML = ICONS["showObjects"] ?? "";
-    const name = document.createElement("span");
+    const name = document.createElement("div");
+    name.className = "about-name";
     name.textContent = ja.appTitle;
-    band.append(icon, name);
-
-    const credits = document.createElement("fieldset");
-    credits.className = "group-box about-credits";
-    const legend = document.createElement("legend");
-    legend.textContent = h.credits;
-    credits.append(legend);
-    for (const [heading, rows] of h.sections) {
-      const head = document.createElement("div");
-      head.className = "about-heading";
-      head.textContent = heading;
-      const table = document.createElement("div");
-      table.className = "about-table";
-      for (const [label, value] of rows) {
-        const l = document.createElement("span");
-        l.textContent = label;
-        const v = document.createElement("span");
-        v.textContent = value;
-        if (/^https?:/.test(value)) v.className = "about-link";
-        table.append(l, v);
-      }
-      credits.append(head, table);
-    }
-
-    const foot = document.createElement("div");
-    foot.className = "about-foot";
-    const left = document.createElement("div");
-    left.textContent = h.version(version);
-    const right = document.createElement("div");
-    right.textContent = h.license;
-    foot.append(left, right);
-    const copy = document.createElement("div");
-    copy.className = "about-copy";
-    copy.textContent = h.copyright;
-    frame.body.append(band, credits, foot, copy);
+    const ver = document.createElement("div");
+    ver.className = "about-version";
+    ver.dataset["autoId"] = "about.version";
+    ver.textContent = h.version(version);
+    const link = document.createElement("a");
+    link.className = "about-link";
+    link.href = h.repositoryUrl;
+    link.textContent = h.repositoryUrl;
+    link.dataset["autoId"] = "about.link";
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      void openExternal(h.repositoryUrl);
+    });
+    frame.body.append(name, ver, link);
   });
 }
 
