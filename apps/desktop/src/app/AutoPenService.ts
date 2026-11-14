@@ -11,6 +11,7 @@ import {
   type AutoPenTilesetInfo,
   type BochiImportResult,
 } from "@zigzagumap/core";
+import { jaAssist } from "../i18n/ja.assist";
 import { scheduleIdleGc } from "../util/idleGc";
 import type { EditorState } from "./EditorState";
 import type { OpenMap } from "./ProjectSession";
@@ -140,7 +141,7 @@ export class AutoPenService {
   async save(parts: readonly AutoPenPart[]): Promise<string[]> {
     const lib = await this.ready();
     const set = this.setValue;
-    if (!lib || !set) throw new Error("マップが開かれていません");
+    if (!lib || !set) throw new Error(jaAssist.noMap);
     const written = await lib.save(set.primary, set.secondary, parts);
     this.refresh(true);
     return written;
@@ -183,7 +184,7 @@ export class AutoPenService {
   async importBochi(texts: readonly string[]): Promise<BochiImportResult> {
     const lib = await this.ready();
     const set = this.setValue;
-    if (!lib || !set) throw new Error("マップが開かれていません");
+    if (!lib || !set) throw new Error(jaAssist.noMap);
     const r = await lib.importBochi(texts, set.primary, set.secondary);
     this.refresh(true);
     return r;
