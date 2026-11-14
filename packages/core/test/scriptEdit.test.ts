@@ -8,11 +8,15 @@ import {
   eventScriptTemplate,
   findLabelOccurrences,
   isScriptLabelName,
+  mapScriptTableFromEntries,
+  mapScriptTargetLabel,
+  mapScriptTypeOfAddress,
   newScriptLabel,
   parseMapScriptTable,
   removeBlock,
   renameLabelInText,
   replaceMapScriptTable,
+  retargetMapScriptAddress,
   scriptLabelMapName,
   stringsBlockText,
   textNewline,
@@ -123,5 +127,46 @@ describe("マップスクリプトの表", () => {
     expect(next).toContain(".global Moegi_MapScripts\n");
     expect(next).not.toContain("levelscript");
     expect(replaceMapScriptTable(next, "Moegi_MapScripts", null, true)).toBe(".text\n");
+  });
+});
+
+describe("マップスクリプトの行き先の取り込み", () => {
+  const table = mapScriptTableFromEntries("Moegi_MapScripts", [
+    { type: 3, pointer: 0x0816f58d, table: null },
+    { type: 2, pointer: 0x08170000, table: { entries: [{ variable: 0x4050, value: 0, script: 0x0816f58d }, { variable: 0x4050, value: 1, script: 0x08170100 }], tail: new Uint8Array(8) } },
+    { type: 0x0f, pointer: 0x08000000, table: null },
+  ]);
+
+  it("ROM のマップスクリプトをアドレスのまま表にする", () => {
+    expect(table).toEqual({
+      label: "Moegi_MapScripts",
+      items: [
+        { type: 3, script: "0x0816F58D", conditions: [] },
+        {
+          type: 2,
+          script: "",
+          conditions: [
+            { variable: 0x4050, value: 0, script: "0x0816F58D" },
+            { variable: 0x4050, value: 1, script: "0x08170100" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("行き先のアドレスの種類を探し、同じアドレスの行き先をすべて付け替える", () => {
+    expect(mapScriptTypeOfAddress(table, 0x0816f58d)).toBe(3);
+    expect(mapScriptTypeOfAddress(table, 0x08170100)).toBe(2);
+    expect(mapScriptTypeOfAddress(table, 0x08170000)).toBeNull();
+    const next = retargetMapScriptAddress(table, 0x0816f58d, "Moegi_MapScripts_OnTransition");
+    expect(next.items[0]!.script).toBe("Moegi_MapScripts_OnTransition");
+    expect(next.items[1]!.conditions.map((c) => c.script)).toEqual(["Moegi_MapScripts_OnTransition", "0x08170100"]);
+    expect(retargetMapScriptAddress({ label: "T", items: [{ type: 1, script: "0x816f58d", conditions: [] }] }, 0x0816f58d, "X").items[0]!.script).toBe("X");
+  });
+
+  it("行き先のラベルは <表のラベル>_<種類> で、重なれば 2 から番号を付ける", () => {
+    expect(mapScriptTargetLabel("Moegi_MapScripts", 2, () => false)).toBe("Moegi_MapScripts_OnFrame");
+    const taken = new Set(["Moegi_MapScripts_OnLoad", "Moegi_MapScripts_OnLoad2"]);
+    expect(mapScriptTargetLabel("Moegi_MapScripts", 1, (n) => taken.has(n))).toBe("Moegi_MapScripts_OnLoad3");
   });
 });

@@ -5,7 +5,7 @@
    ラベルが自動で付き、ひな形がすぐ .s と .string に書かれる。元に戻すとひな形が消え、やり直すと戻る。
 2. ラベルを変えるコマンドと、その取り消し。
 3. 素の ROM の人のスクリプトを読み取り専用で出し（#206）、.s に取り込む（#207）。
-4. マップスクリプトの表（#208）を作る。
+4. マップスクリプトの表（#208）を作り、ROM のアドレスのままの行き先があれば 1 つ .s に取り込む（元に戻す・やり直すも）。
 5. 出力すると eventscripts・maps\\03\\scripts_00.json・.s・.string ができる。
 6. スクリプトエディタのビルドの欄で写しをビルドする（ND は CFRU → DPE へのコピー → DPE、Chronos は build.py）。
 7. できた ROM（ND は DPE の test.gba）を開き、マップ 3.0 のイベントのスクリプトの番地が、offsets.ini のラベルの位置と同じ。
@@ -149,6 +149,33 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
     z.call({"cmd": "tab", "name": "header"})
     ms = z.call({"cmd": "script.mapScripts", "action": "create"})
     check(ms["ok"] and ms["table"] is not None, f"今のマップスクリプトから表を作れる（{ms['table'] and len(ms['table']['items'])} 件）")
+    ms_import = None
+    dests = [i["script"] for i in ms["table"]["items"]] + [c["script"] for i in ms["table"]["items"] for c in i["conditions"]] if ms["table"] else []
+    dest = next((d for d in dests if d.lower().startswith("0x")), None)
+    if dest is not None:
+        ptr = int(dest, 16)
+        req = {"bank": BANK, "map": MAP, "kind": "map", "pointer": ptr}
+        rom = z.call({"cmd": "script.rom", **req})
+        check(rom.get("importable"), f"マップスクリプトの行き先 {dest} は取り込める（{rom.get('items') and rom['items'][0]['label']}）")
+        ms_import = z.call({"cmd": "script.import", **req})
+        z.call({"cmd": "script.settle"})
+        label = ms_import.get("entryLabel")
+        now = z.call({"cmd": "script.mapScripts", "action": "get"})["table"]
+        dests_now = [i["script"] for i in now["items"]] + [c["script"] for i in now["items"] for c in i["conditions"]]
+        check(label in dests_now and dest not in dests_now, f"取り込むと、表の行き先 {dest} が {label} になる")
+        check(ms_import.get("reused") or f"{label}:" in (proj / SCRIPT).read_text(encoding="utf-8"), f"マップスクリプトの行き先が .s に入る（{label}）")
+        z.call({"cmd": "undo"})
+        z.call({"cmd": "script.settle"})
+        back = z.call({"cmd": "script.mapScripts", "action": "get"})["table"]
+        check(back is not None and dest in [i["script"] for i in back["items"]] + [c["script"] for i in back["items"] for c in i["conditions"]],
+              "元に戻すと、表の行き先がアドレスに戻る")
+        check(ms_import.get("reused") or f"{label}:" not in (proj / SCRIPT).read_text(encoding="utf-8"), "元に戻すと、取り込んだ文も消える")
+        z.call({"cmd": "redo"})
+        z.call({"cmd": "script.settle"})
+        check(f"{label}:" in (proj / SCRIPT).read_text(encoding="utf-8") or ms_import.get("reused"), "やり直すと、取り込んだ文が戻る")
+        ms = z.call({"cmd": "script.mapScripts", "action": "get"})
+    else:
+        log("マップ 3.0 の表にアドレスの行き先が無いので、マップスクリプトの取り込みは確かめません")
     have = {i["type"] for i in ms["table"]["items"]} if ms["table"] else set()
     add_type = next(t for t in (5, 7, 3, 1) if t not in have)
     ms = z.call({"cmd": "script.mapScripts", "action": "add", "type": add_type})
@@ -231,3 +258,5 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
         check(table["label"] in symbols, f"マップスクリプトの表 {table['label']} が ROM に入る")
         if added:
             check(added["script"] in symbols, f"足したマップスクリプト {added['script']} が ROM に入る")
+    if ms_import:
+        check(ms_import["entryLabel"] in symbols, f"取り込んだマップスクリプト {ms_import['entryLabel']} が ROM に入る")

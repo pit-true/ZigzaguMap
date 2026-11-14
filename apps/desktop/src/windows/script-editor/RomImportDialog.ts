@@ -76,7 +76,7 @@ export function openRomImportDialog(request: ScriptRomOpenRequest): Promise<Reco
       title: t.dialogTitle,
       text: t.dialogText,
       buttons: [t.importOk, t.cancel],
-      press: (b) => (b === t.importOk ? accept() : b === t.cancel ? finish(null) : (() => { throw new Error(`ボタンがありません: ${b}`); })()),
+      press: (b) => (b === t.importOk ? accept() : b === t.cancel ? finish(null) : (() => { throw new Error(t.noButton(b)); })()),
     });
     inputs[0]?.input.focus();
   });

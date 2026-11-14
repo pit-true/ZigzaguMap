@@ -27,7 +27,7 @@ export interface ScriptRomOpenRequest {
   readonly text: string;
   /** そのスクリプトを持つイベント（取り込みでラベルを付ける相手。無ければ null）。 */
   readonly target: ScriptRomTarget | null;
-  /** 「.s に取り込む」が使えるか（プロジェクトフォルダを開いていて、イベントのスクリプトのとき）。 */
+  /** 「.s に取り込む」が使えるか（プロジェクトフォルダを開いていて、イベントのスクリプトか、マップスクリプトの表の行き先のとき）。 */
   readonly importable: boolean;
   /** 取り込むときに付ける名前（一覧で確かめて変えられる）。 */
   readonly items: readonly { readonly kind: string; readonly pointer: number; readonly label: string; readonly reused: boolean }[];

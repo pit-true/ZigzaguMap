@@ -6,14 +6,21 @@ import {
   ScriptCommandTable,
   ScriptTextCodec,
   SetEventLabelCommand,
+  SetMapScriptTableCommand,
   asmBlockText,
   disassembleScripts,
   findImportedLabels,
+  mapScriptTableFromEntries,
+  mapScriptTargetLabel,
+  mapScriptTypeOfAddress,
   movementNamesFromDefines,
   newScriptLabel,
   planScriptImport,
   renderDisassembly,
+  retargetMapScriptAddress,
   scriptLabelMapName,
+  tableArgs,
+  type MapScriptTableModel,
   type ScriptImportPlan,
 } from "@zigzagumap/core";
 import type { App } from "../../app/App";
@@ -27,6 +34,9 @@ const LABEL_TARGET = { person: "person", sign: "sign", trap: "tile" } as const;
 export function hex8(n: number): string {
   return (n >>> 0).toString(16).toUpperCase().padStart(8, "0");
 }
+
+/** 取り込みの計画（マップスクリプトなら、行き先を取り込んだ入口にした表も持つ）。 */
+export type RomImportPlan = ScriptImportPlan & { scriptPath: string; stringsPath: string; table: MapScriptTableModel | null };
 
 /**
  * 素の ROM のスクリプト（#206 の読み取り専用の表示、#207 の取り込み）。逆アセンブルはメインで行い（ROM はメインだけが持つ）、
@@ -63,20 +73,25 @@ export class RomScripts {
     const lines = [t.header(hex8(pointer)), "", r.script.text.trimEnd()];
     if (r.strings.text !== "") lines.push("", t.stringsHeader, ...r.strings.text.trimEnd().split("\n").map((l) => (l === "" ? "" : `@ ${l}`)));
     if (d.problems.length > 0) lines.push("", t.problemsHeader, ...d.problems.map((p) => `@ ${p.offset === null ? "" : `0x${hex8(p.offset + ROM_BASE)}: `}${p.message}`));
-    const importable = !!session.projectDir && target !== null && target.kind !== "map";
+    let importable = !!session.projectDir && target !== null;
     let items: ScriptRomOpenRequest["items"] = [];
     if (importable) {
       const plan = await this.plan(pointer, target!, new Map()).catch(() => null);
       items = plan?.items.map((i) => ({ kind: i.kind, pointer: i.offset + ROM_BASE, label: i.label, reused: i.reused })) ?? [];
+      // マップスクリプトは、表の行き先のアドレスのときだけ取り込める
+      if (target!.kind === "map" && !plan) importable = false;
     }
     return { key: `ROM:${hex8(pointer)}`, pointer: pointer >>> 0, text: `${lines.join("\n")}\n`, target, importable, items };
   }
 
-  /** 取り込みの計画（`rename` は自動で付けた名前 → 新しい名前）。 */
-  async plan(pointer: number, target: ScriptTarget, rename: ReadonlyMap<string, string>): Promise<ScriptImportPlan & { scriptPath: string; stringsPath: string }> {
+  /**
+   * 取り込みの計画（`rename` は自動で付けた名前 → 新しい名前）。
+   * マップスクリプトは、マップの表で行き先がそのアドレスの件を探し、入口を `<表のラベル>_<種類>`（`Moegi_MapScripts_OnLoad`）にする。
+   * 表がまだ無ければ、「表を作る」と同じ表（今の ROM のマップスクリプトをアドレスのまま）を作ってから付け替える。
+   */
+  async plan(pointer: number, target: ScriptTarget, rename: ReadonlyMap<string, string>): Promise<RomImportPlan> {
     const session = this.app.state.session;
     if (!session?.projectDir) throw new Error(t.noProject);
-    if (target.kind === "map") throw new Error(t.mapNotImportable);
     const { bank, map } = target.map;
     const resolved = session.scriptsTable.document.resolve(bank, map);
     if (!resolved) throw new Error(t.noScriptFile(bank, map));
@@ -96,7 +111,24 @@ export class RomScripts {
     const host = await this.app.scriptHost();
     const known = new Set([...(await host.labelNames()), ...session.labels.store.usedLabels()]);
     const taken = (name: string): boolean => known.has(name);
-    const label = newScriptLabel(config.labelTemplate, { map: scriptLabelMapName(resolved.script, bank, map), kind: LABEL_TARGET[target.kind], index: target.index ?? 0 }, taken);
+    const mapName = scriptLabelMapName(resolved.script, bank, map);
+    let table: MapScriptTableModel | null = null;
+    let label: string;
+    if (target.kind === "map") {
+      const labels = session.labels.store.get(bank, map);
+      if (!labels.table && labels.mapScripts) throw new Error(t.externalTable(labels.mapScripts));
+      table = labels.table;
+      if (!table) {
+        const doc = session.project.loaded({ bank, map }) ?? (await session.project.load({ bank, map }));
+        table = mapScriptTableFromEntries(newScriptLabel(config.labelTemplate, { map: mapName, kind: "map", index: 0 }, taken), doc.mapScripts ?? []);
+        known.add(table.label);
+      }
+      const type = mapScriptTypeOfAddress(table, pointer);
+      if (type === null) throw new Error(t.notMapScriptTarget(hex8(pointer)));
+      label = mapScriptTargetLabel(table.label, type, taken);
+    } else {
+      label = newScriptLabel(config.labelTemplate, { map: mapName, kind: LABEL_TARGET[target.kind], index: target.index ?? 0 }, taken);
+    }
     const { commands, text } = await this.tools();
     const plan = planScriptImport(session.project.rom, (pointer >>> 0) - ROM_BASE, {
       commands,
@@ -108,12 +140,17 @@ export class RomScripts {
       taken,
       rename,
     });
-    return { ...plan, scriptPath: resolved.script, stringsPath: resolved.strings };
+    return {
+      ...plan,
+      scriptPath: resolved.script,
+      stringsPath: resolved.strings,
+      table: table ? retargetMapScriptAddress(table, pointer, plan.entryLabel) : null,
+    };
   }
 
   /**
-   * 取り込む: `.s` と `.string` に書き足し、イベントのラベルを取り込んだ入口にする（1 つのコマンド。元に戻すと、
-   * ラベルを戻し、手を入れていなければ書き足したものも除く）。eventscripts は出力のときに書く。
+   * 取り込む: `.s` と `.string` に書き足し、イベントのラベル（マップスクリプトなら表の行き先）を取り込んだ入口にする
+   * （1 つのコマンド。元に戻すと、ラベルか表を戻し、手を入れていなければ書き足したものも除く）。eventscripts は出力のときに書く。
    */
   async import(pointer: number, target: ScriptTarget, rename: ReadonlyMap<string, string>): Promise<ScriptImportPlan> {
     const session = this.app.state.session;
@@ -133,7 +170,10 @@ export class RomScripts {
       }
     }
     const { bank, map } = target.map;
-    const command = new SetEventLabelCommand({ bank, map, target: LABEL_TARGET[target.kind as "person" | "sign" | "trap"], index: target.index ?? 0, label: plan.entryLabel });
+    const command =
+      target.kind === "map"
+        ? new SetMapScriptTableCommand({ bank, map, table: tableArgs(plan.table) })
+        : new SetEventLabelCommand({ bank, map, target: LABEL_TARGET[target.kind], index: target.index ?? 0, label: plan.entryLabel });
     if (!this.app.scripts.execute(command)) {
       for (const e of edits) await files.remove(e.path, e.added);
       throw new Error(this.app.state.status.left);

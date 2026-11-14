@@ -5,6 +5,9 @@ import {
   emptyScriptTemplate,
   isMapScriptTableType,
   isTableType,
+  mapScriptAddress,
+  mapScriptTableFromEntries,
+  mapScriptTargetLabel,
   newScriptLabel,
   scriptLabelMapName,
   tableArgs,
@@ -20,17 +23,6 @@ import type { HeaderContext } from "../header/HeaderContext";
 import { scriptEntry } from "./ScriptEntry";
 import { ScriptLabelField } from "./ScriptLabelField";
 import type { ScriptLink } from "./ScriptLink";
-
-/** 種類の名前（xse_defines.s の名前の後ろの部分）。 */
-const TYPE_SUFFIX: Readonly<Record<number, string>> = {
-  1: "OnLoad",
-  2: "OnFrame",
-  3: "OnTransition",
-  4: "OnWarpInto",
-  5: "OnResume",
-  6: "OnDiveWarp",
-  7: "OnReturnToField",
-};
 
 /**
  * 場所の設定タブ「かんたん（CFRU）」のマップスクリプトの専用パネル（#208）。
@@ -112,7 +104,7 @@ export class MapScriptPanel {
       row.className = "msp-rom-row";
       row.dataset["autoId"] = `easy.ms.rom:${i}`;
       const name = `${hex(e.type, 2)} ${ja.mapScriptTypes[e.type] ?? "???"}`;
-      const where = isTableType(e.type) && e.table ? t.romTable(e.table.entries.length) : `0x${(e.pointer >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
+      const where = isTableType(e.type) && e.table ? t.romTable(e.table.entries.length) : mapScriptAddress(e.pointer);
       row.textContent = `${name}　${where}`;
       const open = button(`easy.ms.romOpen:${i}`, t.view, () => {
         const pointer = isTableType(e.type) ? e.table?.entries[0]?.script : e.pointer;
@@ -242,9 +234,7 @@ export class MapScriptPanel {
       return false;
     }
     const known = new Set([...(await this.link.files.labelsOf(resolved.script)), ...ctx.session.labels.store.usedLabels()]);
-    const base = `${table.label}_${TYPE_SUFFIX[type] ?? type}`;
-    let label = base;
-    for (let n = 2; known.has(label); n++) label = `${base}${n}`;
+    const label = mapScriptTargetLabel(table.label, type, (n) => known.has(n));
     const setvar = condition ? { variable: condition.variable, value: (condition.value + 1) & 0xffff } : undefined;
     const tp = emptyScriptTemplate(label, { dialect: config.dialect, useGlobal: config.useGlobal }, setvar);
     const loaded = await this.link.files.read(resolved.script);
@@ -288,14 +278,7 @@ export class MapScriptPanel {
     const config = this.link.configNow();
     const known = new Set([...(this.link.files.cachedLabels(resolved.script) ?? []), ...ctx.session.labels.store.usedLabels()]);
     const label = newScriptLabel(config?.labelTemplate ?? "{map}_{kind}{index}", { map: scriptLabelMapName(resolved.script, bank, map), kind: "map", index: 0 }, (n) => known.has(n));
-    const items: MapScriptItem[] = (ctx.doc.mapScripts ?? [])
-      .filter((e) => e.type >= 1 && e.type <= 7)
-      .map((e) =>
-        isMapScriptTableType(e.type)
-          ? { type: e.type, script: "", conditions: (e.table?.entries ?? []).map((c) => ({ variable: c.variable, value: c.value, script: address(c.script) })) }
-          : { type: e.type, script: address(e.pointer), conditions: [] },
-      );
-    return this.commit({ label, items });
+    return this.commit(mapScriptTableFromEntries(label, ctx.doc.mapScripts ?? []));
   }
 
   /** 種類を足す（同じ種類は 1 つだけ）。行き先はひな形を書いて付ける。条件表の種類は、条件の行を 1 つ付けて足す。 */
@@ -322,10 +305,6 @@ export class MapScriptPanel {
     const { bank, map } = ctx.map.id;
     return this.link.execute(new SetMapScriptTableCommand({ bank, map, table: tableArgs(table) }));
   }
-}
-
-function address(pointer: number): string {
-  return `0x${(pointer >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
 }
 
 function typeName(type: number): string {
