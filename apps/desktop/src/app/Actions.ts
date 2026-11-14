@@ -85,6 +85,7 @@ export class Actions {
     h.set("help.about", async () => (await import("../ui/help/HelpWindows")).openAbout());
     h.set("help.eula", async () => (await import("../ui/help/HelpWindows")).openEula());
     h.set("help.readme", async () => (await import("../ui/help/HelpWindows")).openReadme());
+    h.set("help.shortcuts", async () => (await import("../ui/help/HelpWindows")).openShortcuts());
     h.set("view.paletteWidth", () => target.prompts.paletteWidth());
     h.set("view.opacity", () => target.openOpacity());
     h.set("recent.max", () => target.prompts.recentMax());

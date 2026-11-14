@@ -157,6 +157,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       accel: "W",
       children: [
         { id: "help.readme", label: ja.readMe, accel: "R" },
+        { id: "help.shortcuts", label: ja.shortcutListMenu, accel: "S" },
         { id: "help.about", label: ja.aboutApp, accel: "A", shortcut: fkey("F1") },
         { id: "help.eula", label: ja.eula, accel: "Z", shortcut: fkey("F2") },
       ],

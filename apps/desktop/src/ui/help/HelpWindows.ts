@@ -3,13 +3,14 @@ import license from "../../../../../LICENSE?raw";
 import automationDoc from "../../../../../docs/automation.md?raw";
 import compareDoc from "../../../../../docs/compare-test.md?raw";
 import readme from "../../../../../README.md?raw";
+import { shortcutMarkdown } from "../../app/shortcutList";
 import { ja } from "../../i18n/ja";
 import { createDialog, dialogButton, type DialogFrame } from "../Dialog";
 import { openExternal } from "../../util/externalLinks";
 import { HelpViewer } from "./HelpViewer";
 
 /**
- * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me）。
+ * ヘルプの窓（ZigzaguMapについて、エンドユーザー規約、Read me、ショートカット一覧）。
  * このモジュールはメニューで初めて開いたときに読み込む（README・docs・LICENSE の本文と Markdown の変換を含むため）。
  */
 
@@ -67,12 +68,16 @@ export function openEula(): Promise<void> {
   return okWindow(ja.eula, "eula-window", (frame) => frame.body.append(memo(license)));
 }
 
+/** ショートカット一覧の文書の名前（ヘルプの中だけの文書）。 */
+export const SHORTCUTS_DOC = "shortcuts.md";
+
 /** ヘルプの中で開ける文書（README からリンクしているもの）。 */
 const DOCS = {
   "README.md": readme,
   "docs/automation.md": automationDoc,
   "docs/compare-test.md": compareDoc,
   LICENSE: license,
+  [SHORTCUTS_DOC]: shortcutMarkdown(),
 };
 
 /** 文書の窓（1 つを使い回す）。 */
@@ -81,6 +86,11 @@ export const helpViewer = new HelpViewer(DOCS);
 /** ヘルプ > Read me。README.md を Markdown として描いて出す。 */
 export function openReadme(): void {
   helpViewer.open("README.md");
+}
+
+/** ヘルプ > ショートカット一覧。 */
+export function openShortcuts(): void {
+  helpViewer.open(SHORTCUTS_DOC);
 }
 
 function memo(text: string): HTMLElement {
