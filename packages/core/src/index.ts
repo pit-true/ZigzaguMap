@@ -182,9 +182,12 @@ export { StampLibrary, type StampLibraryOptions, type StampProblem } from "./sta
 export { TilesetDocument, type TilesetDocumentInit, type TilesetRef } from "./tileset/TilesetDocument.js";
 export {
   BLOCK_TILE_COUNT,
+  LAYER_MODE_TRIPLE,
   attributeBytes,
   attributeFromBytes,
   bgr555ToRgb,
+  isUndrawnLayerMode,
+  layerMode,
   packTileRef,
   rgbToBgr555,
   unpackBlockAttribute,
@@ -192,6 +195,16 @@ export {
   type BlockAttributeFields,
   type TileRef,
 } from "./tileset/blockFormat.js";
+export {
+  TripleLayerIndex,
+  isLocalTripleChild,
+  isTripleLayer,
+  localAttribute,
+  tableBlockCount,
+  thirdLayerLocal,
+  type BlockTable,
+  type TripleLayerInfo,
+} from "./tileset/tripleLayer.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
 export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
