@@ -7,6 +7,7 @@
   - layoutShared: 場所の設定タブの「配置の共有」。素の BPRJ の 5.4 は 17 枚で共有していて、一覧のマップを押すと開く。
     共有していないマップ（3.0）では隠れる。かんたん表示とくわしく表示の両方。
   - hover: イベントのホバーの吹き出し（#226）。店の品物、もらえるアイテム、トレーナー、同じマスの 2 つ、0.4 秒の待ち、押すと消える。
+  - warp: ワープの吹き出しの行き先の周辺画像（#240）と、ワープできないブロックの上のワープの印と警告。
   - hoverAsm（`--chronos` を渡したとき）: .s のラベルを付けたイベントの要約、ラベルが .s に無いときの知らせ。
     ラベルはメモリの上だけで変えて元に戻す（写しにも書かない）。
 """
@@ -123,6 +124,32 @@ def check_hover(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
         check(True, "イベントタブ以外では event.hover がエラーになる")
 
 
+def check_warp(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "resize", "width": 1280, "height": 900})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "event"})
+    st = z.call({"cmd": "event.state"})
+    check(st.get("warpWarnings") == [], f"マサラタウンのワープはどれもドアの上（警告 {st.get('warpWarnings')}）")
+    r = z.call({"cmd": "event.hover", "kind": "warp", "index": 0})
+    sec = r["sections"][0] if r["sections"] else {}
+    check(sec.get("image") is True and "行き先: 4.0" in r["text"] and "まわり 7×7" in r["text"], "家のドア: 行き先のマップ名と周辺の画像が出る")
+    check(sec.get("warn") is None, "ドアの上のワープには警告が無い")
+    shot(z, shots, "p3_warp_hover.png")
+    shot(z, shots, "p3_warp_hover_tip.png", "event.hover")
+    # わざと草の上へ動かす（元に戻す）
+    w = st["events"]["warps"][0]
+    z.call({"cmd": "command", "name": "moveEvent", "args": {"bank": 3, "map": 0, "kind": "warp", "index": 0, "x": 10, "y": 15}})
+    st = z.call({"cmd": "event.state"})
+    check(st.get("warpWarnings") == [0], f"草の上へ動かすと警告の印が付く（{st.get('warpWarnings')}）")
+    r = z.call({"cmd": "event.hover", "kind": "warp", "index": 0})
+    check(r["sections"] and (r["sections"][0].get("warn") or "").startswith("このブロックではワープできません"), "吹き出しの先頭に「このブロックではワープできません」")
+    shot(z, shots, "p3_warp_warning.png")
+    z.call({"cmd": "event.hover.hide"})
+    z.call({"cmd": "undo"})
+    st = z.call({"cmd": "event.state"})
+    check(st["events"]["warps"][0]["x"] == w["x"] and st.get("warpWarnings") == [], "元に戻すと印も消える")
+
+
 def check_hover_asm(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     """Chronos の写し（読むだけ）で、.s のラベルを付けたイベントの要約。ラベルはメモリの上だけで変え、出力しない。"""
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
@@ -147,6 +174,7 @@ def check_hover_asm(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
 CHECKS = {
     "layoutShared": check_layout_shared,
     "hover": check_hover,
+    "warp": check_warp,
 }
 
 

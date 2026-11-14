@@ -225,6 +225,22 @@ export class CfruProject {
     return doc;
   }
 
+  /**
+   * マップを読み取り専用で読む（ワープの行き先の画像など、#240）。読み込み済みならそれを返し、無ければ JSON か
+   * ベース ROM から読むだけで保持しない（開いたマップの一覧にも、未出力の判定にも入れない）。返したものは変えないこと。
+   */
+  async peek(id: MapId): Promise<MapDocument> {
+    const cached = this.store.find(id);
+    if (cached) return cached;
+    const k = mapKey(id);
+    if (this.store.removedMaps.has(k)) throw new Error(`マップ ${k} はありません`);
+    if (this.jsonMaps.has(k)) {
+      const path = mapSourcePath(id);
+      return MapSourceConverter.fromSource(MapSourceJson.parse(await this.fs.readText(path), path), path);
+    }
+    return this.base.read(id);
+  }
+
   /** マップを読む。例外を投げず、読めなかった理由を結果で返す。 */
   async tryLoad(id: MapId): Promise<MapLoadResult> {
     try {

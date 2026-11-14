@@ -75,7 +75,7 @@ python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzaguma
 | `romInfo` | | 左下の ROM 情報（見出しと値の組） |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物 |
+| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」） |
@@ -218,4 +218,4 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `event.hover.state` | | 今出している吹き出し（返事は `event.hover` と同じ形）。マウスの `hover` で 0.4 秒止めたあとに読む |
 | `event.hover.hide` | | 吹き出しを消す |
 
-吹き出しの部品の ID は `event.hover`（`ui.shot` で撮れる）です。
+吹き出しの部品の ID は `event.hover`（`ui.shot` で撮れる）です。ワープの吹き出しは行き先の周辺画像（`sections[].image` が true）と、ワープできないブロックの上なら `warn`（「このブロックではワープできません…」）を持ちます（#240）。

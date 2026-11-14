@@ -34,6 +34,7 @@ import type { ScriptLabelSource } from "../script/ScriptLabelField";
 import type { ScriptFiles } from "../script/ScriptFiles";
 import { EventHover } from "./EventHover";
 import { eventHoverSource } from "./eventHoverSource";
+import { drawWarpWarnings, unusableWarps } from "./warpCheck";
 import type { ScriptSummaries } from "./ScriptSummaries";
 
 /** タブの外の機能（App が渡す）。 */
@@ -280,6 +281,14 @@ export class EventTab {
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites);
+    // ワープできないブロックの上のワープに印（#240）
+    if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
+  }
+
+  /** ワープできないブロックの上にあるワープの番号（#240）。 */
+  warpWarnings(): number[] {
+    const map = this.state.map;
+    return map ? unusableWarps(map.doc, map.tiles) : [];
   }
 
   /**

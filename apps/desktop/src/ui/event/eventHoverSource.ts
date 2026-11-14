@@ -6,6 +6,10 @@ import type { PlacedEvent } from "../map/EventLayer";
 import type { RawCell } from "./EventMapInput";
 import type { HoverSection, HoverSource } from "./EventHover";
 import type { ScriptSummaries, SummaryResult } from "./ScriptSummaries";
+import { BEHAVIOR_MASK, isWarpBehavior } from "@zigzagumap/core";
+import { watchCommands } from "../form/commit";
+import { blockAttribute } from "./warpCheck";
+import { WarpPreview } from "./WarpPreview";
 
 /** 吹き出しの中身を作るのに要るもの（イベントタブと App が渡す）。 */
 export interface EventHoverDeps {
@@ -58,6 +62,17 @@ function scriptPointer(doc: MapDocument, e: PlacedEvent): number {
 export function eventHoverSource(deps: EventHoverDeps): HoverSource {
   const { state } = deps;
   const mapName = (id: MapId): string | null => state.session?.catalog.get(id)?.name ?? null;
+  const previews = new WarpPreview();
+  watchCommands(state, () => previews.clear());
+  state.on("session", () => previews.clear());
+  /** ワープが乗っているブロックがワープとして働かなければ警告の文（#240）。 */
+  const warpWarn = (index: number): string | null => {
+    const map = state.map;
+    const w = map?.doc.events?.warps[index];
+    if (!map || !w || w.x >= map.doc.width || w.y >= map.doc.height) return null;
+    const attr = blockAttribute(map.tiles, map.doc.grid.getBlock(w.x, w.y));
+    return attr !== null && !isWarpBehavior(attr) ? t.warpUnusable(attr & BEHAVIOR_MASK) : null;
+  };
   const source: HoverSource = {
     enabled: () => state.tab === "event" && !!state.map,
     eventsAt: (cell: RawCell) => deps.placed().filter((e) => e.x === cell.x && e.y === cell.y).reverse(),
@@ -83,7 +98,7 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
         }
         case "warp": {
           const w = ev.warps[e.index];
-          return { title, lines: w ? [t.warp(w.bank, w.map, mapName({ bank: w.bank, map: w.map }), w.warpId)] : [] };
+          return { title, warn: warpWarn(e.index), lines: w ? [t.warp(w.bank, w.map, mapName({ bank: w.bank, map: w.map }), w.warpId)] : [] };
         }
         case "fly":
           return { title, lines: [] };
@@ -92,6 +107,16 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
     detail: (e: PlacedEvent) => {
       const map = state.map;
       const events = map?.doc.events;
+      const session = state.session;
+      if (e.kind === "warp" && session && events?.warps[e.index]) {
+        const w = events.warps[e.index]!;
+        return previews.get(session, { bank: w.bank, map: w.map }, w.warpId).then((r) => {
+          const base = source.quick(e);
+          if (r.kind === "noMap") return { ...base, lines: [...base.lines, t.noDestMap] };
+          if (r.kind === "noWarp") return { ...base, lines: [...base.lines, t.noDestWarp(w.warpId, r.count)] };
+          return { ...base, lines: [...base.lines, t.destAround(r.x, r.y)], image: r.canvas };
+        });
+      }
       if (!map || !events || (e.kind !== "person" && e.kind !== "sign" && e.kind !== "trap")) return null;
       const content = e.kind === "sign" ? events.signs[e.index]?.content : null;
       if (content?.type === "hiddenItem") {

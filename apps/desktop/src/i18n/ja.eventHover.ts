@@ -16,6 +16,10 @@ export const jaEventHover = {
   trainerPerson: (range: number) => `トレーナー（視界 ${range}）`,
   hiddenItem: (name: string, amount: number) => `隠しアイテム: ${name}${amount > 1 ? ` ×${amount}` : ""}`,
   trapCondition: (variable: number, value: number) => `変数 0x${variable.toString(16).toUpperCase().padStart(4, "0")} が ${value} のとき`,
+  warpUnusable: (behavior: number) => `このブロックではワープできません（挙動 0x${behavior.toString(16).toUpperCase().padStart(2, "0")}）`,
+  noDestMap: "行き先のマップがありません",
+  noDestWarp: (warpId: number, count: number) => `行き先のマップにワープ ${warpId} がありません（ワープは ${count} 個）`,
+  destAround: (x: number, y: number) => `行き先 (${x}, ${y}) のまわり 7×7`,
   warp: (bank: number, map: number, name: string | null, warpId: number) => `行き先: ${bank}.${map}${name ? ` ${name}` : ""} のワープ ${warpId}`,
   entry: (e: SummaryEntry): string => {
     switch (e.type) {
