@@ -8,6 +8,8 @@
   - triple: 3 層のブロック（#300・#301）。0x010 を 3 層にすると、パレットで 0x011 を押すと 0x010 が選ばれ、矩形の選択で 0x011 が
     書かないマスになる。0x011 は鉛筆・矩形塗り・境界ブロックに置けず、ステータスバーに理由が出る。置かれている 0x011 には印が付く。
   - autopen: 自動ペン（#310・#311）。
+  - autopenBand: 隣のマップの帯の上での自動ペン（マサラタウンの上の 1 番道路）。帯の上だけ・境界をまたぐドラッグのどちらも、
+    隣のマップに書かれ、1 回の操作・1 回の取り消しで戻る。
   - assist: マップ作成補助の窓（#312・#313）。
 """
 from __future__ import annotations
@@ -193,6 +195,55 @@ def check_autopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "autopen.state"})["active"] is False, "P でオフに戻る")
 
 
+def map_cells(z: Zigzagu, bank: int, map_: int) -> tuple[int, list[int]]:
+    c = z.call({"cmd": "cells", "bank": bank, "map": map_})
+    return c["width"], c["cells"]
+
+
+def check_autopen_band(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """隣のマップの帯の上での自動ペン（マサラタウン 3.0 の上の帯が 1 番道路 3.19）。"""
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "neighbors.state", "wait": True})
+    pw, p0 = map_cells(z, 3, 0)
+    rw, r0 = map_cells(z, 3, 19)
+    rh = len(r0) // rw
+    z.call({"cmd": "key", "key": "p"})
+    z.call({"cmd": "autopen.set", "size": 3})
+    z.call({"cmd": "selectBlock", "block": 0x12B})
+    # 主マップの中で 1 回押したときの 3×3（比べる元）
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    _, pm = map_cells(z, 3, 0)
+    want = [block_at(pm, pw, x, y) for y in range(9, 12) for x in range(9, 12)]
+    z.call({"cmd": "undo"})
+    # 境界をまたぐドラッグ（主マップ → 帯。1 番道路を初めて書くので、読み込みを待ってから書く）は 1 回の操作で、1 回の取り消しで両方戻る
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [10, 2], "to": [10, -3], "steps": 5})
+    time.sleep(0.5)  # 隣のマップを編集用に読み込むのを待つ
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    check(block_at(r1, rw, 10, rh - 1) == 0x12B and block_at(p1, pw, 10, 0) == 0x12B, "境界をまたいで描くと、両方のマップに水が続く")
+    check(z.call({"cmd": "state"})["history"] == hist + 1, "境界をまたぐドラッグも 1 回の操作")
+    screenshot(z, shots, "pen_autopen_band_cross.png")
+    z.call({"cmd": "undo"})
+    check(map_cells(z, 3, 19)[1] == r0 and map_cells(z, 3, 0)[1] == p0, "1 回の取り消しで両方のマップが戻る")
+    # 帯の上だけ（1 番道路の下から 4 行目を中心に 3×3）
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, -4]})
+    time.sleep(0.5)  # 隣のマップを編集用に読み込むのを待つ
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    got = [block_at(r1, rw, x, y) for y in range(rh - 5, rh - 2) for x in range(9, 12)]
+    check(0x12B in want and got == want, f"帯の上の自動ペンで、主マップと同じ池を 1 番道路に描く（{[hex(b) for b in got]}、主マップ {[hex(b) for b in want]}）")
+    check(p1 == p0, "帯の上だけで描いたときは主マップは変わらない")
+    st = z.call({"cmd": "state"})
+    check(st["history"] == hist + 1 and "3.19" in st["dirty"], f"1 回の操作で 1 番道路に未出力の印（{st['history'] - hist}、{st['dirty']}）")
+    if shots:
+        (shots / "pen_autopen_band.png").write_bytes(base64.b64decode(z.call({"cmd": "canvasPng", "target": "map", "neighbors": True})["png"]))
+    z.call({"cmd": "undo"})
+    check(map_cells(z, 3, 19)[1] == r0 and map_cells(z, 3, 0)[1] == p0, "1 回の取り消しで帯の上の自動ペンが戻る")
+    z.call({"cmd": "key", "key": "P"})
+
+
 def win(z: Zigzagu, cmd: dict):
     return z.call({**cmd, "window": "map-assist"})
 
@@ -293,7 +344,7 @@ def check_assist_reopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> No
     check("テストの面" in [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]], "開き直しても保存したパーツが残る")
 
 
-CHECKS = {"triple": check_triple, "autopen": check_autopen, "assist": check_assist, "assistReopen": check_assist_reopen}
+CHECKS = {"triple": check_triple, "autopen": check_autopen, "autopenBand": check_autopen_band, "assist": check_assist, "assistReopen": check_assist_reopen}
 
 
 def main() -> None:

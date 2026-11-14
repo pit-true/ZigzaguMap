@@ -221,9 +221,33 @@ export class BlockPainter implements AutoPenHost {
     this.state.setStatus(jaPaint.swapped(a.x, a.y, b.x, b.y));
   }
 
-  /** 自動ペンが決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる）。 */
+  /** 決めたマスを書く（ドラッグの続きは 1 回の操作にまとめる。マップ作成補助）。 */
   writeCells(list: readonly FillCell[], merge: boolean, ownMovements: boolean): void {
     this.write(list, true, merge, ownMovements);
+  }
+
+  /**
+   * 書くマスを実行の直前に決めて書く（自動ペン。#335）。`area` は読むか書くかもしれない画面のマスで、そこにかかる隣のマップを
+   * 先に読み込む。読み込みを待つ間に並んだ前の書き込みを済ませてから `plan` を呼ぶので、前の書き込みを見て中身を決められる。
+   */
+  writePlanned(area: readonly Cell[], plan: () => readonly FillCell[], merge: boolean, ownMovements: boolean): void {
+    const ids = this.cells.split(area).map((g) => g.id);
+    if (ids.length === 0) return;
+    const withMovements = ownMovements || this.state.settings.data.pasteMovements;
+    this.cells.run(
+      ids,
+      () => {
+        const { kept, skipped } = this.dropUnplaceable(plan());
+        if (kept.length === 0 && skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
+        // 編集用に読み込んだマップだけに書く（area の外の、まだ読んでいない隣のマップへはみ出した分は捨てる）
+        return this.cells
+          .split(kept)
+          .filter((g) => !this.cells.needsLoad([g.id]))
+          .flatMap((g) => cellsCommand(g.id, alwaysInside, g.cells, withMovements) ?? []);
+      },
+      true,
+      merge,
+    );
   }
 
   /** カーソルに置く物を薄く重ねる（自動ペン。空なら消す）。 */
