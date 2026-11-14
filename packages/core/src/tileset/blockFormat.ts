@@ -47,6 +47,24 @@ export function unpackBlockAttribute(value: number): BlockAttributeFields {
   };
 }
 
+/**
+ * 改造後（CFRU の Triple Layer Blocks。ND・Chronos で有効）の重ね方の値（ビット 28〜30、0〜7）。
+ * 0・1: 通常（下層 BG2・上層 BG1）、2: 上層を主人公の下、3: 3 層（次のブロックの下層を 3 枚目に使う）、4: 分割、
+ * 5〜7: 実機ではそのマスを描かない。ビット 31 は実機の判定では見ない。
+ * `layerType`（ビット 29〜30）は AdvanceMap と同じ値で、意味は変えない。
+ */
+export function layerMode(value: number): number {
+  return (value >>> 28) & 0x7;
+}
+
+/** 重ね方の値: 3 層。 */
+export const LAYER_MODE_TRIPLE = 3;
+
+/** 重ね方の値が、実機でそのマスを描かない値（5〜7）か。 */
+export function isUndrawnLayerMode(mode: number): boolean {
+  return mode >= 5 && mode <= 7;
+}
+
 /** 属性（u32）の 4 バイト（AdvanceMap の右の 4 欄。0・1 がマップアクション、2・3 が背景）。 */
 export function attributeBytes(value: number): [number, number, number, number] {
   return [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff];

@@ -1,5 +1,6 @@
 import { PRIMARY_BLOCK_COUNT, PRIMARY_PALETTE_COUNT, PRIMARY_TILE_COUNT, TILE_BYTES } from "../map/constants.js";
 import type { Tileset } from "../map/types.js";
+import { isTripleLayer, localAttribute, thirdLayerLocal } from "../tileset/tripleLayer.js";
 import { createImage, writeBgr555, type RgbaImage } from "./color.js";
 
 /** ブロック 1 個の一辺のピクセル数。 */
@@ -12,6 +13,8 @@ const BLOCK_RGBA_BYTES = BLOCK_PIXELS * BLOCK_PIXELS * 4;
  * 描いたブロックはキャッシュする。AdvanceMap と同じく、下層は色 0 もそのタイルのパレットの色 0 で塗り、
  * 上層は「そのパレットの色 0 と同じ色」の画素を透明にして重ねる（AdvanceMap は色番号ではなく色で抜くため、
  * 色 0 と同じ色を持つ色番号も透けて見える）。
+ * 3 層のブロック（属性のビット 28〜30 が 3。tileset/tripleLayer.ts）は、同じ表の次のブロックの下層 4 タイルを
+ * 上層と同じ透かし方で 3 枚目として重ねる（次のブロックが表の外なら 3 枚目は描かない）。
  */
 export class BlockRenderer {
   /** 16 本 × 16 色の RGBA パレット（0〜6 は主、7〜15 は副から取る）。 */
@@ -62,6 +65,14 @@ export class BlockRenderer {
       for (let part = 0; part < 4; part++) {
         const entry = defs[base + layer * 4 + part]!;
         this.drawTile(out, entry, (part & 1) * 8, (part >> 1) * 8, layer === 0);
+      }
+    }
+    const table = isPrimary ? this.primary : this.secondary;
+    const local = base / 8;
+    if (isTripleLayer(localAttribute(table, local))) {
+      const third = thirdLayerLocal(table, local);
+      if (third !== null) {
+        for (let part = 0; part < 4; part++) this.drawTile(out, defs[third * 8 + part]!, (part & 1) * 8, (part >> 1) * 8, false);
       }
     }
     return out;
