@@ -20,6 +20,7 @@ import {
   type TemplateValues,
 } from "@zigzagumap/core";
 import type { App } from "../../app/App";
+import { cloneSyncFor, reportClones } from "../../app/cloneSync";
 import { jaTemplate as t } from "../../i18n/ja.template";
 import { ProcessRunner } from "../../util/processRunner";
 import { disasmTools } from "../script/disasmTools";
@@ -122,6 +123,9 @@ export class TemplatePlacer {
     if (Object.keys(fields).length > 0) commands.push(new SetEventFieldsCommand({ ...map, kind, index, fields }));
     const ball = templateItemBall(request.kind, values);
     if (ball !== null) commands.push(new SetItemBallCommand({ ...map, personIndex: index, itemId: ball }));
+    // 人を置いたら、隣のマップのクローンも合わせる（#242。ドラッグ・削除と同じ規則で、同じ 1 回の操作にまとめる）
+    const sync = kind === "person" ? await cloneSyncFor(app.state, map) : null;
+    if (sync) commands.push(sync);
     const command = CommandGroup.of(commands);
     // 同じトレーナーの番号をほかの場所でも使っていれば知らせる（#244。#227 の索引）
     const trainerId = request.kind === "trainer" ? (values.newTrainer?.id ?? values.trainerId ?? 0) : 0;
@@ -145,6 +149,7 @@ export class TemplatePlacer {
     const notes = [t.placed(t.kinds[request.kind] ?? request.kind, label), ...warnings];
     if (registry.length > 0 && config?.widthRegistry) notes.push(t.registry(registry.length, config.widthRegistry.path));
     app.state.setStatus(notes.join("　"), undefined, warnings.length > 0);
+    if (sync) reportClones(app.state, sync.changes);
     return { kind: request.kind, map, event: { kind, index }, label, script: resolved?.script ?? null, strings: resolved?.strings ?? null, registry, warnings, command };
   }
 

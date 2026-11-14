@@ -34,7 +34,7 @@ async function state(app: App, req: AutomationRequest): Promise<unknown> {
     connections: (main?.doc.connections ?? []).map((c, index) => ({ index, direction: c.direction, offset: c.offset, bank: c.bank, map: c.map })),
     neighbors: (current?.bands ?? []).map((b) => {
       const p = b.placement;
-      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt };
+      return { index: p.index, direction: p.direction, side: p.side, bank: p.id.bank, map: p.id.map, offset: p.offset, placement: p.placement, band: p.band, bandAt: p.bandAt, clones: b.clones };
     }),
   };
 }

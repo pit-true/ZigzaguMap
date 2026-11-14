@@ -102,6 +102,31 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     st = wait_state(z, lambda s: s["project"] is not None)
     check((st["project"] or "").lower() == project_dir.lower(), "最近開いたものから組で開き直せる")
 
+    # ---- ROM ごとに前回のプロジェクトフォルダを覚える（#278。既定オン）----
+    check(st["settings"].get("rememberRomProject") is True, "設定「ROM ごとに前回のプロジェクトフォルダを覚える」は既定でオン")
+    z.call({"cmd": "menu.run", "id": "file.open"})
+    z.call({"cmd": "queuePath", "path": rom})
+    time.sleep(1.5)
+    check(not native_dialogs(z), "覚えているフォルダがあれば、ROM を開いてもフォルダを選ぶ窓を出さない")
+    st = wait_state(z, lambda s: s["project"] is not None)
+    status = z.call({"cmd": "status"})
+    check((st["project"] or "").lower() == project_dir.lower() and "前回のフォルダを開きました" in status["left"],
+          f"前回のフォルダで開き、ステータスバーで知らせる（{status['left']}）")
+    z.call({"cmd": "action", "id": "opt.rememberRomProject"})
+    z.call({"cmd": "menu.run", "id": "file.open"})
+    z.call({"cmd": "queuePath", "path": rom})
+    check(any(d.get("type") == "folder" for d in wait_native(z)), "設定をオフにすると毎回フォルダを選ぶ窓を出す")
+    z.call({"cmd": "queuePath", "path": project_dir})
+    wait_state(z, lambda s: s["project"] is not None)
+    z.call({"cmd": "action", "id": "opt.rememberRomProject"})
+    gone = str(pathlib.Path(project_dir).parent / "zzm-no-such-folder")
+    z.call({"cmd": "setting", "key": "romProjects", "value": {rom.lower(): gone}})
+    z.call({"cmd": "menu.run", "id": "file.open"})
+    z.call({"cmd": "queuePath", "path": rom})
+    check(any(d.get("type") == "folder" for d in wait_native(z)), "覚えているフォルダが消えていれば、今までどおり窓を出す")
+    z.call({"cmd": "queuePath", "path": project_dir})
+    wait_state(z, lambda s: s["project"] is not None)
+
     # ---- メニュー（#169・#172・#177・#178）----
     items = z.call({"cmd": "menu.list"})
     tops = []

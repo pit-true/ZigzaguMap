@@ -1,6 +1,5 @@
 import {
   AddRomEraseRangesCommand,
-  CloneSyncCommand,
   CommandGroup,
   EVENT_HEADER_SIZE,
   MAP_HEADER_SIZE,
@@ -13,7 +12,6 @@ import {
   keepStringsInPlan,
   listProjectFiles,
   mapHeaderCodec,
-  mapTargets,
   parseWidthRegistryListing,
   planRomErase,
   planScriptRemoval,
@@ -28,7 +26,7 @@ import {
 } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import type { ProjectSession } from "../../app/ProjectSession";
-import { cloneTargets, reportClones } from "../../app/cloneSync";
+import { cloneSyncFor, reportClones } from "../../app/cloneSync";
 import { ProcessRunner } from "../../util/processRunner";
 import { disasmTools } from "../script/disasmTools";
 import type { UiKind } from "./eventModel";
@@ -106,8 +104,7 @@ export class EventDeleter {
   async run(plan: EventDeletePlan): Promise<string[]> {
     const commands: Command[] = [new RemoveEventCommand({ ...plan.map, kind: plan.kind, index: plan.index })];
     // 人を消したら、隣のマップのクローンも消す（#242。同じ 1 回の操作にまとめる）
-    const cloneMaps = plan.kind === "person" ? await cloneTargets(this.app.state, plan.map) : null;
-    const sync = cloneMaps ? new CloneSyncCommand({ ...plan.map, targets: mapTargets(cloneMaps) }) : null;
+    const sync = plan.kind === "person" ? await cloneSyncFor(this.app.state, plan.map) : null;
     if (sync) commands.push(sync);
     if (plan.rom && plan.rom.erase.length > 0) {
       const event = plan.kind === "warp" ? "person" : plan.kind;

@@ -452,7 +452,8 @@ def clones_in(z: Zigzagu, bank: int, map_: int) -> list:
 
 
 def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
-    """クローンの自動作成（#242）。1 番道路（3.19）の人を南の端へ動かすと、マサラタウン（3.0）にクローンができる。"""
+    """クローンの自動作成（#242）。表示 > クローン（既定オフ）に印を付けたときだけ、1 番道路（3.19）の人を南の端へ動かすと
+    マサラタウン（3.0）にクローンができる。ドラッグ・削除・欄の入力・イベント数・ひな形のどれでも同じ規則で合わせる。"""
     z.call({"cmd": "resize", "width": 1280, "height": 900})
     before = len(clones_in(z, 3, 0))
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
@@ -461,16 +462,31 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     cells = z.call({"cmd": "cells"})
     p = st["events"]["persons"][0]
     south = [10, cells["height"] - 2]
+    # 既定はオフ: 作りも消しもしない
+    menu = {m["id"]: m for m in z.call({"cmd": "menu.list"}) if m.get("id")}
+    check(menu.get("view.clones", {}).get("checked") is False and menu["view.clones"]["path"][0] == "表示", f"表示 > クローン は既定で印なし（{menu.get('view.clones')}）")
+    z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before, "印が無いときはクローンを作らない")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "action", "id": "view.clones"})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
     time.sleep(1.0)
     status = z.call({"cmd": "getField", "id": "status.info"})["value"]
     clones = clones_in(z, 3, 0)
     check(len(clones) == before + 1 and clones[-1]["target"] == {"bank": 3, "map": 19, "localId": p["localId"]}, f"1 番道路の南の端に人を動かすとマサラタウンにクローン（{clones}）")
     check("クローンを作りました" in status, f"ステータスバーで知らせる（{status}）")
-    if shots:
-        save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
+    # 1 番道路の帯（マサラタウン）にクローンの印が出る
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
+    ns = z.call({"cmd": "neighbors.state", "wait": True})
+    shown = [c for n in ns["neighbors"] if n["bank"] == 3 and n["map"] == 0 for c in n.get("clones", [])]
+    check(len(shown) >= 1, f"隣の帯にこのマップのクローンを見せる（{shown}）")
+    if shots:
+        save_png(z.call({"cmd": "canvasPng", "target": "event", "neighbors": True}), shots / "p3_clone_band.png")
+        save_png(z.call({"cmd": "screenshot"}), shots / "p3_clone_created.png")
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": south, "to": [10, cells["height"] - 12]})
     time.sleep(1.0)
     check(len(clones_in(z, 3, 0)) == before, "北へ 8 マスより外へ動かすとクローンが消える")
@@ -490,15 +506,46 @@ def check_clones(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
     check(len(clones_in(z, 3, 0)) == before + 1, "削除を取り消すとクローンも戻る")
     z.call({"cmd": "undo"})
-    # 設定で切れる
-    z.call({"cmd": "action", "id": "opt.autoClones"})
+    # 座標の欄に入れて動かしても合わせる
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "event.select", "kind": "person", "index": 0})
+    z.call({"cmd": "setField", "id": "event.person.x", "value": f"{south[0]:X}"})
+    z.call({"cmd": "setField", "id": "event.person.y", "value": f"{south[1]:X}"})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before + 1, "座標の欄の入力で境界へ動かすとクローンができる")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before, "欄の入力を取り消すとクローンも消える")
+    # ひな形で境界の近くに置いても合わせる
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    n0 = len(z.call({"cmd": "event.state"})["events"]["persons"])
+    z.call({"cmd": "template.place", "kind": "person", "x": 6, "y": cells["height"] - 1})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before + 1, "ひな形で境界の近くに置くとクローンができる")
+    # イベント数を減らして消しても合わせる（置いた人は最後の番号）
+    z.call({"cmd": "selectMap", "bank": 3, "map": 19})
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "setField", "id": "event.manager.persons", "value": str(n0)})
+    z.call({"cmd": "click", "id": "event.manager.apply"})
+    for d in z.call({"cmd": "dialogs"}) or []:
+        if d.get("kind") == "app":
+            z.call({"cmd": "dialog", "press": "yes"})
+    time.sleep(1.0)
+    check(len(clones_in(z, 3, 0)) == before, "イベント数を減らして人を消すとクローンも消える")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before + 1, "イベント数の変更を取り消すとクローンも戻る")
+    z.call({"cmd": "undo"})
+    check(len(clones_in(z, 3, 0)) == before, "ひな形を取り消すとクローンも消える")
+    # 印を外すと作らない
+    z.call({"cmd": "action", "id": "view.clones"})
     z.call({"cmd": "selectMap", "bank": 3, "map": 19})
     z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "mouse", "target": "event", "action": "drag", "cell": [p["x"], p["y"]], "to": south})
     time.sleep(1.0)
-    check(len(clones_in(z, 3, 0)) == before, "設定を切るとクローンを作らない")
+    check(len(clones_in(z, 3, 0)) == before, "印を外すとクローンを作らない")
     z.call({"cmd": "undo"})
-    z.call({"cmd": "action", "id": "opt.autoClones"})
 
 
 CHECKS_RESTART = {"stampsReopen": check_stamps_reopen}

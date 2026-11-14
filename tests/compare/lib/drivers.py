@@ -771,7 +771,7 @@ class ZigzaguDriver(Driver):
                 self.call({"cmd": "setting", "key": "autoMovement", "value": False})
                 self.call({"cmd": "setting", "key": "usageMarks", "value": False})
                 # 人を動かしても隣のマップにクローンを作らない（AdvanceMap に無い。Phase3 #242）
-                self.call({"cmd": "setting", "key": "autoClones", "value": False})
+                self.call({"cmd": "setting", "key": "showClones", "value": False})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e

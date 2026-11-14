@@ -6,6 +6,9 @@ import type { MapView } from "./MapView";
 
 /** 隣のマップを暗くする割合（黒を重ねる不透明度）。 */
 const NEIGHBOR_SHADE = 0.3;
+/** クローンの印の色（人の箱と同じ系統の色を薄くしたもの）。 */
+const CLONE_FILL = "rgba(64, 160, 255, 0.45)";
+const CLONE_EDGE = "#ffffff";
 
 /** 1 つのタブの描き方。 */
 export interface NeighborLayerOptions {
@@ -13,6 +16,8 @@ export interface NeighborLayerOptions {
   readonly tab: TabId;
   /** 移動許可も重ねるか（移動エリアタブ）。 */
   readonly movement?: boolean;
+  /** 表示 > クローンがオンのとき、このマップの人のクローンを帯の上に描くか（イベントタブ。#242）。 */
+  readonly clones?: boolean;
 }
 
 /**
@@ -104,8 +109,26 @@ export class NeighborLayer {
       if (this.options.movement) drawMovements(c, band.grid, band.placement.band, size, opacity);
       c.fillStyle = `rgba(0, 0, 0, ${NEIGHBOR_SHADE})`;
       c.fillRect(0, 0, w, h);
+      if (this.options.clones && this.state.settings.data.showClones) drawClones(c, band.clones, band.placement.band, size);
     });
   }
+}
+
+/** 帯の上にクローンの印（点線の枠）を描く。 */
+function drawClones(c: CanvasRenderingContext2D, clones: readonly { x: number; y: number }[], band: { x: number; y: number; width: number; height: number }, size: number): void {
+  c.save();
+  c.setLineDash([3, 2]);
+  c.lineWidth = 2;
+  for (const p of clones) {
+    const x = p.x - band.x;
+    const y = p.y - band.y;
+    if (x < 0 || y < 0 || x >= band.width || y >= band.height) continue;
+    c.fillStyle = CLONE_FILL;
+    c.fillRect(x * size, y * size, size, size);
+    c.strokeStyle = CLONE_EDGE;
+    c.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+  }
+  c.restore();
 }
 
 /** 帯の上に移動許可を重ねる（MovementLayer と同じ色と文字）。 */
