@@ -25,15 +25,14 @@ import { TilesetSourceJson, type TilesetSource } from "./TilesetSource.js";
 import {
   CHARMAP_PATH,
   HIDDEN_ITEM_PATH,
-  MAPS_DIR,
   PROJECT_MANIFEST_PATH,
   REGION_MAP_PATH,
-  TILESETS_DIR,
-  TILESET_IMAGE_FILE,
-  TILESET_INFO_FILE,
-  isNumericName,
+  listBankFiles,
+  listTilesetFolders,
   mapSourcePath,
   tilesetFolder,
+  tilesetImagePath,
+  tilesetInfoPath,
 } from "./paths.js";
 
 /** マップを読んだ結果。読めなかったときは `error` に理由が入る。 */
@@ -130,17 +129,13 @@ export class CfruProject {
       ? ProjectManifestJson.parse(await fs.readText(PROJECT_MANIFEST_PATH), PROJECT_MANIFEST_PATH)
       : null;
     const jsonMaps = new Set<string>();
-    for (const bank of await fs.list(MAPS_DIR)) {
-      if (!isNumericName(bank)) continue;
-      for (const file of await fs.list(`${MAPS_DIR}/${bank}`)) {
-        const m = /^([0-9]+)\.json$/i.exec(file);
-        if (m) jsonMaps.add(mapKey({ bank: Number(bank), map: Number(m[1]) }));
-      }
+    for (const { bank, name } of await listBankFiles(fs)) {
+      const m = /^([0-9]+)\.json$/i.exec(name);
+      if (m) jsonMaps.add(mapKey({ bank: Number(bank), map: Number(m[1]) }));
     }
     const tilesets = new Map<string, TilesetEntry>();
-    for (const name of await fs.list(TILESETS_DIR)) {
-      const folder = `${TILESETS_DIR}/${name}`;
-      const info = `${folder}/${TILESET_INFO_FILE}`;
+    for (const folder of await listTilesetFolders(fs)) {
+      const info = tilesetInfoPath(folder);
       if (!(await fs.exists(info))) continue;
       const source = TilesetSourceJson.parse(await fs.readText(info), info);
       tilesets.set(tilesetKey({ pointer: ROM_BASE + source.headerAddress, secondary: source.secondary }), { folder, source });
@@ -253,7 +248,7 @@ export class CfruProject {
       if (cached) return cached.toTileset();
       const entry = this.tilesetSources.get(tilesetKey(ref));
       const t = entry
-        ? TilesetDocument.fromSource(entry.source, await this.fs.readBytes(`${entry.folder}/${TILESET_IMAGE_FILE}`), this.fs.inflate)
+        ? TilesetDocument.fromSource(entry.source, await this.fs.readBytes(tilesetImagePath(entry.folder)), this.fs.inflate)
         : TilesetDocument.fromRom(this.rom, ref, this.dataStarts());
       return t.toTileset();
     };
@@ -329,7 +324,7 @@ export class CfruProject {
     if (cached) return cached;
     const entry = this.tilesetSources.get(tilesetKey(ref));
     const doc = entry
-      ? TilesetDocument.fromSource(entry.source, await this.fs.readBytes(`${entry.folder}/${TILESET_IMAGE_FILE}`), this.fs.inflate)
+      ? TilesetDocument.fromSource(entry.source, await this.fs.readBytes(tilesetImagePath(entry.folder)), this.fs.inflate)
       : TilesetDocument.fromRom(this.rom, ref, this.dataStarts());
     this.store.putTileset(doc);
     this.tilesetSnapshots.set(tilesetKey(ref), doc.toJson());
@@ -389,12 +384,12 @@ export class CfruProject {
     for (const [k, r] of this.store.removedTilesets) {
       if (this.store.tilesets.has(k)) continue;
       const folder = tilesetFolder(r.headerAddress, r.secondary);
-      for (const path of [`${folder}/${TILESET_INFO_FILE}`, `${folder}/${TILESET_IMAGE_FILE}`]) if (await this.fs.exists(path)) removals.push(path);
+      for (const path of [tilesetInfoPath(folder), tilesetImagePath(folder)]) if (await this.fs.exists(path)) removals.push(path);
     }
     for (const t of [...this.store.tilesets.values()].sort((a, b) => a.pointer - b.pointer || Number(a.secondary) - Number(b.secondary))) {
       const folder = tilesetFolder(t.headerAddress, t.secondary);
-      const info = `${folder}/${TILESET_INFO_FILE}`;
-      const image = `${folder}/${TILESET_IMAGE_FILE}`;
+      const info = tilesetInfoPath(folder);
+      const image = tilesetImagePath(folder);
       const json = t.toJson();
       if (this.baseTilesetJsonOf(t) === json) {
         if (await this.fs.exists(info)) removals.push(info);
@@ -437,14 +432,14 @@ export class CfruProject {
     }
     this.store.removedMaps.clear();
     for (const [k, r] of this.store.removedTilesets) {
-      if (removals.includes(`${tilesetFolder(r.headerAddress, r.secondary)}/${TILESET_INFO_FILE}`)) this.tilesetSources.delete(k);
+      if (removals.includes(tilesetInfoPath(tilesetFolder(r.headerAddress, r.secondary)))) this.tilesetSources.delete(k);
     }
     this.store.removedTilesets.clear();
     for (const t of this.store.tilesets.values()) {
       this.tilesetSnapshots.set(tilesetKey(t.ref), t.toJson());
       const folder = tilesetFolder(t.headerAddress, t.secondary);
-      if (writes.some((w) => w.path === `${folder}/${TILESET_INFO_FILE}`)) this.tilesetSources.set(tilesetKey(t.ref), { folder, source: t.toSource() });
-      if (removals.includes(`${folder}/${TILESET_INFO_FILE}`)) this.tilesetSources.delete(tilesetKey(t.ref));
+      if (writes.some((w) => w.path === tilesetInfoPath(folder))) this.tilesetSources.set(tilesetKey(t.ref), { folder, source: t.toSource() });
+      if (removals.includes(tilesetInfoPath(folder))) this.tilesetSources.delete(tilesetKey(t.ref));
     }
     this.fileItemBalls.clear();
     for (const [k, doc] of this.store.documents) {

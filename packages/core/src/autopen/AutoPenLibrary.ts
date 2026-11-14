@@ -1,4 +1,4 @@
-import { AUTOPEN_DIR } from "../project/paths.js";
+import { AUTOPEN_DIR, listJsonFiles } from "../project/paths.js";
 import type { ProjectFs } from "../project/ProjectFs.js";
 import { autoPenFileBase, autoPenPath, parseAutoPenFile, stringifyAutoPenFile } from "../project/AutoPenJson.js";
 import { parseBochiAssistText } from "./BochiAssistText.js";
@@ -80,13 +80,9 @@ export class AutoPenLibrary {
   }
 
   private async readFolder(fs: ProjectFs): Promise<void> {
-    if (!(await fs.exists(AUTOPEN_DIR))) return;
-    for (const name of await fs.list(AUTOPEN_DIR)) {
-      const m = /^(.*)\.json$/i.exec(name);
-      if (!m) continue;
-      const path = `${AUTOPEN_DIR}/${name}`;
+    for (const { path, base } of await listJsonFiles(fs, AUTOPEN_DIR)) {
       try {
-        this.entries.push({ file: parseAutoPenFile(await fs.readText(path), path), base: m[1]! });
+        this.entries.push({ file: parseAutoPenFile(await fs.readText(path), path), base });
       } catch (e) {
         this.problems.push({ path, message: (e as Error).message });
       }
