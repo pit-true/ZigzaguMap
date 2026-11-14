@@ -104,7 +104,11 @@ export class TemplatePlacer {
     const map = app.state.map?.id;
     if (!session || !map) throw new Error(t.noMap);
     const spec = eventTemplate(request.kind);
-    const values = request.values;
+    // 落とし物を見えるボールで置くとき、見た目と向きの指定が無ければ全マップでいちばん多いものにする（#304）
+    const values =
+      request.kind === "hiddenItem" && request.values.ball && request.values.graphicsId === undefined
+        ? { ...request.values, ...(await app.events.itemBallStyle()) }
+        : request.values;
     checkTemplateValues(request.kind, values);
     const config = (await app.scripts.scriptConfig())?.config ?? null;
     for (const x of spec.texts) {

@@ -224,7 +224,8 @@ export function templateFields(id: EventTemplateId, v: TemplateValues): Record<s
       return { variable: v.variable ?? 0, value: 0 };
     case "hiddenItem":
       return v.ball
-        ? { graphicsId: GFX_ITEM_BALL, flag: v.flag ?? 0 }
+        ? // 見た目と向きは、画面側が全マップの落とし物でいちばん多いものを入れる（#304）。無ければボールの下向き
+          { graphicsId: v.graphicsId ?? GFX_ITEM_BALL, movementType: v.movementType ?? MOVEMENT_FACE_DOWN, flag: v.flag ?? 0 }
         : { kind: SIGN_KIND_HIDDEN_ITEM, item: v.item ?? 0, flag: v.hiddenId ?? 0, amount: v.amount ?? 1, underfoot: false };
     case "itemGiver":
       return { graphicsId: v.graphicsId ?? GFX_MIDDLE_AGED_MAN, movementType: v.movementType ?? MOVEMENT_FACE_DOWN };

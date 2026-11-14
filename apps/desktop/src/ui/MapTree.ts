@@ -48,6 +48,10 @@ export class MapTree {
   private allRoots: readonly TreeNode[] = [];
   /** 絞り込みの文字列（空なら絞り込まない）。 */
   private filterText = "";
+  /** 名前のほかに、マップの番号で絞る条件（#305 の「場所:」「地形:」。無ければ null）。 */
+  private filterMatch: ((id: MapId) => boolean) | null = null;
+  /** 絞り込みの入力そのもの（同じ入力なら作り直さない）。 */
+  private filterKey = "";
   /** 絞り込みを始める前の開いていた枝（絞り込みを消したら戻す）。 */
   private savedExpanded: Set<string> | null = null;
   private selectedKey: string | null = null;
@@ -79,27 +83,33 @@ export class MapTree {
    * 絞り込む（#237）。項目の文（マップ名と「(バンク.マップ)」）の部分一致で、合う項目とその親だけを出し、枝は全部開く。
    * グループの名前が合えば中身を全部出す。空にすると元の開き方に戻す。
    */
-  setFilter(text: string): void {
+  setFilter(text: string, match: ((id: MapId) => boolean) | null = null, key: string = text): void {
     const next = text.trim();
-    if (next === this.filterText) return;
-    if (next !== "" && this.filterText === "") this.savedExpanded = new Set(this.expanded);
-    if (next === "" && this.savedExpanded) {
+    const nextKey = key.trim();
+    if (nextKey === this.filterKey) return;
+    const wasActive = this.filterKey !== "";
+    const active = nextKey !== "";
+    if (active && !wasActive) this.savedExpanded = new Set(this.expanded);
+    if (!active && this.savedExpanded) {
       this.expanded.clear();
       for (const k of this.savedExpanded) this.expanded.add(k);
       this.savedExpanded = null;
     }
     this.filterText = next;
+    this.filterMatch = active ? match : null;
+    this.filterKey = nextKey;
     this.render();
   }
 
-  /** 絞り込みの文字列。 */
+  /** 絞り込みの入力（「場所:」などの語も含む）。 */
   get filter(): string {
-    return this.filterText;
+    return this.filterKey;
   }
 
   private render(): void {
-    const roots = this.filterText === "" ? this.allRoots : filterNodes(this.allRoots, this.filterText);
-    if (this.filterText !== "") for (const key of branchKeys(roots)) this.expanded.add(key);
+    const filtering = this.filterKey !== "";
+    const roots = filtering ? filterNodes(this.allRoots, this.filterText, this.filterMatch) : this.allRoots;
+    if (filtering) for (const key of branchKeys(roots)) this.expanded.add(key);
     this.roots = roots;
     this.rows.clear();
     // 根が 1 つだけ（マップの表示設定で片方だけ）のときは開いておく。
@@ -361,19 +371,25 @@ function findPath(node: TreeNode, id: MapId): TreeNode[] | null {
   return null;
 }
 
-/** 絞り込んだ項目（合う項目と、その親。グループの名前が合えば中身を全部）。 */
-function filterNodes(nodes: readonly TreeNode[], query: string): TreeNode[] {
+/**
+ * 絞り込んだ項目（合う項目と、その親。グループの名前が合えば中身を全部）。`match` があれば、マップの番号でも絞る
+ * （「マップファイル」の項目は番号を持たないので出さない。グループの名前が合っても中身を 1 つずつ確かめる）。
+ */
+function filterNodes(nodes: readonly TreeNode[], query: string, match: ((id: MapId) => boolean) | null = null): TreeNode[] {
   const out: TreeNode[] = [];
+  const named = (label: string): boolean => query === "" || labelMatches(label, query);
   for (const n of nodes) {
     if (n.mapId || n.filePath !== undefined) {
-      if (labelMatches(n.label, query)) out.push(n);
+      if (match && (!n.mapId || !match(n.mapId))) continue;
+      if (named(n.label)) out.push(n);
       continue;
     }
-    if (labelMatches(n.label, query) && n.children && n.children.length > 0) {
-      out.push(n);
+    if (query !== "" && labelMatches(n.label, query) && n.children && n.children.length > 0) {
+      const all = match ? filterNodes(n.children, "", match) : n.children;
+      if (all.length > 0) out.push(match ? { ...n, children: all } : n);
       continue;
     }
-    const children = filterNodes(n.children ?? [], query);
+    const children = filterNodes(n.children ?? [], query, match);
     if (children.length > 0) out.push({ ...n, children });
   }
   return out;

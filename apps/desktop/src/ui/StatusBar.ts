@@ -25,6 +25,11 @@ export class StatusBar {
     this.element.append(this.left, this.info, this.right);
   }
 
+  /** 右欄の前に部品を足す（接続の境目の注意など。機能ごとのモジュールが自分で中身を描く。#305）。 */
+  addSlot(element: HTMLElement): void {
+    this.element.insertBefore(element, this.right);
+  }
+
   /** 状態を描く。 */
   render(status: StatusText, info = ""): void {
     this.left.textContent = status.left;

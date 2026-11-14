@@ -42,6 +42,8 @@ import { eventHoverSource } from "./eventHoverSource";
 import { drawWarpWarnings, unusableWarps } from "./warpCheck";
 import { ctrlPeek } from "../map/ctrlPeek";
 import type { ScriptSummaries } from "./ScriptSummaries";
+import { EventQuickAdd } from "./EventQuickAdd";
+import { visibleEvents } from "./eventVisibility";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -62,6 +64,8 @@ export interface EventTabHost {
   createWarpMap?(index: number): void;
   /** 人のスクリプトのトレーナーを直す窓（#274。右クリックのメニュー）。 */
   editTrainer?(index: number): void;
+  /** 「ここに落とし物を追加」（#304。ひな形の落とし物と同じ処理）。 */
+  placeItemBall?(x: number, y: number): void;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -106,12 +110,19 @@ export class EventTab {
   private unsubscribe: (() => void) | null = null;
   private drag: { kind: UiKind; index: number; key: string } | null = null;
   private dragCount = 0;
+  /** 右クリックの「ここに○○を追加」（#304）。 */
+  readonly quickAdd: EventQuickAdd;
+  private readonly selectListeners = new Set<() => void>();
 
   constructor(
     private readonly state: EditorState,
     private readonly host: EventTabHost,
   ) {
     this.editor = new EventEditor(state);
+    this.quickAdd = new EventQuickAdd(state, this.editor, {
+      select: (kind, index) => this.select(kind, index),
+      itemBall: () => (host.placeItemBall && host.canPlaceTemplate?.() ? (x, y) => host.placeItemBall?.(x, y) : null),
+    });
     this.element = document.createElement("div");
     this.element.className = "event-tab";
     this.view = new MapView("event-tab-view");
@@ -192,6 +203,8 @@ export class EventTab {
     });
     state.on("cells", () => this.view.sync());
     state.on("view", () => this.configure());
+    // イベントの濃さ（#304。濃さの窓のスライダーを動かしている間も）
+    state.on("opacity", () => this.draw());
     state.on("tab", () => {
       if (state.tab === "event") this.showNote();
     });
@@ -212,6 +225,12 @@ export class EventTab {
     this.index = index;
     this.editor.endSession();
     this.refresh();
+    for (const l of this.selectListeners) l();
+  }
+
+  /** 選ぶイベントが変わったときに呼ぶ関数を足す（ポインタ一覧の行の連動など。#307）。 */
+  onSelect(listener: () => void): void {
+    this.selectListeners.add(listener);
   }
 
   /** 選んだ種別の個数（フライトポジションは 0 か 1）。 */
@@ -241,6 +260,8 @@ export class EventTab {
   private configure(): void {
     const s = this.state.settings.data;
     this.view.configure(s.zoomEvent ? 2 : 1, s.grid);
+    // 表示メニューで隠す種類が変わったかもしれない（#304）
+    this.placed = this.placeEvents();
     this.draw();
   }
 
@@ -271,10 +292,14 @@ export class EventTab {
     if (this.state.tab === "event") this.showNote();
   }
 
-  /** 表示中のマップのイベントを印の並びにする（クローンは元の人の画像番号で。#298）。 */
+  /**
+   * 表示中のマップのイベントを印の並びにする（クローンは元の人の画像番号で。#298）。
+   * 表示メニューで隠した種類は除く（隠したものは描かず、クリック・ホバーでも選ばない。#304）。
+   */
   private placeEvents(): PlacedEvent[] {
     const session = this.state.session;
-    return placedEvents(this.state.map?.doc.events ?? null, this.fly(), (p) => personGraphicsId(session, p, this.onCloneOrigin));
+    const all = placedEvents(this.state.map?.doc.events ?? null, this.fly(), (p) => personGraphicsId(session, p, this.onCloneOrigin));
+    return visibleEvents(all, this.state.settings.data.hiddenEventKinds);
   }
 
   private showPanel(doc: MapDocument): void {
@@ -313,7 +338,7 @@ export class EventTab {
   private draw(): void {
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
-    drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites);
+    drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites, this.state.settings.data.eventOpacity);
     // ワープできないブロックの上のワープに印（#240）
     if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
   }
@@ -518,9 +543,11 @@ export class EventTab {
     if (ctrlPeek.held) return this.pickBlock(cell);
     const hit = eventAt(this.placed, cell.x, cell.y);
     // 「ここにひな形を置く」（#243）。プロジェクトフォルダを開いているときだけ、イベントの無いマスでも出す
-    const templates = this.host.canPlaceTemplate?.()
-      ? [{ id: "placeTemplate", label: jaTemplate.menuPlace, run: () => this.host.placeTemplate?.(cell.x, cell.y) }]
-      : [];
+    const templates = [
+      ...(this.host.canPlaceTemplate?.() ? [{ id: "placeTemplate", label: jaTemplate.menuPlace, run: () => this.host.placeTemplate?.(cell.x, cell.y) }] : []),
+      // 「ここに人を追加」など（#304）
+      ...this.quickAdd.items(cell.x, cell.y),
+    ];
     if (!hit) {
       if (templates.length > 0) showContextMenu(x, y, templates);
       return;

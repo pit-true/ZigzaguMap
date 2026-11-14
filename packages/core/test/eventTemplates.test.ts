@@ -137,7 +137,9 @@ describe("イベントのひな形", () => {
   it("落とし物: 看板の隠しアイテム（既定）か、見えるボールの人", () => {
     const v = templateDefaults("hiddenItem", { hiddenId: 9, flag: 0x240 });
     expect(templateFields("hiddenItem", { ...v, item: 3 })).toEqual({ kind: SIGN_KIND_HIDDEN_ITEM, item: 3, flag: 9, amount: 1, underfoot: false });
-    expect(templateFields("hiddenItem", { ...v, ball: true })).toEqual({ graphicsId: 92, flag: 0x240 });
+    expect(templateFields("hiddenItem", { ...v, ball: true })).toEqual({ graphicsId: 92, movementType: 8, flag: 0x240 });
+    // 見た目と向きは画面側が選んだもの（全マップでいちばん多い落とし物。#304）
+    expect(templateFields("hiddenItem", { ...v, ball: true, graphicsId: 93, movementType: 9 })).toEqual({ graphicsId: 93, movementType: 9, flag: 0x240 });
     expect(() => templateScript("hiddenItem", "X", v, ND)).toThrow();
   });
 

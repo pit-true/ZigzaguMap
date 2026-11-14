@@ -68,6 +68,8 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
  */
 export class Actions {
   private readonly handlers = new Map<string, () => unknown>();
+  /** チェックの状態を機能ごとのモジュールが答える項目（`registerCheck`）。 */
+  private readonly checks = new Map<string, () => boolean>();
 
   constructor(
     private readonly state: EditorState,
@@ -123,6 +125,11 @@ export class Actions {
     this.handlers.set(id, handler);
   }
 
+  /** チェックつきの項目の状態の答え方を登録する（設定の真偽値で答えられない項目用）。 */
+  registerCheck(id: string, isChecked: () => boolean): void {
+    this.checks.set(id, isChecked);
+  }
+
   /** 実装済みか。 */
   isImplemented(id: string): boolean {
     return this.handlers.has(id);
@@ -154,6 +161,8 @@ export class Actions {
 
   /** チェックが付くか。 */
   isChecked(id: string): boolean {
+    const check = this.checks.get(id);
+    if (check) return check();
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
