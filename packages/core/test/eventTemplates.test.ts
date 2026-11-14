@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   EVENT_TEMPLATES,
   SIGN_KIND_HIDDEN_ITEM,
+  ScriptCommandTable,
   checkTemplateValues,
   checkTextWidth,
   templateDefaults,
   templateFields,
   templateLabelName,
+  templateGiveItemLines,
   templateScript,
   type EventTemplateId,
 } from "../src/index.js";
+import { GIVE_ITEM_MACROS, SETORCOPYVAR } from "./helpers/giveItemMacros.js";
 
 const ND = { dialect: "nd" as const, useGlobal: false };
 const CHRONOS = { dialect: "chronos" as const, useGlobal: true };
@@ -67,6 +70,27 @@ describe("イベントのひな形", () => {
     expect(ch.asm[0]).toBe(".global A_Giver1");
     expect(ch.asm).toContain("\tmsgbox gText_A_Giver1 MSG_NORMAL");
     expect(ch.strings.map((s) => s.label)).toEqual(["gText_A_Giver1", "gText_A_Giver1_After"]);
+  });
+
+  it("アイテムをくれる人: obtainitem が組めるときだけマクロで書く", () => {
+    const v = { ...templateDefaults("itemGiver", { flag: 0x230 }), item: 13, amount: 2 };
+    const give = (xse: string | null) =>
+      templateScript("itemGiver", "A_Giver1", v, { ...ND, commands: xse === null ? null : ScriptCommandTable.build({ xseCommands: xse }) }).asm.slice(6, -11);
+    const direct = ["\tsetvarifnotzero 0x8000 0xD", "\tsetvarifnotzero 0x8001 0x2", "\tcallstd MSG_OBTAIN"];
+    // 命令表が無いか、setorcopyvar が無くて組めなければ直接書く
+    expect(give(null)).toEqual(direct);
+    expect(give(GIVE_ITEM_MACROS)).toEqual(direct);
+    // setorcopyvar が足されれば、何も変えずに obtainitem になる
+    expect(give(GIVE_ITEM_MACROS + SETORCOPYVAR)).toEqual(["\tobtainitem 0xD 0x2"]);
+    // obtainitem が無ければ giveitem … MSG_OBTAIN
+    const withoutObtain = (GIVE_ITEM_MACROS + SETORCOPYVAR).replace(/\.macro obtainitem[\s\S]*?\.endm\n/, "");
+    expect(give(withoutObtain)).toEqual(["\tgiveitem 0xD 0x2 MSG_OBTAIN"]);
+    // 引数の数が違う obtainitem は使わない
+    expect(templateGiveItemLines(1, 1, ScriptCommandTable.build({ xseCommands: ".macro obtainitem item:req\n.byte 0x1a\n.endm\n" }))).toEqual([
+      "\tsetvarifnotzero 0x8000 0x1",
+      "\tsetvarifnotzero 0x8001 0x1",
+      "\tcallstd MSG_OBTAIN",
+    ]);
   });
 
   it("ショップ: mart と品物の表（.align 1、0 で終わる）", () => {
