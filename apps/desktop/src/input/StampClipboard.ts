@@ -1,6 +1,6 @@
 import type { BlockSelection, EditorState } from "../app/EditorState";
 import { jaPaint } from "../i18n/ja.paint";
-import { openDialogs } from "../ui/Dialog";
+import { isTyping, modalOpen } from "./keyGuards";
 import type { BlockPainter } from "./BlockPainter";
 
 /**
@@ -49,17 +49,4 @@ export class StampClipboard {
     }
     this.painter.paintSelection(this.painter.hoverCell ?? { x: 0, y: 0 }, this.copied);
   }
-}
-
-/** 後ろを覆うダイアログが開いているか（Grosser Block のような覆わない窓は数えない）。 */
-function modalOpen(): boolean {
-  return openDialogs.some((d) => d.element.parentElement?.classList.contains("dialog-overlay") === true);
-}
-
-/** 文字を入れる欄の中か（チェックボックスなどは入力欄に数えない）。 */
-function isTyping(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  if (!el) return false;
-  if (el instanceof HTMLInputElement) return !["checkbox", "radio", "button"].includes(el.type);
-  return el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable;
 }

@@ -256,6 +256,9 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `blockUsage` | `block`（省略で選んでいるブロック） | ブロックの使用回数（#235）。索引ができるまで待つ。`count`（全マップ）、`here`（表示中のマップ）、`movements`（移動許可 → 数）、`mostMovement`、`mismatches`（表示中のマップで移動許可がいちばん多い値と違うマス `x`・`y`・`movement`）、`selectedMovement`（選んでいる移動許可）、`marks`（今付けている印の数。`map`・`movement`） |
 | `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
 | `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
+| `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
+| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
+| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
 
 - マップタブの右の欄（#235）: 「移動許可を自動で選ぶ」`map.autoMovement`（`setField` に true / false）、使用回数 `map.blockUsage`、多い移動許可 `map.blockUsageMost`。表示 > 移動許可の強調は `action` の `view.usageMarks`（個人設定 `usageMarks`）。比較テストは `setting` で `autoMovement` と `usageMarks` を false にしてから比べる。
 

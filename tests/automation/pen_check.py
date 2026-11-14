@@ -115,7 +115,84 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "undo"})
 
 
-CHECKS = {"triple": check_triple}
+def block_at(cells: list[int], w: int, x: int, y: int) -> int:
+    return cells[y * w + x] & 0x3FF
+
+
+def check_autopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    st = z.call({"cmd": "autopen.state"})
+    names = [p["name"] for p in st["parts"]]
+    check("池（岩の岸）" in names and "木" in names, f"素の BPRJ の主タイルセットに既定のパーツ（{names}）")
+    z.call({"cmd": "key", "key": "p"})
+    st = z.call({"cmd": "autopen.state"})
+    check(st["active"] is True, "P で自動ペンがオンになる")
+    check(0x12B in st["tinted"], "自動で描けるブロックにパレットで色を重ねる")
+    canvas(z, shots, "pen_autopen_palette.png", "palette")
+    z.call({"cmd": "autopen.set", "size": 3})
+    z.call({"cmd": "selectBlock", "block": 0x12B})
+    check(z.call({"cmd": "autopen.state"})["part"] == "池（岩の岸）", "水を選ぶと池のパーツで描く")
+    hist = z.call({"cmd": "state"})["history"]
+    before = z.call({"cmd": "cells"})
+    w = before["width"]
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [9, 13], "to": [13, 13], "steps": 2})
+    after = z.call({"cmd": "cells"})["cells"]
+    row = lambda y: [block_at(after, w, x, y) for x in range(8, 15)]  # noqa: E731
+    check(row(12) == [0x120] + [0x123] * 5 + [0x121], f"上の辺（{[hex(b) for b in row(12)]}）")
+    check(row(13) == [0x12A] + [0x12B] * 5 + [0x12C], f"真ん中（{[hex(b) for b in row(13)]}）")
+    check(row(14) == [0x132] + [0x133] * 5 + [0x134], f"下の辺（{[hex(b) for b in row(14)]}）")
+    check(z.call({"cmd": "state"})["history"] == hist + 1, "1 回のドラッグで 1 回の操作")
+    check(after[13 * w + 10] >> 10 == 4, f"移動許可は使用回数でいちばん多い値（{after[13 * w + 10] >> 10:#x}）")
+    # 下へ伸ばすと内角が出る
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [9, 14], "to": [9, 17], "steps": 3})
+    after2 = z.call({"cmd": "cells"})["cells"]
+    corners = {block_at(after2, w, x, y) for x in range(7, 16) for y in range(11, 20)}
+    check(0x130 in corners or 0x131 in corners, "凹んだ形で内角が出る")
+    screenshot(z, shots, "pen_autopen_pond.png")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "undo"})
+    check(z.call({"cmd": "cells"})["cells"] == before["cells"], "2 回の Ctrl+Z で元に戻る")
+
+    # 偶数の筆は、マスの中の位置で寄せる側を決める
+    z.call({"cmd": "autopen.set", "size": 2, "fraction": [0.2, 0.2]})
+    z.call({"cmd": "selectBlock", "block": 0x00D})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [9, 13]})
+    c = z.call({"cmd": "cells"})["cells"]
+    check(all(block_at(c, w, x, y) == 0x00D for x in (8, 9) for y in (12, 13)), "偶数の筆は左上へ寄せる（マスの左上の半分）")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "autopen.set", "size": 1, "fraction": None})
+
+    # 木: 縦横に描くと先端・つなぎ目・端が付く
+    z.call({"cmd": "selectBlock", "block": 0x01C})
+    for cell in ([8, 12], [10, 12], [8, 14], [10, 14]):
+        z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": cell})
+    t = z.call({"cmd": "cells"})["cells"]
+    trow = lambda y: [block_at(t, w, x, y) for x in range(8, 12)]  # noqa: E731
+    check(trow(11) == [0x0E, 0x0F, 0x0E, 0x0F], f"木の先端（{[hex(b) for b in trow(11)]}）")
+    check(trow(12) == [0x1E, 0x1F, 0x1E, 0x1F], f"真上に木が無い上の段（{[hex(b) for b in trow(12)]}）")
+    check(trow(13) == [0x16, 0x15, 0x14, 0x17], f"つなぎ目と森の端（{[hex(b) for b in trow(13)]}）")
+    check(trow(15) == [0x26, 0x25, 0x24, 0x27], f"下の段（{[hex(b) for b in trow(15)]}）")
+    screenshot(z, shots, "pen_autopen_tree.png")
+    for _ in range(4):
+        z.call({"cmd": "undo"})
+
+    # 部品: 押した所を左上にして 1 回置く
+    z.call({"cmd": "selectBlock", "block": 0x048})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [3, 12], "to": [6, 14]})
+    p = z.call({"cmd": "cells"})["cells"]
+    check(block_at(p, w, 3, 12) == 0x048 and block_at(p, w, 7, 15) == 0x19F, "部品は押した所を左上にして 1 回置く")
+    z.call({"cmd": "undo"})
+    # パーツに無いブロックはふつうの鉛筆
+    z.call({"cmd": "selectBlock", "block": 0x001})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [9, 13]})
+    check(block_at(z.call({"cmd": "cells"})["cells"], w, 9, 13) == 0x001, "パーツに無いブロックはふつうに描く")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "key", "key": "P"})
+    check(z.call({"cmd": "autopen.state"})["active"] is False, "P でオフに戻る")
+
+
+CHECKS = {"triple": check_triple, "autopen": check_autopen}
 
 
 def main() -> None:

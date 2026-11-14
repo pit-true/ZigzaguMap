@@ -105,6 +105,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
         // 3 層の次の番号が置かれているマスの印（Phase4 #301。ZigzaguMap 独自）
         { id: "view.tripleChildMarks", label: jaPen.tripleChildMarks },
+        // 自動ペンで描けるブロックの色（Phase4 #310。ZigzaguMap 独自）
+        { id: "view.autoPenTint", label: jaPen.autoPenTint },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
         // タウンマップの小窓（#306。ZigzaguMap 独自）
