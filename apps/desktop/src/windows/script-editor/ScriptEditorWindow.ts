@@ -70,6 +70,7 @@ export class ScriptEditorWindow {
     view: () => this.view,
     activePath: () => this.activeTab?.path ?? null,
     setMessage: (text) => this.setMessage(text),
+    report: (title, lines, problem) => this.build.appendOutside(title, lines, problem),
   });
   /** 拡張に渡すウィンドウの窓口。 */
   readonly host: EditorHost = {

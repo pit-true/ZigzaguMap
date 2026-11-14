@@ -19,6 +19,8 @@ export interface WidthCheckHost {
   /** 表示中のタブのパス。 */
   activePath(): string | null;
   setMessage(text: string): void;
+  /** 1 回分の出力をビルドの欄のログに足す（`problem` なら欄を出す）。 */
+  report(title: string, lines: readonly string[], problem: boolean): void;
 }
 
 /** 最後の実行の結果（自動操作の `editor.widthCheck` で返す）。 */
@@ -37,7 +39,7 @@ export interface WidthCheckRun {
  * 1. 追加の登録ファイル（`widthRegistry`。Chronos は `strings/text_width_registry.json`）があれば、先に登録の一覧
  *    （同じスクリプトに `--list-registry`）を取り、保存した `.string` の新しい `#org` を書き足す（登録のあるファイルだけ）。
  * 2. 検査を動かし、出力の `TEXT WIDTH ERROR: ファイル:行 ...` を拾って、その行に波線を出す（前の結果の波線は消す）。
- *    出力はウィンドウに覚えておく（ビルドのログの欄ができたらそこに出す）。
+ *    出力はウィンドウに覚えておき、ビルドの欄のログにも足す（問題があれば欄を出す）。
  * 動いている間にもう一度保存したら、終わってからもう 1 回だけ動かす。
  */
 export class WidthCheck {
@@ -47,6 +49,8 @@ export class WidthCheck {
   runs = 0;
   private running: Promise<void> | null = null;
   private again: { path: string; text: string } | null = null;
+  /** 今の実行の出力（ビルドの欄へ渡す）。 */
+  private current: string[] = [];
 
   constructor(private readonly host: WidthCheckHost) {}
 
@@ -78,6 +82,7 @@ export class WidthCheck {
 
   private async run(path: string, text: string, step: ScriptCommandStep): Promise<void> {
     this.runs++;
+    this.current = [];
     this.host.setMessage(t.widthCheck.running);
     const config = this.host.project.config!;
     let registry: WidthCheckRun["registry"] = null;
@@ -106,9 +111,11 @@ export class WidthCheck {
       if (registry && registry.added.length > 0) notes.push(t.widthCheck.registered(registry.added.length, registry.path));
       if (registry && registry.removed.length > 0) notes.push(t.widthCheck.removed(registry.removed.length, registry.path));
       this.host.setMessage(notes.join("　"));
+      this.host.report(t.widthCheck.logTitle(path), [...this.current, ...notes], exit !== 0 || errors.length > 0);
     } catch (e) {
       this.last = { path, exit: null, errors: [], registry, failed: errorText(e) };
       this.host.setMessage(t.widthCheck.failed(errorText(e)));
+      this.host.report(t.widthCheck.logTitle(path), [...this.current, t.widthCheck.failed(errorText(e))], true);
     }
   }
 
@@ -123,6 +130,7 @@ export class WidthCheck {
   }
 
   private push(line: string): void {
+    this.current.push(line);
     this.log.push(line);
     if (this.log.length > LOG_LIMIT) this.log.splice(0, this.log.length - LOG_LIMIT);
   }

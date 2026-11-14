@@ -102,6 +102,7 @@ export const jaScriptEditorAssist = {
     failed: (error: string) => `幅検査を実行できませんでした: ${error}`,
     registered: (count: number, path: string) => `幅検査の登録に ${count} 件を足しました（${path}）`,
     removed: (count: number, path: string) => `幅検査の登録から ${count} 件を消しました（${path}）`,
+    logTitle: (path: string) => `保存時の幅検査: ${path}`,
     unresolvedReason: (labels: string) => `ZigzaguMap が自動で登録しました。${labels} に入る値の種類が分からないため、窓の幅は検査していません`,
   },
 

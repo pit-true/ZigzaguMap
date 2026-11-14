@@ -9,6 +9,8 @@ import { isEditableScriptPath } from "./fileText";
 
 /** 読み足したログの行の手順の番号（プロジェクトフォルダで動いた出力として読む）。 */
 const INCLUDED_STEP = 1000;
+/** ビルドの外の出力（保存時の幅検査）の手順の番号。エラーの拾い出しには使わない。 */
+const OUTSIDE_STEP = -2;
 
 /** ログに残す行の数（古い行から捨てる）。 */
 const MAX_LOG_LINES = 20_000;
@@ -17,7 +19,7 @@ const MAX_LOG_LINES = 20_000;
 export interface BuildLogLine {
   readonly stream: "stdout" | "stderr" | "info";
   readonly line: string;
-  /** 何番目の手順の出力か（0 から。ZigzaguMap のお知らせは -1）。 */
+  /** 何番目の手順の出力か（0 から。ZigzaguMap のお知らせは -1、保存時の幅検査は -2）。 */
   readonly step: number;
 }
 
@@ -199,6 +201,16 @@ export class BuildPanel {
       this.push({ stream: "info", line: t.includedLog(path), step: -1 });
       for (const line of text.split(/\r?\n/)) if (line !== "") this.push({ stream: "stdout", line, step: INCLUDED_STEP });
     }
+  }
+
+  /**
+   * ビルドの外の出力（保存時の幅検査）をログに足す。見出しの行のあとに `lines` を並べる。`show` なら欄を出す。
+   * 次のビルドを始めると、ほかのログと一緒に消える。
+   */
+  appendOutside(title: string, lines: readonly string[], show: boolean): void {
+    this.push({ stream: "info", line: title, step: OUTSIDE_STEP });
+    for (const line of lines) this.push({ stream: "stdout", line, step: OUTSIDE_STEP });
+    if (show) this.show();
   }
 
   /** 止める（子プロセスごと）。 */

@@ -443,7 +443,7 @@ Gen3 Script Assistant 改造版（VS Code の拡張）の色付け・ホバー�
 保存時の幅検査（#197）:
 
 - `.string` を保存したとき、zigzagumap.json に幅検査のコマンド（`widthCheck`）があれば動かします。Chronos は既定で `python tools/check_text_width.py --source`（作業フォルダは 1 つ上の `Chronos`）、ND は既定で無いので何もしません。動いている間にもう一度保存したら、終わってからもう 1 回だけ動かします。
-- 出力の `TEXT WIDTH ERROR: cfru/strings/x.string:21 gText_X (configured) page 1 line 2: 212 px > 208 px (...)` を拾い、`prefix`（Chronos は `cfru/`）を外したパスのファイルのその行に波線を出します。前の結果の波線は消します（直して保存すると消える）。`(configured)` と `(widest)` で同じ中身のものは 1 つにまとめます。ファイルや行の分からない誤りは、保存したファイルの 1 行目に出します。出力はエディタのウィンドウに覚えておきます（自動操作の `editor.widthCheck` の `log`。ビルドのログの欄ができたらそこに出します）。
+- 出力の `TEXT WIDTH ERROR: cfru/strings/x.string:21 gText_X (configured) page 1 line 2: 212 px > 208 px (...)` を拾い、`prefix`（Chronos は `cfru/`）を外したパスのファイルのその行に波線を出します。前の結果の波線は消します（直して保存すると消える）。`(configured)` と `(widest)` で同じ中身のものは 1 つにまとめます。ファイルや行の分からない誤りは、保存したファイルの 1 行目に出します。出力は、ビルドの欄のログに「保存時の幅検査: ファイル」の見出しを付けて足します（問題があれば欄を開きます。自動操作では `editor.widthCheck` の `log` と `build.log`）。
 - Chronos は、検査するファイル（登録のあるファイル）のすべての `#org` が `tools/check_text_width.py` に登録されていないと、検査もビルドも止まります。そこで、検査の前に登録の一覧（`--list-registry`）を取り、保存した `.string` が登録のあるファイルなら、登録の無い新しい `#org` を追加の登録ファイル（`widthRegistry` の `path`、Chronos は `cfru/strings/text_width_registry.json`）に書き足します。窓は `window`（既定 `field` = 会話の窓）です。本文に `[BUFFER1]`〜`[BUFFER3]` があると入る値の種類が分からないので、`unresolved`（窓の幅を検査しない）で登録します。登録ファイルに書いた名前のうち `.string` から消えた `#org` の分は消します。Python の `REGISTRY` に書いたものには触りません。登録の無いファイル（新しく作った `.string` など）は、今までどおり検査されないので書き足しません。
 - 追加の登録ファイルを読む仕組みは Chronos 側（`tools/check_text_width.py`）に入れました（形は Chronos の `docs/TEXT_WIDTH.md`）。登録ファイルが無ければ、検査の結果もビルドも変更前と同じです。
 
