@@ -272,7 +272,7 @@ export class MapScriptPanel {
     const resolved = ctx.session.scriptsTable.document.resolve(bank, map);
     if (!resolved) {
       ctx.state.setStatus(t.noScriptFile(bank, map), undefined, true);
-      void import("./ScriptsTableDialog").then(({ ensureScriptFile }) => ensureScriptFile(ctx.state, bank, map));
+      void import("./NewScriptDialog").then(({ ensureScriptFile }) => ensureScriptFile(ctx.state, bank, map));
       return false;
     }
     const config = this.link.configNow();
@@ -337,7 +337,7 @@ function hexInput(id: string, value: number, commit: (v: number) => void): HTMLI
   const el = document.createElement("input");
   el.type = "text";
   el.className = "msp-hex";
-  el.value = value.toString(16).toUpperCase().padStart(4, "0");
+  el.value = hex(value, 4);
   el.dataset["autoId"] = id;
   el.addEventListener("change", () => {
     const v = parseInt(el.value.replace(/^(0x|\$)/i, ""), 16);

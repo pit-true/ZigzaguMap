@@ -9,6 +9,8 @@ import {
   SpeciesNameTable,
   createDefaultRegistry,
   detectGame,
+  eventLabelCountsOf,
+  eventPositionsOf,
   withRegionMap,
   withEventLabels,
   withScriptsTable,
@@ -71,15 +73,14 @@ export class ProjectSession {
       withEventLabels(
         withScriptsTable(context, () => this.requireScriptsTable().document),
         () => this.requireLabels(),
-        (bank, map) => this.eventPositions(bank, map) ?? { person: [], sign: [], tile: [] },
+        (bank, map) => this.eventPositions(bank, map) ?? eventPositionsOf(null),
       ),
     );
     // ラベルの番号の付け直しは、画面の描き直しより先に済ませる（最初に購読する）
     labels.track(this.bus, {
       counts: (id) => {
         const doc = this.project.loaded(id);
-        if (!doc) return null;
-        return { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 };
+        return doc ? eventLabelCountsOf(doc.events) : null;
       },
       added: (events, command) => this.labelHooks?.added?.(events, command),
       undone: (command) => this.labelHooks?.undone?.(command),
@@ -146,7 +147,7 @@ export class ProjectSession {
     this.tilesets.set(key, tiles);
     while (this.tilesets.size > TILESET_CACHE_SIZE) this.tilesets.delete(this.tilesets.keys().next().value!);
     this.opened.set(mapKey(id), id);
-    this.labels.observe(id, { person: doc.events?.persons.length ?? 0, sign: doc.events?.signs.length ?? 0, tile: doc.events?.traps.length ?? 0 }, this.eventPositions(id.bank, id.map) ?? undefined);
+    this.labels.observe(id, eventLabelCountsOf(doc.events), this.eventPositions(id.bank, id.map) ?? undefined);
     return { id, doc, tiles };
   }
 
@@ -204,10 +205,7 @@ export class ProjectSession {
   /** 読み込み済みのマップのイベントの座標（ラベルの照合用）。読み込んでいなければ null。 */
   eventPositions(bank: number, map: number): EventPositions | null {
     const doc = this.project.loaded({ bank, map });
-    if (!doc) return null;
-    const e = doc.events;
-    const xy = (list: readonly { x: number; y: number }[] | undefined) => (list ?? []).map((v) => ({ x: v.x, y: v.y }));
-    return { person: xy(e?.persons), sign: xy(e?.signs), tile: xy(e?.traps) };
+    return doc ? eventPositionsOf(doc.events) : null;
   }
 
   private requireScriptsTable(): ScriptsTableProject {

@@ -63,11 +63,16 @@ export function detectLineEnding(text: string): LineEnding {
   return crlf >= cr ? "\r\n" : "\r";
 }
 
+/** BOM を外し、改行を `\n` にそろえる（索引に入れるときなど、改行の形を覚えなくてよいとき）。 */
+export function normalizeScriptText(raw: string): string {
+  return (raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw).replace(/\r\n?/g, "\n");
+}
+
 /** 読んだ本文をエディタの形にする。 */
 export function decodeScriptText(raw: string): DecodedText {
   const bom = raw.charCodeAt(0) === 0xfeff;
   const body = bom ? raw.slice(1) : raw;
-  return { text: body.replace(/\r\n?/g, "\n"), lineEnding: detectLineEnding(body), bom };
+  return { text: normalizeScriptText(body), lineEnding: detectLineEnding(body), bom };
 }
 
 /** エディタの本文（改行は `\n`）を、読んだときの改行と BOM でファイルの形に戻す。 */

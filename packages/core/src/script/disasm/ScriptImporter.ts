@@ -1,3 +1,4 @@
+import { formatHex } from "../../binary/bytes.js";
 import { ROM_BASE, type Rom } from "../../rom/Rom.js";
 import type { ScriptDialect } from "../config/ScriptDialect.js";
 import { scriptTextLabel } from "../edit/LabelNaming.js";
@@ -12,7 +13,7 @@ const STRING_MARK = /^\/\/ ZigzaguMap: ROM 0x([0-9A-Fa-f]{8}) から取り込み
 
 /** 印の文字列。 */
 export function importMarkLine(kind: "asm" | "string", pointer: number): string {
-  const hex = (pointer >>> 0).toString(16).toUpperCase().padStart(8, "0");
+  const hex = formatHex(pointer >>> 0, 8);
   return kind === "asm" ? `@ ZigzaguMap: ROM 0x${hex} から取り込み` : `// ZigzaguMap: ROM 0x${hex} から取り込み`;
 }
 

@@ -1,3 +1,4 @@
+import { formatHex } from "../../binary/bytes.js";
 import type { ScriptDialect } from "../config/ScriptDialect.js";
 import { scriptTextLabel, type ScriptLabelKind } from "./LabelNaming.js";
 
@@ -57,7 +58,7 @@ function head(label: string, options: ScriptTemplateOptions): string[] {
 }
 
 function hex(n: number): string {
-  return `0x${n.toString(16).toUpperCase()}`;
+  return `0x${formatHex(n)}`;
 }
 
 /** テキストの改行の形（いちばん多いもの。無ければ LF）。 */

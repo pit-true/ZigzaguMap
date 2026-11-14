@@ -1,54 +1,44 @@
 import { emitTo } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { errorText } from "../../util/errors";
+import { PendingReplies, replyOf } from "../../util/pendingReplies";
 import {
   ScriptEditorEvents,
+  ScriptEditorNoticeEvents,
+  handleMessage,
+  type MessageHandlers,
+  type MessageOf,
   type ScriptEditorEnvelope,
   type ScriptEditorHello,
-  type ScriptEditorQuery,
+  type ScriptEditorNoticeMap,
   type ScriptEditorQueryEnvelope,
+  type ScriptEditorQueryMap,
   type ScriptEditorReply,
-  type ScriptEditorRequest,
-  type ScriptOpenRequest,
-  type ScriptRomOpenRequest,
+  type ScriptEditorRequestMap,
 } from "./protocol";
 
 /** メインから届くものの受け手。 */
 export interface ScriptEditorClientListener {
-  open(request: ScriptOpenRequest): void;
-  /** メインのメニューから「ビルド」を頼まれた。 */
-  build?(): void;
-  /** ROM のスクリプトを読み取り専用で開く。 */
-  openRom?(request: ScriptRomOpenRequest): void;
-  /** 問い合わせに答える（返した値が答え。投げたらエラーとして返す）。 */
-  query(query: ScriptEditorQuery): Promise<unknown>;
+  /** 知らせ（ファイルを開く・ビルドする・ROM のスクリプトを開く）の受け手。種類ごとに 1 つ。 */
+  readonly notices: { readonly [K in keyof ScriptEditorNoticeMap]: (payload: ScriptEditorNoticeMap[K]) => void };
+  /** 問い合わせの答え方（種類ごとに 1 つ。返した値が答え。投げたらエラーとして返す）。 */
+  readonly queries: MessageHandlers<ScriptEditorQueryMap>;
 }
 
 /** エディタのウィンドウからメインウィンドウへの窓口（ワールドマップエディターの WorldMapClient と同じ形）。 */
 export class ScriptEditorClient {
-  private nextId = 1;
-  private readonly waiting = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly pending = new PendingReplies();
 
   /** 購読を始める。 */
   async connect(listener: ScriptEditorClientListener): Promise<void> {
     const win = getCurrentWebviewWindow();
-    await win.listen<ScriptEditorReply>(ScriptEditorEvents.reply, (e) => {
-      const reply = e.payload;
-      const w = this.waiting.get(reply.id);
-      if (!w) return;
-      this.waiting.delete(reply.id);
-      if (reply.ok) w.resolve(reply.result);
-      else w.reject(new Error(reply.error));
-    });
-    await win.listen<ScriptOpenRequest>(ScriptEditorEvents.open, (e) => listener.open(e.payload));
-    await win.listen(ScriptEditorEvents.build, () => listener.build?.());
-    await win.listen<ScriptRomOpenRequest>(ScriptEditorEvents.openRom, (e) => listener.openRom?.(e.payload));
+    await win.listen<ScriptEditorReply>(ScriptEditorEvents.reply, (e) => this.pending.settle(e.payload));
+    for (const kind of Object.keys(ScriptEditorNoticeEvents) as (keyof ScriptEditorNoticeMap)[]) {
+      const on = listener.notices[kind] as (payload: unknown) => void;
+      await win.listen<unknown>(ScriptEditorNoticeEvents[kind], (e) => on(e.payload));
+    }
     await win.listen<ScriptEditorQueryEnvelope>(ScriptEditorEvents.query, (e) => {
       const { id, query } = e.payload;
-      void listener
-        .query(query)
-        .then((result): ScriptEditorReply => ({ id, ok: true, result: result ?? null }))
-        .catch((err: unknown): ScriptEditorReply => ({ id, ok: false, error: errorText(err) }))
+      void replyOf(id, () => handleMessage(listener.queries, query))
         .then((reply) => emitTo("main", ScriptEditorEvents.answer, reply))
         .catch(() => undefined);
     });
@@ -56,33 +46,24 @@ export class ScriptEditorClient {
 
   /** 準備ができたことを知らせ、開くのを待っているファイルを受け取る。 */
   hello(): Promise<ScriptEditorHello> {
-    return this.send({ type: "hello" }) as Promise<ScriptEditorHello>;
+    return this.request({ type: "hello" });
   }
 
   /** 保存したことを知らせる（返事は待たない）。 */
   saved(path: string): void {
-    void this.send({ type: "saved", path }).catch(() => undefined);
-  }
-
-  /** メインへ要求を送り、返事を待つ。 */
-  request(request: ScriptEditorRequest): Promise<unknown> {
-    return this.send(request);
+    void this.request({ type: "saved", path }).catch(() => undefined);
   }
 
   /** エディタの個人設定を変えたことを知らせる（メインが settings.json に残す。返事は待たない）。 */
   setting(key: "scriptEditorTheme", value: string): void {
-    void this.send({ type: "setting", key, value }).catch(() => undefined);
+    void this.request({ type: "setting", key, value }).catch(() => undefined);
   }
 
-  private send(request: ScriptEditorRequest): Promise<unknown> {
-    const id = this.nextId++;
-    const envelope: ScriptEditorEnvelope = { id, request };
-    return new Promise((resolve, reject) => {
-      this.waiting.set(id, { resolve, reject });
-      emitTo("main", ScriptEditorEvents.request, envelope).catch((e: unknown) => {
-        this.waiting.delete(id);
-        reject(e instanceof Error ? e : new Error(String(e)));
-      });
-    });
+  /** メインへ要求を送り、返事を待つ（返事の型は種類で決まる）。 */
+  request<K extends keyof ScriptEditorRequestMap>(request: MessageOf<ScriptEditorRequestMap, K>): Promise<ScriptEditorRequestMap[K]["reply"]> {
+    const { id, reply, fail } = this.pending.open();
+    const envelope = { id, request } as ScriptEditorEnvelope;
+    emitTo("main", ScriptEditorEvents.request, envelope).catch(fail);
+    return reply as Promise<ScriptEditorRequestMap[K]["reply"]>;
   }
 }

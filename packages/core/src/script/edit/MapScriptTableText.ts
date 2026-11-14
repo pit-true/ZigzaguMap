@@ -1,3 +1,4 @@
+import { formatHex } from "../../binary/bytes.js";
 import type { MapScriptEntry } from "../../mapscript/types.js";
 import { isScriptLabelName } from "./LabelNaming.js";
 
@@ -85,7 +86,7 @@ export function mapScriptTableLines(table: MapScriptTableModel, useGlobal: boole
 }
 
 function hex(n: number): string {
-  return `0x${n.toString(16).toUpperCase()}`;
+  return `0x${formatHex(n)}`;
 }
 
 /** `.s` の中の表の位置（行の番号は 0 から。`end` はその行を含む）。 */
@@ -193,7 +194,7 @@ export function mapScriptTargetLabel(tableLabel: string, type: number, taken: (n
 
 /** 行き先に書くアドレス（`0x0816F58D`）。 */
 export function mapScriptAddress(pointer: number): string {
-  return `0x${(pointer >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
+  return `0x${formatHex(pointer >>> 0, 8)}`;
 }
 
 /** 行き先がそのアドレスか（`0x` の書き方の違いは見ない）。 */

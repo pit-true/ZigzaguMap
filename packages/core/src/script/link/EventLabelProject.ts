@@ -2,7 +2,7 @@ import type { Command } from "../../command/Command.js";
 import type { CommandBus, CommandEvent } from "../../command/CommandBus.js";
 import { flattenCommandRecords } from "../../command/CommandGroup.js";
 import type { MapId } from "../../map/types.js";
-import type { ProjectFs } from "../../project/ProjectFs.js";
+import { readTextIfExists, type ProjectFs } from "../../project/ProjectFs.js";
 import { EVENT_SCRIPTS_PATH } from "../project/EventScriptsFile.js";
 import { EventLabelStore, type EventLabelSavePlan, type EventLabelSnapshot, type EventLabelTarget, type EventPositions } from "./EventLabelStore.js";
 import { parseMapLabelsPath } from "./MapLabelsJson.js";
@@ -59,7 +59,7 @@ export class EventLabelProject {
   /** 読む。`fs` が null（素の ROM だけ）なら空。 */
   static async open(fs: ProjectFs | null): Promise<EventLabelProject> {
     if (!fs) return new EventLabelProject(new EventLabelStore(""));
-    const scripts = (await fs.exists(EVENT_SCRIPTS_PATH)) ? await fs.readText(EVENT_SCRIPTS_PATH) : "";
+    const scripts = (await readTextIfExists(fs, EVENT_SCRIPTS_PATH)) ?? "";
     const files: { path: string; text: string }[] = [];
     for (const bank of await fs.list("maps")) {
       if (!/^[0-9]+$/.test(bank)) continue;

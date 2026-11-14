@@ -1,17 +1,19 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   DisasmCommandSet,
   ScriptAssist,
   ScriptCommandTable,
   buildScriptIndex,
   isScriptSourcePath,
+  listProjectFiles,
   listScriptSourcePaths,
   loadScriptConfig,
+  readTextIfExists,
   type ScriptConfig,
 } from "@zigzagumap/core";
 import { TauriProjectFs } from "../../app/TauriProjectFs";
 import { scheduleIdleGc } from "../../util/idleGc";
-import type { FileStat } from "./EditorTab";
+import { sameStat, statFile, type FileStat } from "./EditorTab";
+import { normalizeScriptText } from "./fileText";
 
 /** 文字列のファイルを探すフォルダ。 */
 const STRINGS_DIR = "strings";
@@ -66,13 +68,7 @@ export class ScriptProject {
     } catch (e) {
       this.problems.push(String(e instanceof Error ? e.message : e));
     }
-    const read = async (path: string): Promise<string | null> => {
-      try {
-        return (await fs.exists(path)) ? await fs.readText(path) : null;
-      } catch {
-        return null;
-      }
-    };
+    const read = (path: string): Promise<string | null> => readTextIfExists(fs, path).catch(() => null);
     const xse = await read("xse_commands.s");
     if (xse !== null) {
       const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((t): t is string => t !== null);
@@ -93,7 +89,7 @@ export class ScriptProject {
     }
     for (const path of await listStringFiles(fs, STRINGS_DIR)) {
       const text = await read(path);
-      if (text !== null) this.assist.updateString(path, normalize(text));
+      if (text !== null) this.assist.updateString(path, normalizeScriptText(text));
     }
     for (const path of [...this.assist.index.paths(), ...this.assist.strings.paths()]) this.stats.set(path, await stat(path));
     // 読んでいる間に編集した本文を入れ直す
@@ -136,7 +132,7 @@ export class ScriptProject {
     const st = await stat(path);
     this.stats.set(path, st);
     if (!st) this.assist.remove(path);
-    else this.apply(path, normalize(await this.fs.readText(path)));
+    else this.apply(path, normalizeScriptText(await this.fs.readText(path)));
     this.emit();
   }
 
@@ -155,7 +151,7 @@ export class ScriptProject {
         if (old !== undefined && sameStat(old, st)) continue;
         this.stats.set(path, st);
         if (!st) this.assist.remove(path);
-        else this.apply(path, normalize(await this.fs.readText(path)));
+        else this.apply(path, normalizeScriptText(await this.fs.readText(path)));
         changed = true;
       }
       if (changed) this.emit();
@@ -174,32 +170,11 @@ export class ScriptProject {
   }
 }
 
-function normalize(text: string): string {
-  return (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/\r\n?/g, "\n");
-}
-
 function stat(path: string): Promise<FileStat | null> {
-  return invoke<FileStat | null>("fs_stat", { path }).catch(() => null);
+  return statFile(path).catch(() => null);
 }
 
-function sameStat(a: FileStat | null, b: FileStat | null): boolean {
-  if (!a || !b) return a === b;
-  return a.modifiedMs === b.modifiedMs && a.size === b.size;
-}
-
-/** フォルダの下の `.string`（`.` を含まない名前はフォルダとみなして中も見る）。 */
-async function listStringFiles(fs: TauriProjectFs, dir: string): Promise<string[]> {
-  const out: string[] = [];
-  let names: string[];
-  try {
-    names = [...(await fs.list(dir))].sort();
-  } catch {
-    return out;
-  }
-  for (const name of names) {
-    const path = `${dir}/${name}`;
-    if (/\.string$/i.test(name)) out.push(path);
-    else if (!name.includes(".")) out.push(...(await listStringFiles(fs, path)));
-  }
-  return out;
+/** フォルダの下の `.string`（`.` を含まない名前はフォルダとみなして中も見る）。読めなければ空。 */
+function listStringFiles(fs: TauriProjectFs, dir: string): Promise<string[]> {
+  return listProjectFiles(fs, dir, /\.string$/i).catch(() => []);
 }

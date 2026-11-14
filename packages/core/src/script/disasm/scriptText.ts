@@ -11,6 +11,7 @@
  * - 表に無い 1 バイトは `[F7]`、表に無い FC xx yy は `<FC 88 9F>`。
  */
 
+import { formatHex } from "../../binary/bytes.js";
 import { DataError } from "../../binary/DataError.js";
 import { ND_CHARMAP_TBL } from "../../name/charmapNd.js";
 
@@ -32,7 +33,7 @@ interface Entry {
   bytes: readonly number[];
 }
 
-const hex2 = (b: number) => b.toString(16).toUpperCase().padStart(2, "0");
+const hex2 = (b: number) => formatHex(b, 2);
 
 /** string.py と同じ読み方の、`.string` の本文とバイト列の変換。 */
 export class ScriptTextCodec {

@@ -8,14 +8,17 @@ import {
   SetEventLabelCommand,
   SetMapScriptTableCommand,
   asmBlockText,
+  defaultScriptsJsonStringsPath,
   disassembleScripts,
   findImportedLabels,
+  formatHex,
   mapScriptTableFromEntries,
   mapScriptTargetLabel,
   mapScriptTypeOfAddress,
   movementNamesFromDefines,
   newScriptLabel,
   planScriptImport,
+  readTextIfExists,
   renderDisassembly,
   retargetMapScriptAddress,
   scriptLabelMapName,
@@ -31,8 +34,8 @@ import type { ScriptTarget } from "./ScriptEntry";
 const LABEL_TARGET = { person: "person", sign: "sign", trap: "tile" } as const;
 
 /** 16 進 8 桁（`08160A8E`）。 */
-export function hex8(n: number): string {
-  return (n >>> 0).toString(16).toUpperCase().padStart(8, "0");
+function hex8(n: number): string {
+  return formatHex(n >>> 0, 8);
 }
 
 /** 取り込みの計画（マップスクリプトなら、行き先を取り込んだ入口にした表も持つ）。 */
@@ -50,7 +53,7 @@ export class RomScripts {
     const session = this.app.state.session;
     const fs = session?.files;
     if (!session?.projectDir || !fs) return { commands: DisasmCommandSet.bundled(), text: ScriptTextCodec.japanese };
-    const read = async (path: string): Promise<string | null> => ((await fs.exists(path)) ? fs.readText(path) : null);
+    const read = (path: string): Promise<string | null> => readTextIfExists(fs, path);
     const xse = await read("xse_commands.s");
     const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((x): x is string => x !== null);
     const charmap = await read("charmap.tbl");
@@ -102,7 +105,7 @@ export class RomScripts {
     const paths = new Set<string>();
     for (const row of session.scriptsTable.document.rows) {
       paths.add(row.entry.script);
-      paths.add(row.entry.strings ?? `strings/overworld_strings_${row.entry.script.replace(/^.*\//, "").replace(/\.s$/, "")}.string`);
+      paths.add(row.entry.strings ?? defaultScriptsJsonStringsPath(row.entry.script));
     }
     for (const p of paths) {
       const loaded = await this.app.scripts.files.read(p).catch(() => null);
@@ -159,15 +162,15 @@ export class RomScripts {
     if (!plan.reused && plan.asm.length === 0) throw new Error(t.nothingToImport(plan.problems.join(" / ")));
     const edits: { path: string; block: string; create: string; added: string }[] = [];
     const files = this.app.scripts.files;
+    /** ファイルの改行の形（CRLF が 1 つでもあれば CRLF）で書き足し、元に戻すための控えを残す。 */
+    const append = async (path: string, lines: readonly string[], create: string): Promise<void> => {
+      const newline = (await files.read(path))?.text.includes("\r\n") ? "\r\n" : "\n";
+      const block = asmBlockText(lines, newline);
+      edits.push({ path, block, create, added: await files.append(path, block, create) });
+    };
     if (!plan.reused) {
-      const newline = (await files.read(plan.scriptPath))?.text.includes("\r\n") ? "\r\n" : "\n";
-      const asm = asmBlockText(plan.asm, newline);
-      edits.push({ path: plan.scriptPath, block: asm, create: NEW_SCRIPT_FILE_TEXT, added: await files.append(plan.scriptPath, asm, NEW_SCRIPT_FILE_TEXT) });
-      if (plan.strings.length > 0) {
-        const nl = (await files.read(plan.stringsPath))?.text.includes("\r\n") ? "\r\n" : "\n";
-        const block = asmBlockText(plan.strings, nl);
-        edits.push({ path: plan.stringsPath, block, create: NEW_STRINGS_FILE_TEXT, added: await files.append(plan.stringsPath, block, NEW_STRINGS_FILE_TEXT) });
-      }
+      await append(plan.scriptPath, plan.asm, NEW_SCRIPT_FILE_TEXT);
+      if (plan.strings.length > 0) await append(plan.stringsPath, plan.strings, NEW_STRINGS_FILE_TEXT);
     }
     const { bank, map } = target.map;
     const command =

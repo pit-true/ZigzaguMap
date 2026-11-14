@@ -41,7 +41,6 @@ export const jaScriptEditorAssist = {
 
   // ---- ホバー（#192・#196） ----
   hover: {
-    signature: (text: string) => `引数: \`${text}\``,
     source: (path: string, line: number) => `場所: \`${path}:${line}\``,
     required: "必須の引数",
     defaultValue: (value: string) => `省略時: \`${value}\``,
@@ -52,12 +51,6 @@ export const jaScriptEditorAssist = {
     omitted: "（省略。ひらがなと同じ文字列を使います）",
     stringMissing: "（strings フォルダに見つかりません）",
     edit: "本文を編集",
-  },
-
-  // ---- 補完（#192） ----
-  completion: {
-    command: "命令",
-    directive: "ディレクティブ",
   },
 
   // ---- 定義へ移動（#193） ----
