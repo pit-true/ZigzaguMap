@@ -529,8 +529,8 @@ export class EventTab {
       },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
-      // 「トレーナーを編集」（#274。人だけ。クローンは参照先を直す）
-      ...(kind === "person" && this.host.editTrainer && this.state.map?.doc.events?.persons[index]?.kind !== 1
+      // 「トレーナーを編集」（#274。人だけ。trainers.json を書くのでプロジェクトフォルダがあるときだけ。クローンは参照先を直す）
+      ...(kind === "person" && this.host.editTrainer && this.state.session?.projectDir && this.state.map?.doc.events?.persons[index]?.kind !== 1
         ? [{ id: "editTrainer", label: jaTrainer.menuEdit, run: () => this.host.editTrainer?.(index) }]
         : []),
       ...templates,

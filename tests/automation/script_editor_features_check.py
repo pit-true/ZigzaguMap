@@ -329,9 +329,7 @@ def main() -> int:
         # ---- #268 組めないマクロの波線（xse_commands.s に setorcopyvar の定義が無ければ giveitem・obtainitem に出る）----
         xse = proj / "xse_commands.s"
         has_setorcopyvar = xse.is_file() and re.search(r"^\s*\.macro\s+setorcopyvar\b", xse.read_text(encoding="utf-8", errors="replace"), re.M) is not None
-        ed(z, "editor.type", text="	giveitem 0xD 1 MSG_OBTAIN
-	obtainitem 0xD 1
-", line=msg_line + 1, column=1)
+        ed(z, "editor.type", text="\tgiveitem 0xD 1 MSG_OBTAIN\n\tobtainitem 0xD 1\n", line=msg_line + 1, column=1)
         d = [x for x in ed(z, "editor.diagnostics")["diagnostics"] if x["source"] == "unassemblableMacro"]
         if has_setorcopyvar:
             check(d == [], f"setorcopyvar が定義されていれば giveitem・obtainitem に波線は出ない（{d}）")
