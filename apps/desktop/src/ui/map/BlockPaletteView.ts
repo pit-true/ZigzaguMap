@@ -5,6 +5,7 @@ import { attachCellPointer } from "../../input/CellPointer";
 import { paletteBlock, paletteRectSelection } from "../../input/tripleRules";
 import { toImageData } from "../canvas";
 import { drawGrid, type Cell } from "./MapView";
+import { drawPaletteSelection, tripleChildLayer, type PaletteGeometry, type PaletteLayer, type PaletteLayerPass, type PaletteRect } from "./paletteLayers";
 
 /** ブロックパレットが使う窓口。 */
 export interface BlockPaletteHost {
@@ -22,6 +23,7 @@ export interface BlockPaletteHost {
  * Ctrl＋左クリックはミキシングバッグへの出し入れ（#236。窓口が受けるとき）。
  * 3 層のブロック（#300）: 3 枚目に使われている次の番号は絵を薄くして斜線を引き、押すと 1 つ前の 3 層のブロックを選ぶ。
  * 3 層のブロックを選んでいる間は、選択の枠を次の番号まで 2 マス分にする（Bochi と同じ）。
+ * ほかの機能が重ねて描くものは `addLayer` で段（paletteLayers.ts の PaletteLayerPass）を決めて足す（Phase4 #318）。
  */
 export class BlockPaletteView {
   readonly element: HTMLElement;
@@ -36,16 +38,8 @@ export class BlockPaletteView {
   private selection: BlockSelection | null = null;
   /** Ctrl＋右ドラッグの始点。 */
   private anchor: Cell | null = null;
-  /**
-   * 選択の枠の下に重ねて描くもの（自動ペンで描けるブロックの色。Phase4 #310。別のファイルの部品が入れる）。
-   * `cellOf` はブロックのパレット上の (列, 行)。
-   */
-  decorate: ((c: CanvasRenderingContext2D, size: number, blocks: number, cellOf: (block: number) => { col: number; row: number }) => void) | null = null;
-  /**
-   * グリッドの Canvas に描き足すもの（タイルセット 1・2 の境目の線と見出し。Phase4 #308。描き直すのはパレットを作り直すときだけ）。
-   * `width` は 1 行のブロック数。
-   */
-  readonly gridDecorators: ((c: CanvasRenderingContext2D, size: number, width: number) => void)[] = [];
+  /** 重ねて描くもの（段ごと。足した順に描く）。 */
+  private readonly layers: Record<PaletteLayerPass, PaletteLayer[]> = { blocks: [], grid: [], overlay: [] };
   /** マウスの下のブロックが変わったときに呼ぶもの（ブロックの情報の表示。Phase4 #308。外れたら null）。 */
   readonly hoverListeners: ((block: number | null) => void)[] = [];
 
@@ -118,7 +112,14 @@ export class BlockPaletteView {
     this.drawSelection(null);
   }
 
-  /** 重ねて描くもの（`decorate`）が変わったときに描き直す。 */
+  /**
+   * 重ねて描くものを足す。`blocks`・`grid` の段は中身が変わったら `refresh`、`overlay` の段は `repaintOverlay` で描き直す。
+   */
+  addLayer(pass: PaletteLayerPass, layer: PaletteLayer): void {
+    this.layers[pass].push(layer);
+  }
+
+  /** `overlay` の段に重ねて描くものが変わったときに描き直す。 */
   repaintOverlay(): void {
     this.drawSelection(null);
   }
@@ -146,7 +147,8 @@ export class BlockPaletteView {
       const image = tiles.paletteImage(this.width);
       const ctx = this.base.getContext("2d")!;
       ctx.putImageData(toImageData(image), 0, 0);
-      this.markTripleChildren(ctx);
+      const g = this.geometry(tiles, BLOCK_PIXELS);
+      for (const layer of [tripleChildLayer(tiles), ...this.layers.blocks]) layer(ctx, g);
     }
     const dw = w * this.zoom;
     const dh = h * this.zoom;
@@ -166,37 +168,15 @@ export class BlockPaletteView {
     if (this.grid && dw > 0) drawGrid(this.gridCanvas, size);
     if (tiles && dw > 0) {
       const target = (onBase ? this.base : this.gridCanvas).getContext("2d")!;
-      for (const d of this.gridDecorators) d(target, size, this.width);
+      const g = this.geometry(tiles, size);
+      for (const layer of this.layers.grid) layer(target, g);
     }
     this.drawSelection(null);
   }
 
-  /** 3 層の次の番号（単独では置けないブロック）の絵を薄くして斜線を引く（Q4 の推奨）。 */
-  private markTripleChildren(ctx: CanvasRenderingContext2D): void {
-    const tiles = this.tiles;
-    if (!tiles) return;
-    const total = tiles.paletteBlockCount;
-    ctx.save();
-    for (let i = 0; i < total; i++) {
-      const block = i;
-      if (!tiles.triple.isTripleChild(block)) continue;
-      const p = tiles.positionOf(block, this.width);
-      const x = p.col * BLOCK_PIXELS;
-      const y = p.row * BLOCK_PIXELS;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-      ctx.fillRect(x, y, BLOCK_PIXELS, BLOCK_PIXELS);
-      ctx.strokeStyle = "rgba(200, 0, 0, 0.8)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x + 0.5, y + BLOCK_PIXELS - 0.5);
-      ctx.lineTo(x + BLOCK_PIXELS - 0.5, y + 0.5);
-      ctx.moveTo(x + 0.5, y + BLOCK_PIXELS / 2);
-      ctx.lineTo(x + BLOCK_PIXELS / 2, y + 0.5);
-      ctx.moveTo(x + BLOCK_PIXELS / 2, y + BLOCK_PIXELS - 0.5);
-      ctx.lineTo(x + BLOCK_PIXELS - 0.5, y + BLOCK_PIXELS / 2);
-      ctx.stroke();
-    }
-    ctx.restore();
+  private geometry(tiles: TilesetView, size: number): PaletteGeometry {
+    const width = this.width;
+    return { size, width, count: tiles.paletteBlockCount, cellOf: (b) => tiles.positionOf(b, width) };
   }
 
   private cellAt(e: MouseEvent): Cell | null {
@@ -215,7 +195,7 @@ export class BlockPaletteView {
     this.host.select({ width: 1, height: 1, blocks: [paletteBlock(this.tiles!.triple, block)] }, false);
   }
 
-  private selectRect(r: { x: number; y: number; w: number; h: number }): void {
+  private selectRect(r: PaletteRect): void {
     const tiles = this.tiles;
     if (!tiles) return;
     if (r.w === 1 && r.h === 1) {
@@ -227,53 +207,19 @@ export class BlockPaletteView {
     this.host.select(paletteRectSelection(r, (x, y) => tiles.blockAt(x, y, this.width), tiles.triple, this.width), true);
   }
 
-  /** 選択の枠を描く。`dragging` を渡すとドラッグ中の矩形を描く。 */
-  private drawSelection(dragging: { x: number; y: number; w: number; h: number } | null): void {
+  /** 重ねて描くもの（`overlay` の段）と選択の枠を描く。`dragging` を渡すとドラッグ中の矩形を描く。 */
+  private drawSelection(dragging: PaletteRect | null): void {
     const c = this.overlay.getContext("2d")!;
     c.clearRect(0, 0, this.overlay.width, this.overlay.height);
-    if (!this.tiles) return;
-    const size = BLOCK_PIXELS * this.zoom;
-    if (this.decorate) {
-      const tiles = this.tiles;
-      this.decorate(c, size, tiles.paletteBlockCount, (b) => tiles.positionOf(b, this.width));
-    }
-    let r = dragging;
-    if (!r && this.selection) {
-      const s = this.selection;
-      if (s.width === 1 && s.height === 1) {
-        const p = this.tiles.positionOf(s.blocks[0] ?? 0, this.width);
-        r = { x: p.col, y: p.row, w: 1, h: 1 };
-      } else {
-        // パレットから選んだ矩形なら、左上のブロックの位置から枠を出す。
-        const p = this.tiles.positionOf(s.blocks[0] ?? 0, this.width);
-        const fits = s.blocks.every((b, i) => {
-          const q = this.tiles!.positionOf(b, this.width);
-          return q.col === p.col + (i % s.width) && q.row === p.row + Math.floor(i / s.width);
-        });
-        if (fits) r = { x: p.col, y: p.row, w: s.width, h: s.height };
-      }
-    }
-    if (!r) return;
-    c.strokeStyle = "#ff0000";
-    c.lineWidth = 1;
-    const single = !dragging && this.selection && this.selection.width === 1 && this.selection.height === 1;
-    const third = single ? this.tiles.triple.thirdOf(this.selection!.blocks[0] ?? 0) : null;
-    if (third !== null) {
-      // 3 層のブロック: 次の番号まで 2 マス分の枠（行の端で折り返すときは 2 つの枠）
-      const q = this.tiles.positionOf(third, this.width);
-      if (q.row === r.y && q.col === r.x + 1) {
-        c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, 2 * size - 1, size - 1);
-      } else {
-        c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, size - 1, size - 1);
-        c.strokeRect(q.col * size + 0.5, q.row * size + 0.5, size - 1, size - 1);
-      }
-      return;
-    }
-    c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, r.w * size - 1, r.h * size - 1);
+    const tiles = this.tiles;
+    if (!tiles) return;
+    const g = this.geometry(tiles, BLOCK_PIXELS * this.zoom);
+    for (const layer of this.layers.overlay) layer(c, g);
+    drawPaletteSelection(c, tiles, g, this.selection, dragging);
   }
 }
 
-function rectOf(a: Cell, b: Cell): { x: number; y: number; w: number; h: number } {
+function rectOf(a: Cell, b: Cell): PaletteRect {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   return { x, y, w: Math.abs(a.x - b.x) + 1, h: Math.abs(a.y - b.y) + 1 };
