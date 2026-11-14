@@ -17,6 +17,8 @@ export const jaPointers = {
   jsonNote: "このマップは maps\\ から読んでいます。下はベース ROM の上の値で、出力したマップのポインタはビルドが付け直します。",
   notInRom: "このマップはベース ROM にありません（maps\\ だけにある新しいマップ）。ポインタはビルドが決めます。",
   noMap: "マップを開いてください。",
+  /** 行のイベントが開いているマップに無いとき（maps\ から読んだマップ。#367）。 */
+  noEvent: (kind: string, index: number) => `開いているマップに${kind} ${index} はありません（maps\\ のマップは、ベース ROM とイベントの数が違います）`,
   columns: { name: "名前", location: "置き場所", value: "値", bytes: "バイト列" },
   kinds: {
     header: "マップの表（ヘッダーの場所）",
