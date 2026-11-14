@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTOPEN_DIR,
   AutoPenLibrary,
+  AutoPenPlanner,
   MemoryProjectFs,
   PartIndex,
   blockFingerprint,
@@ -232,5 +233,29 @@ describe("同梱の既定のパーツ（#313）", () => {
     await lib.save(bprj, S, lib.partsFor(bprj, S).slice(0, 1));
     expect(lib.usesDefaults(bprj)).toBe(false);
     expect(lib.partsFor(bprj, S).map((p) => p.name)).toEqual(["池（岩の岸）"]);
+  });
+
+  it("池（岩の岸）の内角は 4 つとも入っていて、南の凹みに 0x129・0x128 を置く（#333）", async () => {
+    const { BPRJ_PRIMARY_DEFAULTS } = await import("../src/autopen/defaults/bprj.js");
+    const pondPart = BPRJ_PRIMARY_DEFAULTS.parts.find((p) => p.name === "池（岩の岸）")!;
+    const blockOf = (slot: string) => pondPart.slots[slot]?.cells[0]?.block;
+    expect([blockOf("INW"), blockOf("INE"), blockOf("ISW"), blockOf("ISE")]).toEqual([0x131, 0x130, 0x129, 0x128]);
+    // 陸（0x001）に 7×6 の池を描き、下の辺の真ん中の 1 マスを陸に戻すと、その上の左右が南の内角になる
+    const LAND = 0x001;
+    const W = 9;
+    const H = 8;
+    const cells = new Array<number>(W * H).fill(LAND);
+    const source = { get: (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? null : cells[y * W + x]!) };
+    const ground: AutoPenPart = { name: "地面", kind: "fill", role: "ground", order: 9, slots: { Blocks: singleGrid(LAND) } };
+    const planner = new AutoPenPlanner(new PartIndex([pondPart, ground]));
+    const stroke = (block: number, at: [number, number][]) => {
+      for (const w of planner.stroke(source, block, at)!.writes) cells[w.y * W + w.x] = w.block;
+    };
+    const rect: [number, number][] = [];
+    for (let y = 1; y <= 6; y++) for (let x = 1; x <= 7; x++) rect.push([x, y]);
+    stroke(0x12b, rect);
+    stroke(LAND, [[4, 6]]);
+    expect(cells[5 * W + 3]).toBe(0x128);
+    expect(cells[5 * W + 5]).toBe(0x129);
   });
 });
