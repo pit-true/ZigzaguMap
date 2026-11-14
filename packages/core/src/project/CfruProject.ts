@@ -385,6 +385,12 @@ export class CfruProject {
       if (this.jsonMaps.has(k) && (await this.fs.exists(path))) removals.push(path);
     }
 
+    // 取り込んで取り消した新しいタイルセットは、書き出し済みならファイルを消す
+    for (const [k, r] of this.store.removedTilesets) {
+      if (this.store.tilesets.has(k)) continue;
+      const folder = tilesetFolder(r.headerAddress, r.secondary);
+      for (const path of [`${folder}/${TILESET_INFO_FILE}`, `${folder}/${TILESET_IMAGE_FILE}`]) if (await this.fs.exists(path)) removals.push(path);
+    }
     for (const t of [...this.store.tilesets.values()].sort((a, b) => a.pointer - b.pointer || Number(a.secondary) - Number(b.secondary))) {
       const folder = tilesetFolder(t.headerAddress, t.secondary);
       const info = `${folder}/${TILESET_INFO_FILE}`;
@@ -430,6 +436,10 @@ export class CfruProject {
       this.snapshots.delete(k);
     }
     this.store.removedMaps.clear();
+    for (const [k, r] of this.store.removedTilesets) {
+      if (removals.includes(`${tilesetFolder(r.headerAddress, r.secondary)}/${TILESET_INFO_FILE}`)) this.tilesetSources.delete(k);
+    }
+    this.store.removedTilesets.clear();
     for (const t of this.store.tilesets.values()) {
       this.tilesetSnapshots.set(tilesetKey(t.ref), t.toJson());
       const folder = tilesetFolder(t.headerAddress, t.secondary);
