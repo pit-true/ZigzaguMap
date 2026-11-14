@@ -5,7 +5,7 @@ import type { ProjectSession } from "../../app/ProjectSession";
  * 逆アセンブルに使う命令表と文字コード表（#206 の表示、#207 の取り込み、#220 のイベントの削除）。
  * プロジェクトの xse_commands.s と charmap.tbl から作り（素の ROM だけなら同梱の表）、使うたびに作って捨てる（メインのメモリに残さない）。
  */
-export async function disasmTools(session: ProjectSession | null): Promise<{ commands: DisasmCommandSet; text: ScriptTextCodec }> {
+export async function disasmTools(session: ProjectSession | null): Promise<{ commands: DisasmCommandSet; text: ScriptTextCodec; table?: ScriptCommandTable }> {
   const fs = session?.files;
   if (!session?.projectDir || !fs) return { commands: DisasmCommandSet.bundled(), text: ScriptTextCodec.japanese };
   const read = (path: string): Promise<string | null> => readTextIfExists(fs, path);
@@ -16,5 +16,5 @@ export async function disasmTools(session: ProjectSession | null): Promise<{ com
   if (!xse) return { commands: DisasmCommandSet.bundled(), text };
   const table = ScriptCommandTable.build({ xseCommands: xse, defines });
   const xseDefines = await read("xse_defines.s");
-  return { commands: DisasmCommandSet.fromCommandTable(table, xseDefines ? movementNamesFromDefines(xseDefines) : new Map()), text };
+  return { commands: DisasmCommandSet.fromCommandTable(table, xseDefines ? movementNamesFromDefines(xseDefines) : new Map()), text, table };
 }

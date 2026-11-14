@@ -22,6 +22,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
 python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、ビルドの手順の copy
+python tests/automation/usage_template_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>]   # 使われている番号の索引・トレーナーの一覧と自動生成、プロジェクトフォルダが無いときのひな形と「未使用」ボタン（#227・#243〜#245）
 python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタのテーマ 4 つで、ウィンドウの部品（帯・検索の欄・補完・ホバー・ビルドの欄・波線の一覧・ダイアログ・スクロールバー）が同じテーマの色になること
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
@@ -265,3 +266,23 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - 境界をまたぐ描画（#234）: マップタブ・移動エリアタブの `mouse` の `cell` に帯の上のマス（主マップの外の座標）を渡すと、隣のマップに描く・拾う（帯で見えていない部分では何もしない）。2 枚にまたがる操作は `group`（マップごとの `paintBlocks` / `paintCells` / `paintMovement`）を 1 回実行する。帯が出ている間のドラッグは、境界をまたいでも 1 回の操作にまとまる（`group` 同士をまとめる）。隣のマップは書く前に編集用に読み込む（`cells` は読み込みを待ってから返す）。`{"cmd":"cells","bank":3,"map":19}` で、表示中でないマップの配置を返す。
 - Space でダイブ先・浮上先を重ねる（#232）: `mouse` の `hover` でカーソルの位置を決めてから `{"cmd":"key","key":" ","type":"down"}`（押したまま）、`{"cmd":"key","key":" ","type":"up"}`（離す）。`neighbors.state`（`wait: true` で読み込みを待つ）の `dive` が重ねている相手（`id`・`direction`。重ねていなければ null）。`canvasPng` のマップのタブの画像に重ねたものも入る。重ねている間の `mouse` の `dblclick` で相手のマップを開く。
 
+
+## Phase3 の部品と命令（未使用の番号・ひな形・トレーナー）
+
+- 「未使用」ボタン（#227。プロジェクトフォルダを開いているときだけ出る）: `event.person.flagUnused`・`event.trap.variableUnused`・`event.sign.hiddenIdUnused`（`click` で押す。欄を変えるコマンドを実行する）。
+- イベントタブの右クリックのメニューの「ここにひな形を置く」は項目 `placeTemplate`（`mouse` の `rightClick` で開き、`contextMenu.press`）。窓の部品は `template.kind`（種類のコンボ。項目の文字で選ぶ）、`template.graphics`・`template.flag`・`template.variable`・`template.hiddenId`・`template.item`・`template.amount`・`template.ball`・`template.martItems`（複数選択）・`template.trainer`・`template.sight`・`template.facing`・`template.text.<文の名前>`（`text` / `before` / `after` / `intro` / `defeat`）、未使用のボタン `template.flagUnused` など、新しいトレーナーの `template.newTrainer`（チェック）・`template.newTrainer.id`・`.name`・`.class`・`.pic`・`.seed`・`.generate`・`.party`、「置く」`template.place`・「キャンセル」`template.cancel`（`dialog` の `ok` / `cancel` でも押せる）。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `usage.state` | `wait`（true で作り終えるまで待つ） | 使われている番号の索引（#227）の状態。`ready`・`building`・`stats`（`ms`: 作るのにかかった時間、`maps`・`asmFiles`・`cFiles`: 読んだ数、`sites`: 使っている場所の数）・`counts`（種類ごとの使用中の番号の数）・`error` |
+| `usage.next` | `kind`（`flag` / `var` / `hiddenItem` / `trainer`） | 範囲（`zigzagumap.json` の `usage`）の中で使われていない最小の番号。返事は `kind`・`value`（無ければ null）。作り終えるまで待つ |
+| `usage.find` | `kind`、`value` | その番号を使っている場所の一覧 `sites`（`kind`・`value`・`source`（`rom` / `asm` / `event` / `c` / `trainers`）・`where`（`ROM 0x0816A2B4（マップ 3.0）`、`assembly/…/a.s:12`、`maps 3.0 人 2`、`src/x.c:5（FLAG_X）`、`maps/trainers.json（名前）`）・`path`・`line`・`map`）。隠しアイテムの番号はフラグ（0x3E8 + 番号）の場所も入る |
+| `template.list` | | ひな形の一覧（`id`・`kind`（置くイベントの種類）・`needs`（窓で聞くこと）・`texts`（文の名前と既定の文）・`labelKind`（eventscripts の種別）・`nameKind`（ラベル名の `{kind}`）・`defaults`（未使用の番号を入れた既定の値）） |
+| `template.place` | `kind`（`person` / `sign` / `tile` / `hiddenItem` / `itemGiver` / `mart` / `trainer`）、`x`・`y`（マス）、`values`（省いた項目は既定値と未使用の番号。`graphicsId`・`movementType`・`flag`・`variable`・`hiddenId`・`item`・`amount`・`ball`・`martItems`・`trainerId`・`sight`・`texts`（文の名前 → 本文）・`newTrainer`（`trainer.get` と同じ形のトレーナー 1 件））、`bank`・`map`（省略で表示中のマップ） | 窓を出さずにひな形を置く（#243・#244・#245。1 回の `undo` で全部戻る）。書き足しが済むまで待つ。返事は `kind`・`map`・`event`（置いたイベントの `kind`・`index`）・`label`（スクリプトの無いひな形は null）・`script`・`strings`（書いた `.s` と `.string`）・`registry`（Chronos の幅検査の登録に足した名前）・`warnings`（同じトレーナーの番号をほかで使っているなど）・`values`（使った値）・`status` |
+| `template.picker` | `x`・`y`、`bank`・`map`（省略可） | 「ここにひな形を置く」の窓を出す（答えを待たずに返す。`setField`・`click`・`dialog` で答える） |
+| `trainer.list` | `from`・`to`（番号の範囲。省略可） | トレーナーの一覧（#244。ROM の表に `maps\trainers.json` を重ねたもの）。`id`・`trainerClass`・`className`・`name`・`partySize`・`party`（`species`・`level`）・`edited`（trainers.json にあるか）・`uses`（索引で使っている場所の数） |
+| `trainer.get` | `id` | 1 件の全部（`partyFlags`・`trainerClass`・`music`・`female`・`pic`・`name`・`items`・`doubleBattle`・`aiFlags`・`party`（`iv`・`level`・`species`、形式により `heldItem`・`moves`））。表の外なら null |
+| `trainer.generate` | `seed`、`bank`・`map`（省略で表示中のマップ） | チームの自動生成（#245）。返事は `party`・`seed`・`candidates`（候補にした野生の種族と最高レベル）・`maps`（野生を使ったマップ）。同じ種なら同じ結果 |
+| `trainer.json` | | `maps\trainers.json` の中身（`trainers`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
+
+trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。同じ番号が無ければ足す）と `removeTrainer`（`{"id": 700}`）でもできます（元に戻せる）。

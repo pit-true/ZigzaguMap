@@ -20,6 +20,9 @@ import { scriptsCommands } from "./scripts";
 import { statusCommands } from "./status";
 import { treeCommands } from "./tree";
 import { viewCommands } from "./view";
+import { usageCommands } from "./usage";
+import { templateCommands } from "./templates";
+import { trainerCommands } from "./trainers";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -47,6 +50,9 @@ const registry: CommandRegistry = new CommandRegistry([
   scriptCommands,
   scriptsCommands,
   linkCommands,
+  usageCommands,
+  templateCommands,
+  trainerCommands,
   neighborCommands,
   { commands: () => registry.names() },
 ]);

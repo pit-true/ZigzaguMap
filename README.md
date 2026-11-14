@@ -309,11 +309,14 @@ python tests/realcopy/run.py --smoke --reuse            # 開いて何もせず�
 python tests/realcopy/run.py --link --reuse             # Phase2 の通し（下の流れ）
 python tests/realcopy/run.py --delete --reuse          # イベントの削除と複数行の文字列（下の流れ）
 python tests/realcopy/run.py --connection --reuse --only nd  # 接続の編集（Phase3。角のつまみ・新しいマップ）を出力してビルドし、ROM の接続を確かめる
+python tests/realcopy/run.py --template --reuse        # 使われている番号の索引とイベントのひな形（下の流れ）
 python tests/realcopy/run.py --all --reuse --only nd    # 全部。--only で ND か Chronos だけ
 python tests/automation/rom_only_script_check.py --rom <素の BPRJ>   # 素の ROM だけのときの表示
 ```
 
 `--link` は、写しで次を順に行います: 新しい `.s` の行を対応表に足す → マップ 3.0 に人・看板・スクリプトタイルを置く（ラベルとひな形）→ 元に戻す・やり直す → エディタで人のスクリプトを開いて 1 行足し、文字列をその場編集する（幅検査の波線が出て、直すと消える。Chronos は `check_text_width.py` が動く）→ F2 でラベル名を変え、イベントのラベルが変わる → 素の ROM のスクリプトを取り込む → マップスクリプトの表を作り、行き先を取り込む → 出力 → ビルドの欄でビルド → できた ROM を開き、イベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、足した行がスクリプトに入ったことを確かめる。写しのテキストファイルは最後に元へ戻し、実フォルダの更新日時が変わっていないことも確かめます。
+
+`--template` は、写しで次を順に行います（#227・#243〜#245。trainers のパッチを当てた写しで動かす）: 索引を作り終え、未使用の最小のフラグ・変数・隠しアイテムの番号・トレーナーの番号が索引のどこにも無く、`.s` と C にも（数でも名前でも）出てこないことを確かめる → マップ 3.0 にひな形を 1 つずつ置く（人・看板・スクリプトタイル・落とし物の看板とボール・アイテムをくれる人・ショップ・既存のトレーナー・自動生成した新しいトレーナー）→ 最後のものを元に戻す・やり直す → 「未使用」ボタンで人のフラグとスクリプトタイルの変数を入れる → 右クリックの「ここにひな形を置く」の窓を出す → 出力して `maps\trainers.json` を確かめる → ビルドする（ND は CFRU と DPE）→ できた ROM で、置いたイベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、アイテムをくれる人の `checkflag`・ショップの品物・`trainerbattle` の番号・隠しアイテムの看板の中身・トレーナーの表の新しい行（ほかの行は元の ROM と同じ）を確かめる。
 
 `--delete` は、写しのビルド側を新しい版にしてから（ND は build-support のパッチを当て、Chronos は実フォルダの string.py・map_project.py・check_text_width.py を写す）、次を順に行います: マップ 3.0 に人を置き、「本文を編集」で文字列を制御記号のあとで改行した複数行にして保存する（Chronos は幅検査が通る）→ 素の ROM のスクリプトの人を探して確認のダイアログから消す（`maps
 om_erase.json` に範囲が記録され、元に戻す・やり直すも）→ 出力してビルドし、記録した範囲がすべて 0xFF で、複数行の文字列のバイト列が 1 行で書いたときと同じことを確かめる → 置いた人を右クリックの「イベントを削除」で消し、`.s` と `.string`（ND は `_k` も、Chronos は幅検査の登録も）から消え、元に戻すと戻ることを確かめる。
@@ -669,10 +672,12 @@ ZigzaguMap が書くファイルのうち、CFRU-JP のビルドを直さない�
 |---|---|---|
 | `string-multiline.patch` | `scripts/string.py`（ND と Chronos で同じ） | `.string` の本文を `\n`・`\p`・`\l`・`\m` の直後で改行して、1 つの文字列を複数の行で書けるようにする。1 行で書いたときと同じバイト列になる |
 | `map_project-rom-erase-nd.patch`、`map_project-rom-erase-chronos.patch` | `scripts/map_project.py` | `maps\rom_erase.json`（素の ROM の範囲の一覧）の範囲を、マップのデータを置く前に 0xFF で埋める。範囲がベース ROM の外にかかるときと、`bytereplacement`・`hooks`・`repoints` などが書く位置と重なるときはビルドを止める |
+| `map_project-trainers-nd.patch`、`map_project-trainers-chronos.patch`（#245） | `scripts/map_project.py`（rom-erase のパッチのあと） | `maps\trainers.json` のトレーナーを ROM のトレーナーの表（`*(0x0800F5C0)`）へ書く。手持ちは空き領域に置く。743 以上の番号があれば表を空き領域へ写して広げ、表の前にある表の先頭の 1 件を指す語（コードの参照）を付け替える |
 
 - Chronos には入れてあります（幅検査の `tools/check_text_width.py` も同じ複数行の規則で読む）。ND には入れていません。当てるときは build-support/README.md の手順で `git -c core.autocrlf=false apply` します。
 - どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（写しで確かめた）。
 - `python build-support/tests/check_cfru_tree.py --cfru <CFRU-JP のフォルダ>` で、当てたフォルダの動きを確かめられます（フォルダは読むだけ）。
+- trainers のパッチ（#245）は、ユーザーの返事（Q1）が出るまで ND にも Chronos にも入れていません。写しで確かめ、当てる前と後のパッチを作業フォルダに置いています。
 
 ## HexManiacAdvance の機能とスタンプ（Phase3）
 
@@ -787,6 +792,219 @@ HexManiacAdvance（HMA）のマップの機能のうち、SPEC の Phase3 の項
 - `.s` の中の座標（このマップへ座標つきで来る `warp` などの命令、このマップのイベントのスクリプトの中の `setobjectxy` などの命令）は直しません。見つけたら「直していない座標」のダイアログで、ファイルと行を一覧にして知らせます。
 - 右と下では、配置の端を足す・削るだけで、イベントと接続は変えません（場所の設定タブのリサイズと同じ）。
 - 1 回の「元に戻す」で全部戻ります。ずれを直した相手のマップにも未出力の印が付きます。
+### 使われている番号の索引と「未使用」ボタン（#227）
+
+フラグ・変数・隠しアイテムの番号・トレーナーの番号のうち、どれが使われているかの索引を作り、使われていない番号を選べるようにしました。
+
+- 使われているとみなすもの:
+  - 素の ROM の全マップのスクリプト（人・看板・スクリプトタイル・マップスクリプトの入口から、Phase2 の逆アセンブラで `call`・`goto`・`trainerbattle` の続きまでたどる）の、フラグと変数の引数（`setflag`・`clearflag`・`checkflag`・`setvar`・`compare` など。命令表の引数の種類で決める）と、`trainerbattle` の相手の番号。
+  - `assembly\` の `.s` の同じ命令（数と `.equ` の名前。ほかの `.s` と `xse_defines.s` などの `.equ` も引く）と、`trainer`・`trainerbattle*` の番号。
+  - 全マップ（`maps\` の JSON と ROM）の人のフラグ、スクリプトタイルの変数、マップスクリプトの条件表の変数、看板の隠しアイテムの番号。
+  - C のソース（`src\`・`include\`）に出てくる `FLAG_*`・`VAR_*` の名前を、`#define` で番号にしたもの。`include\constants\flags.h`・`vars.h` に定義があるだけの名前は数えません。`src\config.h` の `#define FLAG_INVERSE 0x900` のように、ほかのファイルで定義しているものは使っているとみなします。
+  - `maps\trainers.json` のトレーナーの番号（#245）。
+- 隠しアイテムの番号はフラグ（0x3E8 + 番号）と同じものなので、どちらで使っていても使用中とみなします。変数は 0x4000 以上（0x8000 台の特別な変数まで）だけを数えます。
+- 索引は、イベントタブを開いてから 1.2 秒後に、画面を止めないよう少しずつ作ります（ND の写しで約 1.2〜4 秒、Chronos で約 4 秒。起動からマップの表示には入りません）。マップタブなどだけを使う間は作りません（待機時のメモリを増やさないため）。ほかのタブでも、「未使用」ボタン・ひな形・自動操作で要ったときはその場で作ります。作り終えたら、全マップと C のソースを読んだごみを片付け、命令表も持ち続けません（直すときに作り直す）。作ったあとは、イベントの編集（取り消し・やり直しも）と、`.s` の書き換え（エディタでの保存、ひな形・取り込み）でその分だけ直します。
+- 探す範囲は、プロジェクトの `zigzagumap.json` の `"usage"` の節で変えられます（ZigzaguMap はこの節を書きません）。
+
+  ```json
+  { "usage": { "flags": { "from": "0x21", "to": "0x3E7", "exclude": ["0x100-0x11F", "0x200"] },
+               "vars": { "from": "0x4034", "to": "0x40FF" }, "hiddenItems": { "from": 1, "to": 255 },
+               "trainers": { "from": 1, "to": 742 } } }
+  ```
+
+  | 種類 | 既定の範囲 | 理由 |
+  |---|---|---|
+  | フラグ `flags` | 0x21〜0x3E7 | 起点は HMA と同じ。0x3E8 からは隠しアイテムのフラグ |
+  | 変数 `vars` | 0x4034〜0x40FF | 起点は HMA と同じ。0x40FF までが保存される変数 |
+  | 隠しアイテム `hiddenItems` | 1〜255 | 看板の 1 バイト |
+  | トレーナー `trainers` | 1〜742 | 素の FR の表（0 は「無し」） |
+
+  数は 10 進の数か `"0x"` の 16 進の文字列です。`exclude` に、範囲の中で使わない番号（`"a-b"` の区間か 1 つの番号）を書けます。ND と Chronos で取り置きの範囲が決まったら、ここに書いてください。
+- 画面: プロジェクトフォルダを開いているとき、イベントタブの人のフラグ、スクリプトタイルの変数、看板の隠し ID の欄の横に「未使用」ボタンを出します。押すと、範囲の中で使われていない最小の番号を入れます（欄を変えるコマンドなので、Ctrl+Z で戻せます）。素の ROM だけのときは出しません（AdvanceMap との比較の画面を変えないため）。
+- 処理は core の `script/usage/`（`UsageIndex`・`UsageProject` と、出どころごとの `romUsage`・`asmUsage`・`eventUsage`・`cUsage`）、範囲の読み取りは `script/config/UsageConfig.ts`、画面側は `app/UsageService.ts` です。
+- 自動操作: `usage.state`・`usage.next`・`usage.find`（[docs/automation.md](docs/automation.md)）。
+
+### イベントのひな形（#243・#244）
+
+イベントタブのマップを右クリックして「ここにひな形を置く」を選ぶと、種類を選ぶ窓が出ます。種類と入力を決めて「置く」を押すと、押したマスにイベントを置き、スクリプトを `.s` と `.string` に書きます。プロジェクトフォルダを開いているときだけ使えます（イベントの上で右クリックしたときも、メニューの最後に出ます）。
+
+- 置くと、イベントの追加・欄の値・ラベル（Phase2 の自動命名。`{kind}` はひな形ごとの名前）・`.s` と `.string` の書き足し・（落とし物のボールなら落とし物の設定）・（新しいトレーナーなら `maps\trainers.json`）を 1 回の操作にまとめます。1 回の Ctrl+Z で全部戻り、Ctrl+Y で同じ名前のままもう一度書きます。
+- マップの `.s` が `maps\scripts.json` に無ければ、先に「.s を新しく作る」の入力を出します。
+- フラグ・変数・隠しアイテムの番号は、索引（#227）の未使用の最小を既定に入れます（窓の「未使用」ボタンでも入れ直せます）。
+- 文は窓で直せます。置く前に簡易の幅検査（`zigzagumap.json` の `lineMaxChars`・`linesPerPage`。既定 1 行 18 字・2 行）を通し、超えていれば置きません。既定の文はどれも収まります。
+- ND は msgbox に漢字のポインタも書き（`msgbox X MSG_… X_k`）、`.string` に同じ本文の `_k` も足します。Chronos は 1 ポインタで、ラベルの前に `.global` を書きます。Chronos は、足した `#org` を幅検査の登録ファイル（`strings/text_width_registry.json`）にも足します（エディタで保存したときと同じ規則。`check_text_width.py` の REGISTRY に載っている `.string` だけ）。取り消すと登録も戻ります。
+- 組み込みの 7 種類だけです（利用者が足す仕組みは作っていません。Q11）。技教えなど SPEC に無いひな形は入れていません（Q16）。
+
+| 種類 | 置くもの | 窓で聞くこと | ラベルの例 |
+|---|---|---|---|
+| 人 | 人（見た目） | 見た目、文 | `Moegi_Npc3` |
+| 看板 | 看板 | 文 | `Moegi_Sign1` |
+| スクリプトタイル | スクリプトタイル（変数は未使用の最小、値 0） | 変数、文 | `Moegi_Tile0` |
+| 落とし物 | 看板の隠しアイテム（種類 7。番号は未使用の最小）。「見えるボール（人）で置く」なら見た目 92 の人と落とし物（Bochi の ItemBalls。拾うスクリプトは出力のときに `HiddenItem.s` に書く）。フラグは未使用の最小 | 隠しアイテムの番号、アイテム、数、ボールで置くか、フラグ | （スクリプトなし） |
+| アイテムをくれる人 | 人（見た目 30、下向き固定） | 見た目、フラグ、アイテム、数、渡す前と渡したあとの文 | `Moegi_Giver4` |
+| ショップ | 人（見た目 68 の店員、下向き固定） | 見た目、品物（複数） | `Moegi_Mart5` |
+| トレーナー | 人（見た目 18、トレーナーの種類 1、視界 5、向き固定、フラグ 0） | トレーナー（一覧から選ぶ。#245 の新しいトレーナーも）、見た目、視界、向き、戦闘前・負けたとき・戦闘後の文 | `EventScript_Moegi_Trainer6` |
+
+- トレーナーのラベルは `EventScript_` で始めます。eventscripts の `trainer` の行は、CFRU の `insert.py` がシンボルの頭に `EventScript_` を付けて引くためです（行には頭を外した名前を書きます）。文字列の名前には頭を付けません（`gText_Moegi_Trainer6_Intro`）。
+- トレーナーの一覧は ROM の表（`*(0x0800F5C0)`、1 件 0x20 バイト、743 件）と手持ちを読み、`maps\trainers.json` を重ねたものです（「番号 クラス 名前（手持ち N）」。trainers.json にあるものは「＊trainers.json」、索引でほかに使っている場所があれば「使用中 N」）。使っている番号を選んで置くと、ステータスバーに使っている場所を出します（置くのは止めません）。
+- `trainer` のマクロは ND も Chronos も 1 ポインタなので、ND でも戦闘前と負けたときの文は 1 本だけです（Q4）。戦闘後の文の `msgbox` は方言どおりです。
+
+各ひな形が書く `.s`（Chronos の形。ND は `.global` の行が無く、msgbox の後ろに `_k` のポインタが付きます）:
+
+```asm
+.global Moegi_Npc3              @ 人
+Moegi_Npc3:
+	lock
+	faceplayer
+	msgbox gText_Moegi_Npc3 MSG_FACE
+	release
+	end
+
+.global Moegi_Sign1             @ 看板
+Moegi_Sign1:
+	msgbox gText_Moegi_Sign1 MSG_SIGN
+	end
+
+.global Moegi_Tile0             @ スクリプトタイル
+Moegi_Tile0:
+	lockall
+	msgbox gText_Moegi_Tile0 MSG_NORMAL
+	releaseall
+	end
+
+.global Moegi_Giver4            @ アイテムをくれる人
+Moegi_Giver4:
+	lock
+	faceplayer
+	checkflag 0x22
+	if 0x1 _goto Moegi_Giver4_After
+	msgbox gText_Moegi_Giver4 MSG_NORMAL
+	setvarifnotzero 0x8000 0xD
+	setvarifnotzero 0x8001 0x1
+	callstd MSG_OBTAIN
+	compare LASTRESULT 0x0
+	if 0x1 _goto Moegi_Giver4_End
+	setflag 0x22
+	release
+	end
+
+Moegi_Giver4_After:
+	msgbox gText_Moegi_Giver4_After MSG_NORMAL
+Moegi_Giver4_End:
+	release
+	end
+
+.global Moegi_Mart5             @ ショップ
+Moegi_Mart5:
+	lock
+	faceplayer
+	mart Moegi_Mart5_Mart1
+	release
+	end
+
+.align 1
+Moegi_Mart5_Mart1:
+	.hword 0x4
+	.hword 0xD
+	.hword 0x0
+
+.global EventScript_Moegi_Trainer6   @ トレーナー
+EventScript_Moegi_Trainer6:
+	trainer 0x0 0x15F 0x0 gText_Moegi_Trainer6_Intro gText_Moegi_Trainer6_Defeat
+	msgbox gText_Moegi_Trainer6_After MSG_NORMAL
+	end
+```
+
+- アイテムをくれる人は、`giveitem` マクロを使わず、同じ命令（`setvarifnotzero 0x8000`・`0x8001` と `callstd MSG_OBTAIN`）を直接書きます。ND と Chronos の `xse_commands.s` の `giveitem` は、中の `copyvarifnotzero` が無いマクロ `setorcopyvar` を呼ぶので組めないためです。バッグがいっぱいで渡せなかったときはフラグを立てません。
+- ショップの `pokemart` の画面は、ゲームが「いらっしゃいませ」などの文を出すので、ひな形には文を書きません。
+
+`.string`（ND の形。Chronos は `_k` がありません）:
+
+```
+#org @gText_Moegi_Npc3
+ここに　はなす　ことばを　かきます
+
+#org @gText_Moegi_Npc3_k
+ここに　はなす　ことばを　かきます
+
+#org @gText_Moegi_Sign1
+ここに　かんばんの　ぶんを　かきます
+
+#org @gText_Moegi_Tile0
+ここに　ぶんを　かきます
+
+#org @gText_Moegi_Giver4
+これを　あげよう！
+
+#org @gText_Moegi_Giver4_After
+だいじに　つかってね
+
+#org @gText_Moegi_Trainer6_Intro
+めが　あったら\nしょうぶだ！
+
+#org @gText_Moegi_Trainer6_Defeat
+まけちゃった……
+
+#org @gText_Moegi_Trainer6_After
+つぎは　まけないぞ！
+```
+
+（`_k` の行は、人の例だけ載せています。ND ではどの msgbox の文にも同じ本文の `_k` が付きます。トレーナーの戦闘前と負けたときの文には付きません。）
+
+- 処理は core の `event/templates/EventTemplates.ts`（7 種類の定義・既定値・欄の値・スクリプト）と `trainer/TrainerTable.ts`（表の読み取り）、画面側は `ui/event/TemplatePicker.ts`（窓）・`ui/event/TemplatePlacer.ts`（コマンドにまとめて置く）・`ui/script/ScriptLink.ts`（ラベルと書き足し。Phase2 のひな形の代わりにひな形の文を書く）・`app/TrainerService.ts` です。
+- 自動操作: `template.list`・`template.place`・`template.picker`、`trainer.list`・`trainer.get`。
+
+### トレーナーのデータ（maps\trainers.json）とチームの自動生成（#245）
+
+ユーザーの返事（Q1〜Q3）の前なので、調査の推奨の案で作っています。返事によって変わることがあります。
+
+- ひな形「トレーナー」の窓で「新しいトレーナーを作る」に印を付けると、番号・名前・クラス・絵・手持ちを入れて、新しいトレーナーとして置けます。一覧で選んだトレーナーを見本にして、クラス・絵・BGM・性別・AI を写します。置くと `maps\trainers.json` に書き（出力のとき）、スクリプトはその番号で書きます。イベント・スクリプトと一緒に 1 回の Ctrl+Z で戻ります。
+- 番号の既定は、索引（#227）で使われていない既存の枠の最小です（素の ROM のスクリプトと `.s` と trainers.json のどれにも出てこない番号）。743〜767 の番号を入れると、ビルドが表を広げます（Q2。768 から先は、戦ったかどうかのフラグ `0x500 + 番号` がシステムのフラグと重なるので使えません）。
+- 「自動で作る」（乱数の種を入れて押す）: このマップと、接続している隣のマップの野生（全時間帯・全区分）から種族を選びます。数は 1〜3 匹、レベルはその野生の最高レベル + 0〜2、手持ちの形式は 0（技と持ち物を書かない。技はゲームがレベルアップの表から決める）、個体値は 0 です。同じ種なら同じ結果になります。マップに野生がいなければ、ワープの行き先のマップの野生を使います。それでも無ければ、手持ちの欄に「種族 レベル」を自分で書いてください（例 `0x10 9, 0x13 8`）。作った手持ちは窓で直してから置けます。
+- trainers.json の編集は、コマンド `setTrainer`（同じ番号が無ければ足す。あれば置き換える）・`removeTrainer` です（元に戻せます。自動操作の `command` からも使えます）。トレーナーの窓（名前・クラス・持ち物・AI・ダブル・手持ちをあとから直す画面）はまだ作っていません。
+- trainers.json を消す（全部の行を消す）と、ビルドした ROM のトレーナーの表は元に戻ります。
+
+`maps\trainers.json` の形式（Bochi の maps\ の JSON と同じ整形。2 空白の字下げ、CRLF、ASCII 以外は `\uXXXX`）:
+
+```json
+{
+  "Format": 1,
+  "Trainers": [
+    {
+      "Id": 1,
+      "PartyFlags": 0,
+      "Class": 2,
+      "Music": 6,
+      "Female": false,
+      "Pic": 7,
+      "Name": "タロウ",
+      "Items": [0, 0, 0, 0],
+      "DoubleBattle": false,
+      "AiFlags": 1,
+      "Party": [
+        { "Iv": 0, "Level": 9, "Species": 16 },
+        { "Iv": 0, "Level": 8, "Species": 19 }
+      ]
+    }
+  ]
+}
+```
+
+| 項目 | 内容 |
+|---|---|
+| `Id` | 表の番号（1〜767）。同じ番号は 1 つだけ。743 以上はビルドが表を広げる |
+| `PartyFlags` | 手持ちの形式。bit0 が技あり（手持ちに `Moves` の 4 つ）、bit1 が持ち物あり（`HeldItem`） |
+| `Class`・`Pic` | クラスと絵の番号 |
+| `Music`・`Female` | BGM（0〜127）と女性か（1 バイトの最上位ビット） |
+| `Name` | 名前（5 文字まで。ビルドが `charmap.tbl` で変える） |
+| `Items` | 持ち物 4 つ |
+| `DoubleBattle`・`AiFlags` | ダブルバトルか、AI |
+| `Party` | 手持ち 1〜6 匹（`Iv`・`Level`・`Species`、形式によって `HeldItem`・`Moves`） |
+| `Label` | 記録用（省略可）。ビルドは使わない |
+
+- 形式の読み書きは core の `trainer/TrainersJson.ts` だけで行い、知らない項目は残します。1 件も無くなったらファイルを消します。
+- ビルドで当てるのは build-support のパッチを当てた `scripts/map_project.py` です（「[ビルド側の変更（build-support）](#ビルド側の変更build-support)」）。trainers.json が無いか `Trainers` が空なら、パッチを当てる前と ROM がバイト単位で同じです。
+- ビルドした ROM で確かめるには、ビルドした ROM を ZigzaguMap で開いて自動操作の `trainer.get`（その番号の名前・手持ち）を見るか、`*(0x0800F5C0)` の表の `番号 × 0x20` の位置を読みます。写しのテスト（`tests/realcopy/run.py --template`）がこれを確かめます。
 
 ### 境界をまたぐ描画
 
@@ -1243,6 +1461,8 @@ Phase2 のフィードバック（#218〜#221）を入れたあと（2026-11-14�
 - `--js-flags=--expose-gc` と `util/idleGc.ts`（操作が 1.5 秒落ち着いたら GC を 1 回）は、マップの切り替えを遅くしていません。切り替えの間を 0〜3 秒に変えて 20 回ずつ測ると、GC あり 中央値 21.5〜24.2ms（最大 35.4ms）、GC なし（`--js-flags` を上書きして `gc` を無くしたもの）中央値 22.5〜24.6ms（最大 41.4ms）で、GC が走る頃合い（1.55〜1.9 秒後）に切り替えても差はありませんでした。JavaScript のヒープは GC ありのほうが約 7MB 小さくなります。
 
 Phase3 の隣のマップの帯（#223）を入れたあと（2026-11-14）: マップの切り替え（主マップを出すまで）中央値 23.6ms（10 回の最大 30.7ms）、切り替え始めてから隣の帯を描き終えるまで 中央値 31.5ms（最大 42.6ms。目安は 200ms 以内）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、帯は既定の 8 ブロック）は、ROM とプロジェクトを開いた後 131MB・マップを 10 枚切り替えた後 144MB です。同じ時に帯の無い exe を測ると、それぞれ 128MB・140MB でした（帯の分は約 4MB）。帯は表示中のタブの分だけ Canvas を持ち、主マップと違うタイルセットの組を帯のために読んだときは、落ち着いたあと空いた領域を OS へ返します。exe 4.1MB（4,124,160 バイト）です。
+
+Phase3 の使われている番号の索引とひな形（#227・#243〜#245）を入れたあと（2026-11-14）: 起動からマップ表示まで 中央値 833ms（素の BPRJ、7 回の最大 870ms）、マップの切り替え 中央値 27.0ms（70 回の最大 54.2ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し）は、ROM とプロジェクトを開いた後 127.5MB・マップを 10 枚切り替えた後 136.9MB・ブロックエディタを開いた後 168.3MB・閉じた後 144.6MB・スクリプトエディタを開いた後 181.5MB・閉じた後 134.6MB でした（同じ時に main の exe を測ると 129MB・140.8MB・170.3MB・146.9MB・183.8MB・137.3MB）。索引を ROM を開いたあとすぐ作る形では、マップを 10 枚切り替えた後が 149〜152MB になった（ND で全マップと C のソース 398 ファイルを読むため）ので、イベントタブを開いたときに作る形にし、作り終えたら命令表を持たずに GC で空いた領域を OS へ返すようにしました。exe 4.2MB（4,156,928 バイト）です。
 
 ### 起動とマップ切り替えの時間
 

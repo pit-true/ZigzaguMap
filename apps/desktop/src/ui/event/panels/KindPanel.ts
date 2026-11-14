@@ -1,7 +1,8 @@
 import { SetEventFieldsCommand, type MapId } from "@zigzagumap/core";
 import { jaScriptLabel } from "../../../i18n/ja.scriptLabel";
 import { ScriptLabelField, type ScriptLabelSource } from "../../script/ScriptLabelField";
-import { CheckBox, ComboBox, HexInput, SpinEdit, formLabel, formRow, type ValueControl } from "../../form/valueControls";
+import { jaUsage } from "../../../i18n/ja.usage";
+import { CheckBox, ComboBox, HexInput, SpinEdit, formLabel, formRow, pushButton, type ValueControl } from "../../form/valueControls";
 import type { EventEditor } from "../EventEditor";
 
 /** スクリプトを持つイベントの種別。 */
@@ -21,7 +22,14 @@ export interface PanelHost {
   labelSource(kind: ScriptEventKind, index: () => number | null): ScriptLabelSource;
   /** 「マップの移動」。 */
   goTo(bank: number, map: number, warpId: number): void;
+  /** 範囲の中で使われていない最小の番号（#227。使えなければ null）。 */
+  unused?(kind: UnusedKind): Promise<number | null>;
+  /** 「未使用を選ぶ」ボタンを出すか（プロジェクトフォルダを開いているとき）。 */
+  unusedAvailable?(): boolean;
 }
+
+/** 「未使用を選ぶ」で選ぶ番号の種類。 */
+export type UnusedKind = "flag" | "var" | "hiddenItem";
 
 /** スクリプトのラベルの欄と、表示を合わせる関数（ラベルが付いていれば true）。 */
 export interface LabelPart {
@@ -57,6 +65,8 @@ export function withScriptOffset(pointer: number, offset: number): number {
 export abstract class KindPanel<E> {
   readonly element: HTMLElement;
   private readonly bindings: Binding<E>[] = [];
+  /** 「未使用を選ぶ」ボタン（プロジェクトフォルダが無いときは隠す）。 */
+  private readonly unusedButtons: HTMLButtonElement[] = [];
   protected current: { readonly event: E; readonly index: number } | null = null;
 
   constructor(
@@ -74,6 +84,8 @@ export abstract class KindPanel<E> {
   show(event: E, index: number): void {
     this.current = { event, index };
     for (const b of this.bindings) b.control.set(b.read(event));
+    const unused = this.host.unusedAvailable?.() ?? false;
+    for (const b of this.unusedButtons) b.hidden = !unused;
     this.afterShow(event);
   }
 
@@ -121,6 +133,24 @@ export abstract class KindPanel<E> {
         return on && field.hasLabel;
       },
     };
+  }
+
+  /**
+   * 「未使用を選ぶ」ボタン（#227）。押すと範囲の中で使われていない最小の番号を `patch` で書く（コマンドなので元に戻せる）。
+   * 欄の横に置く。プロジェクトフォルダを開いているときだけ出す（比較テストの画面を変えないため）。
+   */
+  protected unusedButton(id: string, kind: UnusedKind, patch: (e: E, value: number) => FieldPatch): HTMLButtonElement {
+    const button = pushButton(`${this.idPrefix}.${id}`, jaUsage.pick, () => {
+      const unused = this.host.unused;
+      if (!unused) return;
+      void unused(kind).then((v) => {
+        if (v !== null) this.write(id, (e) => patch(e, v));
+      });
+    }, "unused-button");
+    button.title = jaUsage.pickTitle(jaUsage.kind[kind] ?? kind);
+    button.hidden = true;
+    this.unusedButtons.push(button);
+    return button;
   }
 
   /** 16 進欄。`bits` で書く値をマスクする。 */

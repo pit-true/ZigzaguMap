@@ -134,3 +134,11 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* 「未使用を選ぶ」ボタン（#227。番号の欄の横） */
+.unused-button {
+  height: 21px;
+  padding: 0 4px;
+  margin-left: 4px;
+  font-size: 11px;
+}

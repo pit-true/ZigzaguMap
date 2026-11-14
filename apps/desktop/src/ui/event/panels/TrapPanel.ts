@@ -27,7 +27,12 @@ export class TrapPanel extends ListKindPanel<TrapEvent> {
       LABEL,
       this.hex("flagValue", 4, 49, (e) => e.elevation | (e.padding1 << 8), (_e, v) => ({ elevation: v & 0xff, padding1: v >> 8 }), { bits: 16 }),
     );
-    this.row(f.variable, LABEL, this.hex("variable", 4, 49, (e) => e.variable, (_e, v) => ({ variable: v }), { bits: 16 }));
+    this.row(
+      f.variable,
+      LABEL,
+      this.hex("variable", 4, 49, (e) => e.variable, (_e, v) => ({ variable: v }), { bits: 16 }),
+      this.unusedButton("variableUnused", "var", (_e, v) => ({ variable: v })),
+    );
     this.row(f.value, LABEL, this.hex("value", 4, 49, (e) => e.value, (_e, v) => ({ value: v }), { bits: 16 }));
     this.row(
       ja.event.unknown,

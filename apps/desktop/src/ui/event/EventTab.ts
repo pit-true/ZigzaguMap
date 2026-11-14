@@ -10,6 +10,7 @@ import {
   type MapId,
 } from "@zigzagumap/core";
 import "../../styles/event.css";
+import { jaTemplate } from "../../i18n/ja.template";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaEventDelete } from "../../i18n/ja.eventDelete";
@@ -24,7 +25,7 @@ import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
 import { EventMapInput, type RawCell } from "./EventMapInput";
 import { EventOffsets, hasAnyEvent, listCount, mapFly, type UiKind } from "./eventModel";
 import { FlyPanel } from "./panels/FlyPanel";
-import type { PanelHost, ScriptEventKind } from "./panels/KindPanel";
+import type { PanelHost, ScriptEventKind, UnusedKind } from "./panels/KindPanel";
 import { PersonPanel } from "./panels/PersonPanel";
 import { SignPanel } from "./panels/SignPanel";
 import { TrapPanel } from "./panels/TrapPanel";
@@ -45,6 +46,12 @@ export interface EventTabHost {
   readonly scriptFiles: ScriptFiles;
   /** イベントを削除する（#220。確認のダイアログを出してから。スクリプトの記述と ROM の範囲も）。 */
   deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
+  /** 範囲の中で使われていない最小の番号（#227。「未使用を選ぶ」ボタン）。 */
+  pickUnused?(kind: UnusedKind): Promise<number | null>;
+  /** 「ここにひな形を置く」（#243。マスの位置）。 */
+  placeTemplate?(x: number, y: number): void;
+  /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
+  canPlaceTemplate?(): boolean;
   /** スクリプトの要約（#226。ホバーの吹き出し）。 */
   summaries?(): Promise<ScriptSummaries>;
 }
@@ -107,6 +114,8 @@ export class EventTab {
       openScript: (kind, index) => this.openScript(kind, index),
       labelSource: (kind, index) => this.labelSource(kind, index),
       goTo: (bank, map, warpId) => void this.goTo(bank, map, warpId),
+      unused: (kind) => this.host.pickUnused?.(kind) ?? Promise.resolve(null),
+      unusedAvailable: () => state.session?.projectDir != null,
     };
     this.panels = {
       person: new PersonPanel(panelHost),
@@ -481,7 +490,14 @@ export class EventTab {
     // Ctrl を押している間はイベントを無いものとして、下のブロックを拾う（#238）
     if (ctrlPeek.held) return this.pickBlock(cell);
     const hit = eventAt(this.placed, cell.x, cell.y);
-    if (!hit) return;
+    // 「ここにひな形を置く」（#243）。プロジェクトフォルダを開いているときだけ、イベントの無いマスでも出す
+    const templates = this.host.canPlaceTemplate?.()
+      ? [{ id: "placeTemplate", label: jaTemplate.menuPlace, run: () => this.host.placeTemplate?.(cell.x, cell.y) }]
+      : [];
+    if (!hit) {
+      if (templates.length > 0) showContextMenu(x, y, templates);
+      return;
+    }
     this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
     const kind = hit.kind;
     const index = hit.index;
@@ -495,6 +511,7 @@ export class EventTab {
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
+      ...templates,
     ]);
   }
 

@@ -8,6 +8,7 @@ import {
   Rom,
   ScriptsTableProject,
   SpeciesNameTable,
+  TrainersProject,
   StampLibrary,
   createDefaultRegistry,
   detectGame,
@@ -17,6 +18,7 @@ import {
   withRomErase,
   withEventLabels,
   withScriptsTable,
+  withTrainers,
   type CommandRegistry,
   type EventLabelSavePlan,
   type EventLabelTrackHooks,
@@ -74,10 +76,15 @@ export class ProjectSession {
     readonly labels: EventLabelProject,
     /** ビルドで 0xFF で埋める ROM の範囲（maps\rom_erase.json。#220。開いたときに読む）。 */
     readonly romErase: RomEraseProject,
+    /** ZigzaguMap で足した・変えたトレーナー（maps\trainers.json。#245。開いたときに読む）。 */
+    readonly trainers: TrainersProject,
   ) {
-    const context = withRomErase(
-      withRegionMap(project.editorContext(), () => this.requireRegionMap().document),
-      () => this.requireRomErase(),
+    const context = withTrainers(
+      withRomErase(
+        withRegionMap(project.editorContext(), () => this.requireRegionMap().document),
+        () => this.requireRomErase(),
+      ),
+      () => this.requireTrainers(),
     );
     this.bus = new CommandBus(
       withEventLabels(
@@ -112,7 +119,8 @@ export class ProjectSession {
     const scripts = await ScriptsTableProject.open(fs.root ? fs : null);
     const labels = await EventLabelProject.open(fs.root ? fs : null);
     const romErase = await RomEraseProject.open(fs.root ? fs : null);
-    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels, romErase);
+    const trainers = await TrainersProject.open(fs.root ? fs : null);
+    return new ProjectSession(romPath, fs, project, catalog, performance.now() - start, scripts, labels, romErase, trainers);
   }
 
   /** ROM を読み、対応している ROM か確かめる（違えば UnknownRomError）。読んだバイト列は `open` に渡せる。 */
@@ -234,6 +242,11 @@ export class ProjectSession {
     return this.romErase;
   }
 
+  private requireTrainers(): TrainersProject {
+    if (!this.fs.root) throw new Error(jaScriptLink.labelsNeedProject);
+    return this.trainers;
+  }
+
   private requireScriptsTable(): ScriptsTableProject {
     const error = this.scriptsTable.loadError;
     if (error !== null) throw new Error(jaScriptLink.scriptsJsonBroken(error));
@@ -257,7 +270,7 @@ export class ProjectSession {
 
   /** 未出力の変更があるか（マップ・タイルセット・マップ名・scripts.json の対応表）。 */
   hasUnsavedChanges(): boolean {
-    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified() || this.labels.isModified() || this.romErase.isModified();
+    return this.project.hasUnsavedChanges() || this.scriptsTable.isModified() || this.labels.isModified() || this.romErase.isModified() || this.trainers.isModified();
   }
 
   /**
@@ -314,6 +327,8 @@ export class ProjectSession {
     if (labels.plan.tables.length > 0 && this.writeTables) parts.push(await this.writeTables(labels.plan.tables));
     // ビルドで 0xFF で埋める範囲（maps\rom_erase.json。イベントの削除 #220）
     parts.push(await this.romErase.save(this.fs));
+    // ZigzaguMap で足した・変えたトレーナー（maps\trainers.json。#245）
+    parts.push(await this.trainers.save(this.fs));
     // スタンプ（#239）: 出力先を選んだとき（素の ROM だけで開いていた・別のフォルダへ出力した）は、今のスタンプをその先へ書く
     if (dir !== undefined && this.stampsValue) parts.push({ written: await (await this.stampsValue).relocate(this.fs), removed: [] });
     return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };

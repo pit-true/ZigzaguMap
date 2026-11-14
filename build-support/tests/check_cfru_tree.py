@@ -8,6 +8,9 @@
 2. scripts/map_project.py: maps/rom_erase.json fills its ranges with 0xFF and changes nothing else; a range
    outside the base ROM, or one that a patch list of the build writes (bytereplacement, hooks, repoints,
    routinepointers, functionrewrites, generatedrepoints), stops the build. A disabled #ifdef line is not an overlap.
+3. scripts/map_project.py: maps/trainers.json writes its trainers into gTrainers (*(0x0800F5C0)) with the parties in
+   new space and changes nothing else; an empty Trainers list leaves the ROM unchanged; an id above 742 moves the table
+   and repoints the words before it that point into its first entry; a bad id, a duplicate or a long name stops the build.
 Exit code 1 when a check fails.
 """
 import argparse
@@ -139,6 +142,74 @@ def check_rom_erase(cfru, work, problems):
     print('map_project.py: checked')
 
 
+def write_trainers(trainers):
+    os.makedirs('maps', exist_ok=True)
+    with open('maps/trainers.json', 'w', encoding='utf-8', newline='\r\n') as f:
+        json.dump({'Format': 1, 'Trainers': trainers}, f, indent=2)
+
+
+def check_trainers(cfru, work, problems):
+    module = load(cfru / 'scripts' / 'map_project.py', 'zzm_map_project_trainers')
+    if not hasattr(module, '_apply_trainers'):
+        problems.append('scripts/map_project.py has no _apply_trainers (the trainers patch is not applied)')
+        return
+    shutil.copyfile(cfru / 'charmap.tbl', 'charmap.tbl')
+    table, size, count = 0x1FDFD8, 0x20, 743
+    base = bytearray(b'\xFF' * 0x2000000)
+    for i in range(count):
+        base[table + i * size:table + (i + 1) * size] = bytes([(i * 7 + k) & 0x7F for k in range(size)])
+    for at, delta in ((0xF5C0, 0), (0x10000, 0), (0x10004, 4), (0x10008, 0xA)):
+        base[at:at + 4] = (0x08000000 + table + delta).to_bytes(4, 'little')
+    base[0x30000:0x30004] = (0x08000000 + table + 0x40).to_bytes(4, 'little')   # into entry 2: not a table reference
+    rom = bytes(base)
+
+    def run():
+        handle = io.BytesIO(rom)
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.apply_project(handle, 0x1000000, {})
+        return handle.getvalue()
+
+    one = {'Id': 5, 'PartyFlags': 0, 'Class': 3, 'Music': 4, 'Female': True, 'Pic': 12, 'Name': 'あい',
+           'Items': [13, 0, 0, 0], 'DoubleBattle': False, 'AiFlags': 1, 'Party': [{'Iv': 0, 'Level': 9, 'Species': 10}]}
+    write_trainers([])
+    if run() != rom:
+        problems.append('maps/trainers.json with no trainers changed the ROM')
+    write_trainers([one])
+    out = run()
+    entry = out[table + 5 * size:table + 6 * size]
+    party = int.from_bytes(entry[0x1C:0x20], 'little') - 0x08000000
+    expect = bytes([0, 3, 0x84, 12, 0x01, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])
+    if entry[:0x1C] != expect:
+        problems.append(f'trainer 5 is written wrong: {entry.hex()}')
+    if out[party:party + 8] != bytes([0, 0, 9, 0, 10, 0, 0, 0]):
+        problems.append(f'the party of trainer 5 is wrong: {out[party:party + 8].hex()}')
+    changed = [i for i in range(len(rom)) if rom[i] != out[i] and not (table + 5 * size <= i < table + 6 * size) and not (party <= i < party + 8)]
+    if changed:
+        problems.append(f'maps/trainers.json changed other bytes: {[hex(i) for i in changed[:5]]}')
+    write_trainers([dict(one, Id=750, PartyFlags=3, Party=[{'Iv': 1, 'Level': 50, 'Species': 6, 'HeldItem': 2, 'Moves': [1, 2, 3, 4]}])])
+    out = run()
+    new = int.from_bytes(out[0xF5C0:0xF5C4], 'little') - 0x08000000
+    if new == table or out[new:new + count * size] != rom[table:table + count * size]:
+        problems.append('trainer 750: the table is not copied to new space')
+    elif [int.from_bytes(out[a:a + 4], 'little') - 0x08000000 - new for a in (0x10000, 0x10004, 0x10008)] != [0, 4, 0xA]:
+        problems.append('trainer 750: the code references are not repointed')
+    elif out[0x30000:0x30004] != rom[0x30000:0x30004]:
+        problems.append('trainer 750: a word pointing into entry 2 was repointed')
+    elif out[new + 750 * size + 0x18] != 1 or out[new + 749 * size:new + 750 * size] != rom[table:table + size]:
+        problems.append('trainer 750: the new entries are wrong')
+    for trainers, text in (([dict(one, Id=800)], 'Invalid or duplicate'), ([one, one], 'Invalid or duplicate'),
+                           ([dict(one, Name='あ' * 6)], 'longer than'), ([dict(one, Party=[])], 'Party')):
+        write_trainers(trainers)
+        try:
+            run()
+            problems.append(f'no error for {text}')
+        except ValueError as e:
+            if text not in str(e):
+                problems.append(f'unexpected error {e} (expected {text})')
+    os.remove('maps/trainers.json')
+    print('map_project.py (trainers): checked')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--cfru', required=True, help='the CFRU-JP folder (scripts/string.py, scripts/map_project.py)')
@@ -151,6 +222,7 @@ def main():
         os.chdir(work)
         check_strings(cfru, work, problems)
         check_rom_erase(cfru, work, problems)
+        check_trainers(cfru, work, problems)
     finally:
         os.chdir(previous)
         shutil.rmtree(work, ignore_errors=True)
