@@ -228,7 +228,24 @@ Phase2 で作っている途中の機能です。実装した分の仕様をこ�
 
 ### スクリプトの設定（zigzagumap.json）
 
-<!-- #184 -->
+- 設定はプロジェクトフォルダ（ZigzaguMap で開く CFRU-JP のフォルダ）の `zigzagumap.json` の `"script"` の節に書きます。ファイルや節が無いとき、項目を省いたときは、方言ごとの既定値を使います。読み書きは core の `ScriptConfigJson`（`packages/core/src/script/config/`）だけで行い、知らない項目はファイルの最上位と節の中のどちらも、書き戻しても残します。
+- パスはプロジェクトフォルダからの相対パスで、区切りは `/` です。`..` で上のフォルダも指せます。`\` で書いてあっても、読むときに `/` にそろえます。
+- 項目は次のとおりです。
+
+| 項目 | 内容 | ND の既定値 | Chronos の既定値 |
+|---|---|---|---|
+| `dialect` | 方言。`nd`・`chronos`・`auto` | `auto` | `auto` |
+| `build` | ビルドの手順の列。1 つの手順は `{ "command", "args", "cwd" }`。上から順に動かす | `python scripts/make.py`（`cwd` は `.`） | `python build.py`（`cwd` は `..`） |
+| `outputRom` | ビルドで出来る ROM | `test.gba` | `../build/Chronos.gba` |
+| `emulator` | エミュレータの exe。`null` なら無し | `null` | `null` |
+| `widthCheck` | `.string` の幅検査のコマンド（形は `build` の 1 手順と同じ）。`null` なら無し | `null` | `python tools/check_text_width.py --source`（`cwd` は `..`） |
+| `labelTemplate` | ラベルの規則。`{map}`（マップ名）・`{kind}`（種別）・`{index}`（番号）を置き換える | `EventScript_{map}_{kind}{index}` | 同じ |
+| `useGlobal` | 新しいラベルに `.global` を付けるか | `false` | `true` |
+| `lineMaxChars` / `linesPerPage` | 簡易の幅検査の、1 行の字数と 1 ページの行数 | 18 / 2 | 18 / 2 |
+| `commandsCsv` | 命令の説明を足す commands.csv。`null` なら使わない | `null` | `null` |
+
+- `auto` のときは、プロジェクトフォルダの `xse_commands.s` の `loadpointer` マクロを見ます。引数が 3 つ（`destination, value, value_kanji`）なら ND、2 つなら Chronos です。`xse_commands.s` が無いときや `loadpointer` が見つからないときは、Chronos（素の CFRU と同じ 1 ポインタ）として扱います。
+- ND の既定のビルドは CFRU 側だけです。DPE 側へのコピーと DPE のビルドを既定に入れるかは、まだ決めていません（#198）。エミュレータの設定をどこに置くかも未定です（#199）。
 
 ### 命令表（xse_commands.s と commands.csv）
 
