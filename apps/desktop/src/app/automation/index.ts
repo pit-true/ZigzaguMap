@@ -27,6 +27,7 @@ import { viewCommands } from "./view";
 import { blockUsageCommands } from "./blockUsage";
 import { templateCommands } from "./templates";
 import { trainerCommands } from "./trainers";
+import { viewToolCommands } from "./viewTools";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -62,6 +63,7 @@ const registry: CommandRegistry = new CommandRegistry([
   neighborCommands,
   bagCommands,
   compositeCommands,
+  viewToolCommands,
   { commands: () => registry.names() },
 ]);
 

@@ -313,3 +313,15 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
 - 画像のコピー（#246）: `{"cmd":"image.composite","whole":true,"events":"none","png":true}` で接続している全マップ（`whole: false` なら今のマップ）の画像を作る。`events` は `none` / `persons` / `all`、`scale` で縮める割合（省くと辺が 16,384 画素を超えるときは収まるまで縮める。ダイアログは出さない）。返事は `width`・`height`・`scale`・`bounds`・`maps`（並べたマップと置き場所。最初のマップの左上が原点のマス）・`heapMb`（作っている間の JavaScript のヒープ）と、`png: true` なら PNG（Base64）。`clipboard: true` のときだけクリップボードへ渡す（既定は渡さない。テストでユーザーのクリップボードを汚さないため）。メニューは アクション `image.copyMap.<none|persons|all>`・`image.copyWhole.<none|persons|all>`。
 
+
+## Phase4 の表示・一覧・調査（列 3）
+
+命令は `apps/desktop/src/app/automation/viewTools.ts` にまとめています。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `seams.state` | `wait`（true で調べ終えるまで待つ） | 接続の境目の注意（#305）。点検した主マップ `map`、調べ終えたか `done`、崩れるマスのある接続 `issues`（接続の番号 `index`・`side`・相手 `id`・マスの数 `count`・マス `cells`（主マップの左上が原点））、ステータスバーの注意の文 `status`（出ていなければ null）、主マップのタイルセット `tilesets` と上下左右の接続の相手のタイルセット `connections`（`index`・`bank`・`map`・`primary`・`secondary`。ポインタの値） |
+| `catalog.get` | `bank`、`map` | マップ一覧の情報（地名の番号 `region`・配置の番号 `layoutId`・名前 `name`・タイルセットの番号）。無ければ null |
+
+- ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
+- マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。

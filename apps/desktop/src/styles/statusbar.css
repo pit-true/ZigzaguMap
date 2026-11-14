@@ -41,3 +41,17 @@
 .status-info[hidden] {
   display: none;
 }
+
+/* 接続の境目の注意（#305）。押すと一覧。注意が無ければ隠す。 */
+.status-warn {
+  flex: none;
+  font: inherit;
+  margin: 0;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  cursor: pointer;
+}
+
+.status-warn[hidden] {
+  display: none;
+}

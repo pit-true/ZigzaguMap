@@ -190,8 +190,80 @@ def check_item_ball(z: Zigzagu, free: tuple[int, int], before: dict) -> None:
     check(z.call({"cmd": "event.state"})["counts"]["persons"] == before["persons"], "1 回の Ctrl+Z で落とし物が消える")
 
 
+# ---- #305 ----
+
+
+def check_seams(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    # 素の BPRJ で、接続先のタイルセットの組が違って崩れるマスのあるマップを探す
+    found = None
+    for bank, map_ in ((3, 0), (3, 19), (3, 1), (3, 20), (3, 2), (3, 21), (3, 3), (3, 22), (3, 4), (3, 23)):
+        z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+        st = z.call({"cmd": "seams.state", "wait": True})
+        if st["issues"]:
+            found = (bank, map_, st)
+            break
+    check(found is not None, f"崩れるマスのある接続を持つマップが見つかる（{found[:2] if found else None}）")
+    if not found:
+        return
+    bank, map_, st = found
+    issue = st["issues"][0]
+    check(st["status"] == f"注意: 接続 {len(st['issues'])} か所", f"ステータスバーに注意が出る（{st['status']!r}）")
+    check(issue["count"] > 0 and all(c["x"] < 0 or c["y"] < 0 or c["x"] >= 0 for c in issue["cells"]), f"接続 {issue['index']}（{issue['side']}）に {issue['count']} マス")
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "neighbors.state", "wait": True})
+    z.call({"cmd": "scroll", "target": "map", "to": "end" if issue["side"] in ("down", "right") else "start"})
+    shot(z, shots, "view_seams_band.png")
+    z.call({"cmd": "click", "id": "status.seams"})
+    time.sleep(0.3)
+    dialogs = z.call({"cmd": "state"})["dialogs"]
+    check(any(d.get("title") == "接続の境目の注意" for d in dialogs), "押すと一覧が出る")
+    shot(z, shots, "view_seams_list.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    # 主マップのタイルセットの組を相手と同じにすると、その接続の注意が消える
+    target = next(c for c in st["connections"] if c["index"] == issue["index"])
+    z.call({"cmd": "command", "name": "setTilesets", "args": {"bank": bank, "map": map_, "primary": target["primary"], "secondary": target["secondary"]}})
+    after = z.call({"cmd": "seams.state", "wait": True})
+    check(all(i["index"] != issue["index"] for i in after["issues"]), "同じ組にすると、その接続の注意が消える")
+    z.call({"cmd": "undo"})
+    again = z.call({"cmd": "seams.state", "wait": True})
+    check(any(i["index"] == issue["index"] for i in again["issues"]), "元に戻すとまた出る")
+    # 組が同じ接続しかないマップ（マサラタウンの家の中など）では出ない
+    z.call({"cmd": "selectMap", "bank": 4, "map": 1})
+    st = z.call({"cmd": "seams.state", "wait": True})
+    check(st["status"] is None, "接続の無いマップでは注意が出ない")
+
+
+def check_filter(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    def maps() -> list[dict]:
+        return [i for i in z.call({"cmd": "tree.list"}) if i.get("mapId") and i["key"].startswith("h")]
+
+    z.call({"cmd": "tree.filter", "text": "場所:58"})
+    shown = maps()
+    check(len(shown) > 0, f"場所:58 で {len(shown)} 枚")
+    regions = {(m["mapId"]["bank"], m["mapId"]["map"]) for m in shown}
+    check((3, 0) in regions, "場所:58（マサラタウン）に 3.0 が入る")
+    check(all(not i["key"].startswith("f/") for i in z.call({"cmd": "tree.list"})), "マップファイルの項目は出ない")
+    shot(z, shots, "view_filter_region.png", "tree.filter")
+    z.call({"cmd": "tree.filter", "text": "場所:58,59"})
+    check(len(maps()) > len(shown), "場所:58,59 は 58 だけより多い")
+    z.call({"cmd": "tree.filter", "text": "場所:58 3.0"})
+    check([(m["mapId"]["bank"], m["mapId"]["map"]) for m in maps()] == [(3, 0)], "名前の語と並べて使える")
+    info = z.call({"cmd": "catalog.get", "bank": 3, "map": 0})
+    z.call({"cmd": "tree.filter", "text": f"地形:{info['layoutId']:X}"})
+    layout = [(m["mapId"]["bank"], m["mapId"]["map"]) for m in maps()]
+    check((3, 0) in layout and all(z.call({"cmd": "catalog.get", "bank": b, "map": m})["layoutId"] == info["layoutId"] for b, m in layout),
+          f"地形:{info['layoutId']:X} で同じ配置のマップだけ（{layout[:5]}）")
+    shared = z.call({"cmd": "catalog.get", "bank": 5, "map": 4})
+    z.call({"cmd": "tree.filter", "text": f"地形:{shared['layoutId']:X}"})
+    check(len(maps()) == 17, f"素の BPRJ の 5.4 の配置は 17 枚で共有（{len(maps())} 枚）")
+    z.call({"cmd": "tree.filter", "text": ""})
+    check(len(maps()) > 300, "消すと全部に戻る")
+
+
 CHECKS = {
     "events": check_events,
+    "seams": check_seams,
+    "filter": check_filter,
 }
 
 

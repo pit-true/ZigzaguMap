@@ -74,6 +74,7 @@ export * from "./connection/layout.js";
 export type { ConnectionHeader, MapConnection } from "./connection/types.js";
 export { ConnectionCodec, ConnectionHeaderCodec, connectionCodec, connectionHeaderCodec } from "./connection/ConnectionCodec.js";
 export { ConnectionReader } from "./connection/ConnectionReader.js";
+export { SEAM_VIEW, blockDiffer, findSeamIssues, seamCells, type SeamIssue, type SeamNeighbor } from "./connection/ConnectionSeams.js";
 
 // マップスクリプト
 export * from "./mapscript/layout.js";
