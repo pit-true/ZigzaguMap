@@ -10,7 +10,7 @@
 }
 
 .am-group {
-  border: 1px solid #dcdcdc;
+  border: 1px solid var(--group-border);
   border-radius: 2px;
 }
 
@@ -33,7 +33,7 @@
 .am-memo,
 .am-spin input {
   padding: 0 3px;
-  border: 1px solid #7a7a7a;
+  border: 1px solid var(--field-border);
   background: var(--window);
   color: var(--text);
   font: inherit;
@@ -44,7 +44,7 @@
 .am-spin input:disabled {
   background: var(--face);
   color: var(--gray-text);
-  border-color: #cccccc;
+  border-color: var(--field-disabled-border);
 }
 
 .am-edit[readonly] {
@@ -62,20 +62,20 @@
 
 .am-button {
   padding: 0;
-  border: 1px solid #adadad;
-  background: #e1e1e1;
+  border: 1px solid var(--button-border);
+  background: var(--button-face);
   color: var(--text);
 }
 
 .am-button:hover:not(:disabled) {
-  border-color: #0078d7;
-  background: #e5f1fb;
+  border-color: var(--select);
+  background: var(--button-hot);
 }
 
 .am-button:disabled {
-  color: #a0a0a0;
-  border-color: #d0d0d0;
-  background: #f4f4f4;
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  background: var(--disabled-face);
 }
 
 .am-combo {
@@ -114,8 +114,8 @@
 .am-spin-arrows button {
   flex: 1;
   padding: 0;
-  border: 1px solid #adadad;
-  background: #e1e1e1 no-repeat center;
+  border: 1px solid var(--button-border);
+  background: var(--button-face) no-repeat center;
   background-size: 7px 4px;
 }
 
@@ -125,6 +125,15 @@
 
 .am-spin-arrows button:last-child {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 0h7L3.5 4z'/%3E%3C/svg%3E");
+}
+
+/* ダークでは矢印を明るい色にする。 */
+:root[data-theme="dark"] .am-spin-arrows button:first-child {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 4h7L3.5 0z' fill='%23d0d0d0'/%3E%3C/svg%3E");
+}
+
+:root[data-theme="dark"] .am-spin-arrows button:last-child {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 0h7L3.5 4z' fill='%23d0d0d0'/%3E%3C/svg%3E");
 }
 
 .am-spin-arrows button:disabled {
@@ -166,5 +175,5 @@
 
 /* トラックバー（TTrackBar）。 */
 .am-trackbar {
-  accent-color: #0078d7;
+  accent-color: var(--select);
 }

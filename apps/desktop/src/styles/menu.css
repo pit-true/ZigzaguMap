@@ -44,8 +44,8 @@
   pointer-events: auto;
   min-width: 120px;
   padding: 2px;
-  background: #f2f2f2;
-  border: 1px solid #ccc;
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
   box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -58,8 +58,8 @@
 }
 
 .menu-item.active {
-  background: #91c9f7;
-  border-color: #91c9f7;
+  background: var(--menu-active);
+  border-color: var(--menu-active);
 }
 
 .menu-item.disabled {
@@ -67,8 +67,8 @@
 }
 
 .menu-item.disabled.active {
-  background: #e6e6e6;
-  border-color: #e6e6e6;
+  background: var(--menu-disabled-active);
+  border-color: var(--menu-disabled-active);
 }
 
 .menu-check {
@@ -96,5 +96,5 @@
 .menu-separator {
   height: 1px;
   margin: 3px 1px 3px 28px;
-  background: #d7d7d7;
+  background: var(--menu-separator);
 }

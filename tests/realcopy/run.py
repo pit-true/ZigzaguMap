@@ -6,6 +6,7 @@
   python tests/realcopy/run.py --smoke --reuse         # 前の写しがあればそのまま使う（ビルドのキャッシュが残る）
   python tests/realcopy/run.py --smoke --dpe           # ND は DPE のビルドまで動かす
   python tests/realcopy/run.py --link --reuse          # スクリプト連携（lib/link.py）。ビルドはスクリプトエディタのビルドの欄で行う
+  python tests/realcopy/run.py --all --reuse           # --smoke と --link の両方（Phase2 の通しの確認）
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
 
 --smoke: 写しを作り、ZigzaguMap で写しの ROM とプロジェクトを開いて何もせずに出力し、写しでビルドする
@@ -23,6 +24,7 @@ import os
 import pathlib
 import sys
 import time
+import traceback
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
@@ -106,6 +108,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--link", action="store_true", help="スクリプト連携（ラベル・ひな形・取り込み・マップスクリプト・ビルドの欄）の確認")
+    ap.add_argument("--all", action="store_true", help="--smoke と --link の両方")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
     ap.add_argument("--dpe", action="store_true")
@@ -113,8 +116,10 @@ def main() -> int:
     ap.add_argument("--config")
     ap.add_argument("--timeout", type=int)
     args = ap.parse_args()
+    if args.all:
+        args.smoke = args.link = True
     if not args.smoke and not args.link:
-        ap.error("--smoke か --link を付けてください")
+        ap.error("--smoke か --link か --all を付けてください")
     cfg = config.load(args.config, args.exe)
     args.exe = cfg.zigzaguExe
     args.timeout = args.timeout or cfg.buildTimeout
@@ -133,13 +138,16 @@ def main() -> int:
 
     log_dir = cfg.copyRoot / "logs" / time.strftime("%Y%m%d-%H%M%S")
     results: dict[str, bool] = {}
-    for name in names:
-        print(f"\n== {name}")
+    runs = [(n, "smoke") for n in names if args.smoke] + [(n, "link") for n in names if args.link]
+    for name, kind in runs:
+        key = name if not (args.smoke and args.link) else f"{name} ({kind})"
+        print(f"\n== {key}")
         try:
-            ok, lines = link_fixture(cfg, name, args, log_dir) if args.link else smoke_one(cfg, name, args, log_dir)
+            ok, lines = link_fixture(cfg, name, args, log_dir) if kind == "link" else smoke_one(cfg, name, args, log_dir)
         except Exception as e:  # noqa: BLE001  1 つが失敗しても残りと実フォルダの確認は続ける
             ok, lines = False, [f"エラー: {type(e).__name__}: {e}"]
-        results[name] = ok
+            traceback.print_exc()
+        results[key] = ok
         for line in lines:
             print("  " + line)
 

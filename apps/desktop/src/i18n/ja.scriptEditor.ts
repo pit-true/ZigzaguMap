@@ -41,5 +41,6 @@ export const jaScriptEditor = {
   romOpened: (key: string) => `${key} のスクリプトを読み取り専用で開きました`,
   labelRenamed: (from: string, to: string, uses: number) => `ラベル ${from} を ${to} に変えました（イベントとマップスクリプト ${uses} 件。eventscripts は出力のときに書きます）`,
   /** メインを閉じる・別のプロジェクトを開くときの確認。 */
+  noReply: "スクリプトエディタが応答しません",
   mainDirty: (count: number) => `スクリプトエディタに保存していないファイルが ${count} 件あります。保存しますか？`,
 };

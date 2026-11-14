@@ -11,8 +11,7 @@ export const SCRIPT_INDEX_ROOT_FILES: readonly string[] = ["xse_commands.s", "xs
  * `.` を含まない名前はフォルダとみなして中を見る（ファイルなら中は空）。`.s` 以外の拡張子は見ない。
  */
 export async function listScriptSourcePaths(fs: ProjectFs): Promise<string[]> {
-  const out: string[] = [];
-  await walk(fs, SCRIPT_INDEX_ASSEMBLY_DIR, out);
+  const out = await listProjectFiles(fs, SCRIPT_INDEX_ASSEMBLY_DIR, /\.s$/i);
   for (const path of SCRIPT_INDEX_ROOT_FILES) if (await fs.exists(path)) out.push(path);
   return out;
 }
@@ -43,11 +42,21 @@ export async function reloadScriptIndexFile(index: ScriptIndex, fs: ProjectFs, p
   return true;
 }
 
-async function walk(fs: ProjectFs, dir: string, out: string[]): Promise<void> {
+/**
+ * `dir` の下の、名前が `pattern` に合うファイル（名前の順にたどる。下のフォルダも）。
+ * `.` を含まない名前はフォルダとみなして中を見る（ファイルなら中は空）。
+ */
+export async function listProjectFiles(fs: ProjectFs, dir: string, pattern: RegExp): Promise<string[]> {
+  const out: string[] = [];
+  await walk(fs, dir, pattern, out);
+  return out;
+}
+
+async function walk(fs: ProjectFs, dir: string, pattern: RegExp, out: string[]): Promise<void> {
   const names = [...(await fs.list(dir))].sort();
   for (const name of names) {
     const path = `${dir}/${name}`;
-    if (/\.s$/i.test(name)) out.push(path);
-    else if (!name.includes(".")) await walk(fs, path, out);
+    if (pattern.test(name)) out.push(path);
+    else if (!name.includes(".")) await walk(fs, path, pattern, out);
   }
 }

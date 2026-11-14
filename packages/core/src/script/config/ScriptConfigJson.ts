@@ -1,5 +1,5 @@
 import { ProjectFormatError } from "../../project/ProjectFormatError.js";
-import type { ProjectFs } from "../../project/ProjectFs.js";
+import { readTextIfExists, type ProjectFs } from "../../project/ProjectFs.js";
 import { asRecord, parseJsonObject, type JsonRecord } from "../../project/jsonRead.js";
 import {
   resolveScriptConfig,
@@ -130,7 +130,7 @@ export class ScriptConfigJson {
  * 方言が `auto`（か未設定）なら `xse_commands.s` から判定し、判定できなければ SCRIPT_DIALECT_FALLBACK。
  */
 export async function loadScriptConfig(fs: ProjectFs): Promise<LoadedScriptConfig> {
-  const text = (await fs.exists(SCRIPT_CONFIG_FILE)) ? await fs.readText(SCRIPT_CONFIG_FILE) : null;
+  const text = await readTextIfExists(fs, SCRIPT_CONFIG_FILE);
   const { settings } = ScriptConfigJson.parse(text);
   let dialect: ScriptDialect;
   let dialectSource: ScriptDialectSource;
@@ -138,7 +138,8 @@ export async function loadScriptConfig(fs: ProjectFs): Promise<LoadedScriptConfi
     dialect = settings.dialect;
     dialectSource = "setting";
   } else {
-    const detected = (await fs.exists(XSE_COMMANDS_PATH)) ? detectScriptDialect(await fs.readText(XSE_COMMANDS_PATH)) : null;
+    const xse = await readTextIfExists(fs, XSE_COMMANDS_PATH);
+    const detected = xse !== null ? detectScriptDialect(xse) : null;
     dialect = detected ?? SCRIPT_DIALECT_FALLBACK;
     dialectSource = detected ? "detected" : "fallback";
   }
@@ -147,7 +148,7 @@ export async function loadScriptConfig(fs: ProjectFs): Promise<LoadedScriptConfi
 
 /** スクリプトの設定を `zigzagumap.json` に書く。今のファイルの知らない項目は残す。 */
 export async function saveScriptConfig(fs: ProjectFs, settings: ScriptConfigSettings): Promise<void> {
-  const text = (await fs.exists(SCRIPT_CONFIG_FILE)) ? await fs.readText(SCRIPT_CONFIG_FILE) : null;
+  const text = await readTextIfExists(fs, SCRIPT_CONFIG_FILE);
   await fs.writeText(SCRIPT_CONFIG_FILE, ScriptConfigJson.stringify(settings, ScriptConfigJson.parse(text)));
 }
 

@@ -33,7 +33,7 @@ input[readonly],
 .readonly-select {
   height: 19px;
   padding: 0 3px;
-  border: 1px solid #7a7a7a;
+  border: 1px solid var(--field-border);
   background: var(--window);
   color: var(--text);
   min-width: 0;
@@ -44,7 +44,7 @@ select {
 }
 
 .group-box {
-  border: 1px solid #d5dfe5;
+  border: 1px solid var(--groupbox-border);
   border-radius: 3px;
   margin: 0 0 8px;
   padding: 6px 12px 10px;

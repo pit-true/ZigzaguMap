@@ -4,11 +4,15 @@
 1. maps\\scripts.json に新しい .s の行を足し（出力のときに作る行）、マップ 3.0 に人・看板・スクリプトタイルを置くと、
    ラベルが自動で付き、ひな形がすぐ .s と .string に書かれる。元に戻すとひな形が消え、やり直すと戻る。
 2. ラベルを変えるコマンドと、その取り消し。
+   続けてスクリプトエディタで人のスクリプトを開き（イベントから）、本文に 1 行足して保存し、文字列の本文をその場編集で変え
+   （長すぎる本文は字数の幅検査の波線になり、直すと消える。Chronos は保存時に check_text_width.py も動く）、
+   F2 と同じラベル名の変更で人のラベルを変えると、イベントのラベルも変わる。
 3. 素の ROM の人のスクリプトを読み取り専用で出し（#206）、.s に取り込む（#207）。
-4. マップスクリプトの表（#208）を作る。
+4. マップスクリプトの表（#208）を作り、ROM のアドレスのままの行き先があれば 1 つ .s に取り込む（元に戻す・やり直すも）。
 5. 出力すると eventscripts・maps\\03\\scripts_00.json・.s・.string ができる。
 6. スクリプトエディタのビルドの欄で写しをビルドする（ND は CFRU → DPE へのコピー → DPE、Chronos は build.py）。
-7. できた ROM（ND は DPE の test.gba）を開き、マップ 3.0 のイベントのスクリプトの番地が、offsets.ini のラベルの位置と同じ。
+7. できた ROM（ND は DPE の test.gba）を開き、マップ 3.0 のイベントのスクリプトの番地が、offsets.ini のラベルの位置と同じ
+   （人は名前を変えたあとのラベル）。足した 1 行（nop）がスクリプトの先頭に入り、変えた文字列のラベルも ROM に入る。
    取り込んだスクリプトのバイト列は、ポインタ以外は元の ROM と同じ。
 写しのテキストファイル（eventscripts、maps、assembly\\overworld_scripts、strings、zigzagumap.json）は、最後に元へ戻す。
 """
@@ -74,6 +78,87 @@ def read_symbols(path: pathlib.Path) -> dict[str, int]:
     return out
 
 
+def _wait_editor(z: Zigzagu, timeout: float = 30) -> bool:
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if any(w["label"] == "script-editor" and w.get("ready") for w in z.call({"cmd": "windows"})):
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def _person_label(labels: dict, index: int) -> str | None:
+    """script.labels の人のうち、番号が index のもののラベル（無ければ None）。"""
+    return next((x["label"] for x in labels["person"] if x["index"] == index), None)
+
+
+def _edit_in_editor(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, npc: str, index: int) -> str:
+    """エディタで人のスクリプトの本文と文字列を変え、ラベル名を変える。新しいラベル名を返す。"""
+    ed = {"window": "script-editor"}
+    r = z.call({"cmd": "script.open", "bank": BANK, "map": MAP, "kind": "person", "index": index})
+    check(bool(r.get("opened")) and (r.get("location") or {}).get("label") == npc, f"イベントからエディタでスクリプトを開く（{r.get('location')}）")
+    check(_wait_editor(z), "エディタのウィンドウが開く")
+    z.call({"cmd": "editor.project", **ed})
+    st = z.call({"cmd": "editor.state", **ed})
+    lines = z.call({"cmd": "editor.text", **ed})["text"].split("\n")
+    at = next((i + 1 for i, l in enumerate(lines) if l.strip() == f"{npc}:"), None)
+    check(st.get("active") == SCRIPT and at is not None and st["cursor"]["line"] == at, f"ラベルの行を開く（{st.get('active')} {st.get('cursor')} / {at}）")
+    if at is None:
+        return npc
+    # 本文: ラベルの次の行に nop を足して保存
+    z.call({"cmd": "editor.type", "line": at + 1, "column": 1, "text": "\tnop\n", **ed})
+    saved = z.call({"cmd": "editor.save", **ed})
+    s = (proj / SCRIPT).read_text(encoding="utf-8")
+    check(bool(saved.get("saved")) and f"{npc}:\n\tnop\n\tlock\n" in s, "エディタで足した行が保存される")
+
+    # 文字列: その場編集（長すぎる本文は幅検査の波線、直すと消える）
+    text_label = f"gText_{npc}"
+    z.call({"cmd": "editor.stringEdit", "label": text_label, "text": "あ" * 25, **ed})
+    z.call({"cmd": "editor.open", "path": STRINGS, **ed})
+    diags = z.call({"cmd": "editor.diagnostics", **ed})
+    width = [d for d in diags.get("diagnostics", diags if isinstance(diags, list) else []) if d.get("source") == "textWidth"]
+    check(len(width) > 0, f"長すぎる本文は字数の幅検査の波線になる（{len(width)} 件）")
+    body = "ジグザグマップの　テストです"
+    z.call({"cmd": "editor.stringEdit", "label": text_label, "text": body, **ed})
+    diags = z.call({"cmd": "editor.diagnostics", **ed})
+    width = [d for d in diags.get("diagnostics", diags if isinstance(diags, list) else []) if d.get("source") == "textWidth"]
+    check(len(width) == 0, f"直すと幅検査の波線が消える（{len(width)} 件）")
+    z.call({"cmd": "editor.save", **ed})
+    st_text = (proj / STRINGS).read_text(encoding="utf-8")
+    check(f"#org @{text_label}\n{body}" in st_text.replace("\r\n", "\n"), "その場編集した本文が .string に保存される")
+    wc = z.call({"cmd": "editor.widthCheck", "wait": True, **ed})
+    if fx.name == "chronos":
+        last = wc.get("last") or {}
+        check(wc.get("runs", 0) >= 1 and last.get("failed") is None, f"Chronos は保存時に check_text_width.py が動く（終了コード {last.get('exit')}、誤り {len(last.get('errors') or [])} 件）")
+        log_lines = z.call({"cmd": "build.log", **ed})["lines"]
+        check(any("保存時の幅検査" in l["line"] for l in log_lines), "幅検査の出力がビルドの欄のログに出る")
+    else:
+        check(wc.get("runs", 0) == 0, "ND は保存時の幅検査のコマンドが無いので動かない")
+
+    # F2 と同じラベル名の変更
+    new = f"ZzLinkTest_Hero{index}"
+    r = z.call({"cmd": "editor.rename", "from": npc, "to": new, **ed})
+    result = r.get("result") or {}
+    check(result.get("uses", 0) >= 1, f"ラベル名を変えると、使っているイベントも変わる（{result}）")
+    z.call({"cmd": "editor.activate", "path": SCRIPT, **ed})
+    z.call({"cmd": "editor.save", **ed})
+    labels = z.call({"cmd": "script.labels"})
+    check(_person_label(labels, index) == new, f"イベントタブのラベルも新しい名前になる（{_person_label(labels, index)}）")
+    s = (proj / SCRIPT).read_text(encoding="utf-8")
+    check(f"{new}:" in s and f"{npc}:" not in s, ".s の定義も新しい名前になる")
+    z.call({"cmd": "undo"})
+    check(_person_label(z.call({"cmd": "script.labels"}), index) == npc, "イベントのラベルの変更はメインの Ctrl+Z で戻せる")
+    z.call({"cmd": "redo"})
+    check(_person_label(z.call({"cmd": "script.labels"}), index) == new, "やり直すと新しい名前に戻る")
+    # エディタを閉じる（開いたままだと、このあとの取り込みはエディタの本文へ書かれ、ディスクには保存するまで出ない）
+    closing = z.call({"cmd": "close", **ed})
+    check(bool(closing.get("closing")), "未保存のファイルが無いのでエディタを閉じられる")
+    t0 = time.time()
+    while time.time() - t0 < 10 and any(w["label"] == "script-editor" for w in z.call({"cmd": "windows"})):
+        time.sleep(0.2)
+    return new
+
+
 def link_one(fx: Fixture, z: Zigzagu, check, log, timeout: int) -> None:
     proj = fx.project_path
     snap = TextSnapshot(proj, fx.copy_root)
@@ -127,6 +212,9 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
     z.call({"cmd": "undo"})
     check(z.call({"cmd": "script.labels"})["sign"][-1]["label"] == sign, "ラベルの変更は元に戻せる")
 
+    # 2b. エディタで本文と文字列を編集し、ラベル名を変える
+    npc = _edit_in_editor(fx, z, proj, check, log, npc, counts["persons"])
+
     # 3. 素の ROM のスクリプトの表示と取り込み（元からいる人 0。ND のベース ROM の人はスクリプトを持たないので、
     #    ベース ROM のいあいぎりのスクリプト 0x08800300 を人 0 に取り込む）
     imported = None
@@ -149,6 +237,33 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
     z.call({"cmd": "tab", "name": "header"})
     ms = z.call({"cmd": "script.mapScripts", "action": "create"})
     check(ms["ok"] and ms["table"] is not None, f"今のマップスクリプトから表を作れる（{ms['table'] and len(ms['table']['items'])} 件）")
+    ms_import = None
+    dests = [i["script"] for i in ms["table"]["items"]] + [c["script"] for i in ms["table"]["items"] for c in i["conditions"]] if ms["table"] else []
+    dest = next((d for d in dests if d.lower().startswith("0x")), None)
+    if dest is not None:
+        ptr = int(dest, 16)
+        req = {"bank": BANK, "map": MAP, "kind": "map", "pointer": ptr}
+        rom = z.call({"cmd": "script.rom", **req})
+        check(rom.get("importable"), f"マップスクリプトの行き先 {dest} は取り込める（{rom.get('items') and rom['items'][0]['label']}）")
+        ms_import = z.call({"cmd": "script.import", **req})
+        z.call({"cmd": "script.settle"})
+        label = ms_import.get("entryLabel")
+        now = z.call({"cmd": "script.mapScripts", "action": "get"})["table"]
+        dests_now = [i["script"] for i in now["items"]] + [c["script"] for i in now["items"] for c in i["conditions"]]
+        check(label in dests_now and dest not in dests_now, f"取り込むと、表の行き先 {dest} が {label} になる")
+        check(ms_import.get("reused") or f"{label}:" in (proj / SCRIPT).read_text(encoding="utf-8"), f"マップスクリプトの行き先が .s に入る（{label}）")
+        z.call({"cmd": "undo"})
+        z.call({"cmd": "script.settle"})
+        back = z.call({"cmd": "script.mapScripts", "action": "get"})["table"]
+        check(back is not None and dest in [i["script"] for i in back["items"]] + [c["script"] for i in back["items"] for c in i["conditions"]],
+              "元に戻すと、表の行き先がアドレスに戻る")
+        check(ms_import.get("reused") or f"{label}:" not in (proj / SCRIPT).read_text(encoding="utf-8"), "元に戻すと、取り込んだ文も消える")
+        z.call({"cmd": "redo"})
+        z.call({"cmd": "script.settle"})
+        check(f"{label}:" in (proj / SCRIPT).read_text(encoding="utf-8") or ms_import.get("reused"), "やり直すと、取り込んだ文が戻る")
+        ms = z.call({"cmd": "script.mapScripts", "action": "get"})
+    else:
+        log("マップ 3.0 の表にアドレスの行き先が無いので、マップスクリプトの取り込みは確かめません")
     have = {i["type"] for i in ms["table"]["items"]} if ms["table"] else set()
     add_type = next(t for t in (5, 7, 3, 1) if t not in have)
     ms = z.call({"cmd": "script.mapScripts", "action": "add", "type": add_type})
@@ -207,6 +322,10 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
         e = ev[kind][index]
         ptr = e["script"] if kind != "signs" else e["content"].get("script")
         check(label in symbols and ptr == symbols[label], f"ROM の {kind}[{index}] のスクリプトが {label}（{hex(ptr or 0)} / {hex(symbols.get(label, 0))}）")
+    if npc in symbols:
+        head = out_rom.read_bytes()[symbols[npc] - 0x08000000: symbols[npc] - 0x08000000 + 2]
+        check(head == bytes([0x00, 0x6A]), f"エディタで足した nop がスクリプトの先頭に入る（{head.hex()}、続きは lock）")
+    check(f"gText_{npc.replace('ZzLinkTest_Hero', 'ZzLinkTest_Npc')}" in symbols, "その場編集した文字列のラベルが ROM に入る")
     if imported:
         label = imported["entryLabel"]
         check(ev["persons"][0]["script"] == symbols.get(label), f"取り込んだ人 0 のスクリプトが {label} を指す")
@@ -231,3 +350,5 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int) 
         check(table["label"] in symbols, f"マップスクリプトの表 {table['label']} が ROM に入る")
         if added:
             check(added["script"] in symbols, f"足したマップスクリプト {added['script']} が ROM に入る")
+    if ms_import:
+        check(ms_import["entryLabel"] in symbols, f"取り込んだマップスクリプト {ms_import['entryLabel']} が ROM に入る")

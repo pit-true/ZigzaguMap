@@ -23,7 +23,7 @@
 .st-list th,
 .st-list td {
   padding: 2px 4px;
-  border-bottom: 1px solid #e4e4e4;
+  border-bottom: 1px solid var(--row-rule);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -43,7 +43,7 @@
 
 .st-list tr.st-row.selected td {
   background: var(--select);
-  color: #fff;
+  color: var(--select-text);
 }
 
 .st-list tr.st-row.unused td {
@@ -56,7 +56,7 @@
 }
 
 .st-new {
-  color: #c00000;
+  color: var(--error-text);
 }
 
 .st-form {
@@ -98,7 +98,7 @@
 .st-warning {
   min-height: 1em;
   margin-top: 6px;
-  color: #b00000;
+  color: var(--error-text-strong);
   white-space: pre-wrap;
 }
 

@@ -3,20 +3,21 @@ import type { App } from "../App";
 /** 自動操作の要求（JSON 1 件）。 */
 export type AutomationRequest = Record<string, unknown>;
 
-/** 命令の処理。返した値が返事の `result` になる。 */
-export type CommandHandler = (app: App, req: AutomationRequest) => unknown;
+/** 命令の処理。返した値が返事の `result` になる。`T` は命令が操作する相手（メインは App、スクリプトエディタはそのウィンドウ）。 */
+export type CommandHandler<T = App> = (target: T, req: AutomationRequest) => unknown;
 
 /** 分野ごとのファイルが登録する命令の表（命令名 → 処理）。 */
-export type CommandTable = Readonly<Record<string, CommandHandler>>;
+export type CommandTable<T = App> = Readonly<Record<string, CommandHandler<T>>>;
 
 /**
- * 命令の登録表。分野ごとのファイル（core・fields・mouse・dialogs・menu・tree・images・status・events）の表を 1 つにまとめる。
+ * 命令の登録表。分野ごとのファイル（メインは app/automation の core・fields・mouse・dialogs など、スクリプトエディタは
+ * windows/script-editor/automation の機能ごとのファイル）の表を 1 つにまとめる。命令を足すときは、その分野の表に 1 行足す。
  * 同じ名前を 2 か所で登録したら起動時に Error にする（取り違えを防ぐ）。
  */
-export class CommandRegistry {
-  private readonly handlers = new Map<string, CommandHandler>();
+export class CommandRegistry<T = App> {
+  private readonly handlers = new Map<string, CommandHandler<T>>();
 
-  constructor(tables: readonly CommandTable[]) {
+  constructor(tables: readonly CommandTable<T>[]) {
     for (const table of tables) {
       for (const [name, handler] of Object.entries(table)) {
         if (this.handlers.has(name)) throw new Error(`自動操作の命令が重複しています: ${name}`);
@@ -26,7 +27,7 @@ export class CommandRegistry {
   }
 
   /** 命令の処理（無ければ undefined）。 */
-  get(name: string): CommandHandler | undefined {
+  get(name: string): CommandHandler<T> | undefined {
     return this.handlers.get(name);
   }
 
@@ -66,6 +67,11 @@ export function num(req: AutomationRequest, key: string): number {
 /** 押したあとの処理（次のダイアログを出すなど）が進むのを少し待つ。 */
 export function settle(ms = 50): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** `promise` を最大 `ms` ミリ秒だけ待つ（間に合わなければ null。ダイアログが出て止まった処理から先に返すため）。 */
+export function waitAtMost<V>(promise: Promise<V>, ms: number): Promise<V | null> {
+  return Promise.race([promise, settle(ms).then(() => null)]);
 }
 
 /** 描画を 2 回待つ（描画が止まっていても 300ms で諦める）。 */

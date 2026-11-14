@@ -141,6 +141,29 @@ export class DisasmCommandSet {
   }
 
   /**
+   * xse_commands.s の形のマクロにして書き出す（プロジェクトの無い素の ROM のとき、エディタの色付けとホバーの命令表を作るのに使う）。
+   * 名前ごとに最初の型だけを 1 つのマクロにする（`.ifb` の分岐は戻さない）。
+   */
+  toMacroText(): string {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const directive = { 1: ".byte", 2: ".hword", 4: ".4byte" } as const;
+    for (const v of this.variants) {
+      const key = v.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const params = v.params.map((p) => (p.defaultValue !== null ? `${p.name}=${p.defaultValue}` : p.required ? `${p.name}:req` : p.name));
+      out.push(params.length > 0 ? `.macro ${v.name} ${params.join(", ")}` : `.macro ${v.name}`);
+      for (const f of v.fields) {
+        const d = directive[f.size];
+        out.push(f.kind === "const" ? `${d} 0x${f.value.toString(16)}` : `${d} \\${v.params[f.paramIndex]!.name}`);
+      }
+      out.push(".endm", "");
+    }
+    return out.join("\n");
+  }
+
+  /**
    * 短い文字列の形に書き出す（同梱の表を作る scripts/gen-disasm-commands.ts が使う）。
    * 1 行が 1 つの型で `命令番号 名前 項目… | 引数…`。項目は `c大きさ=値`（16 進）か `a大きさ:引数の番号`。
    * 引数は `名前:種類:印`。種類は s/l/m/v/f/c、印は r（必須）・o（省略可）・d=既定値（URI の形にした文字列）、空なら `-b` を足す。

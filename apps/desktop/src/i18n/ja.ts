@@ -71,6 +71,10 @@ export const ja = {
   recentMax: M["1216"],
   recentClear: M["12180"],
   recentShowPath: M["12181"],
+  /** テーマ（ZigzaguMap 独自。メインと道具のウィンドウの配色。スクリプトエディタは自分のテーマを持つ）。 */
+  themeMenu: "テーマ",
+  themeLight: "明るい標準色",
+  themeDark: "ダーク",
 
   // [Menue] ヘッダーのソート
   sortModes: [M["12720"], M["12721"], M["12722"], M["12723"], M["12724"]],

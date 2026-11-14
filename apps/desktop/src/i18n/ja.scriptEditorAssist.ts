@@ -41,7 +41,6 @@ export const jaScriptEditorAssist = {
 
   // ---- ホバー（#192・#196） ----
   hover: {
-    signature: (text: string) => `引数: \`${text}\``,
     source: (path: string, line: number) => `場所: \`${path}:${line}\``,
     required: "必須の引数",
     defaultValue: (value: string) => `省略時: \`${value}\``,
@@ -52,12 +51,6 @@ export const jaScriptEditorAssist = {
     omitted: "（省略。ひらがなと同じ文字列を使います）",
     stringMissing: "（strings フォルダに見つかりません）",
     edit: "本文を編集",
-  },
-
-  // ---- 補完（#192） ----
-  completion: {
-    command: "命令",
-    directive: "ディレクティブ",
   },
 
   // ---- 定義へ移動（#193） ----
@@ -102,6 +95,7 @@ export const jaScriptEditorAssist = {
     failed: (error: string) => `幅検査を実行できませんでした: ${error}`,
     registered: (count: number, path: string) => `幅検査の登録に ${count} 件を足しました（${path}）`,
     removed: (count: number, path: string) => `幅検査の登録から ${count} 件を消しました（${path}）`,
+    logTitle: (path: string) => `保存時の幅検査: ${path}`,
     unresolvedReason: (labels: string) => `ZigzaguMap が自動で登録しました。${labels} に入る値の種類が分からないため、窓の幅は検査していません`,
   },
 
@@ -133,5 +127,11 @@ export const jaScriptEditorAssist = {
     diagnostics: "波線の一覧",
     gotoLine: "行へ移動",
     indent: "字下げ（タブ文字）",
+    undo: "元に戻す（ファイルごとの履歴。メインの履歴は戻さない）",
+    redo: "やり直す（ファイルごとの履歴）",
+    rename: "カーソルのラベル名を変える（.s の定義と参照、イベントのラベル）",
+    build: "ビルド（下のビルドの欄）",
+    closeHover: "ホバーの吹き出しを閉じる・文字列の入力欄を取り消す",
+    applyString: "文字列の入力欄の本文を .string へ反映する",
   },
 };

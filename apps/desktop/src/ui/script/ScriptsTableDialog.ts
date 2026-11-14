@@ -1,18 +1,11 @@
 import {
   AddScriptsTableEntryCommand,
-  EditError,
-  EditErrorCode,
   MoveScriptsTableEntryCommand,
   RemoveScriptsTableEntryCommand,
   SetScriptsTableEntryCommand,
   defaultScriptsJsonStringsPath,
-  isWorkMapId,
-  newScriptPath,
   normalizeScriptPath,
-  scriptPathProblem,
-  type Command,
   type ScriptsJsonEntry,
-  type ScriptsJsonResolution,
   type ScriptsTableEntryArgs,
   type ScriptsTableProject,
 } from "@zigzagumap/core";
@@ -21,8 +14,8 @@ import { jaScriptsTable as t } from "../../i18n/ja.scriptsTable";
 import { createDialog, dialogButton, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
 import { askYesNo, showError } from "../MessageBox";
 import { autoId } from "../form/controls";
-import { showEditError } from "../form/inputErrors";
-import "../../styles/scriptsTable.css";
+import { openNewScriptDialog } from "./NewScriptDialog";
+import { StringsField, currentMap, field, parseBank, parseMap, runScriptsCommand, showScriptsError } from "./scriptsTableForm";
 
 /** ダイアログが使う App の操作。 */
 export interface ScriptsTableHost {
@@ -75,111 +68,6 @@ export function scriptsTableView(table: ScriptsTableProject): {
 
 function entryArgsOf(e: ScriptsJsonEntry): ScriptsTableEntryArgs {
   return { bank: e.bank, map: e.map, name: e.name, script: e.script, strings: e.strings };
-}
-
-/** 入力の誤り（ダイアログに出す文言つき）。 */
-class InputError extends Error {}
-
-/** バンクの欄（0〜255）。 */
-function parseBank(text: string): number {
-  const m = /^\s*(\d{1,3})\s*$/.exec(text);
-  const v = m ? Number(m[1]) : NaN;
-  if (!(v >= 0 && v <= 255)) throw new InputError(t.invalidBank(text));
-  return v;
-}
-
-/** マップの欄（空欄でバンク全体）。 */
-function parseMap(text: string): number | null {
-  if (text.trim() === "") return null;
-  const m = /^\s*(\d{1,3})\s*$/.exec(text);
-  const v = m ? Number(m[1]) : NaN;
-  if (!(v >= 0 && v <= 255)) throw new InputError(t.invalidMap(text));
-  return v;
-}
-
-/** コマンドの入力エラーを、この画面の文言で出す。 */
-async function showScriptsError(e: unknown): Promise<void> {
-  if (e instanceof InputError) {
-    await showError(e.message);
-  } else if (e instanceof EditError && e.code === EditErrorCode.InvalidScriptPath) {
-    const reason = String(e.params["reason"]);
-    await showError(t.invalidPath(String(e.params["field"]), String(e.params["path"]), t.pathProblem[reason] ?? reason));
-  } else if (e instanceof EditError && e.code === EditErrorCode.ScriptsTableIndexOutOfRange) {
-    await showError(t.indexOutOfRange(Number(e.params["index"]), Number(e.params["count"])));
-  } else {
-    await showEditError(e);
-  }
-}
-
-/** 対応表をコマンドで変える。入力エラーはダイアログで出し、false を返す。 */
-function run(state: EditorState, command: Command): boolean {
-  const bus = state.session?.bus;
-  if (!bus) return false;
-  try {
-    bus.execute(command);
-    return true;
-  } catch (e) {
-    void showScriptsError(e);
-    return false;
-  }
-}
-
-/** 入力欄 1 つ（ラベルと、あれば欄の後ろの説明）。 */
-function field(form: HTMLElement, id: string, caption: string, wide = false, hint?: string): HTMLInputElement {
-  const label = document.createElement("label");
-  label.textContent = caption;
-  const input = autoId(document.createElement("input"), id);
-  input.type = "text";
-  input.spellcheck = false;
-  input.id = `st-${id}`;
-  label.htmlFor = input.id;
-  if (wide) input.classList.add("st-wide");
-  if (hint !== undefined) input.placeholder = hint;
-  form.append(label, input);
-  return input;
-}
-
-/** `.string` の欄。`.s` の欄に合わせて既定の名前を入れ、手で変えたらそのまま残す。 */
-class StringsField {
-  /** 手で変えたか（変えていなければ `.s` に合わせて書き換える）。 */
-  private touched = false;
-
-  constructor(
-    readonly input: HTMLInputElement,
-    private readonly script: () => string,
-  ) {
-    input.addEventListener("input", () => {
-      this.touched = input.value.trim() !== "" && input.value.trim() !== this.auto();
-    });
-  }
-
-  /** `.s` に合わせた既定の名前（`.s` が空なら空）。 */
-  private auto(): string {
-    const s = normalizeScriptPath(this.script());
-    return s === "" ? "" : defaultScriptsJsonStringsPath(s);
-  }
-
-  /** `.s` の欄が変わったとき。 */
-  follow(): void {
-    if (!this.touched) this.input.value = this.auto();
-  }
-
-  /** 行の値を入れる（`null` なら既定の名前）。 */
-  load(strings: string | null): void {
-    this.touched = strings !== null && strings !== this.auto();
-    this.input.value = strings ?? this.auto();
-  }
-
-  /**
-   * 表に書く値。既定の名前と同じなら null（`Strings` を省く）にする。
-   * ただし、元の行が同じ値を書いていたら、そのまま残す（読み直しても同じ表になるように）。
-   */
-  value(original: string | null | undefined): string | null {
-    const v = normalizeScriptPath(this.input.value);
-    if (v === "") return null;
-    if (original !== undefined && original !== null && normalizeScriptPath(original) === v) return original;
-    return v === this.auto() ? null : v;
-  }
 }
 
 /**
@@ -444,7 +332,7 @@ export class ScriptsTableDialog {
       return;
     }
     const index = table.document.count;
-    if (run(this.host.state, new AddScriptsTableEntryCommand({ entry }))) this.select(index);
+    if (runScriptsCommand(this.host.state, new AddScriptsTableEntryCommand({ entry }))) this.select(index);
   }
 
   private save(): void {
@@ -459,21 +347,21 @@ export class ScriptsTableDialog {
       return;
     }
     if (JSON.stringify(entry) === JSON.stringify(entryArgsOf(original))) return;
-    if (run(this.host.state, new SetScriptsTableEntryCommand({ index: this.selected, entry }))) this.select(this.selected);
+    if (runScriptsCommand(this.host.state, new SetScriptsTableEntryCommand({ index: this.selected, entry }))) this.select(this.selected);
   }
 
   private async remove(): Promise<void> {
     const index = this.selected;
     if (index < 0) return;
     if (!(await askYesNo(t.confirmRemove(index + 1)))) return;
-    if (run(this.host.state, new RemoveScriptsTableEntryCommand({ index }))) this.select(Math.min(index, (this.table()?.document.count ?? 0) - 1));
+    if (runScriptsCommand(this.host.state, new RemoveScriptsTableEntryCommand({ index }))) this.select(Math.min(index, (this.table()?.document.count ?? 0) - 1));
   }
 
   private move(delta: number): void {
     const index = this.selected;
     const to = index + delta;
     if (index < 0 || to < 0 || to >= (this.table()?.document.count ?? 0)) return;
-    if (run(this.host.state, new MoveScriptsTableEntryCommand({ index, to }))) this.select(to);
+    if (runScriptsCommand(this.host.state, new MoveScriptsTableEntryCommand({ index, to }))) this.select(to);
   }
 
   /** 「新しい .s を作る」。今の欄のバンク・マップ（読めなければ表示中のマップ）を初めの値にする。 */
@@ -491,129 +379,4 @@ export class ScriptsTableDialog {
     const index = await openNewScriptDialog(this.host.state, { bank, map, name: this.selected < 0 ? this.name.value : null });
     if (index !== null) this.select(index);
   }
-}
-
-/** 表示中のマップ（作業用のマップは除く）と名前。 */
-function currentMap(state: EditorState): { bank: number; map: number; name: string } | null {
-  const m = state.map;
-  if (!m || isWorkMapId(m.id)) return null;
-  return { bank: m.id.bank, map: m.id.map, name: m.doc.mapNameText() ?? "" };
-}
-
-/** 「.s を新しく作る」ダイアログの初めの値。 */
-export interface NewScriptRequest {
-  readonly bank: number | null;
-  readonly map: number | null;
-  /** マップ名（null なら表示中のマップの名前）。 */
-  readonly name?: string | null;
-  /** 初めのファイル名。 */
-  readonly fileName?: string;
-  /** マップにスクリプトが要るのに対応する .s が無いときの説明を出す。 */
-  readonly needed?: boolean;
-}
-
-/**
- * 「.s を新しく作る」（ファイル名の入力）。`assembly/overworld_scripts/<名前>.s` と `.string` の行を対応表に足す。
- * ファイルは出力（Ctrl+S）のときに作る（既にあれば聞いてから、作らずに足す）。足した行の番号を返す。やめたら null。
- */
-export function openNewScriptDialog(state: EditorState, request: NewScriptRequest): Promise<number | null> {
-  const session = state.session;
-  if (!session) return Promise.resolve(null);
-  if (!session.projectDir) return showError(t.noProject).then(() => null);
-  return new Promise((resolve) => {
-    let busy = false;
-    const finish = (value: number | null): void => {
-      frame.remove();
-      resolve(value);
-    };
-    const frame = createDialog({ title: t.newTitle, className: "scripts-new-dialog", onClose: () => finish(null) });
-    const intro = autoId(document.createElement("p"), "scriptsTable.new.intro");
-    const neededText = request.needed && request.bank !== null && request.map !== null ? t.newNeeded(request.bank, request.map) : t.newIntro;
-    intro.textContent = neededText;
-    const form = document.createElement("div");
-    form.className = "st-form";
-    const fileName = field(form, "scriptsTable.new.name", t.fileName, true, t.fileNameHint);
-    fileName.value = request.fileName ?? "";
-    const bank = field(form, "scriptsTable.new.bank", t.bank, true);
-    bank.value = request.bank === null ? "" : String(request.bank);
-    const map = field(form, "scriptsTable.new.map", t.map, true, t.mapHint);
-    map.value = request.map === null ? "" : String(request.map);
-    const name = field(form, "scriptsTable.new.mapName", t.name, true);
-    name.value = request.name ?? currentMap(state)?.name ?? "";
-    const scriptOf = (): string => (fileName.value.trim() === "" ? "" : newScriptPath(fileName.value));
-    const strings = new StringsField(field(form, "scriptsTable.new.strings", t.strings, true, t.stringsHint), scriptOf);
-    const preview = autoId(document.createElement("div"), "scriptsTable.new.preview");
-    preview.className = "st-preview";
-    const update = (): void => {
-      strings.follow();
-      const s = scriptOf();
-      preview.textContent = s === "" ? "" : t.willCreate(s, normalizeScriptPath(strings.input.value) || defaultScriptsJsonStringsPath(s));
-    };
-    fileName.addEventListener("input", update);
-    strings.input.addEventListener("input", update);
-    update();
-
-    const ok = async (): Promise<void> => {
-      if (busy) return;
-      busy = true;
-      try {
-        if (fileName.value.trim() === "") throw new InputError(t.invalidFileName);
-        const script = scriptOf();
-        const entry: ScriptsTableEntryArgs = { bank: parseBank(bank.value), map: parseMap(map.value), name: name.value, script, strings: strings.value(undefined) };
-        // 名前の確認はコマンドと同じ規則で先に行う（既にあるかを調べる前に）。
-        const problem = scriptPathProblem("script", script, true);
-        if (problem) throw new EditError(EditErrorCode.InvalidScriptPath, { field: "script", path: script, reason: problem });
-        let create = true;
-        if (await session.fileExists(script)) {
-          if (!(await askYesNo(t.existsAsk(script)))) return;
-          create = false;
-        }
-        const index = session.scriptsTable.document.count;
-        if (!run(state, new AddScriptsTableEntryCommand({ entry, create }))) return;
-        state.setStatus(create ? t.added(script) : t.addedExisting(script));
-        finish(index);
-      } catch (e) {
-        await showScriptsError(e);
-      } finally {
-        busy = false;
-      }
-    };
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    buttons.append(
-      autoId(dialogButton(t.create, () => void ok()), "scriptsTable.new.create"),
-      autoId(dialogButton(t.cancel, () => finish(null)), "scriptsTable.new.cancel"),
-    );
-    frame.body.append(intro, form, preview, buttons);
-    handleDialogKeys(frame, () => finish(null), (e) => {
-      if (e.key === "Enter") void ok();
-    });
-    frame.register({
-      title: t.newTitle,
-      text: neededText,
-      ...pressable([
-        { label: t.create, aliases: ["ok"], run: () => void ok() },
-        { label: t.cancel, aliases: ["cancel"], run: () => finish(null) },
-      ]),
-      setInput: (v) => {
-        fileName.value = v;
-        update();
-      },
-      input: () => fileName.value,
-    });
-    fileName.focus();
-  });
-}
-
-/**
- * マップのスクリプトを書く `.s` と `.string`。対応表に無ければファイル名の入力を出して行を足す（イベントを置いたときなどに使う）。
- * やめたら null。
- */
-export async function ensureScriptFile(state: EditorState, bank: number, map: number): Promise<ScriptsJsonResolution | null> {
-  const table = state.session?.scriptsTable;
-  if (!table) return null;
-  const found = table.document.resolve(bank, map);
-  if (found) return found;
-  const index = await openNewScriptDialog(state, { bank, map, needed: true });
-  return index === null ? null : (state.session?.scriptsTable.document.resolve(bank, map) ?? null);
 }

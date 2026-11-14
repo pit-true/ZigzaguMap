@@ -1,4 +1,4 @@
-import { formatStringText, type AsmHover } from "@zigzagumap/core";
+import { formatHex, formatStringText, type AsmHover } from "@zigzagumap/core";
 import { jaScriptEditorAssist as t } from "../../i18n/ja.scriptEditorAssist";
 import { escapeHtml, renderInline } from "../../ui/help/markdown";
 
@@ -50,7 +50,7 @@ export function hoverMarkdown(h: AsmHover): string {
       }
       if (h.known) md += `  \n${h.known}`;
       if (h.value !== null) {
-        md += `  \n${t.hover.number(h.value, `0x${(h.value >>> 0).toString(16).toUpperCase()}`)}`;
+        md += `  \n${t.hover.number(h.value, `0x${formatHex(h.value >>> 0)}`)}`;
         if (h.variable) md += `  \n${h.variable}`;
       }
       if (h.aliases.length > 0) md += `  \n${t.hover.aliases(h.aliases)}`;

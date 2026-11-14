@@ -47,6 +47,7 @@ import type { ScriptHost } from "../ui/script/ScriptHost";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
+import { startMainTheme, toTheme } from "../util/theme";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -108,6 +109,8 @@ export class App implements ActionTarget {
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
   profileDir: string | null = null;
+  /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
+  private readonly theme: { sync(): void };
 
   constructor(
     private readonly root: HTMLElement,
@@ -115,6 +118,8 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.theme = startMainTheme(() => toTheme(state.settings.data.theme));
+    state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
     this.system = new SystemSettings(state, () => this.automation);
@@ -634,6 +639,11 @@ export class App implements ActionTarget {
     this.state.settings.update({ sortMode: mode });
     this.rebuildTree();
     this.toolbar.update();
+  }
+
+  /** 個人設定のテーマを画面に当てる（自動操作の `setting` で値だけ変えたとき用。変わっていなければ何もしない）。 */
+  syncTheme(): void {
+    this.theme.sync();
   }
 
   changeSetting(patch: Partial<SettingsData>): void {

@@ -1,4 +1,4 @@
-import { isScriptLabelName } from "@zigzagumap/core";
+import { formatHex, isScriptLabelName } from "@zigzagumap/core";
 import { jaRomScript as t } from "../../i18n/ja.romScript";
 import { createDialog } from "../../ui/Dialog";
 import type { ScriptRomOpenRequest } from "./protocol";
@@ -25,7 +25,7 @@ export function openRomImportDialog(request: ScriptRomOpenRequest): Promise<Reco
       kind.textContent = t.kindNames[item.kind] ?? item.kind;
       const at = document.createElement("span");
       at.className = "rom-import-at";
-      at.textContent = `0x${item.pointer.toString(16).toUpperCase().padStart(8, "0")}`;
+      at.textContent = `0x${formatHex(item.pointer, 8)}`;
       const input = document.createElement("input");
       input.type = "text";
       input.value = item.label;
@@ -76,7 +76,7 @@ export function openRomImportDialog(request: ScriptRomOpenRequest): Promise<Reco
       title: t.dialogTitle,
       text: t.dialogText,
       buttons: [t.importOk, t.cancel],
-      press: (b) => (b === t.importOk ? accept() : b === t.cancel ? finish(null) : (() => { throw new Error(`ボタンがありません: ${b}`); })()),
+      press: (b) => (b === t.importOk ? accept() : b === t.cancel ? finish(null) : (() => { throw new Error(t.noButton(b)); })()),
     });
     inputs[0]?.input.focus();
   });

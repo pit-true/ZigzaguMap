@@ -28,6 +28,6 @@
   display: flex;
   justify-content: space-between;
   margin: 2px 48px 8px 0;
-  color: #555;
+  color: var(--note-text);
   font-size: 11px;
 }

@@ -1,4 +1,5 @@
 import { openedUrls } from "../../util/externalLinks";
+import { jsHeapBytes } from "../../util/jsHeap";
 import type { App } from "../App";
 import { TAB_ORDER, type TabId } from "../EditorState";
 import { timings } from "../timings";
@@ -19,8 +20,8 @@ function requireSession(app: App): NonNullable<App["state"]["session"]> {
 
 /** JavaScript のヒープの使用量（MB。WebView2 の performance.memory。メモリの計測用）。 */
 function jsHeap(): { used: number; total: number } | null {
-  const m = (performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
-  return m ? { used: Math.round(m.usedJSHeapSize / 10485.76) / 100, total: Math.round(m.totalJSHeapSize / 10485.76) / 100 } : null;
+  const m = jsHeapBytes();
+  return m ? { used: Math.round(m.used / 10485.76) / 100, total: Math.round(m.total / 10485.76) / 100 } : null;
 }
 
 /** `state` の返事。 */
@@ -121,6 +122,8 @@ export const coreCommands: CommandTable = {
   setting: (app, req) => {
     // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない）。
     (app.state.settings.data as unknown as Record<string, unknown>)[str(req, "key")] = req["value"];
+    // テーマはすぐに画面（と道具のウィンドウ）へ当てる。ほかの設定は次に描くときに使われる。
+    app.syncTheme();
     return null;
   },
 };

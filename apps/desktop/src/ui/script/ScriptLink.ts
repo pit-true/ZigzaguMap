@@ -143,7 +143,7 @@ export class ScriptLink {
     const { bank, map } = events.map;
     this.app.state.setStatus(t.noScriptFile(bank, map));
     void (async () => {
-      const { ensureScriptFile } = await import("./ScriptsTableDialog");
+      const { ensureScriptFile } = await import("./NewScriptDialog");
       const resolved = await ensureScriptFile(this.app.state, bank, map);
       const config = (await this.config)?.config;
       if (!resolved || !config || this.session !== session) return;

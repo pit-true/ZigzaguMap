@@ -21,7 +21,7 @@
 }
 
 .help-viewer-doc {
-  color: #444;
+  color: var(--help-text);
 }
 
 .help-viewer-content {
@@ -30,7 +30,7 @@
   overflow: auto;
   padding: 4px 14px 14px;
   background: var(--window);
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--shadow);
   user-select: text;
   line-height: 1.6;
 }
@@ -46,13 +46,13 @@
 .md-body h1 {
   font-size: 22px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #d0d0d0;
+  border-bottom: 1px solid var(--md-rule);
 }
 
 .md-body h2 {
   font-size: 18px;
   padding-bottom: 3px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--md-rule-soft);
 }
 
 .md-body h3 {
@@ -79,7 +79,7 @@
 
 .md-body code {
   padding: 0 3px;
-  background: #f0f0f0;
+  background: var(--md-code-bg);
   border-radius: 3px;
   font-family: Consolas, "MS Gothic", monospace;
   font-size: 12px;
@@ -88,8 +88,8 @@
 .md-body pre.md-code {
   padding: 8px 10px;
   overflow-x: auto;
-  background: #f4f4f4;
-  border: 1px solid #e0e0e0;
+  background: var(--md-pre-bg);
+  border: 1px solid var(--md-rule-soft);
 }
 
 .md-body pre.md-code code {
@@ -104,22 +104,22 @@
 .md-body th,
 .md-body td {
   padding: 3px 8px;
-  border: 1px solid #c8c8c8;
+  border: 1px solid var(--md-cell-border);
   vertical-align: top;
 }
 
 .md-body th {
-  background: #f0f0f0;
+  background: var(--md-code-bg);
 }
 
 .md-body blockquote {
   padding-left: 10px;
-  color: #555;
-  border-left: 3px solid #d0d0d0;
+  color: var(--note-text);
+  border-left: 3px solid var(--md-rule);
 }
 
 .md-body a.md-link {
-  color: #0645ad;
+  color: var(--md-link);
   text-decoration: underline;
   cursor: pointer;
 }

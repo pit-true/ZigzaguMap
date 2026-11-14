@@ -2,7 +2,7 @@ import type { Command } from "../../command/Command.js";
 import type { CommandBus, CommandEvent } from "../../command/CommandBus.js";
 import { flattenCommandRecords } from "../../command/CommandGroup.js";
 import type { MapId } from "../../map/types.js";
-import type { ProjectFs } from "../../project/ProjectFs.js";
+import { readTextIfExists, type ProjectFs } from "../../project/ProjectFs.js";
 import { EVENT_SCRIPTS_PATH } from "../project/EventScriptsFile.js";
 import { EventLabelStore, type EventLabelSavePlan, type EventLabelSnapshot, type EventLabelTarget, type EventPositions } from "./EventLabelStore.js";
 import { parseMapLabelsPath } from "./MapLabelsJson.js";
@@ -59,7 +59,7 @@ export class EventLabelProject {
   /** 読む。`fs` が null（素の ROM だけ）なら空。 */
   static async open(fs: ProjectFs | null): Promise<EventLabelProject> {
     if (!fs) return new EventLabelProject(new EventLabelStore(""));
-    const scripts = (await fs.exists(EVENT_SCRIPTS_PATH)) ? await fs.readText(EVENT_SCRIPTS_PATH) : "";
+    const scripts = (await readTextIfExists(fs, EVENT_SCRIPTS_PATH)) ?? "";
     const files: { path: string; text: string }[] = [];
     for (const bank of await fs.list("maps")) {
       if (!/^[0-9]+$/.test(bank)) continue;
@@ -76,9 +76,10 @@ export class EventLabelProject {
     return new EventLabelProject(store);
   }
 
-  /** マップのイベントの数を覚える（マップを開いたとき）。 */
-  observe(map: MapId, counts: EventLabelCounts): void {
+  /** マップのイベントの数を覚える（マップを開いたとき）。`positions` は読んだときのイベントの座標（照合用。初めて開いたときだけ使う）。 */
+  observe(map: MapId, counts: EventLabelCounts, positions?: EventPositions): void {
     this.counts.set(mapKey(map), counts);
+    if (positions) this.store.noteLoaded(map.bank, map.map, positions);
   }
 
   /** CommandBus の出来事を見て、ラベルの番号を付け直す。戻り値で見るのをやめる。 */

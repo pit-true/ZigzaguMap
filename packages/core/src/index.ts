@@ -108,7 +108,7 @@ export {
 } from "./project/MapSourceJson.js";
 export { MapSourceConverter } from "./project/MapSourceConverter.js";
 export { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./project/ProjectManifest.js";
-export { MemoryProjectFs, type ProjectFs } from "./project/ProjectFs.js";
+export { MemoryProjectFs, readTextIfExists, type ProjectFs } from "./project/ProjectFs.js";
 export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
 export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";

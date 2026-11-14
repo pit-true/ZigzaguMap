@@ -196,3 +196,22 @@ describe("ScriptTextCodec", () => {
     expect(jp.decode(bytes)).toBe("[PLAYER]は\\n亜を 使った!\\p");
   });
 });
+
+describe("同梱の表をマクロの形にする（素の ROM のエディタの命令表）", () => {
+  it("命令表に読み直すと、名前・命令番号・バイト数・引数の種類が同梱の表と同じ", () => {
+    const bundled = DisasmCommandSet.bundled();
+    const table = ScriptCommandTable.build({ xseCommands: bundled.toMacroText(), defines: [] });
+    expect(table.problems).toEqual([]);
+    const first = new Map<string, (typeof bundled.variants)[number]>();
+    for (const v of bundled.variants) if (!first.has(v.name.toLowerCase())) first.set(v.name.toLowerCase(), v);
+    expect(table.commands.length).toBe(first.size);
+    for (const v of first.values()) {
+      const c = table.get(v.name)!;
+      expect(c, v.name).toBeTruthy();
+      expect(c.layout?.variants[0]?.opcode).toBe(v.opcode);
+      expect(c.layout?.variants[0]?.size).toBe(v.size);
+      expect(c.args.map((a) => a.kind)).toEqual(v.params.map((p) => p.kind));
+    }
+    expect(table.get("loadpointer")!.args.map((a) => a.kind)).toEqual(["constant", "string"]);
+  });
+});
