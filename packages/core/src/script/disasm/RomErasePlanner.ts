@@ -36,7 +36,12 @@ export type RomEraseBlockReason =
   /** もう記録してある。 */
   | { readonly kind: "recorded" }
   /** 埋めない範囲（中のポインタがこの範囲を指す）から指されている。 */
-  | { readonly kind: "keptParent"; readonly at: number };
+  | { readonly kind: "keptParent"; readonly at: number }
+  /** 逆アセンブルで読めない箇所があり、スクリプトかどうか確かめられない（でたらめなポインタなど）。 */
+  | { readonly kind: "unreadable" };
+
+/** ROM の先頭のヘッダー（エントリーポイント・ロゴ・ゲームコード）。ここは埋めない。 */
+export const ROM_HEADER_SIZE = 0x200;
 
 export interface RomEraseBlocked extends RomEraseSpan {
   readonly reason: RomEraseBlockReason;
@@ -118,8 +123,10 @@ export function findPointersInto(bytes: Uint8Array, spans: readonly { offset: nu
 
 /** 計画を作る。入口が ROM の外なら、何も埋めない計画を返す。 */
 export function planRomErase(rom: Rom, entry: number, options: RomErasePlanOptions): RomErasePlan {
-  if (!rom.inRange(entry)) return { entry, erase: [], keep: [], problems: [`0x${(entry + ROM_BASE).toString(16).toUpperCase()} は ROM の外です`] };
+  if (!rom.inRange(entry) || entry < ROM_HEADER_SIZE) return { entry, erase: [], keep: [], problems: [`0x${(entry + ROM_BASE).toString(16).toUpperCase()} は ROM の外です`] };
   const { spans, problems } = romScriptSpans(rom, entry, options);
+  // 読めない箇所があれば、スクリプトでないところ（でたらめなポインタの先など）を読んだかもしれないので、何も埋めない
+  if (problems.length > 0) return { entry, erase: [], keep: spans.map((s) => ({ ...s, reason: { kind: "unreadable" } })), problems };
   const hits = findPointersInto(rom.bytes, spans);
   const ignored = (at: number) => (options.ignore ?? []).some((r) => at >= r.from && at + 4 <= r.to);
   const blocked = new Map<number, RomEraseBlockReason>();

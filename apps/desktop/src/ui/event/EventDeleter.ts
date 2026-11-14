@@ -4,6 +4,7 @@ import {
   EVENT_HEADER_SIZE,
   MAP_HEADER_SIZE,
   ROM_BASE,
+  ROM_HEADER_SIZE,
   RemoveEventCommand,
   eventHeaderCodec,
   eventScriptLabel,
@@ -91,7 +92,7 @@ export class EventDeleter {
     }
     if (pointer === null) return { ...base, script: null, registry: null, rom: null, romNote: null, files: [] };
     const offset = (pointer >>> 0) - ROM_BASE;
-    if (!session.project.rom.inRange(offset)) return { ...base, script: null, registry: null, rom: null, romNote: "outside", files: [] };
+    if (!session.project.rom.inRange(offset) || offset < ROM_HEADER_SIZE) return { ...base, script: null, registry: null, rom: null, romNote: "outside", files: [] };
     if (!project) return { ...base, script: null, registry: null, rom: null, romNote: "noProject", files: [] };
     if (session.romErase.loadError !== null) return { ...base, script: null, registry: null, rom: null, romNote: "broken", files: [] };
     const rom = await this.planRom(session, map, kind, index, offset);

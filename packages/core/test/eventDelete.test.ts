@@ -121,7 +121,7 @@ Moegi_Npc1:
   });
 });
 
-function romWith(parts: [number, number[]][], size = 0x1000): Rom {
+function romWith(parts: [number, number[]][], size = 0x2000): Rom {
   const bytes = new Uint8Array(size).fill(0xff);
   for (const [at, data] of parts) bytes.set(data, at);
   return new Rom(bytes);
@@ -132,41 +132,41 @@ const ptr = (offset: number) => {
 };
 
 describe("ROM の埋める範囲の計画", () => {
-  // 0x100: loadpointer 0 0x200 / callstd 6 / loadpointer 0 0x280 / callstd 6 / end
-  const script = [0x0f, 0x00, ...ptr(0x200), 0x09, 0x06, 0x0f, 0x00, ...ptr(0x280), 0x09, 0x06, 0x02];
+  // 0x1100: loadpointer 0 0x1200 / callstd 6 / loadpointer 0 0x1280 / callstd 6 / end
+  const script = [0x0f, 0x00, ...ptr(0x1200), 0x09, 0x06, 0x0f, 0x00, ...ptr(0x1280), 0x09, 0x06, 0x02];
   const parts: [number, number[]][] = [
-    [0x100, script],
-    [0x200, [0x01, 0x02, 0xff]],
-    [0x280, [0x03, 0xff]],
-    [0x400, ptr(0x280)], // ほかのところから共用の文字列を指す
-    [0x500, ptr(0x100)], // 消すイベントの元のイベント表
+    [0x1100, script],
+    [0x1200, [0x01, 0x02, 0xff]],
+    [0x1280, [0x03, 0xff]],
+    [0x1400, ptr(0x1280)], // ほかのところから共用の文字列を指す
+    [0x1500, ptr(0x1100)], // 消すイベントの元のイベント表
   ];
   const commands = DisasmCommandSet.bundled();
 
   it("指されていない範囲だけ埋め、ほかから指される文字列は残す", () => {
-    const plan = planRomErase(romWith(parts), 0x100, { commands, ignore: [{ from: 0x500, to: 0x518 }] });
+    const plan = planRomErase(romWith(parts), 0x1100, { commands, ignore: [{ from: 0x1500, to: 0x1518 }] });
     expect(plan.erase.map((s) => [s.type, s.offset, s.length])).toEqual([
-      ["script", 0x100, script.length],
-      ["text", 0x200, 3],
+      ["script", 0x1100, script.length],
+      ["text", 0x1200, 3],
     ]);
-    expect(plan.keep.map((s) => [s.type, s.offset, s.reason])).toEqual([["text", 0x280, { kind: "pointer", at: 0x400 }]]);
+    expect(plan.keep.map((s) => [s.type, s.offset, s.reason])).toEqual([["text", 0x1280, { kind: "pointer", at: 0x1400 }]]);
   });
 
   it("元のイベント表を数えないと入口が指されているので、全部残す", () => {
-    const plan = planRomErase(romWith(parts), 0x100, { commands });
+    const plan = planRomErase(romWith(parts), 0x1100, { commands });
     expect(plan.erase).toEqual([]);
     expect(plan.keep.map((s) => s.reason.kind)).toEqual(["pointer", "keptParent", "pointer"]);
   });
 
   it("プロジェクトの参照・上書きする領域・記録済みは埋めない", () => {
     const rom = romWith(parts);
-    const ignore = [{ from: 0x500, to: 0x518 }];
-    expect(planRomErase(rom, 0x100, { commands, ignore, references: [{ address: 0x08000201, where: "maps/03/00.json" }] }).keep[0]!.reason).toEqual({
+    const ignore = [{ from: 0x1500, to: 0x1518 }];
+    expect(planRomErase(rom, 0x1100, { commands, ignore, references: [{ address: 0x08001201, where: "maps/03/00.json" }] }).keep[0]!.reason).toEqual({
       kind: "reference",
       where: "maps/03/00.json",
     });
-    expect(planRomErase(rom, 0x100, { commands, ignore, protect: [{ from: 0x202, to: 0x203, where: "bytereplacement:1" }] }).keep[0]!.reason.kind).toBe("protected");
-    const recorded = planRomErase(rom, 0x100, { commands, ignore, recorded: [{ address: 0x08000100, length: 0x110 }] });
+    expect(planRomErase(rom, 0x1100, { commands, ignore, protect: [{ from: 0x1202, to: 0x1203, where: "bytereplacement:1" }] }).keep[0]!.reason.kind).toBe("protected");
+    const recorded = planRomErase(rom, 0x1100, { commands, ignore, recorded: [{ address: 0x08001100, length: 0x110 }] });
     expect(recorded.erase).toEqual([]);
     expect(recorded.keep.map((k) => k.reason.kind)).toEqual(["recorded", "recorded", "pointer"]);
   });
@@ -239,5 +239,24 @@ describe("maps\\rom_erase.json", () => {
     expect(await project.save(fs)).toEqual({ written: ["maps/rom_erase.json"], removed: [] });
     command.undo(context);
     expect(await project.save(fs)).toEqual({ written: [], removed: ["maps/rom_erase.json"] });
+  });
+});
+
+describe("ROM の埋める範囲の計画（読めないもの）", () => {
+  const commands = DisasmCommandSet.bundled();
+
+  it("逆アセンブルで読めない箇所があれば、何も埋めない", () => {
+    // goto の行き先が ROM の外（でたらめなポインタの先を読んだときなど）
+    const rom = romWith([[0x1100, [0x05, 0x49, 0x47, 0x18, 0x05]]]);
+    const plan = planRomErase(rom, 0x1100, { commands });
+    expect(plan.erase).toEqual([]);
+    expect(plan.keep.map((k) => k.reason.kind)).toEqual(["unreadable"]);
+    expect(plan.problems.length).toBeGreaterThan(0);
+  });
+
+  it("ROM の先頭のヘッダーは読まない", () => {
+    const plan = planRomErase(romWith([[0, [0x02]]]), 0, { commands });
+    expect(plan.erase).toEqual([]);
+    expect(plan.keep).toEqual([]);
   });
 });

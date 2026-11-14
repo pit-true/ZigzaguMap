@@ -42,8 +42,10 @@ export const jaEventDelete = {
     protected: (where: string) => `プロジェクトが上書きする領域と重なる（${where}）`,
     recorded: "もう記録してある",
     keptParent: (at: string) => `埋めない範囲の中の ${at} のポインタが指している`,
+    unreadable: "逆アセンブルで読めない箇所があり、スクリプトかどうか確かめられない（でたらめなポインタの先かもしれない）",
   },
-  romOutside: (address: string) => `スクリプトのポインタ ${address} は ROM の外か、標準スクリプト（0x08000000 より前）なので、範囲は記録しません`,
+  romOutside: (address: string) =>
+    `スクリプトのポインタ ${address} は ROM の外か、ROM の先頭のヘッダー（0x08000200 より前）か、0x08000000 より前（RAM のスクリプトなど）なので、範囲は記録しません`,
   romProblems: "逆アセンブルで読めなかった箇所:",
   romNoProject: "プロジェクトフォルダを開いていないので、ROM の範囲は記録できません（オブジェクトだけを消します）。範囲を記録するには、CFRU-JP のフォルダを開いてください",
   romEraseBroken: (error: string) => `maps/rom_erase.json が読めないので、範囲は記録しません: ${error}`,

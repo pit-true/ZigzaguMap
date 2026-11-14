@@ -36,6 +36,8 @@ function romReason(b: RomEraseBlocked): string {
       return t.romReason.recorded;
     case "keptParent":
       return t.romReason.keptParent(romAddress(r.at));
+    case "unreadable":
+      return t.romReason.unreadable;
   }
 }
 

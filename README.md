@@ -84,7 +84,8 @@ AdvanceMap と違う点は「[AdvanceMap と違う点](#advancemap-と違う点)
 - スクリプトが素の ROM にあるイベント（ラベルの無いもの）: ZigzaguMap は ROM へ書かないので、ビルドで 0xFF で埋める範囲を `maps\rom_erase.json` に記録します（出力のとき。「[maps\rom_erase.json](#mapsrom_erasejson)」）。
   - 範囲は、スクリプトを逆アセンブル（「[ROM のスクリプトの逆アセンブル](#rom-のスクリプトの逆アセンブル)」と同じ）してたどったもの全部です。スクリプトのまとまり、goto・call・trainerbattle の続きの行き先、0F・msgbox・trainerbattle などの文字列、4F などの移動データ、ショップの品目表。長さは逆アセンブルの結果で決めます。
   - 埋めない範囲: ROM 全体の 4 バイトをどの位置からも読み、範囲の先頭か内側を指すポインタが、消すもの以外（ほかのマップのイベント表、ほかのスクリプト、標準スクリプトの表など）に 1 つでもある範囲。プロジェクトのマップの JSON・開いているマップのイベントとマップスクリプト・scripts_MM.json の表・`.s` に書いたアドレスが指す範囲。プロジェクトが上書きする領域（bytereplacement・hooks・repoints・generatedrepoints・routinepointers・functionrewrites・special_inserts.asm と、`OFFSET_TO_PUT` から後ろ）と重なる範囲。もう記録してある範囲。埋めないと決めた範囲から指される範囲も埋めません。消すイベントのマップの元のイベント表にあるポインタは数えません。
-  - スクリプトのポインタが ROM の外か 0x08000000 より前（標準スクリプトなど）なら、範囲は記録しません。
+  - 逆アセンブルで読めない箇所（知らない命令、ROM の外を指す分岐など）が 1 つでもあれば、スクリプトでないところ（でたらめなポインタの先など）を読んだかもしれないので、何も埋めません。
+  - スクリプトのポインタが ROM の外か、ROM の先頭のヘッダー（0x08000200 より前。0x08000000 を入れた「無し」のポインタも）か、0x08000000 より前（RAM のスクリプトなど）なら、範囲は記録しません。
   - ダイアログには「埋める範囲 N 件・埋めない範囲 M 件」と、範囲ごとのアドレス・長さ・種類と、埋めない理由を出します。ROM 全体を調べるので、32MB の ROM で 0.4 秒ほどかかります。
   - プロジェクトフォルダを開いていない（ROM だけの）ときは、オブジェクトだけを消し、範囲は記録できないとダイアログで知らせます。
 - 処理は core の `script/edit/ScriptRemoval.ts`（`.s` と `.string` から除く計画）、`script/disasm/RomErasePlanner.ts`（埋める範囲の計画）、`project/RomEraseJson.ts`（記録の読み書きとコマンド `addRomEraseRanges`）と、画面側の `ui/event/EventDeleter.ts`・`EventDeleteDialog.ts` にあります。

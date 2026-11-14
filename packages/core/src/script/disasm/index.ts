@@ -44,6 +44,7 @@ export {
   findPointersInto,
   planRomErase,
   projectOverwriteRegions,
+  ROM_HEADER_SIZE,
   romScriptSpans,
   type RomEraseBlockReason,
   type RomEraseBlocked,
