@@ -11,5 +11,6 @@ export const jaScriptLink = {
   noProjectFolder: "プロジェクトフォルダが開かれていません",
   labelsNeedProject: "イベントのラベルを付けるには、プロジェクトフォルダ（CFRU-JP のフォルダ）を開いてください",
   scriptsJsonBroken: (error: string) => `maps/scripts.json を読めないため編集できません: ${error}`,
+  replaceKept: (paths: readonly string[]) => `あとで手が入っているので、本文を戻しませんでした: ${paths.join("、")}`,
   tableNoScript: (bank: number, map: number) => `マップ ${bank}.${map} のマップスクリプトの表を書く .s が maps\scripts.json にありません`,
 };
