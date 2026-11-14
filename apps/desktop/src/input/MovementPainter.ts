@@ -20,6 +20,8 @@ export function movementName(value: number): string {
  */
 export class MovementPainter {
   private rect: { anchor: Cell; last: Cell; cancelled: boolean } | null = null;
+  /** 矩形の下見の Canvas（ドラッグの間だけ置く。Ctrl を押している間は重ね描きの Canvas が隠れるため、別に置く）。 */
+  private previewCanvas: HTMLCanvasElement | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -47,7 +49,7 @@ export class MovementPainter {
         const r = this.rect;
         if (r) {
           this.rect = null;
-          this.redrawLayer();
+          this.clearPreview();
           if (!r.cancelled) this.fill(rectOf(r.anchor, cell ?? r.last));
           return;
         }
@@ -59,7 +61,7 @@ export class MovementPainter {
       if (e.key !== "Escape" || !this.rect || this.rect.cancelled) return;
       e.preventDefault();
       this.rect.cancelled = true;
-      this.redrawLayer();
+      this.clearPreview();
       this.state.setStatus(jaPaint.dragCancelled);
     });
   }
@@ -86,8 +88,22 @@ export class MovementPainter {
 
   /** 矩形の下見（選択中の値の色を薄く塗り、赤い枠を引く）。 */
   private preview(r: CellRect): void {
-    this.redrawLayer();
-    const c = this.view.layerContext;
+    const layer = this.view.layer;
+    let canvas = this.previewCanvas;
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.className = "map-preview";
+      this.view.stage.append(canvas);
+      this.previewCanvas = canvas;
+    }
+    canvas.width = layer.width;
+    canvas.height = layer.height;
+    canvas.style.left = layer.style.left;
+    canvas.style.top = layer.style.top;
+    canvas.style.width = layer.style.width;
+    canvas.style.height = layer.style.height;
+    canvas.style.pointerEvents = "none";
+    const c = canvas.getContext("2d")!;
     const size = this.view.cellSize;
     c.save();
     c.globalAlpha = 0.5;
@@ -97,6 +113,12 @@ export class MovementPainter {
     c.strokeStyle = "#ff0000";
     c.lineWidth = 1;
     c.strokeRect(r.x * size + 0.5, r.y * size + 0.5, r.width * size - 1, r.height * size - 1);
+  }
+
+  private clearPreview(): void {
+    this.previewCanvas?.remove();
+    this.previewCanvas = null;
+    this.redrawLayer();
   }
 
   private pick(cell: Cell): void {
