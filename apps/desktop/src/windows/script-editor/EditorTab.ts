@@ -1,5 +1,6 @@
 import type { EditorState, StateEffect, Text } from "@codemirror/state";
 import type { LineEnding, ScriptFileKind } from "./fileText";
+import type { ScriptRomOpenRequest } from "./protocol";
 
 /** ファイルの更新日時と大きさ（Rust の `fs_stat`）。 */
 export interface FileStat {
@@ -23,6 +24,8 @@ export class EditorTab {
   saving = false;
   /** 表示していないときのスクロールの位置。 */
   scroll: StateEffect<unknown> | null = null;
+  /** 素の ROM のスクリプトの読み取り専用のタブ（#206）なら、その中身。ファイルのタブなら null。 */
+  rom: ScriptRomOpenRequest | null = null;
 
   constructor(
     readonly path: string,
@@ -41,8 +44,9 @@ export class EditorTab {
     return this.path.slice(this.path.lastIndexOf("/") + 1);
   }
 
-  /** 未保存の変更があるか。 */
+  /** 未保存の変更があるか（ROM のタブは読み取り専用なので無い）。 */
   get dirty(): boolean {
+    if (this.rom) return false;
     return !this.state.doc.eq(this.savedDoc);
   }
 }
