@@ -1,4 +1,5 @@
 import { buildMenu, flattenMenu, type MenuItem } from "./menuDefinition";
+import { openDialogs } from "../ui/Dialog";
 import type { App } from "./App";
 
 /**
@@ -14,6 +15,12 @@ export function installShortcuts(app: App): void {
       e.preventDefault();
       if (key === "Z" && !e.shiftKey) app.undo();
       else app.redo();
+      return;
+    }
+    // Delete: イベントタブで選んでいるイベントを削除する（#220。確認のダイアログを出す）
+    if (key === "DELETE" && !e.ctrlKey && !e.altKey && !e.shiftKey && app.state.tab === "event" && openDialogs.length === 0) {
+      e.preventDefault();
+      app.deleteSelectedEvent();
       return;
     }
     const item = items.find(

@@ -99,6 +99,7 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
+  private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
@@ -164,7 +165,11 @@ export class App implements ActionTarget {
     const mapTab = new MapTab(state);
     installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
-    const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id), scriptFiles: this.scripts.files });
+    const eventTab = new EventTab(state, {
+      openMap: (id) => this.openMap(id),
+      scriptFiles: this.scripts.files,
+      deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
+    });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
@@ -587,6 +592,42 @@ export class App implements ActionTarget {
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
     return true;
+  }
+
+  /** イベントタブで選んでいるイベントを削除する（Delete キー。「イベントの削除」ボタンと同じ）。 */
+  deleteSelectedEvent(): void {
+    this.eventTab.removeSelected();
+  }
+
+  /** イベントの削除（#220。初めて使うときに読み込む）。 */
+  eventDeleter(): Promise<import("../ui/event/EventDeleter").EventDeleter> {
+    return (this.eventDeleterValue ??= import("../ui/event/EventDeleter").then(({ EventDeleter }) => new EventDeleter(this)));
+  }
+
+  /**
+   * イベントを削除する（右クリックの「イベントを削除」・Delete キー・「イベントの削除」ボタン）。
+   * 消すものを調べて確認のダイアログを出し、「削除」なら消す。`confirm` が false なら確かめずに消す（自動操作用）。
+   */
+  async deleteEvent(kind: string, index: number, confirm = true): Promise<boolean> {
+    const id = this.state.map?.id;
+    if (!id || kind === "fly") return false;
+    const { jaEventDelete: t } = await import("../i18n/ja.eventDelete");
+    try {
+      this.state.setStatus(t.planning);
+      const deleter = await this.eventDeleter();
+      const plan = await deleter.plan(id, kind as "person" | "sign" | "warp" | "trap", index);
+      const { confirmEventDelete, eventName } = await import("../ui/event/EventDeleteDialog");
+      if (confirm && !(await confirmEventDelete(plan))) {
+        this.state.setStatus("");
+        return false;
+      }
+      const files = await deleter.run(plan);
+      this.state.setStatus(files.length > 0 ? t.doneWithFiles(eventName(plan), files) : t.done(eventName(plan)));
+      return true;
+    } catch (e) {
+      this.state.setStatus(t.failed(errorText(e)), undefined, true);
+      return false;
+    }
   }
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */

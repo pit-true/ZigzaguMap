@@ -1,7 +1,6 @@
 import {
   ItemNameTable,
   MoveEventCommand,
-  RemoveEventCommand,
   SetEventCountsCommand,
   RealignEventLabelsCommand,
   SetEventLabelCommand,
@@ -13,6 +12,8 @@ import {
 import "../../styles/event.css";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
+import { jaEventDelete } from "../../i18n/ja.eventDelete";
+import { showContextMenu } from "../ContextMenu";
 import { showError } from "../MessageBox";
 import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
@@ -37,6 +38,8 @@ export interface EventTabHost {
   openMap(id: MapId): Promise<void>;
   /** `.s` の読み書きとラベルの一覧。 */
   readonly scriptFiles: ScriptFiles;
+  /** イベントを削除する（#220。確認のダイアログを出してから。スクリプトの記述と ROM の範囲も）。 */
+  deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -132,6 +135,7 @@ export class EventTab {
       release: () => this.release(),
       activate: (cell) => this.activate(cell),
       hover: (cell) => this.hover(cell),
+      contextMenu: (cell, x, y) => this.contextMenu(cell, x, y),
     });
 
     state.on("session", () => this.attachSession());
@@ -420,11 +424,36 @@ export class EventTab {
     this.select("warp", warpId < listCount(doc, "warp") ? warpId : 0);
   }
 
-  /** 「イベントの削除」: 選んだイベントを消す（後ろが前に詰まり、番号はそのまま。末尾なら 1 つ前）。 */
+  /**
+   * 「イベントの削除」（ボタン・右クリックの「イベントを削除」・Delete キー）: 選んだイベントを消す（#220）。
+   * 確認のダイアログを出し、スクリプトの記述（`.s`・`.string`）か ROM の埋める範囲も一緒に消す。
+   * 後ろが前に詰まり、番号はそのまま（末尾なら 1 つ前）。
+   */
   removeSelected(): void {
     const id = this.state.map?.id;
     if (!id || this.kind === "fly" || this.count() === 0) return;
-    this.editor.run(new RemoveEventCommand({ ...id, kind: this.kind, index: this.index }));
+    this.editor.endSession();
+    this.host.deleteEvent(this.kind, this.index);
+  }
+
+  /** 右クリック: イベントの上なら選んで、「イベントを削除」と「スクリプトを開く」のメニューを出す。 */
+  contextMenu(cell: RawCell, x: number, y: number): void {
+    const hit = eventAt(this.placed, cell.x, cell.y);
+    if (!hit) return;
+    this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
+    const kind = hit.kind;
+    const index = hit.index;
+    const scriptKind = kind === "person" || kind === "sign" || kind === "trap" ? kind : null;
+    const signItem = kind === "sign" && this.state.map?.doc.events?.signs[index]?.content.type !== "script";
+    showContextMenu(x, y, [
+      { id: "delete", label: jaEventDelete.menuDelete, enabled: kind !== "fly", run: () => this.removeSelected() },
+      {
+        id: "openScript",
+        label: jaEventDelete.menuOpenScript,
+        enabled: scriptKind !== null && !signItem,
+        run: () => scriptKind && this.openScript(scriptKind, index),
+      },
+    ]);
   }
 
   /** イベントマネージャーの「設定」。 */

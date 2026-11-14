@@ -110,3 +110,27 @@
   margin-top: 4px;
   width: 100%;
 }
+
+/* 右クリックのメニュー（#220）。 */
+.context-menu {
+  position: fixed;
+  z-index: 150;
+  outline: none;
+}
+
+/* イベントの削除の確認（#220）。 */
+.event-delete-intro {
+  margin: 0 0 6px;
+}
+
+.event-delete-list {
+  margin: 0 0 8px;
+  padding: 4px 6px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--menu-border);
+  background: var(--window);
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
