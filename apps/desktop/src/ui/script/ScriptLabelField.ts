@@ -32,6 +32,8 @@ export class ScriptLabelField {
   private items: string[] = [];
   private selected = -1;
   private shown: string | null = null;
+  /** 利用者が打ちかけの文字があるか（入力してから、まだ決めていない）。 */
+  private typing = false;
   private all: readonly string[] = [];
   private version = 0;
 
@@ -66,7 +68,10 @@ export class ScriptLabelField {
     this.list.dataset["autoId"] = `${id}.list`;
     this.element.append(this.input, drop, this.list);
 
-    this.input.addEventListener("input", () => void this.openList(this.input.value));
+    this.input.addEventListener("input", () => {
+      this.typing = true;
+      void this.openList(this.input.value);
+    });
     this.input.addEventListener("keydown", (e) => this.onKey(e));
     this.input.addEventListener("blur", () => {
       // 一覧のクリックは mousedown で決めるので、ここでは入力をそのまま決める
@@ -82,13 +87,20 @@ export class ScriptLabelField {
     source.onCandidatesChanged(() => void this.refreshMark());
   }
 
-  /** 今のラベルを出す（イベントを選び直したときなど）。 */
+  /**
+   * 今のラベルを出す（イベントを選び直したとき、F2・元に戻す・取り込み・付け直しで変わったときなど）。
+   * 欄にフォーカスがあっても、打ちかけの文字が無ければ書き換える（Enter で決めたあとは打ちかけではない）。
+   */
   show(): void {
     const on = this.source.available();
     this.element.hidden = !on;
     if (!on) return;
     this.shown = this.source.current();
-    if (document.activeElement !== this.input) this.input.value = this.shown ?? "";
+    if (!this.typing || document.activeElement !== this.input) {
+      this.typing = false;
+      this.input.value = this.shown ?? "";
+      this.input.classList.remove("invalid");
+    }
     void this.refreshMark();
   }
 
@@ -107,6 +119,7 @@ export class ScriptLabelField {
     const text = raw.trim();
     const next = text === "" ? null : text;
     if (next === this.shown) {
+      this.typing = false;
       this.input.value = next ?? "";
       return;
     }
@@ -116,6 +129,7 @@ export class ScriptLabelField {
       return;
     }
     this.input.classList.remove("invalid");
+    this.typing = false;
     this.shown = next;
     this.source.commit(next);
   }
@@ -186,6 +200,7 @@ export class ScriptLabelField {
       e.preventDefault();
     } else if (e.key === "Escape") {
       this.closeList();
+      this.typing = false;
       this.input.value = this.shown ?? "";
       this.input.classList.remove("invalid");
       e.preventDefault();

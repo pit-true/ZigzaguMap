@@ -81,6 +81,7 @@ export function getField(id: string): Record<string, unknown> {
   } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     out["value"] = el.value;
     out["readOnly"] = el.readOnly;
+    out["focused"] = document.activeElement === el;
   } else {
     out["value"] = el.textContent ?? "";
   }

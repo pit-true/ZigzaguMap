@@ -12,7 +12,8 @@
   4. 素の ROM のスクリプトの読み取り専用のタブと「.s に取り込む」の一覧（ダイアログ）
   5. マップスクリプトのパネル（場所の設定タブのかんたん表示）。縦にスクロールする枠の中のパネルを ui.shot で撮っても落ちず（#216）、
      見えていない部品はエラーになる
-  6. F2 のラベル名の変更がイベントのラベルにも反映される
+  6. F2 のラベル名の変更がイベントのラベルにも反映される。ラベルの欄にフォーカスが残っていても欄の表示が新しい名前になる（#217）。
+     16 進の欄とスピンの欄も、Enter で決めたあとに元に戻すと、フォーカスがあっても表示が戻る
   7. ビルドの欄でビルドし、わざと入れた誤りがエラーの一覧に出て、押すとその行へ移る（--no-build で飛ばす）
 - --shots を付けると、新しい画面のスクリーンショットを書く。
 失敗があれば終了コード 1。
@@ -112,12 +113,33 @@ def run(fx, z: Zigzagu, shots: pathlib.Path | None, build: bool) -> None:
     check(st.get("active") == SCRIPT and text[line - 1].startswith(f"{npc}:"), f"「スクリプトを開く」でラベルの行が開く（{st.get('active')}:{line}）")
     shot(z, shots, "p2l_03_editor_label.png", "script-editor")
 
-    # 6. F2 のラベル名の変更（エディタの .s とイベントのラベル）
+    # 6. F2 のラベル名の変更（エディタの .s とイベントのラベル）。先にラベルの欄で Enter を押し、欄にフォーカスを残しておく（#217）
+    z.call({"cmd": "event.select", "kind": "person", "index": n + 1})
+    z.call({"cmd": "ui.type", "id": "event.person.label", "text": npc2, "blur": False})
+    z.call({"cmd": "key", "id": "event.person.label", "key": "Enter"})
+    f = z.call({"cmd": "getField", "id": "event.person.label"})
+    check(f.get("focused") is True and f.get("value") == npc2, f"ラベルの欄で Enter を押したあと、欄にフォーカスが残る（{f.get('focused')}、{f.get('value')}）")
     r = z.call({"cmd": "editor.rename", "window": "script-editor", "from": npc2, "to": f"{npc2}_R"})["result"]
     check(r and r["count"] >= 1 and r["uses"] == 1, f"F2 のラベル名の変更（{r}）")
     labels = z.call({"cmd": "script.labels"})
     check(any(x["label"] == f"{npc2}_R" for x in labels["person"]), "イベントのラベルも新しい名前になる")
+    time.sleep(0.3)
+    f = z.call({"cmd": "getField", "id": "event.person.label"})
+    check(f.get("value") == f"{npc2}_R", f"フォーカスが残っていても、ラベルの欄が新しい名前になる（{f.get('value')}）")
+    z.call({"cmd": "event.select", "kind": "person", "index": n})
+    z.call({"cmd": "event.select", "kind": "person", "index": n + 1})
+    f = z.call({"cmd": "getField", "id": "event.person.label"})
+    check(f.get("value") == f"{npc2}_R", f"別のイベントを選んで戻っても新しい名前のまま（{f.get('value')}）")
     z.call({"cmd": "editor.save", "window": "script-editor"})
+    # 同じ作りの欄（16 進の欄・スピンの欄）: Enter で決めてフォーカスを残したまま、元に戻す
+    for fid, text in (("event.person.flag", "1234"), ("event.person.graphics", "77")):
+        old = z.call({"cmd": "getField", "id": fid}).get("value")
+        z.call({"cmd": "ui.type", "id": fid, "text": text, "blur": False})
+        z.call({"cmd": "key", "id": fid, "key": "Enter"})
+        z.call({"cmd": "undo"})
+        time.sleep(0.2)
+        f = z.call({"cmd": "getField", "id": fid})
+        check(f.get("focused") is True and f.get("value") == old, f"{fid}: Enter のあとに元に戻すと、フォーカスがあっても表示が戻る（{text} → {f.get('value')}、元は {old}）")
 
     # 4. ROM のスクリプト
     source = before["persons"][0]["script"] if n > 0 and before["persons"][0]["script"] >= 0x08000000 else 0x08800300

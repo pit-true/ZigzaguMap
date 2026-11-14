@@ -15,6 +15,7 @@ import { commit } from "../form/commit";
 import { autoId, button, edit, group, label, memo, place } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
 import { checkOnInput, followInput } from "../form/integerInput";
+import { isTyping, watchTyping } from "../form/typing";
 import type { HeaderContext } from "./HeaderContext";
 import { tilesetNumber } from "./LayoutGroups";
 import { locationText, readOnlyEdit } from "./ProHeaderGroups";
@@ -110,6 +111,7 @@ export class FooterGroups {
     // AdvanceMap と同じく入力のたびに読み、フッターの 16 進へ連動する。横幅・高さ・タイルセット番号は読めなければエラー、
     // 境界ブロックの横幅・高さはエラーを出さない（AdvanceMap で確かめた動作）。
     const field = (input: HTMLInputElement, write: (n: number) => void, check = true): void => {
+      watchTyping(input);
       const apply = (n: number): void => {
         write(n);
         this.showFields(true);
@@ -159,7 +161,8 @@ export class FooterGroups {
     const c = this.ctx;
     if (withMemo) this.footer.value = toHexBytes(b);
     const set = (input: HTMLInputElement, text: string): void => {
-      if (document.activeElement !== input) input.value = text;
+      // 打ちかけの欄（入力のたびの連動で呼ばれたとき）は書き換えない。Enter のあとや元に戻したときは書き換える
+      if (!isTyping(input)) input.value = text;
     };
     set(this.width, String(u32(b, MAP_FOOTER.width)));
     set(this.height, String(u32(b, MAP_FOOTER.height)));
