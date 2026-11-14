@@ -76,6 +76,10 @@ export function diagnosticMessage(d: ScriptDiagnostic): string {
       return t.lint.duplicateStringOther(s("label"), s("path"), n("line"));
     case "textWidth":
       return s("kind") === "lines" ? t.lint.textWidthLines(s("label"), n("page"), n("limit")) : t.lint.textWidthColumns(s("label"), n("page"), n("line"), n("columns"), n("limit"));
+    case "strayStringLine":
+      return t.lint.strayStringLine(s("label"));
+    case "spaceAfterBreak":
+      return t.lint.spaceAfterBreak(s("label"));
     case "external":
       return s("message");
   }

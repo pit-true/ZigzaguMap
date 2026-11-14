@@ -2,6 +2,7 @@ import { formatHex } from "../../binary/bytes.js";
 import { ROM_BASE, type Rom } from "../../rom/Rom.js";
 import type { ScriptDialect } from "../config/ScriptDialect.js";
 import { scriptTextLabel } from "../edit/LabelNaming.js";
+import { wrapStringBody } from "../strings/StringFile.js";
 import type { DisasmCommandSet } from "./DisasmCommandSet.js";
 import { renderDisassembly } from "./renderDisassembly.js";
 import { disassembleScripts, type DisasmRefKind, type Disassembly } from "./ScriptDisassembler.js";
@@ -162,8 +163,10 @@ export function planScriptImport(rom: Rom, entry: number, options: ScriptImportO
   const strings: string[] = [];
   for (const s of fresh.strings) {
     if (strings.length > 0) strings.push("");
-    strings.push(importMarkLine("string", s.offset + ROM_BASE), `#org @${s.label}`, s.text);
-    if (nd) strings.push("", `#org @${s.label}_k`, s.text);
+    // 長い文は、制御記号（\n・\p・\l）のあとで .string の行を分けて書く（#221。string.py がつなぎ直す）
+    const body = wrapStringBody(s.text).split("\n");
+    strings.push(importMarkLine("string", s.offset + ROM_BASE), `#org @${s.label}`, ...body);
+    if (nd) strings.push("", `#org @${s.label}_k`, ...body);
   }
   const blocks: ScriptImportBlock[] = fresh.blocks.map((b) => ({
     label: renamed.labels.get(b.offset) ?? "",

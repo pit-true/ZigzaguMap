@@ -1,5 +1,6 @@
 import { formatHex } from "../../binary/bytes.js";
 import type { ScriptDialect } from "../config/ScriptDialect.js";
+import { wrapStringBody } from "../strings/StringFile.js";
 import { scriptTextLabel, type ScriptLabelKind } from "./LabelNaming.js";
 
 /** 種別ごとのひな形の文（`.string` に書く本文。1 行 18 字に収める）。 */
@@ -73,9 +74,11 @@ export function asmBlockText(lines: readonly string[], newline: string): string 
   return newline + lines.join(newline) + newline;
 }
 
-/** `.string` に足すまとまりの文字列（`#org @ラベル` と本文。前に空行 1 つ）。 */
+/** `.string` に足すまとまりの文字列（`#org @ラベル` と本文。前に空行 1 つ。本文は制御記号のあとで行を分ける #221）。 */
 export function stringsBlockText(entries: readonly { readonly label: string; readonly text: string }[], newline: string): string {
-  return entries.map((e) => `${newline}#org @${e.label}${newline}${e.text}${newline}`).join("");
+  return entries
+    .map((e) => `${newline}#org @${e.label}${newline}${wrapStringBody(e.text).split("\n").join(newline)}${newline}`)
+    .join("");
 }
 
 /**

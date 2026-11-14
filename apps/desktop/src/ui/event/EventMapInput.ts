@@ -18,6 +18,8 @@ export interface EventMapHandlers {
   activate(cell: RawCell): void;
   /** ボタンを押していないときのマウス移動（ステータスバー）。マップの外なら null。 */
   hover(cell: RawCell | null): void;
+  /** 右クリックのメニュー（`x`・`y` は画面の位置）。 */
+  contextMenu?(cell: RawCell, x: number, y: number): void;
 }
 
 /**
@@ -65,6 +67,12 @@ export class EventMapInput {
     stage.addEventListener("pointercancel", finish);
     stage.addEventListener("pointerleave", () => {
       if (!this.dragging) handlers.hover(null);
+    });
+    stage.addEventListener("contextmenu", (e) => {
+      const cell = this.cellAt(e);
+      if (!cell || !this.inside(cell) || !handlers.contextMenu) return;
+      e.preventDefault();
+      handlers.contextMenu(cell, e.clientX, e.clientY);
     });
     stage.addEventListener("dblclick", (e) => {
       const cell = this.cellAt(e);

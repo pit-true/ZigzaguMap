@@ -40,3 +40,15 @@ export {
   type ScriptImportOptions,
   type ScriptImportPlan,
 } from "./ScriptImporter.js";
+export {
+  findPointersInto,
+  planRomErase,
+  projectOverwriteRegions,
+  ROM_HEADER_SIZE,
+  romScriptSpans,
+  type RomEraseBlockReason,
+  type RomEraseBlocked,
+  type RomErasePlan,
+  type RomErasePlanOptions,
+  type RomEraseSpan,
+} from "./RomErasePlanner.js";

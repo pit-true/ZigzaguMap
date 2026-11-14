@@ -187,16 +187,29 @@ export function checkStringFileWidth(file: StringFile, options: TextWidthOptions
   const out: StringFileWidthIssue[] = [];
   const offsets = stringLineOffsets(file);
   for (const entry of file.entries) {
-    for (const fileLine of entry.bodyLines) {
-      const base = offsets[fileLine]!;
-      for (const issue of checkTextWidth(file.lines[fileLine]!.text, options).issues) {
+    for (const lineNumbers of entry.strings) {
+      // 制御記号のあとで分けた行はつないで 1 つの文字列として数え、位置はそれぞれの行に戻す
+      const starts: number[] = [];
+      let text = "";
+      for (const n of lineNumbers) {
+        starts.push(text.length);
+        text += file.lines[n]!.text;
+      }
+      const at = (pos: number, end: boolean): { line: number; offset: number } => {
+        let k = starts.length - 1;
+        while (k > 0 && (end ? starts[k]! >= pos : starts[k]! > pos)) k--;
+        const line = lineNumbers[k]!;
+        return { line, offset: offsets[line]! + pos - starts[k]! };
+      };
+      for (const issue of checkTextWidth(text, options).issues) {
+        const from = at(issue.start, false);
         out.push({
           ...issue,
           label: entry.label,
-          fileLine,
-          from: base + issue.start,
-          to: base + issue.end,
-          overflowFrom: base + issue.overflowStart,
+          fileLine: from.line,
+          from: from.offset,
+          to: at(issue.end, true).offset,
+          overflowFrom: at(issue.overflowStart, false).offset,
         });
       }
     }

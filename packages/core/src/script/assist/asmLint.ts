@@ -18,6 +18,10 @@ export type ScriptDiagnosticCode =
   | "duplicateStringOther"
   /** 簡易の幅検査（字数）で、1 行の字数か 1 ページの行数が上限を超えた。 */
   | "textWidth"
+  /** `#org` の本文の 2 つ目からの文字列（前の行が制御記号で終わらないので続きにならず、ラベルの付かない別の文字列になる）。 */
+  | "strayStringLine"
+  /** 行の末尾が制御記号と空白で終わり、次の本文の行が続きにならない（空白を消せば続きになる）。 */
+  | "spaceAfterBreak"
   /** 外から足した波線（ビルド・幅検査のコマンドの出力）。文言は `params.message`。 */
   | "external";
 

@@ -22,6 +22,8 @@
     {"op": "setField", "screen": "main", "field": "Spin_Nr", "value": 1},
     {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:Txt_PosX", "field:Txt_PosY", "field:Cbo_AnsprechEbene", "field:Cbo_SignpostTyp", "field:Txt_Unbekannt2", "field:Txt_Unbekannt3", "field:Txt_Script"]},
     {"op": "clickButton", "screen": "main", "button": "Cmd_EventLoeschen"},
+    {"op": "wait", "seconds": 1.5, "only": "zigzagu", "expectedDifference": "確認のダイアログ（#220）は消すものを調べてから出すので、出るまで待つ"},
+    {"op": "answerDialog", "button": "削除", "only": "zigzagu", "expectedDifference": "ユーザーの要望（#220）: ZigzaguMap は「イベントの削除」で、消すもの（スクリプトの記述・ROM の埋める範囲）の一覧つきの確認のダイアログを出してから消す（AdvanceMap はすぐ消す）。ZigzaguMap の側だけ「削除」を押す"},
     {"op": "compareFields", "fields": ["field:Cbo_EventTypen", "field:Spin_Nr", "enabled:Spin_Nr", "enabled:Cmd_EventLoeschen", "field:PeopNum", "field:SignNum", "field:WarpNum", "field:ScriptNum"]}
   ]
 }

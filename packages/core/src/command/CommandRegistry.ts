@@ -9,6 +9,7 @@ import { registerEditCommands } from "./editCommands.js";
 import { registerRegionMapCommands } from "../regionmap/index.js";
 import { registerScriptsTableCommands } from "../script/project/ScriptsTableCommands.js";
 import { registerEventLabelCommands } from "../script/link/EventLabelCommands.js";
+import { AddRomEraseRangesCommand } from "./commands/project/AddRomEraseRangesCommand.js";
 
 /** JSON の引数からコマンドを作る関数。 */
 export type CommandFactory = (args: Record<string, unknown>) => Command;
@@ -45,5 +46,6 @@ export function createDefaultRegistry(): CommandRegistry {
     .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
     .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
   registry.register(CommandGroup.NAME, (args) => CommandGroup.fromJson(args, (r) => registry.create(r)));
+  registry.register(AddRomEraseRangesCommand.NAME, AddRomEraseRangesCommand.fromJson as CommandFactory);
   return registerEventLabelCommands(registerScriptsTableCommands(registerRegionMapCommands(registerEditCommands(registry))));
 }

@@ -74,6 +74,9 @@ export const jaScriptEditorAssist = {
     textWidthColumns: (label: string, page: number, line: number, columns: number, limit: number) =>
       `${label} の ${page} ページ目 ${line} 行目が ${columns} 字です（1 行 ${limit} 字まで）`,
     textWidthLines: (label: string, page: number, limit: number) => `${label} の ${page} ページ目が ${limit} 行を超えています`,
+    strayStringLine: (label: string) =>
+      `この行は ${label} の続きになりません（前の行が \\n・\\p・\\l・\\m で終わっていないので、ラベルの付かない別の文字列になります）`,
+    spaceAfterBreak: (label: string) => `制御記号のあとの空白を消すと、次の行が ${label} の続きになります（今は別の文字列です）`,
   },
 
   // ---- 文字列の編集（#196） ----
@@ -81,7 +84,7 @@ export const jaScriptEditorAssist = {
     title: (label: string) => `${label} の本文`,
     apply: "反映",
     cancel: "やめる",
-    hint: "改行は \\n、改ページは \\p と書きます。反映すると .string が未保存になります（Ctrl+S で保存）。",
+    hint: "改行は \\n、改ページは \\p と書きます。Enter で入力欄の中も改行します（前が \\n・\\p でなければ \\n を補う）。Ctrl+Enter で反映すると .string が未保存になります（Ctrl+S で保存）。",
     lineInfo: (page: number, line: number, columns: number, limit: number) => `${page}-${line}: ${columns} / ${limit} 字`,
     applied: (label: string, path: string) => `${label} の本文を ${path} に反映しました（未保存）`,
     notFound: (label: string) => `${label} の #org が strings に見つかりません`,
@@ -133,5 +136,6 @@ export const jaScriptEditorAssist = {
     build: "ビルド（下のビルドの欄）",
     closeHover: "ホバーの吹き出しを閉じる・文字列の入力欄を取り消す",
     applyString: "文字列の入力欄の本文を .string へ反映する",
+    stringEnter: ".string の本文と文字列の入力欄で改行する（前が \\n・\\p・\\l・\\m でなければ \\n を補う）",
   },
 };

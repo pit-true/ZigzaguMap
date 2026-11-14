@@ -61,6 +61,8 @@ export class ScriptLink {
   private readonly edits = new WeakMap<Command, TextEdit[]>();
   /** イベントを置いたコマンドで付けたラベル（やり直しで同じ名前にする）。 */
   private readonly assigned = new WeakMap<Command, Assigned[]>();
+  /** コマンドごとの本文の置き換え（イベントの削除。取り消しで元に戻す）。 */
+  private readonly replacements = new WeakMap<Command, readonly { path: string; before: string; after: string }[]>();
   /** 書き足しが済んだら決まるもの（自動操作と出力が待つ）。 */
   private pending: Promise<unknown> = Promise.resolve();
 
@@ -179,6 +181,11 @@ export class ScriptLink {
     const command = e.command;
     const session = this.session;
     if (!command || !session) return;
+    const replaced = this.replacements.get(command);
+    if (replaced && (e.type === "undo" || e.type === "redo")) {
+      void this.track(this.swapTexts(replaced, e.type === "undo"));
+      return;
+    }
     if (e.type === "undo") {
       const edits = this.edits.get(command);
       if (edits) void this.track(this.removeEdits(edits));
@@ -264,6 +271,37 @@ export class ScriptLink {
       command,
       list.map((x) => ({ path: x.path, block: x.block, create: x.create, added: Promise.resolve(x.added) })),
     );
+  }
+
+  /**
+   * ファイルの本文の置き換え（イベントの削除 #220 で `.s` と `.string` から記述を除いたもの）をコマンドに結び付ける。
+   * 取り消すと元の本文に、やり直すと置き換えた本文に戻す。そのあとで手を入れていて本文が合わなければ、そのファイルは変えずに知らせる。
+   */
+  attachReplacements(command: Command, list: readonly { path: string; before: string; after: string }[]): void {
+    if (list.length > 0) this.replacements.set(command, list);
+  }
+
+  /** 本文を書き換える（`.s`・`.string` の本文を、置き換える前か後にそろえる）。 */
+  async replaceTexts(list: readonly { path: string; before: string; after: string }[]): Promise<string[]> {
+    return this.swapTexts(list, false);
+  }
+
+  private async swapTexts(list: readonly { path: string; before: string; after: string }[], undo: boolean): Promise<string[]> {
+    const kept: string[] = [];
+    const lf = (s: string) => s.replace(/\r\n?/g, "\n");
+    for (const r of undo ? [...list].reverse() : list) {
+      const [from, to] = undo ? [r.after, r.before] : [r.before, r.after];
+      const ok = await this.files
+        .change(r.path, (text) => {
+          if (lf(text) !== lf(from)) return null;
+          // 今の本文の改行（エディタの本文は LF、ファイルは読んだときの形）にそろえて入れる
+          return text.includes("\r\n") ? lf(to).replace(/\n/g, "\r\n") : lf(to);
+        })
+        .catch(() => false);
+      if (!ok) kept.push(r.path);
+    }
+    if (kept.length > 0) this.app.state.setStatus(t.replaceKept(kept), undefined, true);
+    return kept;
   }
 
   private track<T>(p: Promise<T>): Promise<T> {

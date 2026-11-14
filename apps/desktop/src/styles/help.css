@@ -8,20 +8,8 @@
   padding: 6px 8px 10px;
 }
 
-.help-viewer-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.help-viewer-bar button {
-  min-width: 64px;
-  height: 24px;
-}
-
-.help-viewer-doc {
-  color: var(--help-text);
+.help-home {
+  margin: 6px 0 0;
 }
 
 .help-viewer-content {
@@ -118,7 +106,8 @@
   border-left: 3px solid var(--md-rule);
 }
 
-.md-body a.md-link {
+.md-body a.md-link,
+.help-home a {
   color: var(--md-link);
   text-decoration: underline;
   cursor: pointer;
