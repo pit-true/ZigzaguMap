@@ -28,13 +28,13 @@ import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState } from "./EditorState";
-import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
+import { FileDialogs } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { MapNavigation } from "./MapNavigation";
-import { buildMenu, type MenuItem } from "./menuDefinition";
+import { buildMenu, recentMenuItems, toolbarLabel, type MenuItem } from "./menuDefinition";
 import { ProjectSession } from "./ProjectSession";
 import { SessionOpener } from "./SessionOpener";
 import { Settings, type SettingsData } from "./Settings";
@@ -48,10 +48,8 @@ import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
-import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
 import { ScriptLink } from "../ui/script/ScriptLink";
-import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import type { MixingBag } from "./MixingBag";
@@ -60,6 +58,7 @@ import { registerEventKindActions } from "../ui/event/eventVisibility";
 import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
+import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
 /** アプリ全体。画面部品を組み立て、ROM・マップの読み込み、出力、終了を受け持つ。 */
 export class App implements ActionTarget {
@@ -102,8 +101,8 @@ export class App implements ActionTarget {
     exportMaps: () => this.exportMaps(false),
   });
   private connections: ConnectionManager | null = null;
-  /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
-  private scriptHostValue: Promise<ScriptHost> | null = null;
+  /** スクリプトエディタの入口（窓口は初めてスクリプトを開くときに読み込む）。 */
+  private readonly scriptEditor: ScriptEditorEntry;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
   /** 使われているフラグ・変数などの番号の索引（#227）。 */
@@ -148,6 +147,7 @@ export class App implements ActionTarget {
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
+    this.scriptEditor = new ScriptEditorEntry(this);
     // 表示 > イベントの種類（#304）
     registerEventKindActions(this.actions, state, (patch) => this.changeSetting(patch));
     this.newMaps = new NewMapController({
@@ -157,13 +157,8 @@ export class App implements ActionTarget {
       refreshMapList: () => this.refreshMapList(),
       notNeeded: () => this.system.notNeeded(),
     });
-    this.actions.register("map.new", () => this.newMaps.newMap());
-    this.actions.register("map.openCreated", () => this.newMaps.openFile());
-    this.actions.register("map.saveCreatedAs", () => this.newMaps.saveAs());
-    this.actions.register("map.insert", () => this.newMaps.insert());
-    this.actions.register("dummy.manage", () => this.newMaps.bankHeader());
+    this.newMaps.registerActions(this.actions);
     // ツール > スクリプトファイルの対応表（maps\scripts.json）。画面のコードは初めて開くときに読み込む。
-    this.actions.register("tools.build", async () => (await this.scriptHost()).build());
     this.actions.register("tools.scriptsTable", async () => (await import("../ui/script/ScriptsTableDialog")).ScriptsTableDialog.get(this).open());
     this.menu = new MenuBar({
       items: () => this.menuItems(),
@@ -273,12 +268,6 @@ export class App implements ActionTarget {
     for (const topic of ["session", "map", "view"] as const) state.on(topic, () => this.toolbar.update());
     state.on("session", () => this.worldMap.sessionChanged());
     state.on("map", () => this.worldMap.mapChanged());
-    installScriptEntry({
-      available: () => state.session !== null,
-      open: (target, pointer) => void this.scriptHost().then((h) => h.openTarget(target, pointer)).catch((e: unknown) => this.showError(e)),
-      openFile: (path, line) => void this.scriptHost().then((h) => h.openFile(path, line)).catch((e: unknown) => this.showError(e)),
-      openPointer: (pointer, target) => void this.scriptHost().then((h) => h.openRom(pointer, target)).catch((e: unknown) => this.showError(e)),
-    });
     this.statusBar.render(state.status);
     this.applyLayout();
     state.emit("view");
@@ -485,29 +474,17 @@ export class App implements ActionTarget {
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
   scriptHost(): Promise<ScriptHost> {
-    return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
+    return this.scriptEditor.host();
   }
 
   /** スクリプトエディタの窓口（読み込み済みのときだけ。まだなら null）。 */
-  async scriptHostIfLoaded(): Promise<ScriptHost | null> {
-    return this.scriptHostValue ? this.scriptHostValue.catch(() => null) : null;
+  scriptHostIfLoaded(): Promise<ScriptHost | null> {
+    return this.scriptEditor.hostIfLoaded();
   }
 
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
-  async confirmScriptEditor(): Promise<boolean> {
-    if (!this.scriptHostValue) return true;
-    const host = await this.scriptHostValue;
-    let dirty: string[];
-    try {
-      dirty = await host.dirtyFiles();
-    } catch {
-      return true;
-    }
-    if (dirty.length === 0) return true;
-    const answer = await messageBox(ja.question, jaScriptEditor.mainDirty(dirty.length), "warning", "yesNoCancel");
-    if (answer === "cancel") return false;
-    if (answer === "yes") return host.saveAll().catch(() => false);
-    return true;
+  confirmScriptEditor(): Promise<boolean> {
+    return this.scriptEditor.confirmUnsaved();
   }
 
   /** ツール > ワールドマップエディター（Ctrl+W）。別ウィンドウで開く。 */
@@ -562,18 +539,7 @@ export class App implements ActionTarget {
 
   /** メニューの全項目（今の状態で。メニューバーと自動操作の `menu.list` が使う）。 */
   menuItems(): MenuItem[] {
-    return buildMenu(this.recentItems());
-  }
-
-  /** ファイル > 最近開いたもの（登録されている分だけ。最大数を超えた分は出さない）。 */
-  private recentItems(): MenuItem[] {
-    const s = this.state.settings.data;
-    return s.recent.slice(0, s.recentMax).map((entry, i): MenuItem => {
-      const text = s.recentShowPath
-        ? entry.rom + (entry.project ? ` + ${entry.project}` : "")
-        : fileName(entry.rom) + (entry.project ? ` + ${fileName(entry.project)}` : "");
-      return { id: `recent.${i}`, label: `${i + 1} ${text}`, accel: String(i + 1), inlineAccel: true };
-    });
+    return buildMenu(recentMenuItems(this.state.settings.data));
   }
 
   private rebuildTree(): void {
@@ -615,18 +581,4 @@ export class App implements ActionTarget {
   showError(e: unknown): void {
     this.state.setStatus(ja.error(errorText(e)), undefined, true);
   }
-}
-
-function toolbarLabel(id: string): string {
-  const map: Record<string, string> = {
-    "map.new": ja.toolbar.newMap,
-    "map.insert": ja.toolbar.insertMap,
-    "view.objects": ja.toolbar.showObjects,
-    "tools.blockEditor": ja.toolbar.blockEditor,
-    "tools.connections": ja.toolbar.connections,
-    "tools.worldMap": ja.toolbar.worldMap,
-    "tools.find": ja.toolbar.find,
-    "help.about": ja.toolbar.about,
-  };
-  return map[id] ?? id;
 }
