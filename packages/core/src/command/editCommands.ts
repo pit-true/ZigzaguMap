@@ -2,6 +2,10 @@ import type { CommandFactory, CommandRegistry } from "./CommandRegistry.js";
 import { AddConnectionCommand } from "./commands/connection/AddConnectionCommand.js";
 import { RemoveConnectionCommand } from "./commands/connection/RemoveConnectionCommand.js";
 import { SetConnectionCommand } from "./commands/connection/SetConnectionCommand.js";
+import { ShiftConnectionCommand } from "./commands/connection/ShiftConnectionCommand.js";
+import { ConnectMapsCommand } from "./commands/connection/ConnectMapsCommand.js";
+import { DisconnectMapsCommand } from "./commands/connection/DisconnectMapsCommand.js";
+import { FillLayoutCommand } from "./commands/connection/createConnectedMap.js";
 import { AddEventCommand } from "./commands/event/AddEventCommand.js";
 import { MoveEventCommand } from "./commands/event/MoveEventCommand.js";
 import { RemoveEventCommand } from "./commands/event/RemoveEventCommand.js";
@@ -71,6 +75,11 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   AddConnectionCommand,
   RemoveConnectionCommand,
   SetConnectionCommand,
+  // 2 枚のマップの接続（Phase3。相手側もそろえる）
+  ShiftConnectionCommand,
+  ConnectMapsCommand,
+  DisconnectMapsCommand,
+  FillLayoutCommand,
   // 野生
   SetWildRateCommand,
   SetWildSlotCommand,

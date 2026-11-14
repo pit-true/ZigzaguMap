@@ -55,6 +55,8 @@ export const EditErrorCode = {
   ConditionVariableZero: "conditionVariableZero",
   /** 接続の番号が範囲外。引数: index, count。 */
   ConnectionIndexOutOfRange: "connectionIndexOutOfRange",
+  /** ダイブ・浮上の接続はマップ 1 枚に 1 つまで（相手か自分がもう持っている）。引数: bank, map, direction。 */
+  DiveExists: "diveExists",
   /** 野生の追加で何も選んでいない（`野生ポケモンの出現データの追加/変更を中止しました！`）。 */
   WildAddCanceled: "wildAddCanceled",
   /** 野生のそのエリアにデータが無い。引数: time, area。 */

@@ -8,7 +8,8 @@ import { describeSelection } from "./status";
  * 実際の操作と同じ順に送る。画面側は人が操作したときと同じ処理を通る。
  *
  * `{"cmd":"mouse","target":"map","action":"click","cell":[5,3]}` のように使う。
- * - target: `map`（マップタブ）/ `movement`（移動エリア）/ `event`（イベント）/ `palette`（ブロックパレット）/ `border`（境界ブロック）/
+ * - target: `connectionHandle`（隣の帯のつまみ。`handle` に `connection.handles` の `id`。`cell: [0, 0]` がつまみの中心）/
+ *   `map`（マップタブ）/ `movement`（移動エリア）/ `event`（イベント）/ `palette`（ブロックパレット）/ `border`（境界ブロック）/
  *   `movementPalette`（移動許可のパレット）。`id` を渡すと `data-auto-id`（か `field:<AdvanceMap の部品名>`）の部品の上（`px` だけ使える）。
  * - 位置: `cell: [x, y]`（マス。マスの中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）。古い形の `x`・`y`（マス）も読む。
  *   マップのタブ（map / movement / event）の `cell` は主マップの左上が原点で、負の値や大きさを超える値で隣のマップの帯の上を指せる（Phase3）。
@@ -46,6 +47,15 @@ export const MOUSE_TARGETS: Readonly<Record<string, string>> = {
 function resolveTarget(app: App, req: AutomationRequest): Target {
   if (typeof req["id"] === "string") return { element: findField(req["id"]), cell: { w: 1, h: 1 } };
   const name = str(req, "target");
+  if (name === "connectionHandle") {
+    // 隣の帯のつまみ（Phase3）。`cell: [0, 0]` がつまみの中心で、`to` はマップタブのマス単位のずらし
+    const id = str(req, "handle");
+    const element = document.querySelector<HTMLElement>(`.map-tab-view [data-auto-id="${CSS.escape(id)}"]`);
+    if (!element) throw new Error(`つまみが見つかりません: ${id}`);
+    const size = app.state.settings.data.zoomMap ? 32 : 16;
+    const r = element.getBoundingClientRect();
+    return { element, cell: { w: size, h: size }, origin: { x: r.width / 2 - size / 2, y: r.height / 2 - size / 2 } };
+  }
   const selector = MOUSE_TARGETS[name];
   if (!selector) throw new Error(`target は ${Object.keys(MOUSE_TARGETS).join(" / ")} のどれかです: ${name}`);
   const element = document.querySelector<HTMLElement>(selector);
