@@ -25,7 +25,6 @@ export const jaStamp = {
   renamed: (name: string) => `スタンプの名前を「${name}」にしました`,
   removed: (name: string) => `スタンプ「${name}」を削除しました`,
   notFit: (name: string) => `選んでいるスタンプ「${name}」は、このマップのタイルセットの組で作ったものではありません（違うブロックになります）`,
-  hasHoles: "四角でないスタンプ（貼らないマスを含むもの）は、まだ貼れません",
   emptyName: "名前が空です",
   failed: (message: string) => `スタンプを書けませんでした: ${message}`,
   problems: (n: number) => `読めないスタンプのファイルが ${n} 個あります`,

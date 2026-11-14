@@ -1,5 +1,5 @@
 import { createStamp, renderBlocks, stampFits, type Stamp, type StampLibrary } from "@zigzagumap/core";
-import type { BlockSelection, EditorState } from "../../app/EditorState";
+import { selectionWrites, type BlockSelection, type EditorState } from "../../app/EditorState";
 import { jaStamp as t } from "../../i18n/ja.stamp";
 import "../../styles/stamp.css";
 import { canvasOf } from "../canvas";
@@ -140,16 +140,14 @@ export class StampPanel {
     const lib = await this.library();
     const stamp = lib?.get(name);
     if (!stamp) return false;
-    if (stamp.cells.some((c) => c === null)) {
-      this.state.setStatus(t.hasHoles);
-      return false;
-    }
-    const cells = stamp.cells as readonly (readonly [number, number])[];
+    // 四角でないスタンプの null のマスは穴（貼らないマス）にする
+    const cells = stamp.cells;
     const selection: BlockSelection = {
       width: stamp.width,
       height: stamp.height,
-      blocks: cells.map((c) => c[0]),
-      ...(stamp.withMovements ? { movements: cells.map((c) => c[1]) } : {}),
+      blocks: cells.map((c) => c?.[0] ?? 0),
+      ...(stamp.withMovements ? { movements: cells.map((c) => c?.[1] ?? 0) } : {}),
+      ...(cells.some((c) => c === null) ? { holes: cells.map((c) => c === null) } : {}),
     };
     this.chosen = { name: stamp.name, selection, stamp };
     this.state.selectStamp(selection);
@@ -173,7 +171,7 @@ export class StampPanel {
     const map = this.state.map;
     if (!map) return null;
     const s = this.state.selection;
-    const values = s.blocks.map((b, i) => (b & 0x3ff) | (((s.movements?.[i] ?? 0) & 0x3f) << 10));
+    const values = s.blocks.map((b, i) => (selectionWrites(s, i) ? (b & 0x3ff) | (((s.movements?.[i] ?? 0) & 0x3f) << 10) : null));
     return createStamp(name, s.width, s.height, values, { primary: map.doc.primaryTileset, secondary: map.doc.secondaryTileset }, new Date().toISOString(), s.movements !== undefined);
   }
 

@@ -37,7 +37,7 @@ export class StampClipboard {
   /** 今の選択を写す。 */
   copy(): void {
     const s = this.state.selection;
-    this.copied = { ...s, blocks: [...s.blocks], ...(s.movements ? { movements: [...s.movements] } : {}) };
+    this.copied = { ...s, blocks: [...s.blocks], ...(s.movements ? { movements: [...s.movements] } : {}), ...(s.holes ? { holes: [...s.holes] } : {}) };
     this.state.setStatus(jaPaint.copied(s.width, s.height, s.movements !== undefined));
   }
 

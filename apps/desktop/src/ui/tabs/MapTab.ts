@@ -1,5 +1,5 @@
 import { PaintBorderCommand } from "@zigzagumap/core";
-import type { EditorState } from "../../app/EditorState";
+import { selectionWrites, type EditorState } from "../../app/EditorState";
 import { BlockPainter } from "../../input/BlockPainter";
 import { StampClipboard } from "../../input/StampClipboard";
 import { MixingBag } from "../../app/MixingBag";
@@ -118,7 +118,7 @@ export class MapTab {
     const cells: { x: number; y: number; block: number }[] = [];
     for (let dy = 0; dy < s.height; dy++) {
       for (let dx = 0; dx < s.width; dx++) {
-        if (border.inBounds(x0 + dx, y0 + dy)) cells.push({ x: x0 + dx, y: y0 + dy, block: s.blocks[dy * s.width + dx] ?? 0 });
+        if (border.inBounds(x0 + dx, y0 + dy) && selectionWrites(s, dy * s.width + dx)) cells.push({ x: x0 + dx, y: y0 + dy, block: s.blocks[dy * s.width + dx] ?? 0 });
       }
     }
     if (cells.length > 0) session.bus.execute(new PaintBorderCommand({ bank: map.id.bank, map: map.id.map, cells }));

@@ -1,5 +1,5 @@
 import { renderBlocks } from "@zigzagumap/core";
-import type { EditorState } from "../app/EditorState";
+import { selectionWrites, type EditorState } from "../app/EditorState";
 import { ja } from "../i18n/ja";
 import { drawRgba } from "./canvas";
 import { createDialog, type DialogFrame } from "./Dialog";
@@ -51,6 +51,6 @@ export class GrosserBlockWindow {
     const map = this.state.map;
     if (!canvas || !map) return;
     const s = this.state.selection;
-    drawRgba(canvas, renderBlocks(map.tiles.renderer, s.width, s.height, (x, y) => s.blocks[y * s.width + x] ?? 0));
+    drawRgba(canvas, renderBlocks(map.tiles.renderer, s.width, s.height, (x, y) => (selectionWrites(s, y * s.width + x) ? (s.blocks[y * s.width + x] ?? 0) : null)));
   }
 }

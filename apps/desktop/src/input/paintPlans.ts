@@ -1,4 +1,4 @@
-import type { BlockSelection } from "../app/EditorState";
+import { selectionWrites, type BlockSelection } from "../app/EditorState";
 import type { Cell } from "../ui/map/MapView";
 
 /** マス単位の矩形（両端を含む 2 点から作る）。 */
@@ -27,13 +27,14 @@ export interface FillCell {
 
 /**
  * 矩形塗り（Phase3 #233）: 矩形の中を選択で埋める。複数選択（スタンプ）は矩形の左上を基準にくり返して敷き詰める
- * （矩形の右端・下端で切れる分はそのまま切る）。
+ * （矩形の右端・下端で切れる分はそのまま切る）。四角でないスタンプの穴（`holes`）のマスは書かない。
  */
 export function tileRect(rect: CellRect, s: BlockSelection): FillCell[] {
   const out: FillCell[] = [];
   for (let dy = 0; dy < rect.height; dy++) {
     for (let dx = 0; dx < rect.width; dx++) {
       const i = (dy % s.height) * s.width + (dx % s.width);
+      if (!selectionWrites(s, i)) continue;
       const block = s.blocks[i] ?? 0;
       const movement = s.movements?.[i];
       out.push(movement === undefined ? { x: rect.x + dx, y: rect.y + dy, block } : { x: rect.x + dx, y: rect.y + dy, block, movement });

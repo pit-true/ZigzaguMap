@@ -21,4 +21,20 @@ describe("矩形塗りの計画（Phase3 #233）", () => {
     expect(cells.map((c) => c.block)).toEqual([1, 2, 1, 3, 4, 3, 1, 2, 1]);
     expect(cells.map((c) => c.movement)).toEqual([10, 11, 10, 12, 13, 12, 10, 11, 10]);
   });
+
+  it("四角でないスタンプの穴のマスは書かない（敷き詰めでも）", () => {
+    const holes = [false, true, true, false];
+    const one = tileRect({ x: 4, y: 5, width: 2, height: 2 }, { width: 2, height: 2, blocks: [1, 2, 3, 4], holes });
+    expect(one).toEqual([
+      { x: 4, y: 5, block: 1 },
+      { x: 5, y: 6, block: 4 },
+    ]);
+    const tiled = tileRect({ x: 0, y: 0, width: 4, height: 2 }, { width: 2, height: 2, blocks: [1, 2, 3, 4], holes });
+    expect(tiled.map((c) => [c.x, c.y])).toEqual([
+      [0, 0],
+      [2, 0],
+      [1, 1],
+      [3, 1],
+    ]);
+  });
 });
