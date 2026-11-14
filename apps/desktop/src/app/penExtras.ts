@@ -7,6 +7,8 @@ import type { MapTab } from "../ui/tabs/MapTab";
 import { AutoPenService } from "./AutoPenService";
 import type { BlockUsageService } from "./BlockUsageService";
 import type { EditorState } from "./EditorState";
+import type { Actions } from "./Actions";
+import type { App } from "./App";
 
 /**
  * Phase4 で描く道具に足したもの（3 層の次の番号の印、自動ペン、マップ作成補助）。App が作ってマップタブへ取り付ける。
@@ -24,7 +26,19 @@ export class PenExtras {
   /** パレットの色（#310）。 */
   readonly tint: AutoPenTint;
 
-  constructor(state: EditorState, mapTab: MapTab, usage: BlockUsageService) {
+  constructor(
+    state: EditorState,
+    /** マップタブ（描く道具と、マップ作成補助の「範囲」）。 */
+    readonly mapTab: MapTab,
+    usage: BlockUsageService,
+    actions: Actions,
+    app: App,
+  ) {
+    // ツール > マップ作成補助（#312。別ウィンドウ。窓口は初めて開くときに読み込む）
+    actions.register("tools.mapAssist", async () => {
+      const { MapAssistHost } = await import("../windows/map-assist/MapAssistHost");
+      await (await MapAssistHost.get(app)).show();
+    });
     this.tripleMarks = new TripleChildMarks(mapTab.view, state);
     this.autopen = new AutoPenService(state);
     this.tool = new AutoPenTool(state, this.autopen, usage, mapTab.painter, mapTab.view);

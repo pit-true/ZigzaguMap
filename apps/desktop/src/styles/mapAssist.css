@@ -1,0 +1,153 @@
+/* マップ作成補助（別ウィンドウ。Phase4 #312）。 */
+.map-assist {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 6px;
+  gap: 4px;
+  background: var(--face, #f0f0f0);
+  color: var(--text, #000);
+}
+
+.assist-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.assist-left {
+  flex: 0 0 290px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 4px;
+}
+
+.assist-source-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--shadow);
+  background: #000;
+}
+
+.assist-source-box canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+.assist-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.assist-tabs button.active {
+  font-weight: bold;
+}
+
+.assist-mid {
+  flex: 0 0 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assist-mid select[size] {
+  flex: 1;
+  min-height: 120px;
+}
+
+.assist-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assist-slots {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  align-content: start;
+  gap: 4px;
+  border: 1px solid var(--shadow);
+  padding: 4px;
+}
+
+.assist-slots[data-kind="edge"] {
+  grid-template-columns: repeat(3, minmax(96px, 1fr)) repeat(2, minmax(96px, 1fr));
+}
+
+.assist-slot {
+  border: 1px solid var(--shadow);
+  padding: 2px;
+  cursor: pointer;
+}
+
+.assist-slot.selected {
+  outline: 2px solid #ff0000;
+}
+
+.assist-slot canvas {
+  display: block;
+  image-rendering: pixelated;
+  width: auto;
+  height: 32px;
+}
+
+.assist-slot-name,
+.assist-note {
+  font-size: 11px;
+  color: var(--note-text);
+}
+
+.assist-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.assist-row input:not([type="checkbox"]),
+.assist-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.assist-row label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.assist-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assist-range {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--shadow);
+  padding-top: 4px;
+}
+
+.assist-label {
+  font-weight: bold;
+}
+
+.assist-status {
+  min-height: 1.3em;
+  font-size: 12px;
+}
+
+.assist-status.error {
+  color: #c00000;
+}

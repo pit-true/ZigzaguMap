@@ -8,7 +8,8 @@
     "block-editor",
     "palette-editor",
     "block-adjust",
-    "script-editor"
+    "script-editor",
+    "map-assist"
   ],
   "permissions": [
     "core:default",
