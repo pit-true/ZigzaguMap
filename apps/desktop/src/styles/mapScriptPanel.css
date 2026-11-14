@@ -1,0 +1,49 @@
+/* マップスクリプトの専用パネル（ui/script/MapScriptPanel.ts）。 */
+.map-script-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.msp-note {
+  white-space: normal;
+  color: var(--gray-text);
+}
+
+.msp-rom-row,
+.msp-item-head,
+.msp-condition {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.msp-item {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  background: var(--window);
+}
+
+.msp-type {
+  width: 200px;
+  flex: none;
+}
+
+.msp-condition {
+  padding-left: 20px;
+}
+
+.msp-hex {
+  width: 48px;
+}
+
+.msp-hex.invalid {
+  background: #ffe0e0;
+}
+
+.msp-foot {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
