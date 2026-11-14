@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { BLOCK_PIXELS, createImage, encodeBase64, type AutoPenPart, type PenSource } from "@zigzagumap/core";
 import type { App } from "../../app/App";
@@ -8,6 +7,7 @@ import { jaAssist as t } from "../../i18n/ja.assist";
 import type { FillCell } from "../../input/paintPlans";
 import { errorText } from "../../util/errors";
 import { scheduleIdleGc } from "../../util/idleGc";
+import { closeToolWindow, onToolWindowClosed, openToolWindow } from "../toolWindowCommands";
 import {
   MAP_ASSIST_MESSAGE_EVENT,
   MAP_ASSIST_REQUEST_EVENT,
@@ -56,8 +56,8 @@ export class MapAssistHost {
 
   private async start(): Promise<void> {
     await listen<AssistRequest>(MAP_ASSIST_REQUEST_EVENT, (e) => void this.onRequest(e.payload));
-    await listen<string>("tool-closed", (e) => {
-      if (e.payload !== MAP_ASSIST_WINDOW) return;
+    await onToolWindowClosed((label) => {
+      if (label !== MAP_ASSIST_WINDOW) return;
       this.open = false;
       // 送った画像の文字列などのごみを片付け、空いた領域も OS へ返す
       scheduleIdleGc(true);
@@ -75,13 +75,7 @@ export class MapAssistHost {
     if (!this.app.state.map) return;
     this.open = true;
     try {
-      await invoke("open_tool_window", {
-        label: MAP_ASSIST_WINDOW,
-        title: t.title,
-        width: MAP_ASSIST_SIZE.width,
-        height: MAP_ASSIST_SIZE.height,
-        resize: { minWidth: 760, minHeight: 420 },
-      });
+      await openToolWindow(MAP_ASSIST_WINDOW, t.title, MAP_ASSIST_SIZE, { minWidth: 760, minHeight: 420 });
     } catch (e) {
       this.open = false;
       throw e;
@@ -89,7 +83,7 @@ export class MapAssistHost {
   }
 
   private close(): void {
-    if (this.open) void invoke("close_tool_window", { label: MAP_ASSIST_WINDOW });
+    if (this.open) void closeToolWindow(MAP_ASSIST_WINDOW);
     this.open = false;
   }
 

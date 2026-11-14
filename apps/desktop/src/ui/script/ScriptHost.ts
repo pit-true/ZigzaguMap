@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { RenameEventLabelCommand, type ScriptImportPlan } from "@zigzagumap/core";
@@ -9,6 +8,7 @@ import { jaScriptEditor as t } from "../../i18n/ja.scriptEditor";
 import { errorText } from "../../util/errors";
 import { PendingReplies, replyOf } from "../../util/pendingReplies";
 import { isEditableScriptPath, normalizeScriptPath } from "../../windows/script-editor/fileText";
+import { closeToolWindow, onToolWindowClosed, openToolWindow } from "../../windows/toolWindowCommands";
 import {
   SCRIPT_EDITOR_SIZE,
   SCRIPT_EDITOR_WINDOW,
@@ -140,8 +140,8 @@ export class ScriptHost {
   private async start(): Promise<void> {
     await listen<ScriptEditorEnvelope>(ScriptEditorEvents.request, (e) => void this.onRequest(e.payload));
     await listen<ScriptEditorReply>(ScriptEditorEvents.answer, (e) => this.queries.settle(e.payload));
-    await listen<string>("tool-closed", (e) => {
-      if (e.payload !== SCRIPT_EDITOR_WINDOW) return;
+    await onToolWindowClosed((label) => {
+      if (label !== SCRIPT_EDITOR_WINDOW) return;
       this.opened = false;
       this.ready = false;
       this.pending = [];
@@ -326,7 +326,7 @@ export class ScriptHost {
   close(): void {
     if (!this.opened) return;
     void this.holdWrites()
-      .then(() => invoke("close_tool_window", { label: SCRIPT_EDITOR_WINDOW }))
+      .then(() => closeToolWindow(SCRIPT_EDITOR_WINDOW))
       // 消えたことは tool-closed で知る。ウィンドウがもう無かったときのために、少し待って解く
       .finally(() => setTimeout(() => this.releaseWrites(), CLOSE_FALLBACK_MS));
   }
@@ -361,13 +361,7 @@ export class ScriptHost {
     if (!wasOpen) this.projectDir = this.app.state.session?.projectDir ?? null;
     const placement = this.app.state.settings.data.toolWindows[SCRIPT_EDITOR_WINDOW] ?? null;
     try {
-      await invoke("open_tool_window", {
-        label: SCRIPT_EDITOR_WINDOW,
-        title: t.title,
-        width: SCRIPT_EDITOR_SIZE.width,
-        height: SCRIPT_EDITOR_SIZE.height,
-        resize: { minWidth: SCRIPT_EDITOR_SIZE.minWidth, minHeight: SCRIPT_EDITOR_SIZE.minHeight, placement, remember: true },
-      });
+      await openToolWindow(SCRIPT_EDITOR_WINDOW, t.title, SCRIPT_EDITOR_SIZE, { minWidth: SCRIPT_EDITOR_SIZE.minWidth, minHeight: SCRIPT_EDITOR_SIZE.minHeight, placement, remember: true });
     } catch (e) {
       if (!wasOpen) this.opened = false;
       throw e;

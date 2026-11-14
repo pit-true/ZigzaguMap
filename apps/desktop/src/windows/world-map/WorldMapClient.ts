@@ -10,6 +10,7 @@ import {
   type WorldMapRequest,
   type WorldMapState,
 } from "./protocol";
+import { PendingReplies } from "../../util/pendingReplies";
 
 /** メインウィンドウから知らせが来たときの受け手。 */
 export interface WorldMapClientListener {
@@ -23,20 +24,12 @@ export interface WorldMapClientListener {
  * ここは要求を送って返事を待つだけ（アンドゥ・出力もメインの履歴と出力をそのまま使う）。
  */
 export class WorldMapClient {
-  private nextId = 1;
-  private readonly waiting = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly pending = new PendingReplies();
 
   /** 購読を始める。 */
   async connect(listener: WorldMapClientListener): Promise<void> {
     const win = getCurrentWebviewWindow();
-    await win.listen<WorldMapReply>(WorldMapEvents.reply, (e) => {
-      const reply = e.payload;
-      const w = this.waiting.get(reply.id);
-      if (!w) return;
-      this.waiting.delete(reply.id);
-      if (reply.ok) w.resolve(reply.result);
-      else w.reject(new Error(reply.error));
-    });
+    await win.listen<WorldMapReply>(WorldMapEvents.reply, (e) => this.pending.settle(e.payload));
     await win.listen<WorldMapState>(WorldMapEvents.state, (e) => listener.state(e.payload));
     await win.listen<WorldMapCurrent | null>(WorldMapEvents.current, (e) => listener.current(e.payload));
     await win.listen(WorldMapEvents.reset, () => listener.reset());
@@ -67,14 +60,9 @@ export class WorldMapClient {
   }
 
   private send(request: WorldMapRequest): Promise<unknown> {
-    const id = this.nextId++;
+    const { id, reply, fail } = this.pending.open();
     const envelope: WorldMapEnvelope = { id, request };
-    return new Promise((resolve, reject) => {
-      this.waiting.set(id, { resolve, reject });
-      emitTo("main", WorldMapEvents.request, envelope).catch((e: unknown) => {
-        this.waiting.delete(id);
-        reject(e instanceof Error ? e : new Error(String(e)));
-      });
-    });
+    emitTo("main", WorldMapEvents.request, envelope).catch(fail);
+    return reply;
   }
 }

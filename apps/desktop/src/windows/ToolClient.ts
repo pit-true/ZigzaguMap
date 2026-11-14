@@ -9,6 +9,7 @@ import {
   type ToolSnapshot,
   type ToolUiState,
 } from "./protocol";
+import { PendingReplies } from "../util/pendingReplies";
 
 /** 要求の中身（送り主と番号は ToolClient が付ける）。 */
 type RequestBody = ToolRequest extends infer R ? (R extends ToolRequest ? Omit<R, "from" | "id"> : never) : never;
@@ -20,8 +21,7 @@ type RequestBody = ToolRequest extends infer R ? (R extends ToolRequest ? Omit<R
 export class ToolClient {
   snapshot: ToolSnapshot = { version: 0, map: null, primary: null, secondary: null };
   ui: ToolUiState = { palette: 0, preview: {} };
-  private nextId = 1;
-  private readonly pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly pending = new PendingReplies();
   private readonly snapshotListeners = new Set<() => void>();
   private readonly uiListeners = new Set<() => void>();
 
@@ -39,14 +39,9 @@ export class ToolClient {
 
   /** 要求を送り、返事を待つ（失敗なら Error）。 */
   request(body: RequestBody): Promise<unknown> {
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      emitTo("main", TOOL_REQUEST_EVENT, { ...body, from: this.kind, id }).catch((e: unknown) => {
-        this.pending.delete(id);
-        reject(e instanceof Error ? e : new Error(String(e)));
-      });
-    });
+    const { id, reply, fail } = this.pending.open();
+    emitTo("main", TOOL_REQUEST_EVENT, { ...body, from: this.kind, id }).catch(fail);
+    return reply;
   }
 
   /** コマンドをメインの CommandBus で実行する。 */
@@ -77,14 +72,9 @@ export class ToolClient {
 
   private onMessage(message: ToolMessage): void {
     switch (message.type) {
-      case "reply": {
-        const p = this.pending.get(message.id);
-        if (!p) return;
-        this.pending.delete(message.id);
-        if (message.ok) p.resolve(message.result);
-        else p.reject(new Error(message.error ?? "失敗しました"));
+      case "reply":
+        this.pending.settle(message, "失敗しました");
         return;
-      }
       case "snapshot":
         this.snapshot = message.snapshot;
         this.ui = message.ui;
