@@ -1,29 +1,13 @@
-import { emitTo } from "@tauri-apps/api/event";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { PART_ROLES, decodeBase64, slotNamesOf, type AutoPenPart, type PartCell, type PartGrid, type PartKind, type PartRole } from "@zigzagumap/core";
+import { PART_ROLES, slotNamesOf, type AutoPenPart, type PartGrid, type PartKind, type PartRole } from "@zigzagumap/core";
 import { jaAssist as t } from "../../i18n/ja.assist";
 import { jaPen } from "../../i18n/ja.pen";
-import { shadeTripleChild } from "../../ui/tripleLayerShade";
 import { errorText } from "../../util/errors";
 import { startToolWindowAutomation } from "../world-map/toolWindowAutomation";
 import "../../styles/mapAssist.css";
-import { MAP_ASSIST_MESSAGE_EVENT, MAP_ASSIST_REQUEST_EVENT, type AssistData, type AssistImage, type AssistMessage, type AssistRange, type AssistRequest } from "./protocol";
-
-/** ブロック 1 つの画素。 */
-const BLOCK = 16;
-/** パレットの 1 行のブロック数。 */
-const PALETTE_WIDTH = 8;
-/** 主タイルセットのブロック数。 */
-const PRIMARY = 640;
-
-type RequestBody = AssistRequest extends infer R ? (R extends AssistRequest ? Omit<R, "id"> : never) : never;
-
-/** 左で選んだ所（枠に入れる並び）。 */
-interface Picked {
-  readonly x: number;
-  readonly y: number;
-  readonly grid: PartGrid;
-}
+import { AssistSourcePane } from "./AssistSourcePane";
+import { BLOCK, buttonEl, checkbox, div, labelEl, palettePos, withLabel } from "./assistDom";
+import { MapAssistClient } from "./MapAssistClient";
+import type { AssistData, AssistImage, AssistRange } from "./protocol";
 
 /**
  * マップ作成補助（別ウィンドウ。#312）。左の「ブロック一覧」「マップ」で範囲を選び、中のパーツの一覧で選んだパーツの、
@@ -37,20 +21,14 @@ export class MapAssistWindow {
   private dirty = false;
   private selectedPart = -1;
   private selectedSlot = "";
-  private tab: "blocks" | "map" = "blocks";
-  private picked: Picked | null = null;
-  private atlas: HTMLCanvasElement | null = null;
-  private mapAtlas: HTMLCanvasElement | null = null;
-  private dragFrom: { x: number; y: number } | null = null;
-  private nextId = 1;
-  private readonly pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly client = new MapAssistClient();
 
   // 部品
-  private readonly sourceCanvas = canvasEl("assist.source");
-  private readonly sourceBox = div("assist-source-box");
-  private readonly selectionLabel = div("assist-note");
-  private readonly tabBlocks = buttonEl("assist.tabBlocks", t.tabBlocks, () => this.setTab("blocks"));
-  private readonly tabMap = buttonEl("assist.tabMap", t.tabMap, () => this.setTab("map"));
+  /** 左の「ブロック一覧」「マップ」と、選んだ所。 */
+  private readonly source = new AssistSourcePane({
+    mapImage: async () => (await this.client.request({ op: "mapImage" })) as AssistImage,
+    run: (action) => this.run(action),
+  });
   private readonly list = document.createElement("select");
   private readonly nameInput = document.createElement("input");
   private readonly roleSelect = document.createElement("select");
@@ -65,60 +43,30 @@ export class MapAssistWindow {
 
   async start(): Promise<void> {
     this.build();
-    await getCurrentWebviewWindow().listen<AssistMessage>(MAP_ASSIST_MESSAGE_EVENT, (e) => this.onMessage(e.payload));
-    const data = (await this.request({ op: "hello" })) as AssistData | null;
+    await this.client.connect({ data: (data) => this.setData(data), range: (range) => this.setRange(range) });
+    const data = (await this.client.request({ op: "hello" })) as AssistData | null;
     if (data) this.setData(data);
     await startToolWindowAutomation({
       describe: () => this.describe(),
-      canvas: (id) => (id === "assist.source" ? this.sourceCanvas.toDataURL("image/png") : null),
+      canvas: (id) => (id === "assist.source" ? this.source.canvas.toDataURL("image/png") : null),
     });
   }
 
   // ---- やり取り ----
 
-  private request(body: RequestBody): Promise<unknown> {
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      emitTo("main", MAP_ASSIST_REQUEST_EVENT, { ...body, id }).catch((e: unknown) => {
-        this.pending.delete(id);
-        reject(e instanceof Error ? e : new Error(String(e)));
-      });
-    });
-  }
-
-  private onMessage(m: AssistMessage): void {
-    if (m.type === "reply") {
-      const p = this.pending.get(m.id);
-      if (!p) return;
-      this.pending.delete(m.id);
-      if (m.ok) p.resolve(m.result);
-      else p.reject(new Error(m.error ?? ""));
-    } else if (m.type === "data") this.setData(m.data);
-    else this.setRange(m.range);
-  }
-
   private setData(data: AssistData): void {
     const changed = this.data?.key !== data.key;
     this.data = data;
-    // 3 層の次の番号は、メインのパレットと同じく薄くして斜線を引く（#338）
-    const children = new Set(data.tripleChildren);
-    this.atlas = imageCanvas(data.palette, (rgba, width) => {
-      for (const b of children) {
-        const p = palettePos(b);
-        shadeTripleChild(rgba, width, p.col * BLOCK, p.row * BLOCK);
-      }
-    });
-    if (changed || !this.dirty) {
+    const reset = changed || !this.dirty;
+    this.source.setData(data, changed, reset);
+    if (reset) {
       this.parts = data.parts.map(clonePart);
       this.dirty = data.unsaved;
       this.selectedPart = this.parts.length > 0 ? Math.min(Math.max(this.selectedPart, 0), this.parts.length - 1) : -1;
-      this.picked = null;
     }
-    if (changed) this.mapAtlas = null;
     document.title = `${t.title} - ${data.mapName}`;
     this.setRange(data.range);
-    this.renderSource();
+    this.source.render();
     this.renderList();
   }
 
@@ -144,16 +92,6 @@ export class MapAssistWindow {
 
   private build(): void {
     this.root.classList.add("map-assist");
-    // 左
-    const left = div("assist-left");
-    const tabs = div("assist-tabs");
-    tabs.append(this.tabBlocks, this.tabMap);
-    this.sourceBox.append(this.sourceCanvas);
-    left.append(tabs, this.sourceBox, this.selectionLabel);
-    this.sourceCanvas.addEventListener("pointerdown", (e) => this.pointer(e, "down"));
-    this.sourceCanvas.addEventListener("pointermove", (e) => this.pointer(e, "move"));
-    this.sourceCanvas.addEventListener("pointerup", (e) => this.pointer(e, "up"));
-
     // 中
     const mid = div("assist-mid");
     this.list.size = 14;
@@ -210,99 +148,9 @@ export class MapAssistWindow {
     right.append(labelEl(t.slots), this.slotBox, slotOps, saveRow, range);
 
     const body = div("assist-body");
-    body.append(left, mid, right);
+    body.append(this.source.element, mid, right);
     this.root.append(body, this.status);
-    this.setTab("blocks");
-  }
-
-  private setTab(tab: "blocks" | "map"): void {
-    this.tab = tab;
-    this.picked = null;
-    this.tabBlocks.classList.toggle("active", tab === "blocks");
-    this.tabMap.classList.toggle("active", tab === "map");
-    if (tab === "map" && !this.mapAtlas) {
-      void this.run(async () => {
-        this.mapAtlas = imageCanvas((await this.request({ op: "mapImage" })) as AssistImage);
-        this.renderSource();
-      });
-    }
-    this.renderSource();
-  }
-
-  private renderSource(): void {
-    const src = this.tab === "blocks" ? this.atlas : this.mapAtlas;
-    const c = this.sourceCanvas;
-    if (!src) {
-      c.width = c.height = 0;
-      return;
-    }
-    const zoom = this.tab === "blocks" ? 2 : 1;
-    c.width = src.width * zoom;
-    c.height = src.height * zoom;
-    const g = c.getContext("2d")!;
-    g.imageSmoothingEnabled = false;
-    g.drawImage(src, 0, 0, c.width, c.height);
-    const p = this.picked;
-    if (p) {
-      const s = BLOCK * zoom;
-      g.strokeStyle = "#ff0000";
-      g.lineWidth = 2;
-      g.strokeRect(p.x * s + 1, p.y * s + 1, p.grid.width * s - 2, p.grid.height * s - 2);
-    }
-    this.selectionLabel.textContent = p ? t.selection(p.x, p.y, p.grid.width, p.grid.height) : t.noSelection;
-  }
-
-  /** 左の画像の上のドラッグで範囲を選ぶ。 */
-  private pointer(e: PointerEvent, type: "down" | "move" | "up"): void {
-    const zoom = this.tab === "blocks" ? 2 : 1;
-    const r = this.sourceCanvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - r.left) / (BLOCK * zoom));
-    const y = Math.floor((e.clientY - r.top) / (BLOCK * zoom));
-    if (type === "down") {
-      this.dragFrom = { x, y };
-      try {
-        this.sourceCanvas.setPointerCapture(e.pointerId);
-      } catch {
-        /* 自動操作のイベントは捕まえられない */
-      }
-    }
-    if (!this.dragFrom || (type === "move" && e.buttons === 0)) return;
-    this.pick(this.dragFrom, { x, y });
-    if (type === "up") this.dragFrom = null;
-  }
-
-  private pick(a: { x: number; y: number }, b: { x: number; y: number }): void {
-    const data = this.data;
-    if (!data) return;
-    const x0 = Math.max(0, Math.min(a.x, b.x));
-    const y0 = Math.max(0, Math.min(a.y, b.y));
-    const x1 = Math.max(a.x, b.x);
-    const y1 = Math.max(a.y, b.y);
-    const cells: (PartCell | null)[] = [];
-    const children = new Set(data.tripleChildren);
-    if (this.tab === "blocks" && x0 === x1 && y0 === y1) {
-      // 3 層の次の番号を 1 つ押したら、1 つ前の 3 層のブロックを選ぶ（メインのパレットと同じ。#338）
-      const block = paletteBlock(x0, y0, data.secondaryCount);
-      if (block !== null && children.has(block)) {
-        const p = palettePos(block - 1);
-        this.picked = { x: p.col, y: p.row, grid: { width: 1, height: 1, cells: [{ block: block - 1, movement: null }] } };
-        return this.renderSource();
-      }
-    }
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        if (this.tab === "blocks") {
-          const block = paletteBlock(x, y, data.secondaryCount);
-          // 矩形に入った次の番号は空き（書かないマス）にする
-          cells.push(block === null || children.has(block) ? null : { block, movement: null });
-        } else {
-          const v = x < data.map.width && y < data.map.height ? data.map.cells[y * data.map.width + x] : undefined;
-          cells.push(v === undefined ? null : { block: v & 0x3ff, movement: v >> 10 });
-        }
-      }
-    }
-    this.picked = { x: x0, y: y0, grid: { width: x1 - x0 + 1, height: y1 - y0 + 1, cells } };
-    this.renderSource();
+    this.source.setTab("blocks");
   }
 
   private current(): AutoPenPart | null {
@@ -342,14 +190,15 @@ export class MapAssistWindow {
       const h = Math.max(1, Math.min(g?.height ?? 1, 6));
       c.width = w * BLOCK;
       c.height = h * BLOCK;
-      if (g && this.atlas) {
+      const atlas = this.source.atlas;
+      if (g && atlas) {
         const ctx = c.getContext("2d")!;
         g.cells.forEach((pc, i) => {
           const x = i % g.width;
           const y = Math.floor(i / g.width);
           if (!pc || x >= w || y >= h) return;
           const p = palettePos(pc.block);
-          ctx.drawImage(this.atlas!, p.col * BLOCK, p.row * BLOCK, BLOCK, BLOCK, x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+          ctx.drawImage(atlas, p.col * BLOCK, p.row * BLOCK, BLOCK, BLOCK, x * BLOCK, y * BLOCK, BLOCK, BLOCK);
         });
       }
       const caption = div("assist-slot-name");
@@ -414,20 +263,21 @@ export class MapAssistWindow {
   }
 
   private putSelection(): void {
-    if (!this.picked) return this.say(t.noSelection, true);
-    this.setSlot(this.picked.grid);
+    const picked = this.source.picked;
+    if (!picked) return this.say(t.noSelection, true);
+    this.setSlot(picked.grid);
   }
 
   private async save(): Promise<void> {
     const parts = this.parts.map((p, order) => ({ ...p, order }));
-    const r = (await this.request({ op: "save", parts })) as { written: string[] };
+    const r = (await this.client.request({ op: "save", parts })) as { written: string[] };
     this.dirty = false;
     this.say(t.saved(r.written.length));
   }
 
   private async analyze(): Promise<void> {
     this.say(t.analyzing);
-    const r = (await this.request({ op: "analyze" })) as { parts: AutoPenPart[] };
+    const r = (await this.client.request({ op: "analyze" })) as { parts: AutoPenPart[] };
     const names = new Set(this.parts.map((p) => p.name));
     const add = r.parts.filter((p) => !names.has(p.name)).map(clonePart);
     this.parts.push(...add);
@@ -437,34 +287,33 @@ export class MapAssistWindow {
   }
 
   private async importBochi(): Promise<void> {
-    const r = (await this.request({ op: "importBochi" })) as { parts: number; matched: number } | null;
+    const r = (await this.client.request({ op: "importBochi" })) as { parts: number; matched: number } | null;
     if (r) this.say(t.imported(r.parts, r.matched));
   }
 
   private async fill(): Promise<void> {
     const part = this.current();
     if (!part) return this.say(t.noPart, true);
-    const r = (await this.request({ op: "fill", part })) as { count: number };
+    const r = (await this.client.request({ op: "fill", part })) as { count: number };
     this.say(t.painted(r.count));
   }
 
   private async tidy(): Promise<void> {
     const options = { edges: this.tidyEdges.checked, repeats: this.tidyRepeats.checked, movement: this.tidyMovement.checked };
-    const r = (await this.request({ op: "tidy", options })) as { count: number };
+    const r = (await this.client.request({ op: "tidy", options })) as { count: number };
     this.say(t.painted(r.count));
   }
 
   /** 自動操作の `state`。 */
   private describe(): unknown {
     const part = this.current();
+    const picked = this.source.picked;
     return {
-      tab: this.tab,
+      tab: this.source.tab,
       parts: this.parts.map((p) => ({ name: p.name, kind: p.kind, role: p.role, slots: Object.keys(p.slots) })),
       selected: part?.name ?? null,
       slot: this.selectedSlot,
-      picked: this.picked
-        ? { x: this.picked.x, y: this.picked.y, width: this.picked.grid.width, height: this.picked.grid.height, blocks: this.picked.grid.cells.map((c) => c?.block ?? null) }
-        : null,
+      picked: picked ? { x: picked.x, y: picked.y, width: picked.grid.width, height: picked.grid.height, blocks: picked.grid.cells.map((c) => c?.block ?? null) } : null,
       range: this.data?.range ?? null,
       dirty: this.dirty,
       status: this.status.textContent,
@@ -472,73 +321,6 @@ export class MapAssistWindow {
   }
 }
 
-/** パレットの (列, 行) のブロック（無い位置は null）。 */
-function paletteBlock(col: number, row: number, secondaryCount: number): number | null {
-  if (col < 0 || col >= PALETTE_WIDTH || row < 0) return null;
-  const primaryRows = PRIMARY / PALETTE_WIDTH;
-  if (row < primaryRows) return row * PALETTE_WIDTH + col;
-  const i = (row - primaryRows) * PALETTE_WIDTH + col;
-  return i < secondaryCount ? PRIMARY + i : null;
-}
-
-function palettePos(block: number): { col: number; row: number } {
-  if (block < PRIMARY) return { col: block % PALETTE_WIDTH, row: Math.floor(block / PALETTE_WIDTH) };
-  const i = block - PRIMARY;
-  return { col: i % PALETTE_WIDTH, row: PRIMARY / PALETTE_WIDTH + Math.floor(i / PALETTE_WIDTH) };
-}
-
-function imageCanvas(image: AssistImage, edit?: (rgba: Uint8ClampedArray, width: number) => void): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = image.width;
-  c.height = image.height;
-  const rgba = new Uint8ClampedArray(decodeBase64(image.rgba));
-  edit?.(rgba, image.width);
-  c.getContext("2d")!.putImageData(new ImageData(rgba, image.width, image.height), 0, 0);
-  return c;
-}
-
 function clonePart(p: AutoPenPart): AutoPenPart {
   return JSON.parse(JSON.stringify(p)) as AutoPenPart;
-}
-
-function div(className: string): HTMLDivElement {
-  const d = document.createElement("div");
-  d.className = className;
-  return d;
-}
-
-function canvasEl(id: string): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.dataset["autoId"] = id;
-  return c;
-}
-
-function buttonEl(id: string, text: string, onClick: () => void): HTMLButtonElement {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.textContent = text;
-  b.dataset["autoId"] = id;
-  b.addEventListener("click", onClick);
-  return b;
-}
-
-function labelEl(text: string): HTMLElement {
-  const l = document.createElement("div");
-  l.className = "assist-label";
-  l.textContent = text;
-  return l;
-}
-
-function checkbox(id: string, checked: boolean): HTMLInputElement {
-  const c = document.createElement("input");
-  c.type = "checkbox";
-  c.checked = checked;
-  c.dataset["autoId"] = id;
-  return c;
-}
-
-function withLabel(input: HTMLInputElement, text: string): HTMLElement {
-  const l = document.createElement("label");
-  l.append(input, document.createTextNode(text));
-  return l;
 }
