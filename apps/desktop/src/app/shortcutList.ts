@@ -59,6 +59,12 @@ function scriptEditorKeys(): ShortcutRow[] {
     ["Ctrl+Shift+M", s.diagnostics],
     ["Ctrl+Alt+G", s.gotoLine],
     ["Tab", s.indent],
+    ["Ctrl+Z", s.undo],
+    ["Ctrl+Y、Ctrl+Shift+Z", s.redo],
+    ["F2", s.rename],
+    ["Ctrl+B", s.build],
+    ["Esc", s.closeHover],
+    ["Enter", s.applyString],
   ];
   return rows.map(([keys, action]) => ({ keys, action, where: s.where }));
 }

@@ -133,5 +133,11 @@ export const jaScriptEditorAssist = {
     diagnostics: "波線の一覧",
     gotoLine: "行へ移動",
     indent: "字下げ（タブ文字）",
+    undo: "元に戻す（ファイルごとの履歴。メインの履歴は戻さない）",
+    redo: "やり直す（ファイルごとの履歴）",
+    rename: "カーソルのラベル名を変える（.s の定義と参照、イベントのラベル）",
+    build: "ビルド（下のビルドの欄）",
+    closeHover: "ホバーの吹き出しを閉じる・文字列の入力欄を取り消す",
+    applyString: "文字列の入力欄の本文を .string へ反映する",
   },
 };
