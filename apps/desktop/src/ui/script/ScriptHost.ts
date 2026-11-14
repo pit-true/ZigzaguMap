@@ -271,6 +271,9 @@ export class ScriptHost {
         if (this.index && isScriptSourcePath(path)) await reloadScriptIndexFile(await this.index, this.fs, path);
         return null;
       }
+      case "setting":
+        this.app.state.settings.update({ [request.key]: request.value });
+        return null;
     }
   }
 

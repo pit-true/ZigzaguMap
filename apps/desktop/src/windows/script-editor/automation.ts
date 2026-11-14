@@ -4,6 +4,9 @@ import { EditorSelection } from "@codemirror/state";
 import { listDialogs, operateDialog } from "../../app/automation/dialogs";
 import { nextFrame, settle, str } from "../../app/automation/registry";
 import { errorText } from "../../util/errors";
+import { FEATURE_COMMANDS } from "./automationFeatures";
+import { currentDiagnostics } from "./extensions/lint";
+import { currentEditorTheme } from "./extensions/themes";
 import type { ScriptEditorWindow } from "./ScriptEditorWindow";
 
 /** Rust から届く要求。 */
@@ -76,6 +79,8 @@ function describe(w: ScriptEditorWindow): unknown {
       ? sel.ranges.map((r) => ({ anchor: lineColumn(w, r.anchor), head: lineColumn(w, r.head), text: w.view.state.sliceDoc(r.from, r.to) }))
       : [],
     message: document.querySelector('[data-auto-id="se.message"]')?.textContent ?? "",
+    diagnostics: active ? currentDiagnostics(w.view.state) : [],
+    theme: currentEditorTheme(),
     title: document.title,
     dialogs: listDialogs(),
   };
@@ -172,4 +177,5 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
     await settle(200);
     return result;
   },
+  ...FEATURE_COMMANDS,
 };

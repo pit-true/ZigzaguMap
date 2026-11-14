@@ -113,5 +113,13 @@
 
 .se-position {
   flex: none;
+  margin-left: auto;
   color: var(--gray-text);
+}
+
+.se-theme {
+  flex: none;
+  height: 18px;
+  margin-top: 2px;
+  font-size: 12px;
 }

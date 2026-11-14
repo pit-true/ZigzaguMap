@@ -23,7 +23,9 @@ export type ScriptEditorRequest =
   /** 準備ができた。返事は、開くのを待っているファイル（ScriptEditorHello）。 */
   | { readonly type: "hello" }
   /** ファイルを保存した（メインはラベルの索引のそのファイルの分を読み直す）。 */
-  | { readonly type: "saved"; readonly path: string };
+  | { readonly type: "saved"; readonly path: string }
+  /** エディタの個人設定を変えた（メインが settings.json に残す。今はテーマ `scriptEditorTheme` だけ）。 */
+  | { readonly type: "setting"; readonly key: "scriptEditorTheme"; readonly value: string };
 
 /** `hello` の返事。 */
 export interface ScriptEditorHello {
