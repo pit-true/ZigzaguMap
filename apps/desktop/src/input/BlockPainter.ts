@@ -121,7 +121,7 @@ export class BlockPainter {
 
   /** 選択（複数ブロックなら左上を `cell`）を置く。移動許可を持つ選択は、設定がオンなら移動許可ごと置く。 */
   paintSelection(cell: Cell, s: BlockSelection, merge = false): void {
-    const sel = s.movements !== undefined && s.movements.length === s.blocks.length ? s : { width: s.width, height: s.height, blocks: s.blocks };
+    const sel = usableSelection(s);
     const list = tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel);
     if (this.bag?.appliesTo(s)) return this.write(this.fromBag(list), true, merge, true);
     this.write(list, true, merge);
@@ -292,9 +292,13 @@ export function paintCommand(
   s: BlockSelection,
   withMovements: boolean,
 ): Command | null {
-  const ok = s.movements !== undefined && s.movements.length === s.blocks.length;
-  const sel = ok ? s : { width: s.width, height: s.height, blocks: s.blocks };
-  return cellsCommand(id, grid, tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, sel), withMovements);
+  return cellsCommand(id, grid, tileRect({ x: cell.x, y: cell.y, width: s.width, height: s.height }, usableSelection(s)), withMovements);
+}
+
+/** 移動許可の数がブロックと合わない選択は、移動許可を持たないものとして扱う（穴はそのまま）。 */
+function usableSelection(s: BlockSelection): BlockSelection {
+  if (s.movements === undefined || s.movements.length === s.blocks.length) return s;
+  return { width: s.width, height: s.height, blocks: s.blocks, ...(s.holes ? { holes: s.holes } : {}) };
 }
 
 function hex4(n: number): string {

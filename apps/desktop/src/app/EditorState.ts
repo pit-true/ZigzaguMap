@@ -17,6 +17,13 @@ export interface BlockSelection {
   readonly blocks: readonly number[];
   /** 移動許可（`blocks` と同じ並び）。マップから拾ったときだけ持つ（パレットから選んだものは持たない。Phase3 #225）。 */
   readonly movements?: readonly number[];
+  /** 貼らないマス（`blocks` と同じ並びで true のマスは書かない）。四角でないスタンプだけが持つ。 */
+  readonly holes?: readonly boolean[];
+}
+
+/** 選択の `i` 番目のマスを書くか（四角でないスタンプの穴でないか）。 */
+export function selectionWrites(s: BlockSelection, i: number): boolean {
+  return s.holes?.[i] !== true;
 }
 
 /** ステータスバーの 2 欄。 */
