@@ -27,6 +27,8 @@ python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFR
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
+python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
+    # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -38,7 +40,7 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `open` | `rom`、`project`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ |
 | `selectMap` | `bank`、`map` | マップを開く。返事の `switchMs` は切り替えにかかった時間 |
 | `tab` | `name`（`map` / `movement` / `event` / `wild` / `header`） | タブを切り替える |
-| `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`） |
+| `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`）。`group` の中や `targets` で 2 枚以上のマップを変えるときは、そのマップも先に読み込む。変わったマップには全部未出力の印が付く |
 | `undo` / `redo` | | 元に戻す／やり直す |
 | `export` | `dir`（素の ROM では必須） | 出力する。返事は書いたファイルと消したファイル |
 | `selectBlock` | `block`、または `blocks` と `width` | 選択中のブロックの値を直接変える（パレットのクリックは `mouse` の `palette`） |

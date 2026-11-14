@@ -49,7 +49,9 @@ export type StateTopic =
   | "dirty"
   | "status"
   | "recent"
-  | "opacity";
+  | "opacity"
+  /** 表示中でないマップが操作で変わった（`changedMaps` に一覧。隣の帯の描き直し用） */
+  | "otherMaps";
 
 type Listener = () => void;
 
@@ -70,6 +72,8 @@ export class EditorState {
   previousMap: MapId | null = null;
   /** 未出力のマップ（"バンク.マップ"）。 */
   dirty = new Set<string>();
+  /** 直前の操作で変わった、表示中でないマップ（"otherMaps" の知らせのとき）。 */
+  changedMaps: readonly MapId[] = [];
   private readonly listeners = new Map<StateTopic, Set<Listener>>();
 
   constructor(
