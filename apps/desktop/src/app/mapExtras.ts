@@ -74,6 +74,8 @@ export class MapExtras {
       ([view, tab]) => new NeighborLayer(view, state, this.neighbors, openFrom[tab], { tab, movement: tab === "movement", clones: tab === "event" }),
     );
     this.neighborLayers = { map: layers[0]!, movement: layers[1]!, event: layers[2]! };
+    // 帯の上のクローンの吹き出し（#345）
+    eventTab.onBand = (cell) => layers[2]!.bandContains(cell);
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）

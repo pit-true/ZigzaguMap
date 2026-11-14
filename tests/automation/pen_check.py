@@ -108,6 +108,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     # 拾うと 0x010 が選ばれる
     z.call({"cmd": "mouse", "target": "map", "action": "rightClick", "cell": [4, 4]})
     check(selection(z)["blocks"] == [0x10], "マップの 0x011 を拾うと 0x010 が選ばれる")
+    check("3層" in z.call({"cmd": "state"})["status"]["left"], "マップから拾ったときもステータスバーに「3層」が出る")
     screenshot(z, shots, "pen_triple_marks.png")
     z.call({"cmd": "setting", "key": "tripleChildMarks", "value": False})
     z.call({"cmd": "action", "id": "view.grid"})
@@ -115,6 +116,22 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "tripleChildCells"})["marked"] == [], "表示メニューで印を消せる")
     z.call({"cmd": "setting", "key": "tripleChildMarks", "value": True})
     z.call({"cmd": "undo"})
+    z.call({"cmd": "undo"})
+
+    # マップ作成補助の窓のブロック一覧（#338）: 0x011 を押すと 0x010 を選び、矩形に入った 0x011 は空き（上の取り消しで 3 層も戻ったので、もう一度）
+    make_triple(z, 0x10)
+    open_assist(z)
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": 1 * 32 + 8, "y": 2 * 32 + 8})
+    p = win(z, {"cmd": "state"})["picked"]
+    check(p == {"x": 0, "y": 2, "width": 1, "height": 1, "blocks": [0x10]}, f"窓のブロック一覧で 0x011 を押すと 0x010 が選ばれる（{p}）")
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "down", "x": 8, "y": 2 * 32 + 8})
+    win(z, {"cmd": "pointer", "id": "assist.source", "type": "up", "x": 2 * 32 + 8, "y": 2 * 32 + 8})
+    p = win(z, {"cmd": "state"})["picked"]
+    check(p is not None and p["blocks"] == [0x10, None, 0x12], f"窓の矩形に入った 0x011 は空き（{p}）")
+    if shots:
+        save_png(win(z, {"cmd": "canvasPng", "id": "assist.source"}), shots / "pen_triple_assist.png")
+    win(z, {"cmd": "close"})
     z.call({"cmd": "undo"})
 
 
@@ -248,6 +265,20 @@ def win(z: Zigzagu, cmd: dict):
     return z.call({**cmd, "window": "map-assist"})
 
 
+def open_assist(z: Zigzagu, need_parts: bool = True) -> dict:
+    """ツール > マップ作成補助 を開き、窓が答えるまで待つ（`need_parts` ならパーツの一覧が届くまで）。"""
+    r = z.call({"cmd": "action", "id": "tools.mapAssist"})
+    for _ in range(100):
+        try:
+            st = win(z, {"cmd": "state"})
+            if st["parts"] or not need_parts:
+                return st
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(0.2)
+    raise SystemExit(f"マップ作成補助の窓が開きません（{r}）")
+
+
 def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     work = ctx["work"]
     z.call({"cmd": "open", "rom": ctx["rom"], "project": str(work)})
@@ -264,18 +295,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     broken = z.call({"cmd": "cells"})["cells"]
     # メインで範囲を選ぶ（Ctrl＋右ドラッグ）
     z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [7, 11], "to": [15, 15]})
-    r = z.call({"cmd": "action", "id": "tools.mapAssist"})
-    st = None
-    for _ in range(100):
-        try:
-            st = win(z, {"cmd": "state"})
-            if st["parts"]:
-                break
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(0.2)
-    if st is None:
-        raise SystemExit(f"マップ作成補助の窓が開きません（{r}）")
+    st = open_assist(z)
     check("池（岩の岸）" in [p["name"] for p in st["parts"]], "マップ作成補助の窓にパーツの一覧が出る")
     check(st["range"] == {"x": 7, "y": 11, "width": 9, "height": 5}, f"メインで選んだ範囲が出る（{st['range']}）")
     hist = z.call({"cmd": "state"})["history"]
@@ -286,6 +306,23 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     screenshot(z, shots, "pen_assist_main.png")
     z.call({"cmd": "undo"})
     check(z.call({"cmd": "cells"})["cells"] == broken, "メインの 1 回の Ctrl+Z で戻る")
+    # 「移動エリアを付ける」を外して整えると、移動許可は今のまま（メインの「移動許可も付ける」がオンでも。#336）
+    rng = [(x, y) for y in range(11, 16) for x in range(7, 16)]
+    z.call({"cmd": "command", "name": "paintCells", "args": {"bank": 3, "map": 0, "cells": [{"x": x, "y": y, "block": broken[y * w + x] & 0x3FF, "movement": 0x0B} for x, y in rng]}})
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": False})
+    win(z, {"cmd": "click", "id": "assist.tidy"})
+    kept = z.call({"cmd": "cells"})["cells"]
+    check(all((kept[y * w + x] & 0x3FF) == (good[y * w + x] & 0x3FF) for x, y in rng), "チェックを外しても縁は直る")
+    check(all(kept[y * w + x] >> 10 == 0x0B for x, y in rng), "移動エリアのチェックを外すと移動許可は変わらない")
+    z.call({"cmd": "undo"})
+    # 付けると、パーツのブロックのマスに移動許可を書く（水は使用回数でいちばん多い 0x04）
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": True})
+    win(z, {"cmd": "click", "id": "assist.tidy"})
+    moved = z.call({"cmd": "cells"})["cells"]
+    check(moved[13 * w + 11] >> 10 == 0x04, f"移動エリアを付けると移動許可を書く（{moved[13 * w + 11] >> 10:#x}）")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "undo"})
+    win(z, {"cmd": "setField", "id": "assist.tidyMovement", "value": False})
     # 選んだパーツで範囲を塗る（草むら）
     names = [p["name"] for p in win(z, {"cmd": "state"})["parts"]]
     win(z, {"cmd": "setField", "id": "assist.parts", "value": names.index("草むら")})
@@ -300,7 +337,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     win(z, {"cmd": "click", "id": "assist.put"})
     win(z, {"cmd": "setField", "id": "assist.name", "value": "テストの面"})
     shot_w = win(z, {"cmd": "state"})
-    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
+    check(shot_w["picked"] == {"x": 1, "y": 0, "width": 1, "height": 1, "blocks": [0x001]} and "Blocks" in [p for p in shot_w["parts"] if p["name"] == "テストの面"][0]["slots"], "左で選んだ所を枠に入れる")
     if shots:
         save_png(z.call({"cmd": "screenshot", "window": "map-assist"}), shots / "pen_assist_window.png")
     win(z, {"cmd": "click", "id": "assist.save"})
