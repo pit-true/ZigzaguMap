@@ -44,6 +44,7 @@ import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
+import type { ScriptSummaries } from "../ui/event/ScriptSummaries";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
@@ -99,6 +100,7 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
+  private summariesValue: Promise<ScriptSummaries> | null = null;
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
@@ -169,6 +171,7 @@ export class App implements ActionTarget {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
+      summaries: () => this.eventSummaries(),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
@@ -637,6 +640,11 @@ export class App implements ActionTarget {
   }
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
+  /** イベントのスクリプトの要約（#226。初めてホバーしたときに読み込む）。 */
+  eventSummaries(): Promise<ScriptSummaries> {
+    return (this.summariesValue ??= import("../ui/event/ScriptSummaries").then(({ ScriptSummaries }) => new ScriptSummaries(this)));
+  }
+
   scriptHost(): Promise<ScriptHost> {
     return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
   }

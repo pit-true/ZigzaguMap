@@ -211,3 +211,11 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 ## Phase3 の部品と命令（表示・ホバー・スタンプ）
 
 - 場所の設定タブの「配置の共有」（#228）: かんたん表示 `easy.layoutShared`（「この配置（ブロックの並び）は N 枚のマップで使われています」の文。共有していないマップでは `visible` が false）・一覧 `easy.layoutShared.list`・一覧のマップ `easy.layoutShared.map:<バンク>.<マップ>`（`click` で開く。表示中のマップはボタンにしない）。くわしく表示は頭が `header.`（`header.layoutShared` など）。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `event.hover` | `kind`（`person` / `sign` / `warp` / `trap`）・`index`、または `cell: [x, y]`、`show`（false で返したあと消す。既定 true） | イベントタブ（先に `tab` で `event`）のそのマスの吹き出し（#226）を待たずに出し、中身ができるまで待って返す。返事は `shown`（出したか。イベントが無ければ false）、`visible`、`cell`、`sections`（イベントごとの `title`・`lines`・`warn`・`image`（画像があるか））、`text`（全部の行を改行でつないだもの） |
+| `event.hover.state` | | 今出している吹き出し（返事は `event.hover` と同じ形）。マウスの `hover` で 0.4 秒止めたあとに読む |
+| `event.hover.hide` | | 吹き出しを消す |
+
+吹き出しの部品の ID は `event.hover`（`ui.shot` で撮れる）です。

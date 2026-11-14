@@ -32,6 +32,9 @@ import { WarpPanel } from "./panels/WarpPanel";
 import { scriptEntry } from "../script/ScriptEntry";
 import type { ScriptLabelSource } from "../script/ScriptLabelField";
 import type { ScriptFiles } from "../script/ScriptFiles";
+import { EventHover } from "./EventHover";
+import { eventHoverSource } from "./eventHoverSource";
+import type { ScriptSummaries } from "./ScriptSummaries";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -40,6 +43,8 @@ export interface EventTabHost {
   readonly scriptFiles: ScriptFiles;
   /** イベントを削除する（#220。確認のダイアログを出してから。スクリプトの記述と ROM の範囲も）。 */
   deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
+  /** スクリプトの要約（#226。ホバーの吹き出し）。 */
+  summaries?(): Promise<ScriptSummaries>;
 }
 
 /** スクリプトのラベルの並び（スクリプトタイルは eventscripts の `tile`）。 */
@@ -70,6 +75,8 @@ export class EventTab {
   private index = 0;
   private showCursor = true;
   private placed: PlacedEvent[] = [];
+  /** イベントの上にカーソルを止めたときの吹き出し（#226）。 */
+  readonly hoverTip: EventHover;
   private offsets: EventOffsets | null = null;
   private itemsLoaded = false;
   private unsubscribe: (() => void) | null = null;
@@ -137,6 +144,16 @@ export class EventTab {
       hover: (cell) => this.hover(cell),
       contextMenu: (cell, x, y) => this.contextMenu(cell, x, y),
     });
+    this.hoverTip = new EventHover(
+      this.view,
+      eventHoverSource({
+        state,
+        placed: () => this.placed,
+        summaries: () => host.summaries?.() ?? Promise.reject(new Error("summaries")),
+      }),
+    );
+    state.on("map", () => this.hoverTip.hide());
+    state.on("tab", () => this.hoverTip.hide());
 
     state.on("session", () => this.attachSession());
     state.on("map", () => {
