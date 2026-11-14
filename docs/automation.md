@@ -321,7 +321,10 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `seams.state` | `wait`（true で調べ終えるまで待つ） | 接続の境目の注意（#305）。点検した主マップ `map`、調べ終えたか `done`、崩れるマスのある接続 `issues`（接続の番号 `index`・`side`・相手 `id`・マスの数 `count`・マス `cells`（主マップの左上が原点））、ステータスバーの注意の文 `status`（出ていなければ null）、主マップのタイルセット `tilesets` と上下左右の接続の相手のタイルセット `connections`（`index`・`bank`・`map`・`primary`・`secondary`。ポインタの値） |
+| `town.state` | `wait`（true で読み込みを待つ） | タウンマップの小窓（#306）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、赤い枠 `frame`（タウンマップのマス `x`・`y`・`width`・`height`。無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。小窓を作っていなければ `open: false` だけ |
+| `town.pick` | `x`、`y`（タウンマップのマス） | 小窓のマスを押したのと同じ（地名があれば一覧を `場所:<番号>` で絞る）。返事は `region` と絞り込みの欄の文 `filter` |
 | `catalog.get` | `bank`、`map` | マップ一覧の情報（地名の番号 `region`・配置の番号 `layoutId`・名前 `name`・タイルセットの番号）。無ければ null |
 
 - ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
 - マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。
+- タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。

@@ -111,6 +111,8 @@ export interface SettingsData {
   hiddenEventKinds: string[];
   /** イベントの印の濃さ（0.1〜1.0。移動エリアの透明度とは別の値。1.0 で今までと同じ見た目。#304）。 */
   eventOpacity: number;
+  /** タウンマップの小窓を出す（表示メニュー。既定オフ。#306）。 */
+  showTownMap: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -156,6 +158,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   romProjects: {},
   hiddenEventKinds: [],
   eventOpacity: 1,
+  showTownMap: false,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

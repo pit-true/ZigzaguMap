@@ -7,6 +7,7 @@ import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaClone } from "../i18n/ja.clone";
 import { jaBlockUsage } from "../i18n/ja.blockUsage";
 import { jaEventView } from "../i18n/ja.eventView";
+import { jaTownMini } from "../i18n/ja.townMini";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -102,6 +103,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
+        // タウンマップの小窓（#306。ZigzaguMap 独自）
+        { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",

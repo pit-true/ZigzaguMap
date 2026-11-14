@@ -36,7 +36,36 @@ function catalogGet(app: App, req: AutomationRequest): unknown {
   return app.state.session?.catalog.get({ bank: int(req, "bank"), map: int(req, "map") }) ?? null;
 }
 
+/**
+ * `town.state {wait?}`: タウンマップの小窓（#306）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、
+ * 赤い枠 `frame`（タウンマップのマス。無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。`wait: true` なら読み込みを待つ。
+ * 小窓を作っていなければ作らずに `open: false` を返す。
+ */
+async function townState(app: App, req: AutomationRequest): Promise<unknown> {
+  const town = app.views.townIfCreated();
+  if (!town) return { open: false, loaded: false };
+  if (req["wait"] === true) await town.settle();
+  return {
+    open: town.isOpen,
+    loaded: town.loaded,
+    page: town.currentPage,
+    region: town.currentRegion,
+    frame: town.frameRect(),
+    hovered: town.hovered,
+    label: document.querySelector<HTMLElement>('[data-auto-id="town.label"]')?.textContent ?? null,
+  };
+}
+
+/** `town.pick {x, y}`: 小窓のマス（タウンマップの座標）を押したのと同じ。返事は地名（無ければ null）と一覧の絞り込みの文。 */
+async function townPick(app: App, req: AutomationRequest): Promise<unknown> {
+  const town = await app.views.town();
+  const region = town.pick(int(req, "x"), int(req, "y"));
+  return { region, filter: app.treeFilter.input.value };
+}
+
 export const viewToolCommands: CommandTable = {
+  "town.state": townState,
+  "town.pick": townPick,
   "seams.state": seamsState,
   "catalog.get": catalogGet,
 };

@@ -260,10 +260,49 @@ def check_filter(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(len(maps()) > 300, "消すと全部に戻る")
 
 
+# ---- #306 ----
+
+
+def check_town(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "tree.filter", "text": ""})
+    check(not z.call({"cmd": "town.state"})["open"], "初めは小窓を出さない（既定オフ）")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "menu.run", "id": "view.townMap"})
+    st = z.call({"cmd": "town.state", "wait": True})
+    check(st["open"] and st["loaded"], "表示 > タウンマップの小窓で出て、読み込む")
+    check(st["region"] == 0x58 and st["frame"] is not None and st["page"] == 0, f"マサラタウン（0x58）に枠（{st['frame']}、面 {st['page']}）")
+    shot(z, shots, "view_town_mini.png", "town")
+    frame1 = st["frame"]
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    st = z.call({"cmd": "town.state", "wait": True})
+    check(st["frame"] is not None and st["frame"] != frame1, f"マップを切り替えると枠が動く（{frame1} → {st['frame']}）")
+    # ナナシマ（1 のしま 3.8 など）は別の面
+    z.call({"cmd": "selectMap", "bank": 3, "map": 12})
+    st = z.call({"cmd": "town.state", "wait": True})
+    check(st["page"] != 0 or st["frame"] is None, f"1 のしまでは面が変わる（面 {st['page']}）")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    st = z.call({"cmd": "town.state", "wait": True})
+    f = st["frame"]
+    picked = z.call({"cmd": "town.pick", "x": f["x"], "y": f["y"]})
+    check(picked["region"] == 0x58 and picked["filter"] == "場所:58", f"マスを押すと一覧を場所:58 で絞る（{picked}）")
+    items = [i for i in z.call({"cmd": "tree.list"}) if i.get("mapId") and i["key"].startswith("h")]
+    check(len(items) > 0 and all(z.call({"cmd": "catalog.get", **i["mapId"]})["region"] == 0x58 for i in items), f"一覧が絞られる（{len(items)} 枚）")
+    # マウスを乗せると地名
+    z.call({"cmd": "mouse", "id": "town.canvas", "action": "hover", "px": [32 + f["x"] * 8 + 4, 32 + f["y"] * 8 + 4]})
+    st = z.call({"cmd": "town.state"})
+    check(st["hovered"] == 0x58 and "58" in (st["label"] or ""), f"マウスを乗せると地名を出す（{st['label']!r}）")
+    z.call({"cmd": "tree.filter", "text": ""})
+    z.call({"cmd": "menu.run", "id": "view.townMap"})
+    st = z.call({"cmd": "town.state"})
+    check(not st["open"] and not st["loaded"], "隠すと読み込んだものを捨てる")
+    check(z.call({"cmd": "state"})["settings"]["showTownMap"] is False, "設定に残る（オフ）")
+
+
 CHECKS = {
     "events": check_events,
     "seams": check_seams,
     "filter": check_filter,
+    "town": check_town,
 }
 
 

@@ -1,4 +1,6 @@
 import { SeamNotice } from "../ui/connection/SeamNotice";
+import type { TownMiniView } from "../ui/view/TownMiniView";
+import { regionQuery } from "./mapTreeQuery";
 import type { MapTreeFilter } from "../ui/MapTreeFilter";
 import type { StatusBar } from "../ui/StatusBar";
 import type { Actions } from "./Actions";
@@ -18,17 +20,59 @@ export interface ViewFeatureParts {
 /**
  * Phase4 の表示・一覧・調査の機能（列 3）をまとめて取り付ける。機能ごとのクラスを作り、メニューのアクションを登録する。
  * - 接続の境目の注意（#305）: ステータスバーの「注意: 接続 N か所」と、マップタブの隣の帯の枠。
+ * - タウンマップの小窓（#306）: 表示 > タウンマップの小窓（個人設定 `showTownMap`）。中身は初めて出すときに読み込む。
  */
 export class ViewFeatures {
   /** 接続の境目の点検（#305）。 */
   readonly seams: SeamWarnings;
   readonly seamNotice: SeamNotice;
+  /** タウンマップの小窓（#306。初めて出すときに作る）。 */
+  private townValue: Promise<TownMiniView> | null = null;
+  private townCreated: TownMiniView | null = null;
 
-  constructor(parts: ViewFeatureParts) {
-    const { state, extras, statusBar } = parts;
+  constructor(private readonly parts: ViewFeatureParts) {
+    const { state, actions, extras, statusBar } = parts;
     this.seams = new SeamWarnings(state);
     this.seamNotice = new SeamNotice(state, this.seams, extras.neighborLayers.map);
     statusBar.addSlot(this.seamNotice.element);
+    actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
+    actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
+    // 前回出していたら、ROM を開いたときに出す
+    state.on("session", () => {
+      if (state.session && state.settings.data.showTownMap) void this.setTownMap(true);
+    });
   }
 
+  /** タウンマップの小窓（作っていなければ作る）。 */
+  town(): Promise<TownMiniView> {
+    const { state, treeFilter } = this.parts;
+    return (this.townValue ??= import("../ui/view/TownMiniView").then(
+      ({ TownMiniView }) =>
+        (this.townCreated = new TownMiniView(state, {
+          filterByRegion: (region) => treeFilter.setText(regionQuery(region)),
+          regionName: (region) => state.session?.catalog.regionNames.find(([id]) => id === region)?.[1] ?? null,
+          closed: () => {
+            state.settings.update({ showTownMap: false });
+            state.emit("view");
+          },
+        })),
+    ));
+  }
+
+  /** タウンマップの小窓（作っていなければ null。自動操作用）。 */
+  townIfCreated(): TownMiniView | null {
+    return this.townCreated;
+  }
+
+  /** タウンマップの小窓を出す・隠す（個人設定に残す）。 */
+  async setTownMap(show: boolean): Promise<void> {
+    const state = this.parts.state;
+    state.settings.update({ showTownMap: show });
+    if (show) {
+      if (state.session) await (await this.town()).open();
+    } else if (this.townValue) {
+      (await this.townValue).close();
+    }
+    state.emit("view");
+  }
 }
