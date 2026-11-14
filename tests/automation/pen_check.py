@@ -108,6 +108,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     # 拾うと 0x010 が選ばれる
     z.call({"cmd": "mouse", "target": "map", "action": "rightClick", "cell": [4, 4]})
     check(selection(z)["blocks"] == [0x10], "マップの 0x011 を拾うと 0x010 が選ばれる")
+    check("3層" in z.call({"cmd": "state"})["status"]["left"], "マップから拾ったときもステータスバーに「3層」が出る")
     screenshot(z, shots, "pen_triple_marks.png")
     z.call({"cmd": "setting", "key": "tripleChildMarks", "value": False})
     z.call({"cmd": "action", "id": "view.grid"})

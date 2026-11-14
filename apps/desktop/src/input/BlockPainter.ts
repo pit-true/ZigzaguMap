@@ -12,7 +12,7 @@ import { MapCells } from "./MapCells";
 import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost, type AutoPenTool } from "./AutoPenTool";
-import { dropTripleChildren } from "./tripleRules";
+import { dropTripleChildren, tripleStatusSuffix } from "./tripleRules";
 
 /** ドラッグ中の道具（Phase3 #233）。 */
 type Drag =
@@ -270,7 +270,8 @@ export class BlockPainter implements AutoPenHost {
     if (value === null) return;
     this.state.selectBlock(value & 0x3ff);
     const block = this.state.selection.blocks[0] ?? 0;
-    this.state.setStatus(ja.statusBlock(block));
+    // パレットで選んだときと同じく「3層」の印も出す（#339）
+    this.state.setStatus(ja.statusBlock(block) + tripleStatusSuffix(this.state.map?.tiles.triple ?? null, block));
     this.onPicked();
   }
 
