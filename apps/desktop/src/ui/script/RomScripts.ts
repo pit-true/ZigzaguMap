@@ -1,10 +1,7 @@
 import {
-  DisasmCommandSet,
   NEW_SCRIPT_FILE_TEXT,
   NEW_STRINGS_FILE_TEXT,
   ROM_BASE,
-  ScriptCommandTable,
-  ScriptTextCodec,
   SetEventLabelCommand,
   SetMapScriptTableCommand,
   asmBlockText,
@@ -15,17 +12,18 @@ import {
   mapScriptTableFromEntries,
   mapScriptTargetLabel,
   mapScriptTypeOfAddress,
-  movementNamesFromDefines,
   newScriptLabel,
   planScriptImport,
-  readTextIfExists,
   renderDisassembly,
   retargetMapScriptAddress,
   scriptLabelMapName,
   tableArgs,
+  type DisasmCommandSet,
   type MapScriptTableModel,
   type ScriptImportPlan,
+  type ScriptTextCodec,
 } from "@zigzagumap/core";
+import { disasmTools } from "./disasmTools";
 import type { App } from "../../app/App";
 import { jaRomScript as t } from "../../i18n/ja.romScript";
 import type { ScriptRomOpenRequest } from "../../windows/script-editor/protocol";
@@ -49,19 +47,8 @@ export type RomImportPlan = ScriptImportPlan & { scriptPath: string; stringsPath
 export class RomScripts {
   constructor(private readonly app: App) {}
 
-  private async tools(): Promise<{ commands: DisasmCommandSet; text: ScriptTextCodec }> {
-    const session = this.app.state.session;
-    const fs = session?.files;
-    if (!session?.projectDir || !fs) return { commands: DisasmCommandSet.bundled(), text: ScriptTextCodec.japanese };
-    const read = (path: string): Promise<string | null> => readTextIfExists(fs, path);
-    const xse = await read("xse_commands.s");
-    const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((x): x is string => x !== null);
-    const charmap = await read("charmap.tbl");
-    const text = charmap ? ScriptTextCodec.fromCharmap(charmap) : ScriptTextCodec.japanese;
-    if (!xse) return { commands: DisasmCommandSet.bundled(), text };
-    const table = ScriptCommandTable.build({ xseCommands: xse, defines });
-    const xseDefines = await read("xse_defines.s");
-    return { commands: DisasmCommandSet.fromCommandTable(table, xseDefines ? movementNamesFromDefines(xseDefines) : new Map()), text };
+  private tools(): Promise<{ commands: DisasmCommandSet; text: ScriptTextCodec }> {
+    return disasmTools(this.app.state.session);
   }
 
   /** エディタへ送る、読み取り専用のタブの中身。 */
