@@ -228,3 +228,4 @@ export * from "./script/strings/index.js";
 export * from "./script/project/index.js";
 export * from "./script/disasm/index.js";
 export * from "./script/assist/index.js";
+export * from "./script/build/index.js";
