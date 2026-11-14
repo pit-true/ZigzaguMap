@@ -17,6 +17,8 @@
   「移動許可も貼る」を外すとブロックだけ写る。1 回の取り消しで戻る。Ctrl+C / Ctrl+V で貼る。
 - 233: Ctrl＋左ドラッグの矩形塗り（5×4、2×2 のスタンプで 6×6 の敷き詰め、移動エリアタブの移動許可）と、Alt＋左ドラッグの
   2 マスの入れ替え。どれも 1 回の取り消しで戻る。Esc でドラッグを取りやめると何も変わらない。
+- 231: 辺のつまみのドラッグでリサイズ。マサラタウンを左へ 3 広げると、イベントが 3 右へ、上下の接続のずれが +3、相手側が -3 になり、
+  隣の帯との位置関係が変わらない（元の範囲の画像が同じ）。1 回の取り消しで全部戻る。出力して開き直しても同じ。右へ縮める・制限。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -471,7 +473,81 @@ def check_233(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     z.call({"cmd": "tab", "name": "map"})
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233}
+def check_231(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    z.call({"cmd": "tab", "name": "event"})
+    ev0 = z.call({"cmd": "event.state"})["events"]
+    z.call({"cmd": "tab", "name": "map"})
+    st0 = z.call({"cmd": "neighbors.state", "wait": True})
+    m0 = st0["margins"]
+    w0, h0 = z.call({"cmd": "state"})["map"]["width"], z.call({"cmd": "state"})["map"]["height"]
+    img0 = png_of(z, {"cmd": "canvasPng", "target": "map", "neighbors": True})
+    # 左へ 3 広げる（左の辺のつまみを左へ 3 マス）
+    z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "edge:left", "action": "drag", "cell": [0, 0], "to": [-3, 0]})
+    time.sleep(0.3)
+    s = z.call({"cmd": "state"})
+    check(s["map"]["width"] == w0 + 3 and s["map"]["height"] == h0, f"左の辺のつまみで左へ 3 広がる（{s['map']['width']}×{s['map']['height']}）")
+    z.call({"cmd": "tab", "name": "event"})
+    ev1 = z.call({"cmd": "event.state"})["events"]
+    z.call({"cmd": "tab", "name": "map"})
+    moved = all(a["x"] == b["x"] + 3 and a["y"] == b["y"] for k in ("persons", "warps", "traps", "signs") for a, b in zip(ev1[k], ev0[k]))
+    check(moved, "全イベントが 3 右へずれる")
+    up = next(c for c in conns(z, 3, 0) if c["direction"] == 2)
+    down = next(c for c in conns(z, 3, 0) if c["direction"] == 1)
+    back_up = next(c for c in conns(z, 3, 19) if c["map"] == 0)
+    back_down = next(c for c in conns(z, 3, 39) if c["map"] == 0)
+    check(up["offset"] == 3 and down["offset"] == 3 and back_up["offset"] == -3 and back_down["offset"] == -3,
+          f"上下の接続のずれが +3、相手側が -3 になる（{up['offset']}, {down['offset']}, {back_up['offset']}, {back_down['offset']}）")
+    st = z.call({"cmd": "state"})
+    check({"3.0", "3.19", "3.39"} <= set(st["dirty"]), f"自分と相手に未出力の印が付く {st['dirty']}")
+    open_main(z)
+    st1 = z.call({"cmd": "neighbors.state", "wait": True})
+    m1 = st1["margins"]
+    img1 = png_of(z, {"cmd": "canvasPng", "target": "map", "neighbors": True})
+    if Image is not None:
+        # 主マップの枠（1px）は左の辺の位置が変わるので、左端の 1 列は比べない
+        box0 = (m0["left"] * 16 + 1, (m0["top"] - 8) * 16, (m0["left"] + w0) * 16, (m0["top"] + h0 + 8) * 16)
+        box1 = ((m1["left"] + 3) * 16 + 1, (m1["top"] - 8) * 16, (m1["left"] + 3 + w0) * 16, (m1["top"] + h0 + 8) * 16)
+        diff = max(hi for _lo, hi in ImageChops.difference(img0.crop(box0), img1.crop(box1)).getextrema())
+        check(diff == 0, f"隣の帯との位置関係が変わらない（元の範囲と上下の帯の画像が同じ。差 {diff}）")
+    if shots:
+        shot(z, shots, "p3c_231_left_grown.png")
+    z.call({"cmd": "undo"})
+    s = z.call({"cmd": "state"})
+    check(s["map"]["width"] == w0 and next(c for c in conns(z, 3, 0) if c["direction"] == 2)["offset"] == 0 and next(c for c in conns(z, 3, 19) if c["map"] == 0)["offset"] == 0,
+          "1 回の取り消しで大きさと両側の接続が戻る")
+    open_main(z)
+    z.call({"cmd": "tab", "name": "event"})
+    check(z.call({"cmd": "event.state"})["events"] == ev0, "取り消しでイベントも戻る")
+    z.call({"cmd": "tab", "name": "map"})
+    # 右へ 2 縮める（右の辺のつまみを左へ 2 マス）。右では接続もイベントも変えない
+    open_main(z)
+    z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "edge:right", "action": "drag", "cell": [0, 0], "to": [-2, 0]})
+    time.sleep(0.3)
+    s = z.call({"cmd": "state"})
+    check(s["map"]["width"] == w0 - 2 and next(c for c in conns(z, 3, 0) if c["direction"] == 2)["offset"] == 0, "右の辺で縮めると、接続のずれは変えない")
+    z.call({"cmd": "undo"})
+    # 4 マスより小さくはできない
+    open_main(z)
+    z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "edge:down", "action": "drag", "cell": [0, 0], "to": [0, -100]})
+    time.sleep(0.3)
+    check(z.call({"cmd": "state"})["map"]["height"] == 4, "下の辺を大きく縮めても高さは 4 で止まる")
+    z.call({"cmd": "undo"})
+    # 出力して開き直す
+    open_main(z)
+    z.call({"cmd": "mouse", "target": "connectionHandle", "handle": "edge:left", "action": "drag", "cell": [0, 0], "to": [-3, 0]})
+    time.sleep(0.3)
+    out = work / "out231"
+    out.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "export", "dir": str(out)})
+    z.call({"cmd": "open", "rom": z.rom, "project": str(out)})
+    open_main(z)
+    s = z.call({"cmd": "state"})
+    check(s["map"]["width"] == w0 + 3 and next(c for c in conns(z, 3, 0) if c["direction"] == 2)["offset"] == 3 and next(c for c in conns(z, 3, 19) if c["map"] == 0)["offset"] == -3,
+          "出力して開き直しても大きさと両側の接続が同じ")
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231}
 
 
 def main() -> int:

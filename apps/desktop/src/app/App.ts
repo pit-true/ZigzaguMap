@@ -60,6 +60,7 @@ import { BlockUsageService } from "./BlockUsageService";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
 import { EdgeMenu } from "../ui/connection/EdgeMenu";
+import { EdgeResize } from "../ui/connection/EdgeResize";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -134,6 +135,8 @@ export class App implements ActionTarget {
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
   readonly connectionHandles: ConnectionHandles;
   readonly edgeHandles: EdgeHandles;
+  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
+  readonly edgeResize: EdgeResize;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -204,7 +207,8 @@ export class App implements ActionTarget {
     // 隣の帯のつまみ（マップタブだけ。#229）
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
-    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state));
+    this.edgeResize = new EdgeResize(state);
+    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
     // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
     this.blockUsage = new BlockUsageService(state);
     mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);

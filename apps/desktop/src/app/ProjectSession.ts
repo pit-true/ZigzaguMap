@@ -162,6 +162,11 @@ export class ProjectSession {
     return { id, doc, tiles };
   }
 
+  /** プロジェクトフォルダのファイル（素の ROM だけなら null。`.s` を読んで調べる用。#231）。 */
+  projectFs(): TauriProjectFs | null {
+    return this.fs.root ? this.fs : null;
+  }
+
   /** 持っているタイルセットの組（無ければ undefined。持っている順は変えない。隣のマップの帯の描画用）。 */
   cachedTiles(key: string): TilesetView | undefined {
     return this.tilesets.get(key);

@@ -30,5 +30,24 @@
   border-radius: 50%;
   z-index: 3;
   touch-action: none;
-  cursor: context-menu;
+  cursor: move;
+}
+
+.conn-edge-up,
+.conn-edge-down {
+  cursor: ns-resize;
+}
+
+.conn-edge-left,
+.conn-edge-right {
+  cursor: ew-resize;
+}
+
+/* 辺のつまみのドラッグ中の新しい大きさの枠（#231） */
+.resize-preview {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #1060d0;
+  pointer-events: none;
+  z-index: 2;
 }

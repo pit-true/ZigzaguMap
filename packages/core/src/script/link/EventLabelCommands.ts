@@ -287,6 +287,32 @@ export class RealignEventLabelsCommand extends EventLabelCommand<RealignEventLab
   }
 }
 
+/** 「照合用の座標をずらす」の引数。 */
+export type ShiftEventLabelPositionsArgs = { bank: number; map: number; dx: number; dy: number };
+
+/**
+ * 「照合用の座標をずらす」コマンド（マップを左・上へ広げて、イベントの座標をずらしたとき。#231）。
+ * scripts_MM.json に書いた座標と読んだときの座標を同じだけずらす（ずれの知らせを出さないため）。取り消しは逆にずらす。
+ */
+export class ShiftEventLabelPositionsCommand implements Command<ShiftEventLabelPositionsArgs & JsonObject> {
+  static readonly NAME = "shiftEventLabelPositions";
+  readonly name = ShiftEventLabelPositionsCommand.NAME;
+
+  constructor(readonly args: ShiftEventLabelPositionsArgs & JsonObject) {}
+
+  static fromJson(args: Args): ShiftEventLabelPositionsCommand {
+    return new ShiftEventLabelPositionsCommand({ bank: argInt(args, "bank"), map: argInt(args, "map"), dx: argInt(args, "dx"), dy: argInt(args, "dy") });
+  }
+
+  do(context: EditorContext): void {
+    eventLabelContext(context).eventLabels().shiftPositions(this.args.bank, this.args.map, this.args.dx, this.args.dy);
+  }
+
+  undo(context: EditorContext): void {
+    eventLabelContext(context).eventLabels().shiftPositions(this.args.bank, this.args.map, -this.args.dx, -this.args.dy);
+  }
+}
+
 /** ラベルのコマンド（名前と作り方）。EventLabelContext が要る。 */
 export const EVENT_LABEL_COMMANDS: readonly { readonly name: string; readonly fromJson: CommandFactory }[] = [
   SetEventLabelCommand,
@@ -294,6 +320,7 @@ export const EVENT_LABEL_COMMANDS: readonly { readonly name: string; readonly fr
   RenameEventLabelCommand,
   SetMapScriptTableCommand,
   RealignEventLabelsCommand,
+  ShiftEventLabelPositionsCommand,
 ].map((c) => ({ name: c.NAME, fromJson: c.fromJson as CommandFactory }));
 
 /** ラベルのコマンドを表に登録する。 */

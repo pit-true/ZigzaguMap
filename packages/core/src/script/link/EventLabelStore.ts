@@ -231,6 +231,19 @@ export class EventLabelStore {
     if (!this.loadedPositions.has(k)) this.loadedPositions.set(k, positions);
   }
 
+  /**
+   * そのマップの照合用の座標（ファイルに書いた座標と、読んだときの座標）を (dx, dy) ずらす（マップを左・上へ広げたとき。#231）。
+   * ファイルの文字列は変えないので、次の出力でずらした座標が書かれる。逆にずらせば元に戻る。
+   */
+  shiftPositions(bank: number, map: number, dx: number, dy: number): void {
+    const k = key(bank, map);
+    const shift = <T extends { x: number; y: number }>(e: T): T => ({ ...e, x: e.x + dx, y: e.y + dy });
+    const f = this.files.get(k);
+    if (f) this.files.set(k, { text: f.text, file: { ...f.file, persons: f.file.persons.map(shift), signs: f.file.signs.map(shift), traps: f.file.traps.map(shift) } });
+    const p = this.loadedPositions.get(k);
+    if (p) this.loadedPositions.set(k, { person: p.person.map(shift), sign: p.sign.map(shift), tile: p.tile.map(shift) });
+  }
+
   /** ファイルに書いた座標と、今のイベントの座標が合わないラベル（ファイルの無いマップは空）。 */
   mismatches(bank: number, map: number, positions: EventPositions): EventLabelMismatch[] {
     const f = this.files.get(key(bank, map));
