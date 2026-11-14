@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import type { EditorState, StateEffect, Text } from "@codemirror/state";
 import type { LineEnding, ScriptFileKind } from "./fileText";
 import type { ScriptRomOpenRequest } from "./protocol";
@@ -55,4 +56,9 @@ export class EditorTab {
 export function sameStat(a: FileStat | null, b: FileStat | null): boolean {
   if (!a || !b) return a === b;
   return a.modifiedMs === b.modifiedMs && a.size === b.size;
+}
+
+/** ファイルの更新日時と大きさ（Rust の `fs_stat`。無ければ null）。 */
+export function statFile(path: string): Promise<FileStat | null> {
+  return invoke<FileStat | null>("fs_stat", { path });
 }

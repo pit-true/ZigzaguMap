@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   DisasmCommandSet,
   ScriptAssist,
@@ -13,7 +12,8 @@ import {
 } from "@zigzagumap/core";
 import { TauriProjectFs } from "../../app/TauriProjectFs";
 import { scheduleIdleGc } from "../../util/idleGc";
-import type { FileStat } from "./EditorTab";
+import { sameStat, statFile, type FileStat } from "./EditorTab";
+import { normalizeScriptText } from "./fileText";
 
 /** 文字列のファイルを探すフォルダ。 */
 const STRINGS_DIR = "strings";
@@ -89,7 +89,7 @@ export class ScriptProject {
     }
     for (const path of await listStringFiles(fs, STRINGS_DIR)) {
       const text = await read(path);
-      if (text !== null) this.assist.updateString(path, normalize(text));
+      if (text !== null) this.assist.updateString(path, normalizeScriptText(text));
     }
     for (const path of [...this.assist.index.paths(), ...this.assist.strings.paths()]) this.stats.set(path, await stat(path));
     // 読んでいる間に編集した本文を入れ直す
@@ -132,7 +132,7 @@ export class ScriptProject {
     const st = await stat(path);
     this.stats.set(path, st);
     if (!st) this.assist.remove(path);
-    else this.apply(path, normalize(await this.fs.readText(path)));
+    else this.apply(path, normalizeScriptText(await this.fs.readText(path)));
     this.emit();
   }
 
@@ -151,7 +151,7 @@ export class ScriptProject {
         if (old !== undefined && sameStat(old, st)) continue;
         this.stats.set(path, st);
         if (!st) this.assist.remove(path);
-        else this.apply(path, normalize(await this.fs.readText(path)));
+        else this.apply(path, normalizeScriptText(await this.fs.readText(path)));
         changed = true;
       }
       if (changed) this.emit();
@@ -170,17 +170,8 @@ export class ScriptProject {
   }
 }
 
-function normalize(text: string): string {
-  return (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/\r\n?/g, "\n");
-}
-
 function stat(path: string): Promise<FileStat | null> {
-  return invoke<FileStat | null>("fs_stat", { path }).catch(() => null);
-}
-
-function sameStat(a: FileStat | null, b: FileStat | null): boolean {
-  if (!a || !b) return a === b;
-  return a.modifiedMs === b.modifiedMs && a.size === b.size;
+  return statFile(path).catch(() => null);
 }
 
 /** フォルダの下の `.string`（`.` を含まない名前はフォルダとみなして中も見る）。読めなければ空。 */
