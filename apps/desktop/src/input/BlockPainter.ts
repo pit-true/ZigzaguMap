@@ -5,11 +5,13 @@ import type { EditorState } from "../app/EditorState";
 import type { MixingBag } from "../app/MixingBag";
 import { ja } from "../i18n/ja";
 import { jaPaint } from "../i18n/ja.paint";
+import { jaPen } from "../i18n/ja.pen";
 import type { Cell, MapView } from "../ui/map/MapView";
 import { attachCellPointer } from "./CellPointer";
 import { MapCells } from "./MapCells";
 import { rectOf, tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
+import { dropTripleChildren } from "./tripleRules";
 
 /** ドラッグ中の道具（Phase3 #233）。 */
 type Drag =
@@ -35,6 +37,8 @@ const PREVIEW_ALPHA = 0.75;
  * 「移動許可を自動で選ぶ」（#235）がオンなら、そのブロックにいちばん多い移動許可も書く）。
  * どの操作も、隣のマップの帯の上でも動く（Phase3 #234。帯で見えていない部分には描かない）。2 枚にまたがる操作は、
  * マップごとのコマンドをまとめて 1 回の操作にする（隣のマップは書く前に読み込む）。
+ * 3 層の次の番号（#301）: どの描き方でも書かない（そのマスは今のまま）。1 つも書けなかったときはステータスバーに理由を出す。
+ * 拾ったブロックが 3 層の次の番号なら、1 つ前の 3 層のブロックを選ぶ（パレットと同じ）。
  */
 export class BlockPainter {
   private drag: Drag | null = null;
@@ -155,7 +159,13 @@ export class BlockPainter {
    * （その間の操作は順に待たせる）。`forDrag` はドラッグで続けて描く操作（まとめて 1 回にする）。
    */
   private write(list: readonly FillCell[], forDrag: boolean, merge: boolean, fromBag = false): void {
-    const groups = this.cells.split(list);
+    // 3 層の次の番号は書かない（描き方ごとでなく、ここ 1 か所で落とす。#301）
+    const { kept, skipped } = this.dropUnplaceable(list);
+    if (kept.length === 0) {
+      if (skipped > 0) this.state.setStatus(jaPen.tripleChildSkipped(skipped), undefined, true);
+      return;
+    }
+    const groups = this.cells.split(kept);
     if (groups.length === 0) return;
     // 袋から描くときは、移動許可を持つマス（自動で選んだもの）だけ移動許可も書く。それ以外は「移動許可も貼る」に従う
     const withMovements = fromBag || this.state.settings.data.pasteMovements;
@@ -165,6 +175,12 @@ export class BlockPainter {
       forDrag,
       merge,
     );
+  }
+
+  /** 書くマスから 3 層の次の番号を落とす（主マップのタイルセットで見る）。 */
+  dropUnplaceable(list: readonly FillCell[]): { kept: FillCell[]; skipped: number } {
+    const triple = this.state.map?.tiles.triple ?? null;
+    return dropTripleChildren(list, triple ? (b) => triple.isTripleChild(b) : null);
   }
 
   /** 2 マスのブロックと移動許可を入れ替える（1 回の操作。2 枚のマップにまたがってもよい）。 */
@@ -177,6 +193,12 @@ export class BlockPainter {
     if (!ga || !gb) return;
     const va = ga.getCell(ra.x, ra.y);
     const vb = gb.getCell(rb.x, rb.y);
+    // 3 層の次の番号を動かすと片方だけ書かれてしまうので、入れ替えない（#301）
+    const triple = this.state.map?.tiles.triple;
+    if (triple && (triple.isTripleChild(va & 0x3ff) || triple.isTripleChild(vb & 0x3ff))) {
+      this.state.setStatus(jaPen.tripleChildSkipped(1), undefined, true);
+      return;
+    }
     this.write(
       [
         { x: a.x, y: a.y, block: vb & 0x3ff, movement: vb >> 10 },
@@ -198,8 +220,8 @@ export class BlockPainter {
   private pick(cell: Cell): void {
     const value = this.cellValue(cell);
     if (value === null) return;
-    const block = value & 0x3ff;
-    this.state.selectBlock(block);
+    this.state.selectBlock(value & 0x3ff);
+    const block = this.state.selection.blocks[0] ?? 0;
     this.state.setStatus(ja.statusBlock(block));
     this.onPicked();
   }

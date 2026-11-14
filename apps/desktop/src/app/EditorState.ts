@@ -147,8 +147,12 @@ export class EditorState {
     this.emit("stamp");
   }
 
-  /** 選択中のブロックを 1 つにする。 */
+  /**
+   * 選択中のブロックを 1 つにする（マップ・境界・イベントタブで拾ったとき）。3 層の次の番号（単独では置けない）なら、
+   * パレットと同じく 1 つ前の 3 層のブロックを選ぶ（#300）。
+   */
   selectBlock(block: number): void {
+    if (this.map?.tiles.triple.isTripleChild(block)) block -= 1;
     this.select({ width: 1, height: 1, blocks: [block] });
   }
 

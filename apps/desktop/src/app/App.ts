@@ -55,6 +55,7 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import type { MixingBag } from "./MixingBag";
 import { MapExtras } from "./mapExtras";
+import { PenExtras } from "./penExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -126,6 +127,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** Phase3 でマップの表示に足したもの（隣の帯・つまみ・使用の印・画像のコピーなど）。 */
   readonly extras: MapExtras;
+  /** Phase4 の描く道具の追加分（3 層の印・自動ペン・マップ作成補助）。 */
+  readonly pen: PenExtras;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
@@ -203,6 +206,7 @@ export class App implements ActionTarget {
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.extras = new MapExtras(state, this.actions, { map: mapTab, movement: movementTab, event: eventTab }, (id) => this.openMap(id));
     this.mixingBag = mapTab.bag;
+    this.pen = new PenExtras(state, mapTab);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
