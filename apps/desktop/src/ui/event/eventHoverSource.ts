@@ -11,13 +11,19 @@ import { watchCommands } from "../form/commit";
 import { blockAttribute } from "./warpCheck";
 import { WarpPreview } from "./WarpPreview";
 import { ctrlPeek } from "../map/ctrlPeek";
-import { cloneOrigin } from "../map/cloneLook";
+import { cloneOrigin, type CloneOrigin } from "../map/cloneLook";
+import { placedPerson } from "../map/EventLayer";
+import { outsideClones } from "../map/NeighborLayer";
+import type { ProjectSession } from "../../app/ProjectSession";
+import type { PersonEvent } from "@zigzagumap/core";
 
 /** 吹き出しの中身を作るのに要るもの（イベントタブと App が渡す）。 */
 export interface EventHoverDeps {
   readonly state: EditorState;
   /** 表示中のイベント（描いた順）。 */
   placed(): readonly PlacedEvent[];
+  /** 画面のマス（主マップの外）が、描いている隣のマップの帯の上か（#345）。 */
+  onBand(cell: RawCell): boolean;
   /** スクリプトの要約（初めて使うときに作る）。 */
   summaries(): Promise<ScriptSummaries>;
 }
@@ -60,6 +66,14 @@ function scriptPointer(doc: MapDocument, e: PlacedEvent): number {
   }
 }
 
+/** クローンの元の人（元のマップを読んでいなければ読み込んでから。読めなければ参照先の番号だけ）。 */
+async function originOf(session: ProjectSession, p: PersonEvent): Promise<CloneOrigin | null> {
+  const first = cloneOrigin(session, p);
+  if (!first || first.person || !session.catalog.has(first.map)) return first;
+  await session.project.load(first.map).catch(() => null);
+  return cloneOrigin(session, p);
+}
+
 /** イベントタブの吹き出しの中身（#226）。 */
 export function eventHoverSource(deps: EventHoverDeps): HoverSource {
   const { state } = deps;
@@ -78,7 +92,17 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
   const source: HoverSource = {
     // Ctrl を押している間はイベントを隠しているので出さない（#238）
     enabled: () => state.tab === "event" && !!state.map && !ctrlPeek.held,
-    eventsAt: (cell: RawCell) => deps.placed().filter((e) => e.x === cell.x && e.y === cell.y).reverse(),
+    eventsAt: (cell: RawCell) => {
+      const doc = state.map?.doc;
+      if (!doc) return [];
+      if (cell.x >= 0 && cell.y >= 0 && cell.x < doc.width && cell.y < doc.height) return deps.placed().filter((e) => e.x === cell.x && e.y === cell.y).reverse();
+      // 主マップの外: 帯の上に描いているクローンだけ（表示 > クローン がオンのとき。#345）
+      if (!state.settings.data.showClones || !deps.onBand(cell)) return [];
+      return outsideClones(doc)
+        .filter((c) => c.x === cell.x && c.y === cell.y)
+        .map((c) => placedPerson(c.person, c.index, null, c.x, c.y))
+        .reverse();
+    },
     quick: (e: PlacedEvent): HoverSection => {
       const doc = state.map?.doc;
       const title = t.title(ja.event.kindNames[e.kind] ?? e.kind, e.kind === "fly" ? 0 : e.index);
@@ -130,8 +154,17 @@ export function eventHoverSource(deps: EventHoverDeps): HoverSource {
           return { ...base, lines: [...base.lines, t.hiddenItem(s.itemName(content.item) ?? `#${content.item}`, content.amount)] };
         });
       }
-      // クローンは参照先の人のスクリプトを使うので、要約しない
-      if (e.kind === "person" && events.persons[e.index]?.kind === 1) return null;
+      // クローンは参照先の人（隣のマップの人）のスクリプトを使うので、その人の要約を出す（#345）
+      const person = e.kind === "person" ? events.persons[e.index] : undefined;
+      if (person && cloneOrigin(session, person)) {
+        if (!session) return null;
+        return originOf(session, person).then(async (o) => {
+          const base = source.quick(e);
+          if (!o?.person || o.index === null) return base;
+          const result = await (await deps.summaries()).summarize({ map: o.map, kind: "person", index: o.index }, o.person.script);
+          return { ...base, lines: [...base.lines, ...summaryLines(result)] };
+        });
+      }
       const pointer = scriptPointer(map.doc, e);
       const target = { map: map.id, kind: e.kind, index: e.index } as const;
       return deps.summaries().then(async (s) => {
