@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import struct
 import time
 
@@ -107,6 +108,13 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int, 
             check(("_k\n" in st_text) == nd or kind == "mart", f"{kind}: .string（ND は _k も）")
             if not nd:
                 check(f".global {r['label']}" in s, f"{kind}: Chronos は .global を付ける")
+        if kind == "itemGiver" and r["label"]:
+            # obtainitem は、写しの xse_commands.s で setorcopyvar が定義されていて組めるときだけ使う（#268）
+            body = s.split(f"{r['label']}:", 1)[1].split(f"{r['label']}_After:", 1)[0]
+            xse = (proj / "xse_commands.s").read_text(encoding="utf-8", errors="replace")
+            macro = re.search(r"^\s*\.macro\s+setorcopyvar\b", xse, re.MULTILINE | re.IGNORECASE) is not None
+            used = "obtainitem" if "\tobtainitem " in body else "setvarifnotzero" if "\tsetvarifnotzero 0x8000 " in body else None
+            check(used == ("obtainitem" if macro else "setvarifnotzero"), f"itemGiver: setorcopyvar が{'ある' if macro else '無い'}ので {used} で書く")
         placed.append((kind, values, r))
     shot_kind = placed[-1][0]
     _shot(z, f"template-1-placed-{fx.name}.png")
@@ -237,8 +245,6 @@ def _run(fx: Fixture, z: Zigzagu, proj: pathlib.Path, check, log, timeout: int, 
 
 def _cross_check(fx: Fixture, proj: pathlib.Path, nexts: dict, check, log) -> None:
     """未使用のフラグ・変数が、.s と C に（数でも名前でも）出てこないことを、索引と別の読み方で確かめる。"""
-    import re
-
     flag, var = nexts["flag"], nexts["var"]
     pats = {
         "flag": re.compile(rf"\b(?:setflag|clearflag|checkflag)\s+(?:0x0*{flag:x}|{flag})\b", re.IGNORECASE),
