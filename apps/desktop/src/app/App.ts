@@ -10,7 +10,6 @@ import { MapTree } from "../ui/MapTree";
 import { MapTreeFilter } from "../ui/MapTreeFilter";
 import { installHistoryMouse } from "./historyMouse";
 import { MenuBar } from "../ui/MenuBar";
-import { RomInfoPanel } from "../ui/RomInfoPanel";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { TabControl } from "../ui/TabControl";
@@ -87,7 +86,6 @@ export class App implements ActionTarget {
   readonly treeFilter: MapTreeFilter;
   private readonly combo: MapCombo;
   private readonly splitter: Splitter;
-  private readonly romInfo = new RomInfoPanel();
   private readonly statusBar = new StatusBar();
   private readonly left: HTMLElement;
   private readonly hint: HTMLElement;
@@ -221,7 +219,7 @@ export class App implements ActionTarget {
     this.left.className = "left-panel";
     this.left.style.width = `${settings.data.leftWidth}px`;
     this.treeFilter = new MapTreeFilter(this.tree);
-    this.left.append(this.treeFilter.element, this.tree.element, this.romInfo.element);
+    this.left.append(this.treeFilter.element, this.tree.element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");
@@ -299,14 +297,13 @@ export class App implements ActionTarget {
     this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
     this.tree.clear();
     this.rebuildTree();
-    this.romInfo.show(session.project.game);
     this.hint.hidden = true;
     state.settings.addRecent({ rom, project: session.projectDir });
     void this.system.updateRomShortcut(rom);
     state.emit("session");
     state.emit("map");
     await this.setTitle(null);
-    state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
+    state.setStatus(ja.statusRomLoaded, "");
   }
 
   // ---- マップ ----

@@ -12,7 +12,9 @@ export const jaEventHover = {
   empty: "セリフ・アイテムなどは見つかりませんでした",
   more: "…（ほかにもあります）",
   failed: (message: string) => `要約できませんでした: ${message}`,
-  clone: (bank: number, map: number, id: number) => `クローン（${bank}.${map} の人 ${id}）`,
+  /** クローン（#298）。元の人の番号（イベントタブの「人 N」）が分からなければ、参照先の番号（高さの欄）で出す。 */
+  clone: (bank: number, map: number, index: number | null, localId: number) =>
+    index !== null ? `クローン（元: マップ ${bank}.${map} の人 ${index}）` : `クローン（元: マップ ${bank}.${map} の番号 ${localId} の人）`,
   trainerPerson: (range: number) => `トレーナー（視界 ${range}）`,
   hiddenItem: (name: string, amount: number) => `隠しアイテム: ${name}${amount > 1 ? ` ×${amount}` : ""}`,
   trapCondition: (variable: number, value: number) => `変数 0x${variable.toString(16).toUpperCase().padStart(4, "0")} が ${value} のとき`,

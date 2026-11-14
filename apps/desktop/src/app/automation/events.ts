@@ -4,6 +4,7 @@ import { openContextMenu } from "../../ui/ContextMenu";
 import { openDialogs } from "../../ui/Dialog";
 import { EventTab } from "../../ui/event/EventTab";
 import { KIND_ORDER, type UiKind } from "../../ui/event/eventModel";
+import { cloneOrigin } from "../../ui/map/cloneLook";
 import type { App } from "../App";
 import { int, settle, str, type AutomationRequest, type CommandTable } from "./registry";
 
@@ -115,10 +116,15 @@ export const eventCommands: CommandTable = {
       itemBalls: map?.doc.itemBalls ?? [],
       /** ワープできないブロックの上にあるワープの番号（#240）。 */
       warpWarnings: tab.warpWarnings(),
-      /** クローンの人（#242）: 番号と参照先（バンク・マップ・人の番号）。 */
+      /**
+       * クローンの人（#242）: 番号と参照先（バンク・マップ・人の番号）。`originIndex` は元の人の番号、`graphicsId` は描く画像番号
+       * （元の人の画像番号。元のマップを読んでいない・元の人がいなければ null とクローン自身の欄。#298）。
+       */
       clones: (map?.doc.events?.persons ?? []).flatMap((p, index) => {
         const target = cloneTargetOf(p);
-        return target ? [{ index, target }] : [];
+        if (!target) return [];
+        const origin = cloneOrigin(app.state.session, p);
+        return [{ index, target, originIndex: origin?.index ?? null, graphicsId: origin?.person?.graphicsId ?? p.graphicsId }];
       }),
     };
   },

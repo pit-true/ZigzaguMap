@@ -68,7 +68,7 @@ FIELDS: dict[str, dict] = {
     "tree.count": dict(scope="tree", desc="マップ一覧の項目数"),
     "tree.first60": dict(scope="tree", desc="マップ一覧の先頭 60 件（文字列と深さ）"),
     "menu.state": dict(scope="all", desc="メニュー全項目の灰色・チェック（menu.state:Menue.12/Menue.120 のようにキーの階層で 1 項目）"),
-    "romInfo": dict(scope="all", desc="左下の ROM 情報 4 行"),
+    "romInfo": dict(scope="all", desc="左下の ROM 情報 4 行（ZigzaguMap は #297 で外したので空）"),
     "dialogs": dict(scope="dialog", desc="開いているダイアログ"),
     "output.files": dict(scope="all", desc="ZigzaguMap が出力先（output.files:<export の dir>）に書いたファイルの一覧（only: zigzagu と expected で使う）"),
     "view.scroll": dict(scope="all", desc="表示領域の横・縦のスクロールバーが出ていて使えるか（view.scroll:map のように target を付ける）"),

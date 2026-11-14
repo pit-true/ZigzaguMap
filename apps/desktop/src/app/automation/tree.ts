@@ -2,7 +2,7 @@ import type { App } from "../App";
 import { optStr, settle, type AutomationRequest, type CommandTable } from "./registry";
 
 /**
- * 左のマップ一覧と ROM 情報（`tree.list` / `tree.select` / `tree.open` / `romInfo`）。
+ * 左のマップ一覧（`tree.list` / `tree.select` / `tree.open`）。
  * - `tree.list`: 全項目（文字列（未出力の印 ` *` を含む）、深さ、子があるか、開いているか、選択、開いているマップか、未出力か、マップの番号）。
  *   `visibleOnly: true` で、開いている枝の中だけ（画面に並ぶもの）。
  * - `tree.select` / `tree.open`: 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開く、グループなら開閉）する。
@@ -90,17 +90,8 @@ async function open(app: App, req: AutomationRequest): Promise<unknown> {
   return { item: app.tree.items().find((i) => i.key === key) ?? null, status: app.state.status };
 }
 
-/** 左下の ROM 情報（見出しと値の組）。 */
-function romInfo(): { label: string; value: string }[] {
-  const spans = [...document.querySelectorAll<HTMLElement>(".rom-info > span")].map((s) => s.textContent ?? "");
-  const out = [];
-  for (let i = 0; i + 1 < spans.length; i += 2) out.push({ label: spans[i]!, value: spans[i + 1]! });
-  return out;
-}
-
 export const treeCommands: CommandTable = {
   "tree.list": list,
   "tree.select": select,
   "tree.open": open,
-  romInfo: () => romInfo(),
 };
