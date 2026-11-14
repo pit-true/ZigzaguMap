@@ -9,6 +9,7 @@ import { jaBlockUsage } from "../i18n/ja.blockUsage";
 import { jaEventView } from "../i18n/ja.eventView";
 import { jaTownMini } from "../i18n/ja.townMini";
 import { jaPointers } from "../i18n/ja.pointers";
+import { jaPaletteInfo } from "../i18n/ja.paletteInfo";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
@@ -125,6 +126,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         },
         { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
         { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
+        // パレットのタイルセット 1・2 の境目（#308。ZigzaguMap 独自）
+        { id: "view.paletteBoundary", label: jaPaletteInfo.boundaryMenu },
         sep,
         { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
         { id: "view.combobox", label: ja.comboBox, accel: "N" },

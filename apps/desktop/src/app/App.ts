@@ -238,6 +238,8 @@ export class App implements ActionTarget {
       statusBar: this.statusBar,
       treeFilter: this.treeFilter,
       eventTab,
+      mapTab,
+      movementTab,
       files: this.files,
       isAutomation: () => this.automation,
     });

@@ -123,6 +123,8 @@ export interface SettingsData {
   eventOpacity: number;
   /** タウンマップの小窓を出す（表示メニュー。既定オフ。#306）。 */
   showTownMap: boolean;
+  /** ブロックパレットのタイルセット 1・2 の境目に線と「TS2 0x280〜」の見出しを出す（表示メニュー。既定オン。#308）。 */
+  paletteBoundary: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -174,6 +176,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   hiddenEventKinds: [],
   eventOpacity: 1,
   showTownMap: false,
+  paletteBoundary: true,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
