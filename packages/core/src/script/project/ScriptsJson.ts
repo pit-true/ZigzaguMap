@@ -4,7 +4,8 @@ import type { ProjectFs } from "../../project/ProjectFs.js";
 import { type JsonRecord, asRecord, parseJsonObject, readArray, readInt } from "../../project/jsonRead.js";
 
 /** maps\scripts.json のパス。 */
-export const SCRIPTS_JSON_PATH = "maps/scripts.json";
+export { SCRIPTS_JSON_PATH } from "../../project/paths.js";
+import { SCRIPTS_JSON_PATH } from "../../project/paths.js";
 /** maps\scripts.json の Format の値。 */
 export const SCRIPTS_JSON_FORMAT = 1;
 

@@ -27,7 +27,7 @@ export {
   parseTrainersJson,
   stringifyTrainersJson,
   type TrainerEntry,
-} from "./TrainersJson.js";
+} from "../project/TrainersJson.js";
 export {
   RemoveTrainerCommand,
   SetTrainerCommand,

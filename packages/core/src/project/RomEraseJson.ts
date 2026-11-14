@@ -15,7 +15,8 @@ import { readTextIfExists, type ProjectFs } from "./ProjectFs.js";
  * - 知らない項目は、ファイルの最上位も範囲の中も、書き戻しても残す。
  */
 
-export const ROM_ERASE_PATH = "maps/rom_erase.json";
+export { ROM_ERASE_PATH } from "./paths.js";
+import { ROM_ERASE_PATH } from "./paths.js";
 export const ROM_ERASE_FORMAT = 1;
 
 /** 範囲の種類。 */

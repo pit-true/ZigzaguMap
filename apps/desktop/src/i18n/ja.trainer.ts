@@ -1,3 +1,5 @@
+import { ini } from "./ini";
+
 /** トレーナー（#244・#245）の文言（ZigzaguMap 独自）。 */
 export const jaTrainer = {
   choice: (id: number, className: string, name: string, party: number, uses: number, edited: boolean) =>
@@ -26,8 +28,8 @@ export const jaTrainer = {
   aiFlags: "AI",
   revert: "ROM の値に戻す",
   removeEntry: "trainers.json から消す",
-  ok: "OK",
-  cancel: "キャンセル",
+  ok: ini.EndnutzerForm["13"],
+  cancel: ini.EndnutzerForm["12"],
   askId: "直すトレーナーの番号（このイベントのスクリプトからは見つかりませんでした）",
   askIdTitle: "トレーナーを編集",
   outOfRange: (id: number) => `トレーナーの番号 0x${id.toString(16).toUpperCase()} は表にありません`,

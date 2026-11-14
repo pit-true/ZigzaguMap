@@ -1,7 +1,7 @@
 import type { Command, EditorContext, JsonObject } from "../command/Command.js";
 import type { CommandFactory, CommandRegistry } from "../command/CommandRegistry.js";
 import { argInt, type Args } from "../command/jsonArgs.js";
-import { cloneTrainer, type TrainerEntry, type TrainersProject } from "./TrainersJson.js";
+import { cloneTrainer, type TrainerEntry, type TrainersProject } from "../project/TrainersJson.js";
 import type { TrainerMon } from "./TrainerTable.js";
 
 /** トレーナーを編集するコマンドが使う入口。 */
