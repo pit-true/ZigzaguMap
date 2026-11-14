@@ -1,0 +1,25 @@
+/* マップタブの右の欄の「最近使ったブロック」（#308）。 */
+.recent-blocks {
+  flex: none;
+  padding: 2px 3px 3px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.recent-blocks-label {
+  margin-bottom: 2px;
+}
+
+.recent-blocks canvas {
+  display: block;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.recent-blocks canvas[hidden],
+.recent-blocks-empty[hidden] {
+  display: none;
+}
+
+.recent-blocks-empty {
+  color: var(--note-text);
+}

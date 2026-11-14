@@ -17,6 +17,8 @@ export class MovementPaletteView {
   private readonly canvas: HTMLCanvasElement;
   private zoom = 1;
   private selected = 0;
+  /** マウスの下の値が変わったときに呼ぶもの（移動許可の説明。Phase4 #308。外れたら null）。 */
+  readonly hoverListeners: ((value: number | null) => void)[] = [];
 
   constructor(host: MovementPaletteHost) {
     this.element = document.createElement("div");
@@ -26,7 +28,10 @@ export class MovementPaletteView {
     this.element.addEventListener("contextmenu", (e) => e.preventDefault());
     attachCellPointer(this.canvas, (e) => this.cellAt(e), {
       down: (cell) => host.select(cell.y),
-      hover: (cell) => host.hover(cell ? cell.y : null),
+      hover: (cell) => {
+        host.hover(cell ? cell.y : null);
+        for (const l of this.hoverListeners) l(cell ? cell.y : null);
+      },
     });
     this.redraw();
   }

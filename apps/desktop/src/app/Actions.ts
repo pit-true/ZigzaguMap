@@ -60,6 +60,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.autoPenTint": "autoPenTint",
   "view.clones": "showClones",
   "opt.rememberRomProject": "rememberRomProject",
+  "view.paletteBoundary": "paletteBoundary",
 };
 
 /**
