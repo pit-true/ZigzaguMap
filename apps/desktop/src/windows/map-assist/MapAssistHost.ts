@@ -203,7 +203,10 @@ export class MapAssistHost {
     const cells = this.rangeCells();
     const src = this.source();
     const writes = new Map<string, FillCell>();
-    for (const w of this.app.pen.tool.withMovements(set.planner.tidy(src, cells, options))) writes.set(`${w.x},${w.y}`, w);
+    const planned = set.planner.tidy(src, cells, options);
+    // 移動許可は窓の「移動エリアを付ける」で決める（外していればブロックだけ書き、移動許可は今のまま。#336）
+    const blocks = options.movement ? this.app.pen.tool.withMovements(planned) : planned.map((w): FillCell => ({ x: w.x, y: w.y, block: w.block }));
+    for (const w of blocks) writes.set(`${w.x},${w.y}`, w);
     if (options.movement) {
       // 移動エリアを付ける: パーツのブロックのマスに、パーツの値か使用回数でいちばん多い移動許可を書く
       const usage = this.app.extras.blockUsage.ready;
