@@ -75,4 +75,28 @@ describe("affectedMaps", () => {
       ],
     ]);
   });
+
+  it("まとめたもの同士をまとめる（境界をまたぐドラッグ。#234）。1 回の取り消しで両方戻る", () => {
+    const grids = new Map<string, BlockGrid>([
+      ["3.0", new BlockGrid(2, 2)],
+      ["3.19", new BlockGrid(2, 2)],
+    ]);
+    const bus = new CommandBus({ grid: (id: MapId) => grids.get(`${id.bank}.${id.map}`)! });
+    bus.execute(new CommandGroup([new PaintBlocksCommand({ bank: 3, map: 0, cells: [{ x: 0, y: 0, block: 1 }] })]));
+    bus.execute(
+      new CommandGroup([
+        new PaintBlocksCommand({ bank: 3, map: 0, cells: [{ x: 1, y: 0, block: 2 }] }),
+        new PaintBlocksCommand({ bank: 3, map: 19, cells: [{ x: 0, y: 1, block: 3 }] }),
+      ]),
+      { merge: true },
+    );
+    expect(bus.history()).toHaveLength(1);
+    expect(affectedMaps(bus.history()[0])).toEqual([
+      { bank: 3, map: 0 },
+      { bank: 3, map: 19 },
+    ]);
+    bus.undo();
+    expect([...grids.get("3.0")!.cells]).toEqual([0, 0, 0, 0]);
+    expect([...grids.get("3.19")!.cells]).toEqual([0, 0, 0, 0]);
+  });
 });
