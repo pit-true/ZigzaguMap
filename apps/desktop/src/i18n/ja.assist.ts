@@ -1,0 +1,53 @@
+import { ini } from "./ini";
+
+/** マップ作成補助（別ウィンドウ。Phase4 #312・#313。ZigzaguMap 独自）の文言。 */
+export const jaAssist = {
+  title: "マップ作成補助",
+  menu: "マップ作成補助",
+  noMap: "マップが開かれていません",
+  noRange: "範囲がありません（メインのマップを Ctrl＋右ドラッグで選んでください）",
+  /** 左: 選ぶ元。 */
+  tabBlocks: "ブロック一覧",
+  tabMap: ini.Menue["114"],
+  selection: (x: number, y: number, w: number, h: number) => `選択: (${x}, ${y}) ${w}×${h}`,
+  noSelection: "選択: なし（ドラッグで選ぶ）",
+  /** 中: パーツの一覧。 */
+  parts: "パーツ",
+  addFill: "＋ 面",
+  addEdge: "＋ 縁つき",
+  addPiece: "＋ 部品",
+  addRepeat: "＋ くり返し",
+  remove: ini.WildePokemon["67"],
+  up: "↑",
+  down: "↓",
+  name: "名前",
+  role: "役割",
+  newName: (kind: string, n: number) => `${kind} ${n}`,
+  analyze: "マップから候補を作る（自動）",
+  analyzing: "マップから候補を作っています…",
+  analyzed: (n: number) => (n === 0 ? "候補を作れませんでした" : `候補を ${n} 個足しました（保存すると残ります）`),
+  importBochi: "Bochi の定義を読み込む…",
+  importTitle: "BochiBochiEditor のマップ作成補助の定義（mapassist\\*.txt）を選んでください",
+  importFilter: "マップ作成補助の定義",
+  imported: (parts: number, matched: number) => (matched === 0 ? "今のタイルセットに合う定義がありませんでした" : `${parts} 個のパーツを読み込んで保存しました`),
+  /** 右: 枠。 */
+  slots: "枠",
+  putSelection: "← 左で選んだ所を入れる",
+  clearSlot: "枠を空にする",
+  save: ini.AnbindungsForm["1369"],
+  saved: (n: number) => `保存しました（${n} ファイル）`,
+  unsaved: "（まだ保存していません）",
+  slotEmpty: "空",
+  /** 範囲の操作。 */
+  rangeTitle: "メインで選んだ範囲",
+  rangeOf: (x: number, y: number, w: number, h: number) => `範囲: (${x}, ${y}) ${w}×${h}`,
+  rangeNone: "範囲: なし（メインのマップを Ctrl＋右ドラッグ）",
+  fillRange: "選んだパーツで範囲を塗る",
+  tidyRange: "範囲を整える",
+  tidyEdges: "縁つきの縁を整える",
+  tidyRepeats: "くり返しを整える",
+  tidyMovement: "移動エリアを付ける",
+  painted: (n: number) => (n === 0 ? "変えるマスはありませんでした" : `${n} マスを書きました（メインの Ctrl+Z で戻せます）`),
+  noPart: "パーツを選んでください",
+  error: (m: string) => `エラー: ${m}`,
+};

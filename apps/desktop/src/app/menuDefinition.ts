@@ -11,6 +11,7 @@ import { jaTownMini } from "../i18n/ja.townMini";
 import { jaPointers } from "../i18n/ja.pointers";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
+import { jaAssist } from "../i18n/ja.assist";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -177,6 +178,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.blockEditor", label: ja.blockEditor, accel: "R", shortcut: ctrl("B"), enable: "map" },
         { id: "tools.connections", label: ja.connections, accel: "S", shortcut: ctrl("A"), enable: "map" },
         { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", shortcut: ctrl("W"), enable: "rom" },
+        // ZigzaguMap 独自（Phase4 #312）。自動ペンのパーツを作る・直す、範囲を塗る・整える。
+        { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。

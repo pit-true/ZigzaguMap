@@ -54,6 +54,8 @@ export class BlockPainter implements AutoPenHost {
   usage: BlockUsageService | null = null;
   /** 自動ペン（Phase4 #310。PenExtras が入れる）。オンでパーツのブロックを選んでいれば、左ボタンの描画を受ける。 */
   autoPen: AutoPenTool | null = null;
+  /** 最後に Ctrl＋右ドラッグで選んだ矩形（主マップとその座標。マップ作成補助の「範囲」。#312）。 */
+  lastPick: { readonly id: { bank: number; map: number }; readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -260,6 +262,7 @@ export class BlockPainter implements AutoPenHost {
         movements.push(v >> 10);
       }
     }
+    this.lastPick = { id: { ...this.state.map.id }, x: r.x, y: r.y, width: r.width, height: r.height };
     this.state.selectStamp({ width: r.width, height: r.height, blocks, movements });
     this.onPicked();
   }

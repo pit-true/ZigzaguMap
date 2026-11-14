@@ -213,7 +213,7 @@ export class App implements ActionTarget {
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.extras = new MapExtras(state, this.actions, { map: mapTab, movement: movementTab, event: eventTab }, (id) => this.openMap(id));
     this.mixingBag = mapTab.bag;
-    this.pen = new PenExtras(state, mapTab, this.extras.blockUsage);
+    this.pen = new PenExtras(state, mapTab, this.extras.blockUsage, this.actions, this);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
