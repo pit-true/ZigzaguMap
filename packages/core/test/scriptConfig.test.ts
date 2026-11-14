@@ -5,6 +5,7 @@ import {
   MemoryProjectFs,
   ProjectFormatError,
   SCRIPT_CONFIG_FILE,
+  SCRIPT_COPY_COMMAND,
   ScriptConfigJson,
   defaultScriptConfig,
   detectScriptDialect,
@@ -34,10 +35,14 @@ describe("方言の判定", () => {
 });
 
 describe("既定値", () => {
-  it("ND は CFRU のビルドだけ、幅検査なし、.global なし", () => {
+  it("ND は CFRU のビルド・DPE へのコピー・DPE のビルド、幅検査なし、.global なし", () => {
     const c = defaultScriptConfig("nd");
-    expect(c.build).toEqual([{ command: "python", args: ["scripts/make.py"], cwd: "." }]);
-    expect(c.outputRom).toBe("test.gba");
+    expect(c.build).toEqual([
+      { command: "python", args: ["scripts/make.py"], cwd: "." },
+      { command: SCRIPT_COPY_COMMAND, args: ["test.gba", "../NeoDark-DPE-main/BPRJ0.gba"], cwd: "." },
+      { command: "python", args: ["scripts/make.py"], cwd: "../NeoDark-DPE-main" },
+    ]);
+    expect(c.outputRom).toBe("../NeoDark-DPE-main/test.gba");
     expect(c.widthCheck).toBeNull();
     expect(c.useGlobal).toBe(false);
     expect(c.commandsCsv).toBeNull();
@@ -167,9 +172,8 @@ describe("プロジェクトからの読み込みと保存", () => {
 
 describe("補助", () => {
   it("ラベルの規則を埋める", () => {
-    expect(expandScriptLabelTemplate(DEFAULT_SCRIPT_LABEL_TEMPLATE, { map: "03_00", kind: "Npc", index: 0 })).toBe(
-      "EventScript_03_00_Npc0",
-    );
+    expect(expandScriptLabelTemplate(DEFAULT_SCRIPT_LABEL_TEMPLATE, { map: "Moegi", kind: "Npc", index: 3 })).toBe("Moegi_Npc3");
+    expect(expandScriptLabelTemplate("EventScript_{map}_{kind}{index}", { map: "Map3_0", kind: "Npc", index: 0 })).toBe("EventScript_Map3_0_Npc0");
   });
 
   it("設定のパスをプロジェクトフォルダにつなぐ", () => {
