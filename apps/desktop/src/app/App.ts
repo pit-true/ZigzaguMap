@@ -366,6 +366,13 @@ export class App implements ActionTarget {
       await this.showOpenError(e);
       return;
     }
+    // 前回のフォルダを覚えていて、まだあれば、窓を出さずにそれを開く（設定 > ROM ごとに前回のプロジェクトフォルダを覚える。#278）
+    const remembered = this.state.settings.data.rememberRomProject ? this.state.settings.rememberedProject(rom) : null;
+    if (remembered && (await invoke<boolean>("is_dir", { path: remembered }).catch(() => false))) {
+      await this.openSession(rom, remembered, { confirmed: true, bytes });
+      if (this.state.session?.projectDir) this.state.setStatus(ja.openedRememberedProject(this.state.session.projectDir));
+      return;
+    }
     const before = this.state.status;
     this.state.setStatus(ja.choosePairFolder);
     const project = await this.files.folder(ja.pairFolderTitle);

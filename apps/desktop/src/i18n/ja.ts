@@ -175,6 +175,9 @@ export const ja = {
   projectFolderTitle: "CFRU-JP のフォルダを選んでください",
   needRomForProject: "先にベースROMを選んでください",
   /** ROM を開いた直後のフォルダ選択（ダイアログの題名とステータスバー）。 */
+  /** 設定 > ROM ごとに前回のプロジェクトフォルダを覚える（ZigzaguMap 独自。#278）。 */
+  rememberRomProject: "ROM ごとに前回のプロジェクトフォルダを覚える",
+  openedRememberedProject: (path: string) => `前回のフォルダを開きました: ${path}`,
   pairFolderTitle: "ROM と組にする CFRU-JP のフォルダを選んでください（キャンセルすると ROM だけで開きます）",
   choosePairFolder: "ROM と組にする CFRU-JP のフォルダを選んでください",
   projectOpened: (folder: string) => `プロジェクト: ${folder}`,
