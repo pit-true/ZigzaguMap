@@ -1,4 +1,4 @@
-"""`.s`・`.string` の書き込みの順番（#293）を、プロジェクトの写しで確かめる。
+"""`.s`・`.string` の書き込みの順番（#293・#294）を、プロジェクトの写しで確かめる。
 
   python tests/automation/script_write_order_check.py --rom <ベース ROM> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ>
       [--exe <zigzagumap.exe>]
@@ -8,6 +8,7 @@
 - 293: エディタで開いている `.s` にひな形を置くと、エディタの本文に入り、未保存の変更が無ければそのまま保存される（ディスクにも入る）。
   エディタを閉じた直後（待たずに）ひな形を置いても、`.s` にスクリプトが書かれる（閉じかけのエディタへ渡して消えない）。
   タブを閉じた直後に置いても書かれる。
+- 294: 「.s を新しく作る」の入力が出ている間に `template.place` を送ると、すぐにエラーが返り、アプリは落ちない。入力に答えれば置ける。
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from zz import Zigzagu  # noqa: E402
+from zz import AppError, Zigzagu  # noqa: E402
 
 W = {"window": "script-editor"}
 COPY_DIRS = ["assembly", "strings", "maps"]
@@ -126,6 +127,48 @@ def check_293(z: Zigzagu, proj: pathlib.Path) -> None:
     wait_editor(z, ready=False)
 
 
+def check_294(z: Zigzagu, proj: pathlib.Path) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    z.call({"cmd": "tab", "name": "event"})
+    # 窓から置く（3.1 は対応表に無いので「.s を新しく作る」が出る）
+    z.call({"cmd": "template.picker", "x": 3, "y": 3})
+    z.call({"cmd": "dialog", "press": "ok"})
+    t0 = time.time()
+    shown = False
+    while time.time() - t0 < 10 and not shown:
+        shown = any("新しく" in (d.get("title") or "") for d in z.call({"cmd": "dialogs"})["dialogs"])
+        time.sleep(0.1)
+    check(shown, "「.s を新しく作る」の入力が出る")
+    t0 = time.time()
+    try:
+        place(z, "sign", 4, 3, timeout=30)
+        check(False, "入力が出ている間の template.place はエラーになる")
+    except AppError as e:
+        check(time.time() - t0 < 10, f"入力が出ている間の template.place はすぐにエラーになる（{e}）")
+    except Exception as e:  # noqa: BLE001
+        check(False, f"入力が出ている間の template.place はエラーを返す（{type(e).__name__}: {e}）")
+    alive = True
+    try:
+        z.call({"cmd": "state"}, timeout=10)
+    except Exception:  # noqa: BLE001
+        alive = False
+    check(alive and z.proc is not None and z.proc.poll() is None, "アプリは落ちない")
+    if not alive:
+        return
+    dialogs = z.call({"cmd": "dialogs"})["dialogs"]
+    check(sum("新しく" in (d.get("title") or "") for d in dialogs) == 1, f"入力は 1 つだけ（{[d.get('title') for d in dialogs]}）")
+    # 入力に答えると、窓から置いたものが置ける
+    z.call({"cmd": "setField", "id": "scriptsTable.new.name", "value": "zz_order_new"})
+    z.call({"cmd": "click", "id": "scriptsTable.new.create"})
+    z.call({"cmd": "script.settle"})
+    time.sleep(0.5)
+    z.call({"cmd": "script.settle"})
+    persons = z.call({"cmd": "script.labels", "bank": 3, "map": 1}).get("person", [])
+    check(any(p.get("inScript") for p in persons), "入力に答えると、窓から置いたひな形が新しい .s に書かれる")
+    res = place(z, "sign", 4, 3)
+    check(bool(res.get("label")), f"そのあとの template.place は置ける（{res.get('label')}）")
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
@@ -137,13 +180,13 @@ def main() -> int:
     ap.add_argument("--only", help="確かめる issue の番号（カンマ区切り）")
     args = ap.parse_args()
     work = pathlib.Path(args.work)
-    only = args.only.split(",") if args.only else ["293"]
+    only = args.only.split(",") if args.only else ["293", "294"]
     for number in only:
         print(f"== #{number}")
         proj = prepare(pathlib.Path(args.project), work)
         with Zigzagu(args.exe, profile=work / f"profile{number}", extra=["--mute-audio"]) as z:
             z.call({"cmd": "open", "rom": args.rom, "project": str(proj)})
-            {"293": check_293}[number](z, proj)
+            {"293": check_293, "294": check_294}[number](z, proj)
     print(f"\n失敗 {len(failures)} 件")
     return 1 if failures else 0
 

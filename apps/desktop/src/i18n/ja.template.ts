@@ -40,6 +40,8 @@ export const jaTemplate = {
   cancel: ini.EndnutzerForm["12"],
   needProject: "ひな形のスクリプトを書くには、CFRU-JP のフォルダ（プロジェクトフォルダ）を開いてください",
   noMap: "マップを開いてからひな形を置いてください",
+  /** 置いている途中に、もう 1 つ置こうとした（#294。「.s を新しく作る」の入力が出たままなど）。 */
+  busy: "ほかのひな形を置いている途中です。「.s を新しく作る」などの入力に答えてから置いてください",
   tooWide: (what: string, line: number, width: number, max: number) => `${what} の ${line} 行目が ${width} 字です（1 行 ${max} 字まで）`,
   tooManyLines: (what: string, page: number, lines: number, max: number) => `${what} の ${page} ページ目が ${lines} 行です（1 ページ ${max} 行まで）`,
   placed: (what: string, label: string | null) => (label ? `${what}のひな形を置きました（${label}）` : `${what}のひな形を置きました`),

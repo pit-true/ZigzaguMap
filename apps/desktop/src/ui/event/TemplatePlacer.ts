@@ -82,8 +82,23 @@ export class TemplatePlacer {
     this.extensions.push(extension);
   }
 
-  /** 置く。置けなければ Error（理由つき）。 */
+  /** 置いている途中か（「.s を新しく作る」の入力を待っている間も）。 */
+  private placing = false;
+
+  /**
+   * 置く。置けなければ Error（理由つき）。置いている途中（入力を待っている間など）にもう 1 つ置こうとしたら、待たずに Error（#294）。
+   */
   async place(request: TemplatePlaceRequest): Promise<TemplatePlaceResult> {
+    if (this.placing) throw new Error(t.busy);
+    this.placing = true;
+    try {
+      return await this.placeNow(request);
+    } finally {
+      this.placing = false;
+    }
+  }
+
+  private async placeNow(request: TemplatePlaceRequest): Promise<TemplatePlaceResult> {
     const app = this.app;
     const session = app.state.session;
     const map = app.state.map?.id;
