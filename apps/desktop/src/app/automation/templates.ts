@@ -42,13 +42,13 @@ export const templateCommands: CommandTable = {
     if (given.variable === undefined) auto.variable = await app.usage.next("var");
     if (given.hiddenId === undefined) auto.hiddenId = await app.usage.next("hiddenItem");
     const values: TemplateValues = { ...templateDefaults(kind, auto), ...given };
-    const result = await (await app.templatePlacer()).place({ kind, x: int(req, "x"), y: int(req, "y"), values });
+    const result = await (await app.events.templatePlacer()).place({ kind, x: int(req, "x"), y: int(req, "y"), values });
     const { command: _command, ...rest } = result;
     return { ...rest, values, status: app.state.status };
   },
   "template.picker": async (app: App, req) => {
     await selectMap(app, req);
-    void app.placeTemplate(int(req, "x"), int(req, "y"));
+    void app.events.placeTemplate(int(req, "x"), int(req, "y"));
     await settle(200);
     return { opened: true };
   },

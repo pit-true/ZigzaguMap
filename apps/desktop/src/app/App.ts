@@ -39,10 +39,9 @@ import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
-import { jaUsage } from "../i18n/ja.usage";
-import type { UsageKind } from "@zigzagumap/core";
 import { UsageService } from "./UsageService";
 import { TrainerService } from "./TrainerService";
+import { EventActions } from "./EventActions";
 import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
@@ -50,7 +49,6 @@ import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
-import type { ScriptSummaries } from "../ui/event/ScriptSummaries";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
@@ -122,16 +120,14 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
-  private summariesValue: Promise<ScriptSummaries> | null = null;
-  private warpMapCreatorValue: Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> | null = null;
-  private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
-  private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
   /** 使われているフラグ・変数などの番号の索引（#227）。 */
   readonly usage: UsageService;
   /** トレーナーの表と trainers.json（#244・#245）。 */
   readonly trainers: TrainerService;
+  /** イベントタブの操作（ひな形を置く・イベントの削除など）。 */
+  readonly events: EventActions;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -174,8 +170,7 @@ export class App implements ActionTarget {
     state.on("session", () => this.scripts.attach(state.session));
     this.usage = new UsageService(this);
     this.trainers = new TrainerService(this);
-    this.templateSource.trainers = () => this.trainerChoices();
-    this.templateSource.newTrainer = this.trainers.newTrainerSource();
+    this.events = new EventActions(this);
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
@@ -218,16 +213,17 @@ export class App implements ActionTarget {
     const mapTab = new MapTab(state);
     installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
+    const events = this.events;
     const eventTab = new EventTab(state, {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
-      deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
-      pickUnused: (kind) => this.pickUnused(kind),
-      createWarpMap: (index) => void this.warpMapCreator().then((c) => c.run(index)),
+      deleteEvent: (kind, index) => void events.deleteEvent(kind, index),
+      pickUnused: (kind) => events.pickUnused(kind),
+      createWarpMap: (index) => void events.warpMapCreator().then((c) => c.run(index)),
       editTrainer: (index) => void this.trainers.editForPerson(index),
-      placeTemplate: (x, y) => void this.placeTemplate(x, y),
+      placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
-      summaries: () => this.eventSummaries(),
+      summaries: () => events.eventSummaries(),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
@@ -751,98 +747,12 @@ export class App implements ActionTarget {
     this.eventTab.removeSelected();
   }
 
-  /** イベントの削除（#220。初めて使うときに読み込む）。 */
-  /** 範囲の中で使われていない最小の番号（#227）。無ければステータスバーに出して null。 */
-  async pickUnused(kind: UsageKind): Promise<number | null> {
-    const what = jaUsage.kind[kind] ?? kind;
-    if (!this.usage.now) this.state.setStatus(jaUsage.building);
-    const value = await this.usage.next(kind);
-    const error = this.usage.state().error;
-    if (error) this.state.setStatus(jaUsage.failed(error), undefined, true);
-    else if (value === null) this.state.setStatus(jaUsage.none(what), undefined, true);
-    else this.state.setStatus(jaUsage.picked(what, `0x${value.toString(16).toUpperCase()}`));
-    return value;
-  }
-
-  /** ひな形を置く処理（#243。初めて使うときに読み込む）。 */
-  templatePlacer(): Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> {
-    return (this.templatePlacerValue ??= import("../ui/event/TemplatePlacer").then(({ TemplatePlacer }) => {
-      const placer = new TemplatePlacer(this);
-      // 新しいトレーナー（#245）は setTrainer を同じ 1 回の取り消しに足す
-      placer.extend({ commands: (request, map) => this.trainers.commandsFor(request, map) });
-      return placer;
-    }));
-  }
-
-  /** ひな形の窓のトレーナーの選択肢（#244。番号・クラス・名前・手持ちの数。ほかで使っていれば印）。 */
-  private async trainerChoices(): Promise<{ id: number; text: string }[]> {
-    const { jaTrainer } = await import("../i18n/ja.trainer");
-    return (await this.trainers.list()).map((t) => ({ id: t.id, text: jaTrainer.choice(t.id, t.className, t.name, t.partySize, t.uses, t.edited) }));
-  }
-
-  /** 窓の中身（未使用の番号・トレーナーの一覧など）。#244・#245 が足す。 */
-  templateSource: import("../ui/event/TemplatePicker").TemplatePickerSource = {
-    unused: (kind, skip) => this.usage.next(kind, skip),
-  };
-
-  /** 「ここにひな形を置く」（#243）: 窓で種類と入力を聞いて置く。 */
-  async placeTemplate(x: number, y: number): Promise<boolean> {
-    try {
-      const { openTemplatePicker } = await import("../ui/event/TemplatePicker");
-      const request = await openTemplatePicker(this, x, y, this.templateSource);
-      if (!request) return false;
-      await (await this.templatePlacer()).place(request);
-      return true;
-    } catch (e) {
-      this.showError(e);
-      return false;
-    }
-  }
-
   /** イベントタブでイベントを選ぶ（ひな形を置いたあと）。 */
   eventTabSelect(kind: "person" | "sign" | "trap", index: number): void {
     this.eventTab.select(kind, index);
   }
 
-  eventDeleter(): Promise<import("../ui/event/EventDeleter").EventDeleter> {
-    return (this.eventDeleterValue ??= import("../ui/event/EventDeleter").then(({ EventDeleter }) => new EventDeleter(this)));
-  }
-
-  /**
-   * イベントを削除する（右クリックの「イベントを削除」・Delete キー・「イベントの削除」ボタン）。
-   * 消すものを調べて確認のダイアログを出し、「削除」なら消す。`confirm` が false なら確かめずに消す（自動操作用）。
-   */
-  async deleteEvent(kind: string, index: number, confirm = true): Promise<boolean> {
-    const id = this.state.map?.id;
-    if (!id || kind === "fly") return false;
-    const { jaEventDelete: t } = await import("../i18n/ja.eventDelete");
-    try {
-      this.state.setStatus(t.planning);
-      const deleter = await this.eventDeleter();
-      const plan = await deleter.plan(id, kind as "person" | "sign" | "warp" | "trap", index);
-      const { confirmEventDelete, eventName } = await import("../ui/event/EventDeleteDialog");
-      this.state.setStatus("");
-      if (confirm && !(await confirmEventDelete(plan))) return false;
-      const files = await deleter.run(plan);
-      this.state.setStatus(files.length > 0 ? t.doneWithFiles(eventName(plan), files) : t.done(eventName(plan)));
-      return true;
-    } catch (e) {
-      this.state.setStatus(t.failed(errorText(e)), undefined, true);
-      return false;
-    }
-  }
-
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
-  /** ワープの「行き先のマップを作る」（#241。初めて使うときに読み込む）。 */
-  warpMapCreator(): Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> {
-    return (this.warpMapCreatorValue ??= import("../ui/event/WarpMapCreator").then(({ WarpMapCreator }) => new WarpMapCreator(this)));
-  }
-
-  /** イベントのスクリプトの要約（#226。初めてホバーしたときに読み込む）。 */
-  eventSummaries(): Promise<ScriptSummaries> {
-    return (this.summariesValue ??= import("../ui/event/ScriptSummaries").then(({ ScriptSummaries }) => new ScriptSummaries(this)));
-  }
-
   scriptHost(): Promise<ScriptHost> {
     return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
   }
