@@ -113,7 +113,14 @@ async function pointersSelect(app: App, req: AutomationRequest): Promise<unknown
   return { selected: d.selectedRow };
 }
 
+/** `recent.state`: 最近使ったブロック（#308）。`blocks`（新しい順の番号）と、それぞれの持ち主のタイルセット `tilesets`（ポインタ）。 */
+function recentState(app: App): unknown {
+  const r = app.views.recent;
+  return { blocks: r.model.list.map((i) => i.block), tilesets: r.model.list.map((i) => i.tileset) };
+}
+
 export const viewToolCommands: CommandTable = {
+  "recent.state": recentState,
   "pointers.state": pointersState,
   "pointers.search": pointersSearch,
   "pointers.select": pointersSelect,

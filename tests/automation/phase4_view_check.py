@@ -349,8 +349,75 @@ def check_pointers(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(not z.call({"cmd": "pointers.state"})["open"], "閉じる")
 
 
+# ---- #308 ----
+
+
+def info(z: Zigzagu) -> str:
+    return z.call({"cmd": "getField", "id": "status.info"})["value"]
+
+
+def check_palette(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [1, 0]})
+    text = info(z)
+    check("ブロック 0x001 タイルセット1" in text and "挙動:" in text and "重ね方:" in text, f"パレットに乗せると情報が出る（{text!r}）")
+    z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [0, 80]})
+    check("ブロック 0x280 タイルセット2" in info(z), f"副は「タイルセット2」（{info(z)!r}）")
+    # 3 層のブロックを作って乗せる（取り消す）
+    tiles = z.call({"cmd": "seams.state"})["tilesets"]
+    z.call({"cmd": "command", "name": "setTripleLayer", "args": {"tileset": tiles["primary"], "secondary": False, "block": 16, "attribute": 0x30000000}})
+    z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [0, 2]})
+    text = info(z)
+    check("重ね方: 30-トリプルレイヤー" in text and "3 枚目はブロック 0x011" in text, f"3 層は「重ね方: トリプルレイヤー」（{text!r}）")
+    z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [1, 2]})
+    check("0x010 の 3 枚目に使われる" in info(z), f"3 層の次の番号（{info(z)!r}）")
+    shot(z, shots, "view_palette_info.png")
+    z.call({"cmd": "undo"})
+    # 最近使ったブロック
+    z.call({"cmd": "mouse", "target": "palette", "action": "click", "cell": [3, 0]})
+    z.call({"cmd": "mouse", "target": "palette", "action": "click", "cell": [0, 80]})
+    z.call({"cmd": "mouse", "target": "palette", "action": "click", "cell": [5, 0]})
+    z.call({"cmd": "mouse", "target": "map", "action": "rightClick", "cell": [5, 5]})
+    picked = z.call({"cmd": "state"})["selection"]["blocks"][0]
+    r = z.call({"cmd": "recent.state"})["blocks"]
+    check(r[:4] == [picked, 5, 0x280, 3] or (picked == 5 and r[:3] == [5, 0x280, 3]), f"パレットとスポイトのブロックが新しい順に並ぶ（{[hex(b) for b in r]}、拾ったのは {picked:#x}）")
+    shot(z, shots, "view_recent_blocks.png", "map.recent")
+    # 2 件目（ブロック 5 か 0x280）を押すと選び直し、パレットの選択も動く
+    second = r[1]
+    z.call({"cmd": "mouse", "id": "map.recent.canvas", "action": "click", "px": [16 + 2 + 4, 8]})
+    sel = z.call({"cmd": "state"})["selection"]["blocks"]
+    check(sel == [second], f"押すと選び直す（{[hex(b) for b in sel]}）")
+    # 主タイルセットが同じで副が違うマップに移ると、副のブロックは消える
+    base = z.call({"cmd": "seams.state"})["tilesets"]
+    for m in (1, 2, 3, 4, 5, 6):
+        z.call({"cmd": "selectMap", "bank": 3, "map": m})
+        t2 = z.call({"cmd": "seams.state"})["tilesets"]
+        if t2["primary"] == base["primary"] and t2["secondary"] != base["secondary"]:
+            break
+    r2 = z.call({"cmd": "recent.state"})["blocks"]
+    check(0x280 not in r2 and 3 in r2, f"組が変わると使えないもの（副）を消す（{[hex(b) for b in r2]}）")
+    # TS1 と TS2 の境目
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    on = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
+    z.call({"cmd": "menu.run", "id": "view.paletteBoundary"})
+    off = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
+    check(cell_rgba(on, 0, 80) != cell_rgba(off, 0, 80) and cell_rgba(on, 0, 40) == cell_rgba(off, 0, 40), "境目の線と見出しが出て、表示メニューで消せる")
+    z.call({"cmd": "menu.run", "id": "view.paletteBoundary"})
+    z.call({"cmd": "scroll", "target": "palette", "y": 80 * 16 - 60})
+    shot(z, shots, "view_palette_boundary.png")
+    # 移動許可の説明
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "mouse", "target": "movementPalette", "action": "hover", "cell": [0, 0x0E]})
+    check("ゲームでは通れない。奇数を使う" in info(z), f"通行 2 の値に注意（{info(z)!r}）")
+    z.call({"cmd": "mouse", "target": "movementPalette", "action": "click", "cell": [0, 0x0C]})
+    check("通れる・高さ 3" in info(z), f"選ぶと説明（{info(z)!r}）")
+    shot(z, shots, "view_movement_info.png")
+
+
 CHECKS = {
     "events": check_events,
+    "palette": check_palette,
     "pointers": check_pointers,
     "seams": check_seams,
     "filter": check_filter,
