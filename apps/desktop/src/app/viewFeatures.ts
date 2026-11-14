@@ -14,6 +14,8 @@ import { drawPaletteBoundary } from "../ui/map/paletteBoundary";
 import { movementInfo } from "./data/movementInfo";
 import { jaMovementInfo } from "../i18n/ja.movementInfo";
 import { hex } from "../i18n/ja";
+import { jaEvent } from "../i18n/ja.event";
+import { jaPointers } from "../i18n/ja.pointers";
 import type { FileDialogs } from "./FileDialogs";
 import { regionQuery } from "./mapTreeQuery";
 import type { MapTreeFilter } from "../ui/MapTreeFilter";
@@ -143,6 +145,8 @@ export class ViewFeatures {
         state,
         files,
         selectEvent: (kind, index) => {
+          // maps\ から読んだマップはベース ROM とイベントの数が違うことがある。無い番号は選ばない（別のイベントを選ばない。#367）
+          if (index >= eventTab.count(kind)) return state.setStatus(jaPointers.noEvent(jaEvent.kindNames[kind] ?? kind, index));
           state.setTab("event");
           eventTab.select(kind, index);
         },

@@ -326,11 +326,26 @@ def check_pointers(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     # 行を選ぶとイベントが選ばれる（逆も）
     st = z.call({"cmd": "pointers.state"})
     rows = st["rows"]
-    people = [i for i, p in enumerate(rows) if p["kind"] in ("personScript", "signScript", "trapScript")]
-    check(len(people) > 0, f"イベントのスクリプトの行がある（{len(people)} 行）")
+    kinds = {"personScript": "person", "signScript": "sign", "trapScript": "trap"}
+    rows_all = [i for i, p in enumerate(rows) if p["kind"] in kinds]
+    check(len(rows_all) > 0, f"イベントのスクリプトの行がある（{len(rows_all)} 行）")
+    # 行はベース ROM のイベント。--project で maps\ から読んだマップはイベントの数が違うことがある（#367）
+    z.call({"cmd": "tab", "name": "event"})
+    counts = z.call({"cmd": "event.state"})["counts"]
+    count_of = {"person": counts["persons"], "sign": counts["signs"], "trap": counts["traps"]}
+    people = [i for i in rows_all if rows[i]["index"] < count_of[kinds[rows[i]["kind"]]]]
+    missing = [i for i in rows_all if i not in people]
+    if missing:
+        z.call({"cmd": "event.select", "kind": "person", "index": 0})
+        mi = missing[-1]
+        z.call({"cmd": "pointers.select", "row": mi})
+        ev = z.call({"cmd": "event.state"})
+        left = z.call({"cmd": "state"})["status"]["left"]
+        check((ev["kind"], ev["index"]) == ("person", 0) and "ありません" in left,
+              f"マップに無いイベントの行（{kinds[rows[mi]['kind']]} {rows[mi]['index']}）を選んでも、別のイベントを選ばず知らせる（{left}）")
     pi = people[-1] if people else None
     if pi is not None:
-        want = {"personScript": "person", "signScript": "sign", "trapScript": "trap"}[rows[pi]["kind"]]
+        want = kinds[rows[pi]["kind"]]
         z.call({"cmd": "pointers.select", "row": pi})
         ev = z.call({"cmd": "event.state"})
         check(z.call({"cmd": "state"})["tab"] == "event" and ev["kind"] == want and ev["index"] == rows[pi]["index"], f"行を選ぶとイベントタブで{want} {rows[pi]['index']} が選ばれる")
