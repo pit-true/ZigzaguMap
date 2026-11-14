@@ -77,7 +77,12 @@ export class PersonPanel extends ListKindPanel<PersonEvent> {
       LABEL,
       this.hex("script", 6, 65, (e) => e.script & 0xffffff, (e, v) => ({ script: withScriptOffset(e.script, v) }), { prefix: "$" }),
     );
-    this.row(f.flag, LABEL, this.hex("flag", 4, 33, (e) => e.flag, (_e, v) => ({ flag: v }), { bits: 16 }));
+    this.row(
+      f.flag,
+      LABEL,
+      this.hex("flag", 4, 33, (e) => e.flag, (_e, v) => ({ flag: v }), { bits: 16 }),
+      this.unusedButton("flagUnused", "flag", (_e, v) => ({ flag: v })),
+    );
     this.row(
       ja.event.unknown,
       LABEL,

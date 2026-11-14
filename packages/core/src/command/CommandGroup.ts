@@ -9,16 +9,27 @@ import type { Command, CommandRecord, EditorContext, JsonObject } from "./Comman
 export class CommandGroup implements Command {
   static readonly NAME = "group";
   readonly name = CommandGroup.NAME;
-  readonly args: JsonObject;
+  private argsValue: JsonObject;
+  private readonly commands: Command[];
 
-  constructor(private readonly commands: readonly Command[]) {
+  constructor(commands: readonly Command[]) {
+    this.commands = [...commands];
+    this.argsValue = CommandGroup.argsOf(this.commands);
+  }
+
+  /** 引数（中のコマンドの JSON と、全部が同じマップならその bank・map）。まとめたあとは中身も変わる。 */
+  get args(): JsonObject {
+    return this.argsValue;
+  }
+
+  private static argsOf(commands: readonly Command[]): JsonObject {
     const args: JsonObject = { commands: commands.map((c) => ({ name: c.name, args: c.args })) };
     const first = commands[0]?.args;
     if (first && typeof first["bank"] === "number" && commands.every((c) => c.args["bank"] === first["bank"] && c.args["map"] === first["map"])) {
       args["bank"] = first["bank"];
       args["map"] = first["map"] as number;
     }
-    this.args = args;
+    return args;
   }
 
   /** 1 つならそのまま、2 つ以上ならまとめたコマンドを返す。 */
@@ -49,6 +60,21 @@ export class CommandGroup implements Command {
 
   undo(context: EditorContext): void {
     for (const c of [...this.commands].reverse()) c.undo(context);
+  }
+
+  /**
+   * 実行済みの `next`（まとめたものか 1 つのコマンド）を自分にまとめる（2 枚のマップにまたがるドラッグを 1 回の操作にするため。Phase3 #234）。
+   * 中のコマンドごとに、同じ種類・同じマップのものへまとめ、まとめられないものは後ろに足す（取り消しでは足したものから戻す）。
+   * まとめられるのは、中のコマンドが全部 `merge` を持つときだけ。
+   */
+  merge(next: Command): boolean {
+    const incoming = next instanceof CommandGroup ? next.commands : [next];
+    if (incoming.length === 0 || !this.commands.every((c) => typeof c.merge === "function") || !incoming.every((c) => typeof c.merge === "function")) return false;
+    for (const c of incoming) {
+      if (!this.commands.some((own) => own.merge!(c))) this.commands.push(c);
+    }
+    this.argsValue = CommandGroup.argsOf(this.commands);
+    return true;
   }
 }
 

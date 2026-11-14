@@ -38,10 +38,11 @@ export function scriptLabelMapName(scriptPath: string | null, bank: number, map:
  */
 export function newScriptLabel(
   template: string,
-  values: { readonly map: string; readonly kind: ScriptLabelKind; readonly index: number },
+  values: { readonly map: string; readonly kind: ScriptLabelKind; readonly index: number; readonly kindName?: string },
   taken: (name: string) => boolean,
 ): string {
-  const kind = SCRIPT_LABEL_KIND_NAMES[values.kind];
+  // `kindName` はひな形（#243）の種類の名前（`Giver`・`Mart`・`Trainer`）。省けば種別の名前
+  const kind = values.kindName ?? SCRIPT_LABEL_KIND_NAMES[values.kind];
   if (values.kind === "map") {
     const base = expandScriptLabelTemplate(template, { map: values.map, kind, index: "" });
     if (!taken(base)) return base;

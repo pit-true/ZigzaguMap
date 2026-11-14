@@ -1,6 +1,6 @@
 import type { BlockUsageService } from "../../app/BlockUsageService";
 import type { EditorState } from "../../app/EditorState";
-import { jaUsage as t } from "../../i18n/ja.usage";
+import { jaBlockUsage as t } from "../../i18n/ja.blockUsage";
 import { movementName } from "../../input/MovementPainter";
 import "../../styles/usage.css";
 

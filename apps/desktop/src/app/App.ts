@@ -39,6 +39,10 @@ import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
+import { jaUsage } from "../i18n/ja.usage";
+import type { UsageKind } from "@zigzagumap/core";
+import { UsageService } from "./UsageService";
+import { TrainerService } from "./TrainerService";
 import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
@@ -116,8 +120,13 @@ export class App implements ActionTarget {
   private scriptHostValue: Promise<ScriptHost> | null = null;
   private summariesValue: Promise<ScriptSummaries> | null = null;
   private eventDeleterValue: Promise<import("../ui/event/EventDeleter").EventDeleter> | null = null;
+  private templatePlacerValue: Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> | null = null;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
   readonly scripts: ScriptLink;
+  /** 使われているフラグ・変数などの番号の索引（#227）。 */
+  readonly usage: UsageService;
+  /** トレーナーの表と trainers.json（#244・#245）。 */
+  readonly trainers: TrainerService;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -132,6 +141,8 @@ export class App implements ActionTarget {
   readonly blockUsage: BlockUsageService;
   /** 使用の印（#235。マップタブと移動エリアタブ）。 */
   readonly usageMarks: { readonly map: UsageMarks; readonly movement: UsageMarks };
+  private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
+  private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
   readonly connectionHandles: ConnectionHandles;
   readonly edgeHandles: EdgeHandles;
@@ -150,6 +161,10 @@ export class App implements ActionTarget {
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
+    this.usage = new UsageService(this);
+    this.trainers = new TrainerService(this);
+    this.templateSource.trainers = () => this.trainerChoices();
+    this.templateSource.newTrainer = this.trainers.newTrainerSource();
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
@@ -196,11 +211,19 @@ export class App implements ActionTarget {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
       deleteEvent: (kind, index) => void this.deleteEvent(kind, index),
+      pickUnused: (kind) => this.pickUnused(kind),
+      placeTemplate: (x, y) => void this.placeTemplate(x, y),
+      canPlaceTemplate: () => this.state.session?.projectDir != null,
       summaries: () => this.eventSummaries(),
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     this.neighbors = new NeighborService(state);
+    // 境界をまたぐ描画（#234）: 描く道具に隣の帯を教える
+    mapTab.painter.cells.neighbors = this.neighbors;
+    movementTab.painter.cells.neighbors = this.neighbors;
+    this.mapTabPainter = mapTab.painter;
+    this.movementTabPainter = movementTab.painter;
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
       ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" }),
     );
@@ -538,6 +561,12 @@ export class App implements ActionTarget {
 
   // ---- 編集 ----
 
+  /** 隣のマップを読み込んでから書く操作（境界をまたぐ描画。#234）が残っていないことを待つ（自動操作用）。 */
+  async settlePainting(): Promise<void> {
+    await this.mapTabPainter?.cells.settle();
+    await this.movementTabPainter?.cells.settle();
+  }
+
   /** 元に戻す。 */
   undo(): void {
     const bus = this.state.session?.bus;
@@ -688,6 +717,58 @@ export class App implements ActionTarget {
   }
 
   /** イベントの削除（#220。初めて使うときに読み込む）。 */
+  /** 範囲の中で使われていない最小の番号（#227）。無ければステータスバーに出して null。 */
+  async pickUnused(kind: UsageKind): Promise<number | null> {
+    const what = jaUsage.kind[kind] ?? kind;
+    if (!this.usage.now) this.state.setStatus(jaUsage.building);
+    const value = await this.usage.next(kind);
+    const error = this.usage.state().error;
+    if (error) this.state.setStatus(jaUsage.failed(error), undefined, true);
+    else if (value === null) this.state.setStatus(jaUsage.none(what), undefined, true);
+    else this.state.setStatus(jaUsage.picked(what, `0x${value.toString(16).toUpperCase()}`));
+    return value;
+  }
+
+  /** ひな形を置く処理（#243。初めて使うときに読み込む）。 */
+  templatePlacer(): Promise<import("../ui/event/TemplatePlacer").TemplatePlacer> {
+    return (this.templatePlacerValue ??= import("../ui/event/TemplatePlacer").then(({ TemplatePlacer }) => {
+      const placer = new TemplatePlacer(this);
+      // 新しいトレーナー（#245）は setTrainer を同じ 1 回の取り消しに足す
+      placer.extend({ commands: (request, map) => this.trainers.commandsFor(request, map) });
+      return placer;
+    }));
+  }
+
+  /** ひな形の窓のトレーナーの選択肢（#244。番号・クラス・名前・手持ちの数。ほかで使っていれば印）。 */
+  private async trainerChoices(): Promise<{ id: number; text: string }[]> {
+    const { jaTrainer } = await import("../i18n/ja.trainer");
+    return (await this.trainers.list()).map((t) => ({ id: t.id, text: jaTrainer.choice(t.id, t.className, t.name, t.partySize, t.uses, t.edited) }));
+  }
+
+  /** 窓の中身（未使用の番号・トレーナーの一覧など）。#244・#245 が足す。 */
+  templateSource: import("../ui/event/TemplatePicker").TemplatePickerSource = {
+    unused: (kind, skip) => this.usage.next(kind, skip),
+  };
+
+  /** 「ここにひな形を置く」（#243）: 窓で種類と入力を聞いて置く。 */
+  async placeTemplate(x: number, y: number): Promise<boolean> {
+    try {
+      const { openTemplatePicker } = await import("../ui/event/TemplatePicker");
+      const request = await openTemplatePicker(this, x, y, this.templateSource);
+      if (!request) return false;
+      await (await this.templatePlacer()).place(request);
+      return true;
+    } catch (e) {
+      this.showError(e);
+      return false;
+    }
+  }
+
+  /** イベントタブでイベントを選ぶ（ひな形を置いたあと）。 */
+  eventTabSelect(kind: "person" | "sign" | "trap", index: number): void {
+    this.eventTab.select(kind, index);
+  }
+
   eventDeleter(): Promise<import("../ui/event/EventDeleter").EventDeleter> {
     return (this.eventDeleterValue ??= import("../ui/event/EventDeleter").then(({ EventDeleter }) => new EventDeleter(this)));
   }

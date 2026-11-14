@@ -19,6 +19,8 @@
   2 マスの入れ替え。どれも 1 回の取り消しで戻る。Esc でドラッグを取りやめると何も変わらない。
 - 231: 辺のつまみのドラッグでリサイズ。マサラタウンを左へ 3 広げると、イベントが 3 右へ、上下の接続のずれが +3、相手側が -3 になり、
   隣の帯との位置関係が変わらない（元の範囲の画像が同じ）。1 回の取り消しで全部戻る。出力して開き直しても同じ。右へ縮める・制限。
+- 234: 境界をまたぐ描画。マサラタウンと 1 番道路の境界をまたいで 4×4 を矩形塗りすると両方のマップが変わり、1 回の取り消しで両方戻る。
+  鉛筆のドラッグ・拾う・矩形の選択・入れ替え・移動エリアタブの矩形塗りも境界をまたぐ。帯の外には描かない。出力で両方の JSON。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -547,7 +549,76 @@ def check_231(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
           "出力して開き直しても大きさと両側の接続が同じ")
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231}
+def map_cells(z: Zigzagu, bank: int, map_: int) -> tuple[int, list[int]]:
+    c = z.call({"cmd": "cells", "bank": bank, "map": map_})
+    return c["width"], c["cells"]
+
+
+def check_234(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    z.call({"cmd": "tab", "name": "map"})
+    pw, p0 = map_cells(z, 3, 0)
+    rw, r0 = map_cells(z, 3, 19)
+    rh = len(r0) // rw
+    hist = z.call({"cmd": "state"})["history"]
+    # 4×4 の矩形塗り（主マップの上 2 行と、1 番道路の下 2 行）
+    z.call({"cmd": "selectBlock", "block": 5})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "ctrl": True, "cell": [2, 1], "to": [5, -2]})
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    check(all(c & 0x3FF == 5 for c in region(pw, p1, 2, 0, 4, 2)) and all(c & 0x3FF == 5 for c in region(rw, r1, 2, rh - 2, 4, 2)),
+          "境界をまたいで 4×4 を矩形塗りすると、マサラタウンと 1 番道路の両方が変わる")
+    st = z.call({"cmd": "state"})
+    check(st["history"] == hist + 1 and {"3.0", "3.19"} <= set(st["dirty"]), "1 回の操作で、両方に未出力の印が付く")
+    if shots:
+        z.call({"cmd": "neighbors.state", "wait": True})
+        (shots / "p3c_234_cross_fill.png").write_bytes(base64.b64decode(z.call({"cmd": "canvasPng", "target": "map", "neighbors": True})["png"]))
+    out = work / "out234"
+    out.mkdir(parents=True, exist_ok=True)
+    r = z.call({"cmd": "export", "dir": str(out)})
+    check(written(r, 3, 0) and written(r, 3, 19), "出力で両方の JSON が書かれる")
+    z.call({"cmd": "undo"})
+    check(map_cells(z, 3, 0)[1] == p0 and map_cells(z, 3, 19)[1] == r0, "1 回の取り消しで両方が戻る")
+    # 鉛筆のドラッグで境界をまたぐ（1 回の操作）
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "selectBlock", "block": 6})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [8, 1], "to": [8, -2], "steps": 6})
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    ok = p1[1 * pw + 8] & 0x3FF == 6 and p1[8] & 0x3FF == 6 and r1[(rh - 1) * rw + 8] & 0x3FF == 6 and r1[(rh - 2) * rw + 8] & 0x3FF == 6
+    check(ok and z.call({"cmd": "state"})["history"] == hist + 1, "鉛筆のドラッグも境界をまたぎ、1 回の操作にまとまる")
+    z.call({"cmd": "undo"})
+    check(map_cells(z, 3, 0)[1] == p0 and map_cells(z, 3, 19)[1] == r0, "鉛筆のドラッグも 1 回の取り消しで両方戻る")
+    # 帯の上で拾う
+    r = z.call({"cmd": "mouse", "target": "map", "action": "rightClick", "cell": [10, -1]})
+    check(r["block"]["blocks"] == [r0[(rh - 1) * rw + 10] & 0x3FF], "帯の上の右クリックで、隣のマップのブロックを拾う")
+    # 矩形の選択が境界をまたぐ
+    r = z.call({"cmd": "mouse", "target": "map", "action": "drag", "button": "right", "ctrl": True, "cell": [3, -1], "to": [4, 0]})
+    want = [r0[(rh - 1) * rw + 3], r0[(rh - 1) * rw + 4], p0[3], p0[4]]
+    check(r["block"]["blocks"] == [c & 0x3FF for c in want] and r["block"]["movements"] == [c >> 10 for c in want], "Ctrl＋右ドラッグの矩形の選択も境界をまたぐ")
+    # 入れ替えが境界をまたぐ
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "alt": True, "cell": [1, 1], "to": [1, -1]})
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    check(p1[pw + 1] == r0[(rh - 1) * rw + 1] and r1[(rh - 1) * rw + 1] == p0[pw + 1], "Alt＋左ドラッグの入れ替えも境界をまたぐ")
+    z.call({"cmd": "undo"})
+    # 帯の外には描かない
+    hist = z.call({"cmd": "state"})["history"]
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [3, -9]})
+    check(z.call({"cmd": "state"})["history"] == hist and map_cells(z, 3, 19)[1] == r0, "帯の外（境界から 8 マスより向こう）には描かない")
+    # 移動エリアタブの矩形塗りも境界をまたぐ
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "selectMovement", "value": 1})
+    z.call({"cmd": "mouse", "target": "movement", "action": "drag", "ctrl": True, "cell": [2, 0], "to": [3, -1]})
+    _, p1 = map_cells(z, 3, 0)
+    _, r1 = map_cells(z, 3, 19)
+    check(all(c >> 10 == 1 for c in region(pw, p1, 2, 0, 2, 1)) and all(c >> 10 == 1 for c in region(rw, r1, 2, rh - 1, 2, 1)), "移動エリアタブの矩形塗りも境界をまたぐ")
+    z.call({"cmd": "undo"})
+    check(map_cells(z, 3, 0)[1] == p0 and map_cells(z, 3, 19)[1] == r0, "移動許可の矩形塗りも 1 回の取り消しで両方戻る")
+    z.call({"cmd": "tab", "name": "map"})
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234}
 
 
 def main() -> int:
