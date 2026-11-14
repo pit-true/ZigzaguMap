@@ -36,6 +36,11 @@ export class BlockPaletteView {
   private selection: BlockSelection | null = null;
   /** Ctrl＋右ドラッグの始点。 */
   private anchor: Cell | null = null;
+  /**
+   * 選択の枠の下に重ねて描くもの（自動ペンで描けるブロックの色。Phase4 #310。別のファイルの部品が入れる）。
+   * `cellOf` はブロックのパレット上の (列, 行)。
+   */
+  decorate: ((c: CanvasRenderingContext2D, size: number, blocks: number, cellOf: (block: number) => { col: number; row: number }) => void) | null = null;
 
   constructor(private readonly host: BlockPaletteHost) {
     this.element = document.createElement("div");
@@ -102,6 +107,11 @@ export class BlockPaletteView {
   /** 選択中のブロックを示す。 */
   showSelection(selection: BlockSelection): void {
     this.selection = selection;
+    this.drawSelection(null);
+  }
+
+  /** 重ねて描くもの（`decorate`）が変わったときに描き直す。 */
+  repaintOverlay(): void {
     this.drawSelection(null);
   }
 
@@ -208,6 +218,10 @@ export class BlockPaletteView {
     c.clearRect(0, 0, this.overlay.width, this.overlay.height);
     if (!this.tiles) return;
     const size = BLOCK_PIXELS * this.zoom;
+    if (this.decorate) {
+      const tiles = this.tiles;
+      this.decorate(c, size, tiles.paletteBlockCount, (b) => tiles.positionOf(b, this.width));
+    }
     let r = dragging;
     if (!r && this.selection) {
       const s = this.selection;

@@ -2,6 +2,7 @@ import { AUTOPEN_DIR } from "../project/paths.js";
 import type { ProjectFs } from "../project/ProjectFs.js";
 import { autoPenFileBase, autoPenPath, parseAutoPenFile, stringifyAutoPenFile } from "../project/AutoPenJson.js";
 import { parseBochiAssistText } from "./BochiAssistText.js";
+import { DEFAULT_PART_FILES } from "./defaults/bprj.js";
 import { matchScore, primaryRefMatches, primaryRefOf } from "./tilesetMatch.js";
 import { partUsesPrimary, partUsesSecondary, type AutoPenFile, type AutoPenPart, type AutoPenTilesetInfo } from "./types.js";
 
@@ -19,6 +20,8 @@ export interface AutoPenLibraryOptions {
 
 interface Entry {
   file: AutoPenFile;
+  /** 同梱の既定（ファイルではない）。 */
+  builtIn?: boolean;
   /** 書いたファイルの名前の元（拡張子なし）。まだ書いていなければ null。 */
   base: string | null;
 }
@@ -51,6 +54,8 @@ export class AutoPenLibrary {
   readonly problems: AutoPenProblem[] = [];
   /** 保存・取り込みのたびに増える（画面が描き直しの要否を見る）。 */
   revision = 0;
+  /** ファイルが無いタイルセットに使う、同梱の既定のパーツ（テストで差し替えられる）。 */
+  defaults: readonly AutoPenFile[] = DEFAULT_PART_FILES;
 
   private constructor(fs: ProjectFs | null, options: AutoPenLibraryOptions) {
     this.fsValue = fs;
@@ -100,7 +105,23 @@ export class AutoPenLibrary {
         bestScore = s;
       }
     }
-    return best;
+    if (best) return best;
+    // ファイルが無ければ同梱の既定（識別子か場所が合うもの）
+    let def: AutoPenFile | null = null;
+    let defScore = 0;
+    for (const f of this.defaults) {
+      const s = matchScore(f.tileset, info);
+      if (s > defScore) {
+        def = f;
+        defScore = s;
+      }
+    }
+    return def ? { file: def, base: null, builtIn: true } : null;
+  }
+
+  /** そのタイルセットのパーツが同梱の既定のものか（まだ保存していない）。 */
+  usesDefaults(info: AutoPenTilesetInfo): boolean {
+    return this.find(info)?.builtIn === true;
   }
 
   /** そのタイルセットのファイル（無ければ null）。 */
