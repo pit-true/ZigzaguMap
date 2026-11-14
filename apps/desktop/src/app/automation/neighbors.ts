@@ -12,7 +12,10 @@ import { settle, str, type AutomationRequest, type CommandTable } from "./regist
  */
 async function state(app: App, req: AutomationRequest): Promise<unknown> {
   const service = app.neighbors;
-  if (req["wait"] === true) await service.settle();
+  if (req["wait"] === true) {
+    await service.settle();
+    for (const d of app.diveOverlays) await d.settle();
+  }
   const view = app.state.settings.data.neighborView;
   const frame = service.frame;
   const main = app.state.map;
@@ -22,6 +25,8 @@ async function state(app: App, req: AutomationRequest): Promise<unknown> {
     range: neighborRange(view) ?? null,
     done: service.done,
     neighborsMs: Math.round(service.lastMs * 10) / 10,
+    // Space で重ねているダイブ先・浮上先（#232。重ねていなければ null）
+    dive: app.diveOverlays.map((d) => d.target).find((t) => t !== null) ?? null,
     buildMs: Math.round(service.lastBuildMs * 10) / 10,
     margins: current?.layout.margins ?? { left: 0, top: 0, right: 0, bottom: 0 },
     connectedSides: current?.layout.connectedSides ?? [],

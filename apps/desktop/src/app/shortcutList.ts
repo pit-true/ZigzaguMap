@@ -2,6 +2,7 @@ import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
+import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaScriptEditorAssist } from "../i18n/ja.scriptEditorAssist";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -44,6 +45,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Ctrl＋左ドラッグ", action: jaPaint.shortcutRectFill, where: jaPaint.shortcutDragWhere },
   { keys: "Alt＋左ドラッグ", action: jaPaint.shortcutSwap, where: jaPaint.shortcutWhere },
   { keys: "Esc", action: jaPaint.shortcutCancel, where: jaPaint.shortcutDragWhere },
+  // ダイブ先・浮上先の重ね表示（Phase3 #232。ui/map/DiveOverlay.ts）
+  { keys: "Space（押している間）", action: jaNeighbors.shortcutDive, where: jaNeighbors.shortcutDiveWhere },
   ...scriptEditorKeys(),
 ];
 

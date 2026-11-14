@@ -182,6 +182,8 @@ export class MapView {
     }
     c.drawImage(this.base, o.x, o.y, this.layer.width, this.layer.height);
     if (!this.overlayHidden) c.drawImage(this.layer, o.x, o.y);
+    // Space で重ねたダイブ先・浮上先（ui/map/DiveOverlay.ts。#232）
+    for (const d of this.stage.querySelectorAll<HTMLCanvasElement>("canvas.map-dive")) c.drawImage(d, o.x, o.y);
     c.drawImage(this.gridCanvas, o.x, o.y);
     if (withNeighbors && !this.frame.hidden) {
       c.strokeStyle = FRAME_COLOR;
