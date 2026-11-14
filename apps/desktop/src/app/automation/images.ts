@@ -7,7 +7,8 @@ import { optStr, str, type AutomationRequest, type CommandTable } from "./regist
  * 画像（`canvasPng` / `ui.shot`）。
  * - `canvasPng {target}`: `map` / `movement` / `event`（マップ表示。重ね描きとグリッドを含む）、`palette`（ブロックパレット。選択の枠とグリッドを含む）、
  *   `border`（境界ブロック）、`movementPalette`（移動許可のパレット）。古い形の `tab` も読む（省略時は表示中のタブのマップ）。
- *   どれも表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる。`id` を付けるとその部品の Canvas（場所の設定の境界の画像 `field:RandBox` など）。
+ *   どれも表示の大きさ（拡大表示なら 2 倍）で、タブが隠れていても撮れる。マップのタブは `neighbors: true` で隣のマップの帯と主マップの枠も含める（Phase3）。
+ *  `id` を付けるとその部品の Canvas（場所の設定の境界の画像 `field:RandBox` など）。
  * - `ui.shot {id}`: 部品の範囲の画面の画像（PrintWindow）。
  */
 
@@ -43,7 +44,7 @@ function canvasPng(app: App, req: AutomationRequest): unknown {
   const target = optStr(req, "target") ?? optStr(req, "tab") ?? app.state.tab;
   let url: string | null;
   if (target === "map" || target === "movement" || target === "event") {
-    url = app.tabs[target].view.toPng();
+    url = app.tabs[target].view.toPng(req["neighbors"] === true);
     if (!url) throw new Error("マップが開かれていません");
   } else {
     const selector = CANVAS_GROUPS[target];

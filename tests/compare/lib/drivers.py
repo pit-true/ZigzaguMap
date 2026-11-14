@@ -762,6 +762,8 @@ class ZigzaguDriver(Driver):
                 # 場所の設定タブは AdvanceMap と同じ「くわしく（従来）」の表示で比べる（初期の「かんたん（CFRU）」は
                 # ユーザーの要望で足した ZigzaguMap だけの表示。tests/automation/feedback_check.py で確かめる）
                 self.call({"cmd": "setting", "key": "headerView", "value": "classic"})
+                # 隣のマップの帯（Phase3）は AdvanceMap に無いので、比べるときは出さない（tests/automation/connection_check.py で確かめる）
+                self.call({"cmd": "setting", "key": "neighborView", "value": "off"})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e
