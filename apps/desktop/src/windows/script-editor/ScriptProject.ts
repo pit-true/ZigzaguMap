@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+  DisasmCommandSet,
   ScriptAssist,
   ScriptCommandTable,
   buildScriptIndex,
@@ -77,6 +78,9 @@ export class ScriptProject {
       const defines = (await Promise.all(["xse_defines.s", "asm_defines.s"].map(read))).filter((t): t is string => t !== null);
       const csv = this.config?.commandsCsv ? await read(this.config.commandsCsv) : null;
       this.assist.setCommands(ScriptCommandTable.build({ xseCommands: xse, csv, defines }));
+    } else {
+      // プロジェクトの無い素の ROM（か xse_commands.s の無いフォルダ）: 逆アセンブルと同じ同梱の表で色付けとホバーをする
+      this.assist.setCommands(ScriptCommandTable.build({ xseCommands: DisasmCommandSet.bundled().toMacroText(), defines: [] }));
     }
     const linker = await read(LINKER_SCRIPT);
     if (linker !== null) this.assist.setLinkerSymbols(linker);
