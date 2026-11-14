@@ -104,7 +104,9 @@ export const coreCommands: CommandTable = {
   selectBlock: (app, req) => {
     const blocks = Array.isArray(req["blocks"]) ? (req["blocks"] as number[]) : [int(req, "block")];
     const width = typeof req["width"] === "number" ? req["width"] : 1;
-    app.state.select({ width, height: Math.ceil(blocks.length / width), blocks });
+    // 移動許可（`movements`。マップから拾った複数選択と同じ形。Phase3 #225）
+    const movements = Array.isArray(req["movements"]) ? (req["movements"] as number[]) : undefined;
+    app.state.select({ width, height: Math.ceil(blocks.length / width), blocks, ...(movements ? { movements } : {}) });
     return null;
   },
   action: async (app, req) => {

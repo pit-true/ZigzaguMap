@@ -233,4 +233,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - `neighbors.state` の `connections` は主マップの接続の全部（ダイブ・浮上も。`index`・`direction`・`offset`・`bank`・`map`）。
 - コマンド（#230）: `connectMaps`（`bank`・`map`・`direction`・`offset`・`targetBank`・`targetMap`。相手に逆向きの接続を足す。相手がもう逆の接続を持っていればずれだけそろえる。ダイブ・浮上は 1 枚に 1 つまで（`diveExists`））、`disconnectMaps`（`bank`・`map`・`index`・`targets`。相手の逆の接続も消す）、`fillLayout`（`bank`・`map`・`cell`。配置を同じ値で埋める）。新しいマップを作ってつなぐのは `group` の `createMap` → `setBorder` → `fillLayout` → `connectMaps`。
 - 入力ダイアログ（`inputDialog`）の OK・Cancel は `dialog` の `press: "ok"`・`"cancel"` でも押せる。
+- 複数選択の移動許可（#225）: マップから Ctrl＋右ドラッグで拾った選択は、`selection`（とマウス操作の返事）の `block.movements` に移動許可を持つ（パレットから選んだものは持たない）。`selectBlock` に `movements`（`blocks` と同じ並び）を渡すと、マップから拾ったのと同じ選択になる。マップタブの右の欄の「移動許可も貼る」は `map.pasteMovements`（`setField` に true / false。個人設定 `pasteMovements`）。オンなら `paintCells`、オフなら `paintBlocks` で貼る。
+- `paintCells` コマンド: `{"cmd":"command","name":"paintCells","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9,"movement":12}]}}`（ブロックと移動許可を両方書く。ドラッグ中はまとめて 1 回の操作）。
+- コピーと貼り付け: マップタブで `{"cmd":"key","key":"c","ctrl":true}`（コピー）、`mouse` の `hover` でマスを指してから `{"cmd":"key","key":"v","ctrl":true}`（貼る）。
 

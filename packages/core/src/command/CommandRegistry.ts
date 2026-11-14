@@ -3,6 +3,7 @@ import { CommandGroup } from "./CommandGroup.js";
 import { PlaceBlockCommand } from "./commands/PlaceBlockCommand.js";
 import { PlaceMovementCommand } from "./commands/PlaceMovementCommand.js";
 import { PaintBlocksCommand } from "./commands/PaintBlocksCommand.js";
+import { PaintCellValuesCommand } from "./commands/PaintCellValuesCommand.js";
 import { PaintBorderCommand } from "./commands/PaintBorderCommand.js";
 import { PaintMovementCommand } from "./commands/PaintMovementCommand.js";
 import { registerEditCommands } from "./editCommands.js";
@@ -44,7 +45,8 @@ export function createDefaultRegistry(): CommandRegistry {
     .register(PlaceMovementCommand.NAME, PlaceMovementCommand.fromJson)
     .register(PaintBlocksCommand.NAME, PaintBlocksCommand.fromJson)
     .register(PaintMovementCommand.NAME, PaintMovementCommand.fromJson)
-    .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson);
+    .register(PaintBorderCommand.NAME, PaintBorderCommand.fromJson)
+    .register(PaintCellValuesCommand.NAME, PaintCellValuesCommand.fromJson);
   registry.register(CommandGroup.NAME, (args) => CommandGroup.fromJson(args, (r) => registry.create(r)));
   registry.register(AddRomEraseRangesCommand.NAME, AddRomEraseRangesCommand.fromJson as CommandFactory);
   return registerEventLabelCommands(registerScriptsTableCommands(registerRegionMapCommands(registerEditCommands(registry))));
