@@ -1,3 +1,5 @@
+import { fileNameOf } from "./FileDialogs";
+import type { SettingsData } from "./Settings";
 import { ja } from "../i18n/ja";
 import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaComposite } from "../i18n/ja.composite";
@@ -251,6 +253,31 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       ],
     },
   ];
+}
+
+/** ファイル > 最近開いたもの（登録されている分だけ。最大数を超えた分は出さない）。 */
+export function recentMenuItems(s: Pick<SettingsData, "recent" | "recentMax" | "recentShowPath">): MenuItem[] {
+  return s.recent.slice(0, s.recentMax).map((entry, i): MenuItem => {
+    const text = s.recentShowPath
+      ? entry.rom + (entry.project ? ` + ${entry.project}` : "")
+      : fileNameOf(entry.rom) + (entry.project ? ` + ${fileNameOf(entry.project)}` : "");
+    return { id: `recent.${i}`, label: `${i + 1} ${text}`, accel: String(i + 1), inlineAccel: true };
+  });
+}
+
+/** ツールバーのボタンの名前（操作の記録とステータスバーに出す）。 */
+export function toolbarLabel(id: string): string {
+  const map: Record<string, string> = {
+    "map.new": ja.toolbar.newMap,
+    "map.insert": ja.toolbar.insertMap,
+    "view.objects": ja.toolbar.showObjects,
+    "tools.blockEditor": ja.toolbar.blockEditor,
+    "tools.connections": ja.toolbar.connections,
+    "tools.worldMap": ja.toolbar.worldMap,
+    "tools.find": ja.toolbar.find,
+    "help.about": ja.toolbar.about,
+  };
+  return map[id] ?? id;
 }
 
 /** メニューの全項目を平らにする（ショートカットの検索用）。 */

@@ -1,4 +1,4 @@
-import { STAMPS_DIR } from "../project/paths.js";
+import { STAMPS_DIR, listJsonFiles } from "../project/paths.js";
 import type { ProjectFs } from "../project/ProjectFs.js";
 import { checkStampShape, parseStamp, stampFileBase, stampFits, stampPath, stringifyStamp, type Stamp } from "../project/StampJson.js";
 
@@ -66,11 +66,7 @@ export class StampLibrary {
   }
 
   private async readFolder(fs: ProjectFs): Promise<void> {
-    if (!(await fs.exists(STAMPS_DIR))) return;
-    for (const file of await fs.list(STAMPS_DIR)) {
-      const m = /^(.*)\.json$/i.exec(file);
-      if (!m) continue;
-      const path = `${STAMPS_DIR}/${file}`;
+    for (const { path, base } of await listJsonFiles(fs, STAMPS_DIR)) {
       try {
         const stamp = parseStamp(await fs.readText(path), path);
         const key = nameKey(stamp.name);
@@ -78,7 +74,7 @@ export class StampLibrary {
           this.problems.push({ path, message: `同じ名前のスタンプがほかのファイルにあります: ${stamp.name}` });
           continue;
         }
-        this.entries.set(key, { stamp, base: m[1]! });
+        this.entries.set(key, { stamp, base });
       } catch (e) {
         this.problems.push({ path, message: (e as Error).message });
       }

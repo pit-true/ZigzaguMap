@@ -1,6 +1,7 @@
 import type { AutoPenService } from "../../app/AutoPenService";
 import type { EditorState } from "../../app/EditorState";
 import type { BlockPaletteView } from "../map/BlockPaletteView";
+import type { PaletteGeometry } from "../map/paletteLayers";
 
 /** 色（薄い紅色）。 */
 const TINT = "rgba(255, 64, 160, 0.28)";
@@ -15,7 +16,7 @@ export class AutoPenTint {
     private readonly service: AutoPenService,
     palette: BlockPaletteView,
   ) {
-    palette.decorate = (c, size, count, cellOf) => this.draw(c, size, count, cellOf);
+    palette.addLayer("overlay", (c, g) => this.draw(c, g));
     const repaint = () => palette.repaintOverlay();
     state.on("view", repaint);
     service.onChange(repaint);
@@ -31,13 +32,13 @@ export class AutoPenTint {
     return this.shown ? [...this.service.set!.index.blocks()].sort((a, b) => a - b) : [];
   }
 
-  private draw(c: CanvasRenderingContext2D, size: number, count: number, cellOf: (block: number) => { col: number; row: number }): void {
+  private draw(c: CanvasRenderingContext2D, g: PaletteGeometry): void {
     if (!this.shown) return;
     c.fillStyle = TINT;
     for (const b of this.service.set!.index.blocks()) {
-      if (b >= count) continue;
-      const p = cellOf(b);
-      c.fillRect(p.col * size, p.row * size, size, size);
+      if (b >= g.count) continue;
+      const p = g.cellOf(b);
+      c.fillRect(p.col * g.size, p.row * g.size, g.size, g.size);
     }
   }
 }

@@ -51,6 +51,15 @@ const INVALID_FILE_CHARS = /[\\/:*?"<>|]/g;
 export class NewMapController {
   constructor(private readonly host: NewMapHost) {}
 
+  /** メニュー・ツールバーの操作を登録する（ファイル > 新規マップ、マップ > マップの挿入など）。 */
+  registerActions(actions: { register(id: string, handler: () => unknown): void }): void {
+    actions.register("map.new", () => this.newMap());
+    actions.register("map.openCreated", () => this.openFile());
+    actions.register("map.saveCreatedAs", () => this.saveAs());
+    actions.register("map.insert", () => this.insert());
+    actions.register("dummy.manage", () => this.bankHeader());
+  }
+
   private get state(): EditorState {
     return this.host.state;
   }
