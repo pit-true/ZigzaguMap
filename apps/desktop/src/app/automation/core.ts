@@ -77,7 +77,7 @@ function key(_app: App, req: AutomationRequest): null {
 
 export const coreCommands: CommandTable = {
   open: async (app, req) => {
-    await app.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null);
+    await app.opener.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null);
     return describeState(app);
   },
   selectMap: async (app, req) => {

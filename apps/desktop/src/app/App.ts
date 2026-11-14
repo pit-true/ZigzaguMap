@@ -3,7 +3,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isWorkMapId, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
-import { messageBox, showError } from "../ui/MessageBox";
+import { messageBox } from "../ui/MessageBox";
 import { MapImage } from "../ui/map/MapImage";
 import { MapCombo } from "../ui/MapCombo";
 import { MapTree } from "../ui/MapTree";
@@ -27,7 +27,7 @@ import { installMakeButtons } from "../ui/newmap/MakeButtons";
 import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
 import { Actions, type ActionTarget } from "./Actions";
-import { EditorState, TAB_ORDER, type TabId } from "./EditorState";
+import { EditorState } from "./EditorState";
 import { FileDialogs, fileNameOf as fileName } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
@@ -35,7 +35,8 @@ import { SystemSettings } from "./SystemSettings";
 import { buildMapTree, comboGroups } from "./MapTreeModel";
 import { MapNavigation } from "./MapNavigation";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import { ProjectSession, UnknownRomError } from "./ProjectSession";
+import type { ProjectSession } from "./ProjectSession";
+import { SessionOpener } from "./SessionOpener";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
@@ -73,6 +74,8 @@ export class App implements ActionTarget {
   readonly nav: MapNavigation;
   /** ファイル・フォルダを選ぶダイアログ（自動操作では先に答えを積める）。 */
   readonly files = new FileDialogs();
+  /** ROM・プロジェクトフォルダを開く。 */
+  readonly opener = new SessionOpener(this);
   readonly system: SystemSettings;
   /** 数を入力して変える設定。 */
   readonly prompts: SettingPrompts;
@@ -265,7 +268,7 @@ export class App implements ActionTarget {
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
-      if (p.type === "drop") void this.drop(p.paths);
+      if (p.type === "drop") void this.opener.drop(p.paths);
     });
     await getCurrentWindow().onCloseRequested(async (event) => {
       if (this.closing) return;
@@ -279,147 +282,31 @@ export class App implements ActionTarget {
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
-    if (args.rom) await this.openSession(args.rom, args.project ?? this.recordedProject(args.rom));
+    if (args.rom) await this.opener.openSession(args.rom, args.project ?? this.opener.recordedProject(args.rom));
   }
 
   // ---- 開く ----
 
-  async openRomDialog(): Promise<void> {
-    const path = await this.files.rom();
-    if (path) await this.openRomAskingFolder(path);
-  }
-
-  /**
-   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ツールバー・ドラッグ＆ドロップ・
-   * 組のフォルダが記録されていない最近開いたもの）。キャンセルなら ROM だけで開く。未出力の変更の確認は先に済ませる。
-   */
-  async openRomAskingFolder(rom: string): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
-    // ROM でないファイルなら、フォルダを聞く前にエラーを出す（開いていたものはそのまま）
-    let bytes: Uint8Array;
-    try {
-      bytes = await ProjectSession.readRom(rom);
-    } catch (e) {
-      await this.showOpenError(e);
-      return;
-    }
-    // 前回のフォルダを覚えていて、まだあれば、窓を出さずにそれを開く（設定 > ROM ごとに前回のプロジェクトフォルダを覚える。#278）
-    const remembered = this.state.settings.data.rememberRomProject ? this.state.settings.rememberedProject(rom) : null;
-    if (remembered && (await invoke<boolean>("is_dir", { path: remembered }).catch(() => false))) {
-      await this.openSession(rom, remembered, { confirmed: true, bytes });
-      if (this.state.session?.projectDir) this.state.setStatus(ja.openedRememberedProject(this.state.session.projectDir));
-      return;
-    }
-    const before = this.state.status;
-    this.state.setStatus(ja.choosePairFolder);
-    const project = await this.files.folder(ja.pairFolderTitle);
-    this.state.setStatus(before.left, before.right, before.error);
-    await this.openSession(rom, project, { confirmed: true, bytes });
-  }
-
-  /** 最近開いたものに記録した、その ROM と組のフォルダ（無ければ null）。 */
-  recordedProject(rom: string): string | null {
-    return this.state.settings.data.recent.find((r) => r.rom.toLowerCase() === rom.toLowerCase())?.project ?? null;
-  }
-
-  async openProjectDialog(): Promise<void> {
-    const folder = await this.files.folder(ja.projectFolderTitle);
-    if (!folder) return;
-    await this.openFolder(folder);
-  }
-
-  /** プロジェクトフォルダを開く。ベース ROM は、開いている ROM か、最近開いたものの組から選ぶ。無ければ選ばせる。 */
-  private async openFolder(folder: string): Promise<void> {
-    const known = this.state.settings.data.recent.find((r) => r.project?.toLowerCase() === folder.toLowerCase());
-    let rom = this.state.session?.romPath ?? known?.rom ?? null;
-    if (!rom) {
-      this.state.setStatus(ja.needRomForProject);
-      rom = await this.files.rom();
-    }
-    if (rom) await this.openSession(rom, folder);
-  }
-
-  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダならプロジェクト、.gba なら ROM。 */
-  async drop(paths: readonly string[]): Promise<void> {
-    const path = paths[0];
-    if (path === undefined) return;
-    if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
-    else if (path.toLowerCase().endsWith(".gba")) await this.openRomAskingFolder(path);
-    else this.state.setStatus(ja.unsupportedFile, undefined, true);
-  }
-
-  async openRecent(index: number): Promise<void> {
-    const entry = this.state.settings.data.recent[index];
-    if (!entry) return;
-    if (entry.project) await this.openSession(entry.rom, entry.project);
-    else await this.openRomAskingFolder(entry.rom);
-  }
-
-  async reload(): Promise<void> {
-    const s = this.state.session;
-    // AdvanceMap と同じく、読み直したあとはマップを開かない（題名はアプリ名、ステータスは「マップを選択してください」）
-    if (s) await this.openSession(s.romPath, s.projectDir, { reload: true });
-  }
-
-  /**
-   * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
-   * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
-   * `reload` は ROM の再読み込み（マップを開かない）、`confirmed` は未出力の確認が済んでいる、`bytes` は読み済みの ROM。
-   */
-  async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
-    const reload = options.reload ?? false;
-    // 別のプロジェクトフォルダへ移るときは、スクリプトエディタの未保存も確かめる（エディタは閉じる）
-    const folder = (p: string | null | undefined): string => (p ?? "").replace(/[\\/]+$/, "").toLowerCase();
-    if (folder(project) !== folder(this.state.session?.projectDir) && !(await this.confirmScriptEditor())) return;
-    if (!options.confirmed && !(await this.confirmDiscard())) return;
+  /** 開いたセッションを画面に付ける（SessionOpener が開けたときに呼ぶ）。前のセッションの購読はやめる。 */
+  async attachSession(session: ProjectSession, rom: string): Promise<void> {
     const state = this.state;
-    const previous = state.session;
-    state.setStatus(ja.loading);
-    let session: ProjectSession;
-    try {
-      session = await ProjectSession.open(rom, project, options.bytes);
-    } catch (e) {
-      await previous?.reattach().catch(() => undefined);
-      await this.showOpenError(e);
-      return;
-    }
-    try {
-      timings.mark("sessionOpened");
-      this.unsubscribeBus?.();
-      state.session = session;
-      state.map = null;
-      state.mapImage = null;
-      state.dirty = new Set();
-      state.history.clear();
-      this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
-      this.tree.clear();
-      this.rebuildTree();
-      this.romInfo.show(session.project.game);
-      this.hint.hidden = true;
-      state.settings.addRecent({ rom, project: session.projectDir });
-      void this.system.updateRomShortcut(rom);
-      state.emit("session");
-      state.emit("map");
-      await this.setTitle(null);
-      state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
-
-      const last = state.settings.data.last;
-      const target =
-        !reload && state.settings.data.rememberLast && last && last.rom.toLowerCase() === rom.toLowerCase() ? { bank: last.bank, map: last.map } : null;
-      if (target && session.catalog.has(target)) {
-        if (last && (TAB_ORDER as readonly string[]).includes(last.tab)) state.setTab(last.tab as TabId);
-        await this.openMap(target);
-      }
-    } catch (e) {
-      this.showError(e);
-    }
-  }
-
-  /** 開けなかったときのエラー（ステータスバーを元に戻してから出す）。 */
-  private async showOpenError(e: unknown): Promise<void> {
-    this.state.setStatus(this.state.session ? ja.statusRomLoaded : ja.statusOpenRom);
-    if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
-    else await showError(errorText(e));
+    this.unsubscribeBus?.();
+    state.session = session;
+    state.map = null;
+    state.mapImage = null;
+    state.dirty = new Set();
+    state.history.clear();
+    this.unsubscribeBus = session.bus.subscribe((e) => this.changes.onCommand(e));
+    this.tree.clear();
+    this.rebuildTree();
+    this.romInfo.show(session.project.game);
+    this.hint.hidden = true;
+    state.settings.addRecent({ rom, project: session.projectDir });
+    void this.system.updateRomShortcut(rom);
+    state.emit("session");
+    state.emit("map");
+    await this.setTitle(null);
+    state.setStatus(ja.statusRomLoaded, ja.statusLoadTime(session.loadMs));
   }
 
   // ---- マップ ----
@@ -541,7 +428,7 @@ export class App implements ActionTarget {
   }
 
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
-  private async confirmDiscard(): Promise<boolean> {
+  async confirmDiscard(): Promise<boolean> {
     const session = this.state.session;
     if (!session || (session.modifiedMaps().length === 0 && !session.hasUnsavedChanges() && !session.isRegionMapModified())) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
@@ -571,7 +458,7 @@ export class App implements ActionTarget {
   }
 
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
-  private async confirmScriptEditor(): Promise<boolean> {
+  async confirmScriptEditor(): Promise<boolean> {
     if (!this.scriptHostValue) return true;
     const host = await this.scriptHostValue;
     let dirty: string[];
