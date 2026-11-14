@@ -252,8 +252,8 @@ export class NeighborService {
   }
 }
 
-/** 隣のマップの帯の部分を等倍の画像にする。 */
-async function renderBand(grid: BlockGrid, band: { x: number; y: number; width: number; height: number }, tiles: TilesetView): Promise<ImageBitmap> {
+/** 隣のマップの帯の部分を等倍の画像にする（ダイブ先の重ね表示でも使う）。 */
+export async function renderBand(grid: BlockGrid, band: { x: number; y: number; width: number; height: number }, tiles: TilesetView): Promise<ImageBitmap> {
   const image = createImage(band.width * BLOCK_PIXELS, band.height * BLOCK_PIXELS);
   for (let y = 0; y < band.height; y++) {
     for (let x = 0; x < band.width; x++) {

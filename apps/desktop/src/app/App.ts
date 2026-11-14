@@ -53,6 +53,7 @@ import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import { NeighborService } from "./neighbors/NeighborService";
 import { NeighborLayer } from "../ui/map/NeighborLayer";
+import { DiveOverlay } from "../ui/map/DiveOverlay";
 import { installViewExtras } from "../ui/map/viewExtras";
 import { ConnectionHandles } from "../ui/map/ConnectionHandles";
 import { EdgeHandles } from "../ui/map/EdgeHandles";
@@ -125,6 +126,8 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
   readonly neighbors: NeighborService;
+  /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
+  diveOverlays: DiveOverlay[] = [];
   private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
   /** 隣の帯の角と辺のつまみ（マップタブ）。 */
@@ -200,6 +203,8 @@ export class App implements ActionTarget {
     mapTab.painter.cells.neighbors = this.neighbors;
     movementTab.painter.cells.neighbors = this.neighbors;
     this.mapTabPainter = mapTab.painter;
+    // Space でダイブ先・浮上先を重ねる（#232。マップタブとイベントタブ）
+    this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", (id) => this.openMap(id)), new DiveOverlay(eventTab.view, state, "event", (id) => this.openMap(id))];
     this.movementTabPainter = movementTab.painter;
     const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
       ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement" }),

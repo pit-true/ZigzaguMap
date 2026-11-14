@@ -41,4 +41,9 @@ export const jaNeighbors = {
   refsTitle: "直していない座標",
   refsText: "マップの左・上をずらしましたが、次の .s の行の座標は直していません。必要なら手で直してください。",
   refsMore: (n: number) => `ほかに ${n} 行`,
+  /** Space でダイブ先・浮上先を重ねる（#232）。 */
+  noDive: "このマップにはダイブ・浮上の接続がありません",
+  diveShown: (bank: number, map: number, dive: boolean) => `${dive ? "ダイブ先" : "浮上先"} ${bank}.${map} を重ねています（ダブルクリックで開く）`,
+  shortcutDive: "ダイブ先・浮上先をマウスのまわりに重ねる（ダブルクリックで開く）",
+  shortcutDiveWhere: "マップタブ・イベントタブ",
 } as const;

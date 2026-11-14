@@ -21,6 +21,8 @@
   隣の帯との位置関係が変わらない（元の範囲の画像が同じ）。1 回の取り消しで全部戻る。出力して開き直しても同じ。右へ縮める・制限。
 - 234: 境界をまたぐ描画。マサラタウンと 1 番道路の境界をまたいで 4×4 を矩形塗りすると両方のマップが変わり、1 回の取り消しで両方戻る。
   鉛筆のドラッグ・拾う・矩形の選択・入れ替え・移動エリアタブの矩形塗りも境界をまたぐ。帯の外には描かない。出力で両方の JSON。
+- 232: Space でダイブ先を重ねる。素の BPRJ にはダイブの接続が無いので、マサラタウンから 1 番道路へダイブの接続を作って確かめる。
+  接続が無いと知らせる。Space を押している間、カーソルのまわりに相手のマップが出て、ダブルクリックで相手を開く。離すと消える。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -618,7 +620,50 @@ def check_234(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     z.call({"cmd": "tab", "name": "map"})
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234}
+def check_232(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    open_main(z)
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "key", "key": " ", "type": "down"})
+    st = z.call({"cmd": "neighbors.state", "wait": True})
+    status = z.call({"cmd": "state"})["status"]["left"]
+    check(st["dive"] is None and "ダイブ" in status, f"ダイブ・浮上の接続が無ければ知らせる（{status}）")
+    z.call({"cmd": "key", "key": " ", "type": "up"})
+    # 1 番道路の左上の画像（重ねたときに見えるはずのもの）
+    z.call({"cmd": "selectMap", **ROUTE1})
+    route = png_of(z, {"cmd": "canvasPng", "target": "map"})
+    open_main(z)
+    z.call({"cmd": "command", "name": "connectMaps", "args": {**PALLET, "direction": 5, "offset": 0, "targetBank": 3, "targetMap": 19}})
+    open_main(z)
+    pallet = png_of(z, {"cmd": "canvasPng", "target": "map"})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [10, 10]})
+    z.call({"cmd": "key", "key": " ", "type": "down"})
+    st = z.call({"cmd": "neighbors.state", "wait": True})
+    check(st["dive"] == {"id": {"bank": 3, "map": 19}, "direction": 5}, f"Space を押している間、ダイブ先を重ねる {st['dive']}")
+    img = png_of(z, {"cmd": "canvasPng", "target": "map"})
+    if Image is not None:
+        box = (10 * 16, 10 * 16, 11 * 16, 11 * 16)
+        diff = max(hi for _lo, hi in ImageChops.difference(img.crop(box), route.crop(box)).getextrema())
+        far = (20 * 16, 2 * 16, 21 * 16, 3 * 16)
+        same_far = max(hi for _lo, hi in ImageChops.difference(img.crop(far), pallet.crop(far)).getextrema())
+        changed = max(hi for _lo, hi in ImageChops.difference(img.crop(box), pallet.crop(box)).getextrema())
+        check(diff == 0 and same_far == 0 and changed != 0, f"カーソルのまわりは相手のマップ、離れたところは主マップ（差 {diff}・{same_far}・{changed}）")
+    if shots:
+        shot(z, shots, "p3c_232_dive_overlay.png")
+    z.call({"cmd": "key", "key": " ", "type": "up"})
+    check(z.call({"cmd": "neighbors.state", "wait": True})["dive"] is None, "Space を離すと消える")
+    # イベントタブでも重ね、ダブルクリックで相手を開く
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "mouse", "target": "event", "action": "hover", "cell": [5, 5]})
+    z.call({"cmd": "key", "key": " ", "type": "down"})
+    check(z.call({"cmd": "neighbors.state", "wait": True})["dive"] is not None, "イベントタブでも重ねる")
+    z.call({"cmd": "mouse", "target": "event", "action": "dblclick", "cell": [5, 5]})
+    time.sleep(0.3)
+    check(z.call({"cmd": "state"})["map"]["map"] == 19, "重ねているときのダブルクリックで相手のマップを開く")
+    z.call({"cmd": "key", "key": " ", "type": "up"})
+    z.call({"cmd": "tab", "name": "map"})
+
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232}
 
 
 def main() -> int:
