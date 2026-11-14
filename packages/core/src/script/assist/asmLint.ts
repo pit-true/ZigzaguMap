@@ -12,6 +12,8 @@ export type ScriptDiagnosticCode =
   | "missingArgs"
   /** 引数が多すぎる。 */
   | "tooManyArgs"
+  /** マクロの呼び出しをたどった先に、定義の無いマクロがある（`giveitem` → `copyvarifnotzero` → `setorcopyvar`）。組めない。 */
+  | "unassemblableMacro"
   /** 同じ `.string` に同じラベルの `#org` が 2 つ以上ある。 */
   | "duplicateString"
   /** 別の `.string` に同じラベルがある。 */
@@ -82,6 +84,17 @@ export function lintAsmText(assist: ScriptAssist, text: string): ScriptDiagnosti
       continue;
     }
     const command = a.command!;
+    // 呼び先の定義が無いマクロ（同じファイルの `.macro` で定義していれば数えない）
+    const absent = command.missingCalls.filter((m) => !macros.has(m.name.toLowerCase()));
+    if (absent.length > 0) {
+      out.push({
+        from: base + line.op.start,
+        to: base + line.op.end,
+        severity: "warning",
+        code: "unassemblableMacro",
+        params: { name: command.name, missing: absent.map((m) => m.name).join(", "), via: absent[0]!.via.join(" → ") },
+      });
+    }
     const params = command.args;
     const vararg = params.some((p) => p.vararg);
     const missing = params.filter((p) => p.required && p.index >= a.args.length);
