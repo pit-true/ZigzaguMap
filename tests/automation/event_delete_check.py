@@ -2,7 +2,8 @@
 
   python tests/automation/event_delete_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>] [--shots <フォルダ>]
 
-- 見ること: イベントの箱を右クリックすると「イベントを削除」「スクリプトを開く」のメニューが出る（フライトポジションでは削除を押せない）。
+- 見ること: イベントの箱を右クリックすると「イベントを削除」「スクリプトを開く」のメニューが出る（続いて「ここに○○を追加」。
+  フライトポジションでは削除を押せない）。
   「イベントを削除」・Delete キー・「イベントの削除」ボタンのどれでも確認のダイアログが出て、キャンセルなら何も変わらない。
   プロジェクトフォルダが無いので、ダイアログは「範囲は記録できない」と知らせ、削除ではオブジェクトだけを消す（maps\\rom_erase.json は作らない）。
   1 回の元に戻すで戻り、やり直すとまた消える。ワープと隠しアイテムの看板も消せる。
@@ -69,7 +70,11 @@ def main() -> int:
         # 右クリックのメニュー
         z.call({"cmd": "mouse", "target": "event", "cell": [p["x"], p["y"]], "action": "rightClick"})
         menu = z.call({"cmd": "contextMenu.state"})
-        check(bool(menu) and [i["id"] for i in menu["items"]] == ["delete", "openScript"], "人の箱の右クリックで「イベントを削除」「スクリプトを開く」が出る")
+        ids = [i["id"] for i in menu["items"]] if menu else []
+        # 先頭が「イベントを削除」「スクリプトを開く」。そのあとは「ここに○○を追加」（#304）だけで、
+        # プロジェクトフォルダが要る項目（トレーナーを編集・ここにひな形を置く・落とし物）は出ない
+        check(ids[:2] == ["delete", "openScript"] and ids[2:] == ["add.person", "add.sign", "add.trap", "add.warp"],
+              f"人の箱の右クリックで「イベントを削除」「スクリプトを開く」と「ここに○○を追加」が出る（{ids}）")
         check(z.call({"cmd": "event.state"})["kind"] == "person" and z.call({"cmd": "event.state"})["index"] == 0, "右クリックした人が選ばれる")
         shot(z, shots, "delete-1-context-menu.png")
         r = z.call({"cmd": "contextMenu.press", "id": "delete"})
