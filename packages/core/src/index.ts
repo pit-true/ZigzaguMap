@@ -25,6 +25,7 @@ export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
 export { TilesetTable } from "./map/TilesetTable.js";
 export { LayoutSharing } from "./map/LayoutSharing.js";
+export { BEHAVIOR_MASK, WARP_BEHAVIORS, isWarpBehavior } from "./map/behaviors.js";
 export {
   MAP_FOOTER,
   MAP_HEADER,
@@ -307,3 +308,4 @@ export * from "./script/edit/index.js";
 export * from "./script/link/index.js";
 export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
+export * from "./script/summary/index.js";
