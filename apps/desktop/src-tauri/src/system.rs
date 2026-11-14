@@ -188,8 +188,11 @@ pub(crate) fn percent_decode(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
+            // 文字の途中で切らないよう、バイト列のまま読む（`%あ` などで落ちないため）
+            let (hi, lo) = (bytes[i + 1], bytes[i + 2]);
+            if hi.is_ascii_hexdigit() && lo.is_ascii_hexdigit() {
+                let digit = |c: u8| (c as char).to_digit(16).unwrap_or(0) as u8;
+                out.push(digit(hi) << 4 | digit(lo));
                 i += 3;
                 continue;
             }
@@ -198,4 +201,17 @@ pub(crate) fn percent_decode(s: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::percent_decode;
+
+    #[test]
+    fn percent_decode_does_not_split_characters() {
+        assert_eq!(percent_decode("a%E3%81%82b"), "aあb");
+        assert_eq!(percent_decode("%あ%"), "%あ%");
+        assert_eq!(percent_decode("%4"), "%4");
+        assert_eq!(percent_decode("%+1"), "%+1");
+    }
 }

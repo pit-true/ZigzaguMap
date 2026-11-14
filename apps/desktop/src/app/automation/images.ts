@@ -56,15 +56,40 @@ function canvasPng(app: App, req: AutomationRequest): unknown {
   return img;
 }
 
+/**
+ * 部品の見えている範囲（CSS ピクセル）。スクロールする枠やウィンドウからはみ出す分は切り詰める。まったく見えていなければ null。
+ */
+function visibleRect(el: Element): { left: number; top: number; right: number; bottom: number } | null {
+  const r = el.getBoundingClientRect();
+  let left = Math.max(r.left, 0);
+  let top = Math.max(r.top, 0);
+  let right = Math.min(r.right, window.innerWidth);
+  let bottom = Math.min(r.bottom, window.innerHeight);
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    const style = getComputedStyle(p);
+    if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+    const c = p.getBoundingClientRect();
+    left = Math.max(left, c.left);
+    top = Math.max(top, c.top);
+    right = Math.min(right, c.right);
+    bottom = Math.min(bottom, c.bottom);
+  }
+  return right > left && bottom > top ? { left, top, right, bottom } : null;
+}
+
 async function uiShot(_app: App, req: AutomationRequest): Promise<unknown> {
-  // 部品（パネル）の画像。位置は CSS ピクセル × devicePixelRatio でクライアント領域の物理ピクセルにする。
-  const r = findField(str(req, "id")).getBoundingClientRect();
+  // 部品（パネル）の見えている範囲の画像。位置は CSS ピクセル × devicePixelRatio でクライアント領域の物理ピクセルにする。
+  const id = str(req, "id");
+  const r = visibleRect(findField(id));
+  if (!r) throw new Error(`部品が見えていません（隠れているか、枠の外にスクロールしています）: ${id}`);
   const s = window.devicePixelRatio || 1;
+  const x = Math.floor(r.left * s);
+  const y = Math.floor(r.top * s);
   return invoke("automation_capture", {
-    x: Math.round(r.left * s),
-    y: Math.round(r.top * s),
-    width: Math.max(1, Math.round(r.width * s)),
-    height: Math.max(1, Math.round(r.height * s)),
+    x,
+    y,
+    width: Math.max(1, Math.ceil(r.right * s) - x),
+    height: Math.max(1, Math.ceil(r.bottom * s) - y),
   });
 }
 

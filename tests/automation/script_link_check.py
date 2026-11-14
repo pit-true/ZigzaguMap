@@ -10,7 +10,8 @@
   2. 欄に入力すると .s のラベルの一覧が出て、Enter で決まる（元に戻せる）
   3. 「スクリプトを開く」でエディタのそのラベルの行が開く
   4. 素の ROM のスクリプトの読み取り専用のタブと「.s に取り込む」の一覧（ダイアログ）
-  5. マップスクリプトのパネル（場所の設定タブのかんたん表示）
+  5. マップスクリプトのパネル（場所の設定タブのかんたん表示）。縦にスクロールする枠の中のパネルを ui.shot で撮っても落ちず（#216）、
+     見えていない部品はエラーになる
   6. F2 のラベル名の変更がイベントのラベルにも反映される
   7. ビルドの欄でビルドし、わざと入れた誤りがエラーの一覧に出て、押すとその行へ移る（--no-build で飛ばす）
 - --shots を付けると、新しい画面のスクリーンショットを書く。
@@ -149,7 +150,28 @@ def run(fx, z: Zigzagu, shots: pathlib.Path | None, build: bool) -> None:
     check(frame is not None and len(frame["conditions"]) == 1, "条件表の種類を足すと、条件の行とひな形が付く")
     off = z.call({"cmd": "ui.list", "root": "easy.ms"})
     check(not any("Offset" in str(x.get("id", "")) or "offset" in str(x.get("id", "")) for x in off), "パネルにオフセットの欄が無い")
-    z.call({"cmd": "scroll", "id": "easy.ms", "to": "end"})
+    # 縦にスクロールする枠の中のパネルを撮る（#216。以前は画像の外を読みにいって落ちた）
+    for when in ("先頭", "末尾"):
+        if when == "末尾":
+            z.call({"cmd": "scroll", "id": "easy.ms", "to": "end"})
+        try:
+            img = z.call({"cmd": "ui.shot", "id": "easy.ms"})
+            check(img["width"] > 0 and img["height"] > 0, f"ui.shot easy.ms（{when}までスクロール）で見えている範囲を撮れる（{img['width']}x{img['height']}）")
+        except AppError as e:
+            # 先頭では、パネルが枠の下に隠れていればエラーになる（落ちないこと）。末尾では一部が見えているので撮れること
+            check(when == "先頭" and "見えていません" in str(e), f"ui.shot easy.ms（{when}までスクロール）: {e}")
+        except Exception as e:  # noqa: BLE001
+            check(False, f"ui.shot easy.ms（{when}までスクロール）: {type(e).__name__}: {e}")
+            time.sleep(1)
+        check(z.proc is not None and z.proc.poll() is None, f"ui.shot easy.ms（{when}）のあともアプリが動いている")
+        if z.proc is None or z.proc.poll() is not None:
+            raise RuntimeError("アプリが落ちました")
+    try:
+        z.call({"cmd": "ui.shot", "id": "event.person.label"})
+        check(False, "隠れているタブの部品の ui.shot はエラーになる")
+    except AppError as e:
+        check("見えていません" in str(e), f"隠れているタブの部品の ui.shot はエラーになる（{e}）")
+    check(z.proc is not None and z.proc.poll() is None, "見えていない部品の ui.shot のあともアプリが動いている")
     shot(z, shots, "p2l_06_map_script_panel.png")
     z.call({"cmd": "tab", "name": "event"})
 
@@ -203,7 +225,7 @@ def main() -> int:
         try:
             with Zigzagu(cfg, f"ui-{name}", cfg.zigzaguExe) as z:
                 run(fx, z, shots if name == (args.only or ["nd"])[0] else None, not args.no_build)
-        except (AppError, RuntimeError) as e:
+        except (AppError, RuntimeError, OSError) as e:
             check(False, f"{type(e).__name__}: {e}")
         finally:
             print(f"写しのテキストファイルを元に戻しました（{snap.restore()} 件）")
