@@ -53,20 +53,8 @@ import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
-import { NeighborService } from "./neighbors/NeighborService";
-import { NeighborLayer } from "../ui/map/NeighborLayer";
-import { DiveOverlay } from "../ui/map/DiveOverlay";
 import type { MixingBag } from "./MixingBag";
-import { CompositeImage } from "./CompositeImage";
-import { jaComposite } from "../i18n/ja.composite";
-import { installViewExtras } from "../ui/map/viewExtras";
-import { BlockUsagePanel } from "../ui/usage/BlockUsagePanel";
-import { UsageMarks } from "../ui/usage/UsageMarks";
-import { BlockUsageService } from "./BlockUsageService";
-import { ConnectionHandles } from "../ui/map/ConnectionHandles";
-import { EdgeHandles } from "../ui/map/EdgeHandles";
-import { EdgeMenu } from "../ui/connection/EdgeMenu";
-import { EdgeResize } from "../ui/connection/EdgeResize";
+import { MapExtras } from "./mapExtras";
 
 /** 起動引数（Rust の StartupArgs）。 */
 interface StartupArgs {
@@ -133,25 +121,10 @@ export class App implements ActionTarget {
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
   profileDir: string | null = null;
-  /** 隣のマップの帯（Phase3 #223。マップ・移動エリア・イベントの 3 タブで同じものを描く）。 */
-  readonly neighbors: NeighborService;
-  /** 接続している全マップ（か今のマップ）の画像（#246）。 */
-  readonly composite: CompositeImage;
+  /** Phase3 でマップの表示に足したもの（隣の帯・つまみ・使用の印・画像のコピーなど）。 */
+  readonly extras: MapExtras;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
-  /** Space で重ねるダイブ先・浮上先（マップタブとイベントタブ）。 */
-  diveOverlays: DiveOverlay[] = [];
-  /** ブロックの使用回数の索引（#235）。 */
-  readonly blockUsage: BlockUsageService;
-  /** 使用の印（#235。マップタブと移動エリアタブ）。 */
-  readonly usageMarks: { readonly map: UsageMarks; readonly movement: UsageMarks };
-  private mapTabPainter: { cells: { settle(): Promise<void> } } | null = null;
-  private movementTabPainter: { cells: { settle(): Promise<void> } } | null = null;
-  /** 隣の帯の角と辺のつまみ（マップタブ）。 */
-  readonly connectionHandles: ConnectionHandles;
-  readonly edgeHandles: EdgeHandles;
-  /** 辺のつまみのドラッグでのリサイズ（#231）。 */
-  readonly edgeResize: EdgeResize;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -224,41 +197,8 @@ export class App implements ActionTarget {
     });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
-    this.neighbors = new NeighborService(state);
-    // 境界をまたぐ描画（#234）: 描く道具に隣の帯を教える
-    mapTab.painter.cells.neighbors = this.neighbors;
-    movementTab.painter.cells.neighbors = this.neighbors;
-    this.mapTabPainter = mapTab.painter;
-    // Space でダイブ先・浮上先を重ねる（#232。マップタブとイベントタブ）
-    this.diveOverlays = [new DiveOverlay(mapTab.view, state, "map", (id) => this.openMap(id)), new DiveOverlay(eventTab.view, state, "event", (id) => this.openMap(id))];
-    this.movementTabPainter = movementTab.painter;
-    const layers = ([[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const).map(
-      ([view, tab]) => new NeighborLayer(view, state, this.neighbors, (id) => this.openMap(id), { tab, movement: tab === "movement", clones: tab === "event" }),
-    );
-    // 隣の帯のつまみ（マップタブだけ。#229）
-    this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
-    // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
-    this.edgeResize = new EdgeResize(state);
-    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
-    // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
-    this.blockUsage = new BlockUsageService(state);
-    // ミキシングバッグで描くときの移動許可（#236）
-    mapTab.painter.usage = this.blockUsage;
+    this.extras = new MapExtras(state, this.actions, { map: mapTab, movement: movementTab, event: eventTab }, (id) => this.openMap(id));
     this.mixingBag = mapTab.bag;
-    // 画像のコピー（#246）: ツール > マップの画像をコピー／接続している全マップの画像をコピー
-    this.composite = new CompositeImage(state);
-    for (const whole of [false, true]) {
-      for (const events of ["none", "persons", "all"] as const) {
-        this.actions.register(`image.${whole ? "copyWhole" : "copyMap"}.${events}`, async () => {
-          const r = await this.composite.copy({ whole, events, ask: true });
-          if (r) state.setStatus(jaComposite.copied(r.width, r.height, r.maps, r.scale));
-        });
-      }
-    }
-    mapTab.insertSide(new BlockUsagePanel(state, this.blockUsage).element);
-    this.usageMarks = { map: new UsageMarks(mapTab.view, state, "map", this.blockUsage), movement: new UsageMarks(movementTab.view, state, "movement", this.blockUsage) };
-    // Ctrl で重ね描きを隠す・ステータスバーの補助の欄（#238）
-    for (const [view, tab] of [[mapTab.view, "map"], [movementTab.view, "movement"], [eventTab.view, "event"]] as const) installViewExtras(view, state, tab, this.neighbors);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -588,12 +528,6 @@ export class App implements ActionTarget {
   }
 
   // ---- 編集 ----
-
-  /** 隣のマップを読み込んでから書く操作（境界をまたぐ描画。#234）が残っていないことを待つ（自動操作用）。 */
-  async settlePainting(): Promise<void> {
-    await this.mapTabPainter?.cells.settle();
-    await this.movementTabPainter?.cells.settle();
-  }
 
   /** 元に戻す。 */
   undo(): void {

@@ -119,7 +119,7 @@ export const coreCommands: CommandTable = {
   key,
   cells: async (app, req) => {
     // 隣のマップへ書く操作は、読み込んでから実行するので、それを待つ（Phase3 #234）
-    await app.settlePainting();
+    await app.extras.settlePainting();
     // `bank`・`map` を付けると、そのマップ（編集中のものか、読み取り専用で読んだもの）の配置
     if (typeof req["bank"] === "number" && typeof req["map"] === "number") {
       const doc = await requireSession(app).project.peek({ bank: req["bank"], map: req["map"] });
