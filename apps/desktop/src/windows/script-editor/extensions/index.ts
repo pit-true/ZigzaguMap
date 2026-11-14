@@ -11,6 +11,7 @@ import { phrasesExtension } from "./phrases";
 import { pinnedExtension } from "./pinned";
 import { searchExtension } from "./search";
 import { stringEditExtension } from "./stringEdit";
+import { stringLinesExtension } from "./stringLines";
 import { themesExtension } from "./themes";
 import type { EditorExtensionFactory, EditorFileContext } from "./context";
 import { historyExtension } from "./history";
@@ -41,6 +42,7 @@ export const EDITOR_EXTENSIONS: readonly EditorExtensionFactory[] = [
   hoverExtension,
   pinnedExtension,
   stringEditExtension,
+  stringLinesExtension,
   lineNumbersExtension,
   phrasesExtension,
   plainThemeExtension,
