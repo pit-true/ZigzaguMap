@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Theme } from "../util/theme";
 
 /** 最近開いたもの 1 件（ベース ROM と、あればプロジェクトフォルダ）。 */
 export interface RecentEntry {
@@ -82,6 +83,8 @@ export interface SettingsData {
   mapFileDir: string | null;
   /** スクリプトエディタのテーマ（`darkPlus` / `lightPlus` / `monokai` / `solarizedDark`。エディタのウィンドウが決める）。 */
   scriptEditorTheme: string;
+  /** メインと道具のウィンドウの配色（`light` = 明るい標準色、`dark` = ダーク）。スクリプトエディタは `scriptEditorTheme` を使う。 */
+  theme: Theme;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -116,6 +119,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   mapFiles: [],
   mapFileDir: null,
   scriptEditorTheme: "lightPlus",
+  theme: "light",
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

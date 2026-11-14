@@ -6,6 +6,10 @@ import type { SystemSettings } from "./SystemSettings";
 import type { EnableWhen, MenuItem } from "./menuDefinition";
 import type { SettingsData } from "./Settings";
 import { errorText } from "../util/errors";
+import { toTheme, type Theme } from "../util/theme";
+
+/** 設定 > テーマの項目（`theme.light` / `theme.dark`）。 */
+const THEMES: readonly Theme[] = ["light", "dark"];
 
 /** アクションが呼ぶ App の操作。 */
 export interface ActionTarget {
@@ -72,6 +76,7 @@ export class Actions {
       h.set(id, () => target.changeSetting({ [key]: !this.state.settings.data[key] }));
     }
     for (let i = 0; i < ja.sortModes.length; i++) h.set(`sort.${i}`, () => target.setSort(i));
+    for (const theme of THEMES) h.set(`theme.${theme}`, () => target.changeSetting({ theme }));
     // 確認してから切り替えるもの（TOGGLES の既定の動作を上書きする）。
     h.set("opt.romShortcut", () => target.system.toggleRomShortcut());
     h.set("opt.contextMenu", () => target.system.toggleContextMenu());
@@ -139,6 +144,7 @@ export class Actions {
     const key = TOGGLES[id];
     if (key) return this.state.settings.data[key] === true;
     if (id.startsWith("sort.")) return Number(id.slice(5)) === this.state.settings.data.sortMode;
+    if (id.startsWith("theme.")) return id.slice(6) === toTheme(this.state.settings.data.theme);
     return false;
   }
 }

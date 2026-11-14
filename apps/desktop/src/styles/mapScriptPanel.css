@@ -39,7 +39,7 @@
 }
 
 .msp-hex.invalid {
-  background: #ffe0e0;
+  background: var(--error-bg);
 }
 
 .msp-foot {

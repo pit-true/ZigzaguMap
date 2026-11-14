@@ -121,6 +121,8 @@ export const coreCommands: CommandTable = {
   setting: (app, req) => {
     // 個人設定の値をこのセッションの間だけ変える（ファイルには保存しない）。
     (app.state.settings.data as unknown as Record<string, unknown>)[str(req, "key")] = req["value"];
+    // テーマはすぐに画面（と道具のウィンドウ）へ当てる。ほかの設定は次に描くときに使われる。
+    app.syncTheme();
     return null;
   },
 };

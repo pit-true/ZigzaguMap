@@ -29,5 +29,5 @@
 }
 
 .status-left.error {
-  color: #c00000;
+  color: var(--error-text);
 }

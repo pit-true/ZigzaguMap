@@ -30,7 +30,7 @@
 }
 
 .map-tree:not(:focus) .tree-row.selected .tree-label {
-  background: #cdcdcd;
+  background: var(--tree-inactive-select);
   color: var(--text);
 }
 
