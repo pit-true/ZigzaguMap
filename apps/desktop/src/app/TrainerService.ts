@@ -151,7 +151,7 @@ export class TrainerService {
     const map = this.app.state.map;
     const person = map?.doc.events?.persons[index];
     if (!map || !person) return null;
-    const summaries = await this.app.eventSummaries();
+    const summaries = await this.app.events.eventSummaries();
     const result = await summaries.summarize({ map: map.id, kind: "person", index }, person.script);
     if (result.kind !== "summary") return null;
     for (const e of result.summary.entries) if (e.type === "trainer" && e.id !== null) return e.id;

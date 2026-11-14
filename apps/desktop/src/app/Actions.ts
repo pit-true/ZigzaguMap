@@ -1,5 +1,7 @@
 import { ja } from "../i18n/ja";
 import type { EditorState } from "./EditorState";
+import type { MapNavigation } from "./MapNavigation";
+import type { SessionOpener } from "./SessionOpener";
 import type { ImageKind } from "./ImageExport";
 import type { SettingPrompts } from "./SettingPrompts";
 import type { SystemSettings } from "./SystemSettings";
@@ -18,18 +20,12 @@ const THEMES: readonly Theme[] = ["light", "dark"];
 export interface ActionTarget {
   readonly system: SystemSettings;
   readonly prompts: SettingPrompts;
-  openRomDialog(): Promise<void>;
-  openProjectDialog(): Promise<void>;
-  reload(): Promise<void>;
+  /** ROM・プロジェクトフォルダを開く。 */
+  readonly opener: SessionOpener;
   exportMaps(chooseFolder: boolean): Promise<unknown>;
-  openRecent(index: number): Promise<void>;
   exit(): Promise<void>;
-  openMapByNumber(): Promise<void>;
-  openPreviousMap(): Promise<void>;
-  /** 進む（#237）。 */
-  openNextMap(): Promise<void>;
-  /** マップ名で探して開く（#237）。 */
-  findMap(): Promise<void>;
+  /** 番号・名前でマップを開く、戻る・進む（#237）。 */
+  readonly nav: MapNavigation;
   setSort(mode: number): void;
   changeSetting(patch: Partial<SettingsData>): void;
   openConnections(): Promise<void>;
@@ -76,13 +72,13 @@ export class Actions {
     target: ActionTarget,
   ) {
     const h = this.handlers;
-    h.set("file.open", () => target.openRomDialog());
-    h.set("file.openProject", () => target.openProjectDialog());
-    h.set("file.reload", () => target.reload());
+    h.set("file.open", () => target.opener.openRomDialog());
+    h.set("file.openProject", () => target.opener.openProjectDialog());
+    h.set("file.reload", () => target.opener.reload());
     h.set("file.export", () => target.exportMaps(false));
     h.set("file.exportTo", () => target.exportMaps(true));
     h.set("file.exit", () => target.exit());
-    for (let i = 0; i < 9; i++) h.set(`recent.${i}`, () => target.openRecent(i));
+    for (let i = 0; i < 9; i++) h.set(`recent.${i}`, () => target.opener.openRecent(i));
     for (const [id, key] of Object.entries(TOGGLES)) {
       h.set(id, () => target.changeSetting({ [key]: !this.state.settings.data[key] }));
     }
@@ -107,11 +103,11 @@ export class Actions {
     h.set("view.opacity", () => target.openOpacity());
     h.set("recent.max", () => target.prompts.recentMax());
     h.set("recent.clear", () => target.changeSetting({ recent: [] }));
-    h.set("tools.openMap", () => target.openMapByNumber());
-    h.set("tools.previousMap", () => target.openPreviousMap());
-    h.set("view.back", () => target.openPreviousMap());
-    h.set("view.forward", () => target.openNextMap());
-    h.set("map.find", () => target.findMap());
+    h.set("tools.openMap", () => target.nav.openMapByNumber());
+    h.set("tools.previousMap", () => target.nav.openPreviousMap());
+    h.set("view.back", () => target.nav.openPreviousMap());
+    h.set("view.forward", () => target.nav.openNextMap());
+    h.set("map.find", () => target.nav.findMap());
     h.set("tools.worldMap", () => target.openWorldMap());
     h.set("tools.connections", () => target.openConnections());
     h.set("image.map", () => target.saveImage("map"));

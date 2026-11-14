@@ -1,5 +1,6 @@
 import { type BochiJsonValue, writeIndentedJson } from "../../project/BochiJson.js";
 import { ProjectFormatError } from "../../project/ProjectFormatError.js";
+import { mapLabelsFilePath } from "../../project/paths.js";
 import { type JsonRecord, asRecord, parseJsonObject, readArray, readInt } from "../../project/jsonRead.js";
 import { isMapScriptTableType, type MapScriptItem, type MapScriptTableModel } from "../edit/MapScriptTableText.js";
 import { parseEventScriptKind, type EventScriptKind } from "../project/eventScriptKinds.js";
@@ -13,17 +14,13 @@ export const MAP_LABELS_FORMAT = 1;
  * 読むため（数字で始まる名前だとビルドが止まる）。
  */
 export function mapLabelsPath(bank: number, map: number): string {
-  return `maps/${pad(bank)}/scripts_${pad(map)}.json`;
+  return mapLabelsFilePath(bank, map);
 }
 
 /** `maps/BB/scripts_MM.json` のパスならバンクとマップ。違えば null。 */
 export function parseMapLabelsPath(path: string): { bank: number; map: number } | null {
   const m = /^maps\/([0-9]+)\/scripts_([0-9]+)\.json$/i.exec(path);
   return m ? { bank: Number(m[1]), map: Number(m[2]) } : null;
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
 }
 
 /** イベント 1 つのラベル（照合用の座標つき）。 */

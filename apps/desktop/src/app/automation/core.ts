@@ -77,7 +77,7 @@ function key(_app: App, req: AutomationRequest): null {
 
 export const coreCommands: CommandTable = {
   open: async (app, req) => {
-    await app.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null);
+    await app.opener.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null);
     return describeState(app);
   },
   selectMap: async (app, req) => {
@@ -100,7 +100,7 @@ export const coreCommands: CommandTable = {
     const session = requireSession(app);
     if (dir === undefined && !session.projectDir) throw new Error("出力先 dir を指定してください");
     const result = await session.export(dir);
-    app.checkDirty(true);
+    app.changes.checkDirty(true);
     return result;
   },
   selectBlock: (app, req) => {
@@ -119,7 +119,7 @@ export const coreCommands: CommandTable = {
   key,
   cells: async (app, req) => {
     // 隣のマップへ書く操作は、読み込んでから実行するので、それを待つ（Phase3 #234）
-    await app.settlePainting();
+    await app.extras.settlePainting();
     // `bank`・`map` を付けると、そのマップ（編集中のものか、読み取り専用で読んだもの）の配置
     if (typeof req["bank"] === "number" && typeof req["map"] === "number") {
       const doc = await requireSession(app).project.peek({ bank: req["bank"], map: req["map"] });
@@ -131,7 +131,7 @@ export const coreCommands: CommandTable = {
     return { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells], border: [...map.doc.border.cells] };
   },
   state: (app) => {
-    app.checkDirty(true);
+    app.changes.checkDirty(true);
     return describeState(app);
   },
   setting: (app, req) => {

@@ -326,6 +326,20 @@ def main() -> int:
         check(len(st["diagnostics"]) == 4, "editor.state にも波線の一覧")
         shot(z, shots, f"{a.name}-lint.png")
         ed(z, "editor.setText", text=text)
+        # ---- #268 組めないマクロの波線（xse_commands.s に setorcopyvar の定義が無ければ giveitem・obtainitem に出る）----
+        xse = proj / "xse_commands.s"
+        has_setorcopyvar = xse.is_file() and re.search(r"^\s*\.macro\s+setorcopyvar\b", xse.read_text(encoding="utf-8", errors="replace"), re.M) is not None
+        ed(z, "editor.type", text="	giveitem 0xD 1 MSG_OBTAIN
+	obtainitem 0xD 1
+", line=msg_line + 1, column=1)
+        d = [x for x in ed(z, "editor.diagnostics")["diagnostics"] if x["source"] == "unassemblableMacro"]
+        if has_setorcopyvar:
+            check(d == [], f"setorcopyvar が定義されていれば giveitem・obtainitem に波線は出ない（{d}）")
+        else:
+            check(sorted(x["text"] for x in d) == ["giveitem", "obtainitem"] and all("setorcopyvar" in x["message"] for x in d),
+                  f"setorcopyvar が無いと giveitem・obtainitem に組めない波線（{[(x['text'], x['message']) for x in d]}）")
+            shot(z, shots, f"{a.name}-macro.png")
+        ed(z, "editor.setText", text=text)
 
         # ---- #196 文字列の本文の編集と幅検査 ----
         before_bytes = feature_str.read_bytes()

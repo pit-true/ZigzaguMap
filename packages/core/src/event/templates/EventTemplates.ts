@@ -4,7 +4,7 @@ import type { ScriptDialect } from "../../script/config/ScriptDialect.js";
 import { scriptTextLabel } from "../../script/edit/LabelNaming.js";
 import { SCRIPT_TEMPLATE_TEXTS, type ScriptTemplate } from "../../script/edit/ScriptTemplates.js";
 import type { EventScriptKind } from "../../script/project/eventScriptKinds.js";
-import type { TrainerEntry } from "../../trainer/TrainersJson.js";
+import type { TrainerEntry } from "../../project/TrainersJson.js";
 
 /**
  * イベントのひな形（#243・#244）。組み込みの 7 種類だけを持つ（利用者が足す仕組みは作らない。Q11）。
@@ -149,7 +149,7 @@ export interface TemplateValues {
   sight?: number;
   /**
    * 新しいトレーナー（#245）。あれば `maps\trainers.json` に足して（同じ番号なら置き換えて）、その番号で置く（`trainerId` は使わない）。
-   * 形は TrainerEntry（`trainer/TrainersJson.ts`）。
+   * 形は TrainerEntry（`project/TrainersJson.ts`）。
    */
   newTrainer?: TrainerEntry;
   /** 文（`TemplateTextSpec.key` → 本文）。 */

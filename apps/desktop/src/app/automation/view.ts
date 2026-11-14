@@ -47,7 +47,7 @@ export const viewCommands: CommandTable = {
     // （ダイアログには queuePath で答える。答えたあとの状態は state で読む）。
     const before = listDialogs().length;
     let finished = false;
-    const done = app.drop(paths as string[]).finally(() => (finished = true));
+    const done = app.opener.drop(paths as string[]).finally(() => (finished = true));
     while (!finished && listDialogs().length <= before) await settle(30);
     if (finished) await done;
     else done.catch(() => undefined);

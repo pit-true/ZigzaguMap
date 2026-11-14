@@ -126,6 +126,11 @@ try {
       Write-Host ("マップ切り替え（ms）: " + (($ms | ForEach-Object { [math]::Round($_, 1) }) -join ", "))
       $timing = [pscustomobject]@{ readyMs = $readyMs; switchMs = @($ms | ForEach-Object { [math]::Round($_, 1) }) }
       $results += Get-Snapshot "マップを 10 枚切り替えた後" $proc.Id
+      # イベントタブを開くと、使われている番号の索引（Phase3 #227）を作る。作り終えてから測る
+      Call @{ cmd = "tab"; name = "event" } | Out-Null
+      Call @{ cmd = "usage.state"; wait = $true } | Out-Null
+      $results += Get-Snapshot "イベントタブで索引を作った後" $proc.Id
+      Call @{ cmd = "tab"; name = "map" } | Out-Null
       Call @{ cmd = "action"; id = "tools.blockEditor" } | Out-Null
       for ($i = 0; $i -lt 100; $i++) {
         $w = Call @{ cmd = "windows" }

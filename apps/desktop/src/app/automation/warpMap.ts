@@ -6,9 +6,9 @@ import { int, type CommandTable } from "./registry";
  * （`sample` は見本の番号か null、`copyLayout`、`bank`）。右クリックのメニューからは `contextMenu.press` の `createWarpMap`。
  */
 export const warpMapCommands: CommandTable = {
-  "warp.samples": async (app: App, req) => ({ samples: await (await app.warpMapCreator()).samples(int(req, "index")) }),
+  "warp.samples": async (app: App, req) => ({ samples: await (await app.events.warpMapCreator()).samples(int(req, "index")) }),
   "warp.createMap": async (app: App, req) => {
-    const creator = await app.warpMapCreator();
+    const creator = await app.events.warpMapCreator();
     const sample = req["sample"] === null || req["sample"] === undefined ? null : int(req, "sample");
     const target = await creator.run(int(req, "index"), {
       sample,

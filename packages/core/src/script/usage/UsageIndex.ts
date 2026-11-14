@@ -1,3 +1,5 @@
+import { formatHex } from "../../binary/bytes.js";
+import { ROM_BASE } from "../../rom/Rom.js";
 import { isExcluded, type UsageConfig, type UsageKind, type UsageRange } from "../config/UsageConfig.js";
 
 /** 使っている場所の種類（素の ROM のスクリプト・`.s`・マップのイベント・C のソース・トレーナーの表の書き出し）。 */
@@ -16,6 +18,61 @@ export interface UsageSite {
   readonly path?: string;
   /** マップ（イベントと ROM のスクリプト）。 */
   readonly map?: { readonly bank: number; readonly map: number };
+}
+
+/**
+ * 素の ROM のスクリプトの場所。`where`（`ROM 0x0816A2B4（マップ 3.0）`）は読むときに作る。
+ * 素の ROM の場所は数万件になるので、1 件ごとに文字列を持たずに索引のメモリを抑える（#247）。
+ */
+export class RomUsageSite implements UsageSite {
+  constructor(
+    readonly kind: UsageKind,
+    readonly value: number,
+    /** スクリプトの命令の番地（ROM の先頭からの位置）。 */
+    private readonly offset: number,
+    /** 括弧の中の説明（`マップ 3.0`）。同じマップの場所で 1 つの文字列を共有する。 */
+    private readonly label: string,
+    readonly map?: { readonly bank: number; readonly map: number },
+  ) {}
+
+  get source(): "rom" {
+    return "rom";
+  }
+
+  get where(): string {
+    return `ROM 0x${formatHex(this.offset + ROM_BASE, 8)}（${this.label}）`;
+  }
+}
+
+/** `.s` の場所。`where`（`パス:行`）は読むときに作る（#247）。 */
+export class AsmUsageSite implements UsageSite {
+  constructor(
+    readonly kind: UsageKind,
+    readonly value: number,
+    readonly path: string,
+    readonly line: number,
+  ) {}
+
+  get source(): "asm" {
+    return "asm";
+  }
+
+  get where(): string {
+    return `${this.path}:${this.line}`;
+  }
+}
+
+/** 場所を、項目をすべて自分で持つ形にする（読むときに作る `where` も入れる。JSON にして返すため）。 */
+export function plainSite(s: UsageSite): UsageSite {
+  return {
+    kind: s.kind,
+    value: s.value,
+    source: s.source,
+    where: s.where,
+    ...(s.line !== undefined ? { line: s.line } : {}),
+    ...(s.path !== undefined ? { path: s.path } : {}),
+    ...(s.map !== undefined ? { map: s.map } : {}),
+  };
 }
 
 /** 隠しアイテムのフラグの始まり（`FLAG_HIDDEN_ITEMS_START`。フラグは 0x3E8 + 隠しアイテムの番号）。 */
@@ -77,7 +134,7 @@ export class UsageIndex {
           : null;
     for (const sites of this.bySource.values()) {
       for (const s of sites) {
-        if ((s.kind === kind && s.value === value) || (also && s.kind === also.kind && s.value === also.value)) out.push(s);
+        if ((s.kind === kind && s.value === value) || (also && s.kind === also.kind && s.value === also.value)) out.push(plainSite(s));
       }
     }
     return out;

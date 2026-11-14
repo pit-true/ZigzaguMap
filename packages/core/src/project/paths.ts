@@ -19,6 +19,17 @@ export const TILESET_IMAGE_FILE = "tiles.png";
 export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 /** スタンプのフォルダ（maps/stamps。1 つのスタンプが 1 ファイル）。 */
 export const STAMPS_DIR = `${MAPS_DIR}/stamps`;
+/** ZigzaguMap で足した・変えたトレーナー（maps/trainers.json。Phase3 #245）。 */
+export const TRAINERS_JSON_PATH = `${MAPS_DIR}/trainers.json`;
+/** ROM のスクリプトを埋める範囲（maps/rom_erase.json。Phase2 #220）。 */
+export const ROM_ERASE_PATH = `${MAPS_DIR}/rom_erase.json`;
+/** バンクと .s の対応表（maps/scripts.json。Phase2）。 */
+export const SCRIPTS_JSON_PATH = `${MAPS_DIR}/scripts.json`;
+
+/** マップ 1 枚のラベルのファイルのパス（maps/BB/scripts_MM.json。Phase2）。 */
+export function mapLabelsFilePath(bank: number, map: number): string {
+  return `${MAPS_DIR}/${pad2(bank)}/scripts_${pad2(map)}.json`;
+}
 
 /** マップの JSON のパス（maps/BB/MM.json。2 桁にそろえる）。 */
 export function mapSourcePath(id: MapId): string {
