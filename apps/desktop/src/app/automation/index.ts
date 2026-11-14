@@ -6,6 +6,7 @@ import { dialogCommands, installNativeDialogs } from "./dialogs";
 import { eventCommands } from "./events";
 import { fieldCommands } from "./fields";
 import { imageCommands } from "./images";
+import { linkCommands } from "./link";
 import { menuCommands } from "./menu";
 import { mouseCommands } from "./mouse";
 import { processCommands } from "./process";
@@ -38,6 +39,7 @@ const registry = new CommandRegistry([
   processCommands,
   scriptCommands,
   scriptsCommands,
+  linkCommands,
   { commands: () => registry.names() },
 ]);
 

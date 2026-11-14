@@ -5,10 +5,14 @@
   python tests/realcopy/run.py --smoke --only nd       # ND だけ（nd / chronos）
   python tests/realcopy/run.py --smoke --reuse         # 前の写しがあればそのまま使う（ビルドのキャッシュが残る）
   python tests/realcopy/run.py --smoke --dpe           # ND は DPE のビルドまで動かす
+  python tests/realcopy/run.py --link --reuse          # スクリプト連携（lib/link.py）。ビルドはスクリプトエディタのビルドの欄で行う
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
 
 --smoke: 写しを作り、ZigzaguMap で写しの ROM とプロジェクトを開いて何もせずに出力し、写しでビルドする
 （ND は CFRU の `python scripts/make.py`、Chronos はルートの `python build.py`）。
+--link: 写しで、イベントのラベルの自動命名とひな形・ラベルの変更・ROM のスクリプトの表示と取り込み・マップスクリプトの表を
+ZigzaguMap で行って出力し、ビルドの欄でビルドして、できた ROM のイベントのスクリプトの番地がラベルの位置と同じことを確かめる
+（写しのテキストファイルは最後に元へ戻す）。
 実行の前後で、実フォルダの全ファイル・全フォルダの更新日時と大きさが変わっていないことを確かめる。
 失敗があれば終了コード 1。
 """
@@ -25,6 +29,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from lib import config, fixtures, snapshot  # noqa: E402
 from lib.app import Zigzagu  # noqa: E402
 from lib.builder import build_fixture, build_nd_dpe  # noqa: E402
+from lib.link import link_one  # noqa: E402
 
 APP_ID = "io.github.pit-true.zigzagumap"
 
@@ -69,11 +74,38 @@ def smoke_one(cfg, name: str, args, log_dir: pathlib.Path) -> tuple[bool, list[s
     return ok, lines
 
 
+def link_fixture(cfg, name: str, args, log_dir: pathlib.Path) -> tuple[bool, list[str]]:
+    """--link: スクリプト連携の確認（lib/link.py）。"""
+    fx = fixtures.get(cfg, name)
+    lines: list[str] = []
+    failures: list[str] = []
+    t0 = time.perf_counter()
+    c = fixtures.make_copy(fx, reuse=args.reuse)
+    copied = "前のものを使用" if c["reused"] else f"{c['files']} ファイルを写した"
+    lines.append(f"写し: {copied} {fx.dir}")
+
+    def check(cond: bool, what: str) -> None:
+        # 確かめたことはその場で出す（最後の一覧には失敗だけを残す）
+        print(("  OK   " if cond else "  NG   ") + what, flush=True)
+        if not cond:
+            failures.append(what)
+            lines.append("NG   " + what)
+
+    def log(text: str) -> None:
+        print("       " + text, flush=True)
+
+    with Zigzagu(cfg, f"link-{name}", args.exe) as z:
+        link_one(fx, z, check, log, args.timeout)
+    lines.append(f"合計 {time.perf_counter() - t0:.1f} 秒、失敗 {len(failures)} 件")
+    return not failures, lines
+
+
 def main() -> int:
     if os.name == "nt":
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--link", action="store_true", help="スクリプト連携（ラベル・ひな形・取り込み・マップスクリプト・ビルドの欄）の確認")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
     ap.add_argument("--dpe", action="store_true")
@@ -81,8 +113,8 @@ def main() -> int:
     ap.add_argument("--config")
     ap.add_argument("--timeout", type=int)
     args = ap.parse_args()
-    if not args.smoke:
-        ap.error("今は --smoke だけです")
+    if not args.smoke and not args.link:
+        ap.error("--smoke か --link を付けてください")
     cfg = config.load(args.config, args.exe)
     args.exe = cfg.zigzaguExe
     args.timeout = args.timeout or cfg.buildTimeout
@@ -104,7 +136,7 @@ def main() -> int:
     for name in names:
         print(f"\n== {name}")
         try:
-            ok, lines = smoke_one(cfg, name, args, log_dir)
+            ok, lines = link_fixture(cfg, name, args, log_dir) if args.link else smoke_one(cfg, name, args, log_dir)
         except Exception as e:  # noqa: BLE001  1 つが失敗しても残りと実フォルダの確認は続ける
             ok, lines = False, [f"エラー: {type(e).__name__}: {e}"]
         results[name] = ok

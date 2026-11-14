@@ -3,6 +3,8 @@ import type { ScriptDialect, ScriptDialectSetting } from "./ScriptDialect.js";
 /**
  * 外部コマンドの 1 手順（ビルドや幅検査）。`cwd` はプロジェクトフォルダからの相対パス（区切りは `/`、
  * `..` で上へも行ける）。`args` は 1 つずつ渡し、シェルは通さない。
+ * `command` が `copy`（{@link SCRIPT_COPY_COMMAND}）の手順は、ZigzaguMap がファイルを写す（`args` の 1 つ目を 2 つ目へ。
+ * どちらも `cwd` からの相対パス。ND の CFRU の test.gba を DPE の BPRJ0.gba にするのに使う）。
  */
 export interface ScriptCommandStep {
   command: string;
@@ -22,8 +24,6 @@ export interface ScriptConfig {
   build: ScriptCommandStep[];
   /** ビルドで出来る ROM のパス。 */
   outputRom: string;
-  /** エミュレータの exe のパス。無ければ null（置き場所はまだ決まっていない）。 */
-  emulator: string | null;
   /** `.string` の幅検査のコマンド。無ければ null。 */
   widthCheck: ScriptCommandStep | null;
   /** ラベルの規則。`{map}`（マップ名）、`{kind}`（種別）、`{index}`（番号）を置き換える。 */
@@ -55,29 +55,35 @@ export interface WidthRegistrySetting {
 
 /**
  * `zigzagumap.json` に書いてある分だけの設定。undefined の項目は方言ごとの既定値を使う。
- * null を書ける項目（emulator・widthCheck・commandsCsv）は、null なら「使わない」を明示したことになる。
+ * null を書ける項目（widthCheck・commandsCsv）は、null なら「使わない」を明示したことになる。
  */
 export type ScriptConfigSettings = Partial<Omit<ScriptConfig, "dialectSetting" | "dialect">> & {
   dialect?: ScriptDialectSetting;
 };
 
-/** ラベルの規則の既定値（`EventScript_<マップ名>_<種別><番号>`）。 */
-export const DEFAULT_SCRIPT_LABEL_TEMPLATE = "EventScript_{map}_{kind}{index}";
+/** ファイルを写す手順の `command`。 */
+export const SCRIPT_COPY_COMMAND = "copy";
+
+/** ラベルの規則の既定値（`<.s の名前>_<種別><番号>`、例 `Moegi_Npc3`）。 */
+export const DEFAULT_SCRIPT_LABEL_TEMPLATE = "{map}_{kind}{index}";
 
 /** 簡易の幅検査の既定値（Chronos の窓 208px・全角 10px に合わせる。ND も同じ）。 */
 export const DEFAULT_SCRIPT_LINE_MAX_CHARS = 18;
 export const DEFAULT_SCRIPT_LINES_PER_PAGE = 2;
 
+/** ND の DPE 側のフォルダ（CFRU のフォルダの隣。AGENTS.md のビルドの手順）。 */
+const ND_DPE_DIR = "../NeoDark-DPE-main";
+
 /**
  * 方言ごとの既定値。
- * - ND: `python scripts/make.py`（プロジェクトフォルダで）、出力は `test.gba`。DPE 側へのコピーとビルドは入れていない。
+ * - ND: CFRU のビルド（プロジェクトフォルダで `python scripts/make.py`）→ `test.gba` を `../NeoDark-DPE-main/BPRJ0.gba` へ写す
+ *   → DPE のビルド（`../NeoDark-DPE-main` で `python scripts/make.py`）。出力は `../NeoDark-DPE-main/test.gba`。
  * - Chronos: 1 つ上のフォルダで `python build.py`、出力は `../build/Chronos.gba`。幅検査は `python tools/check_text_width.py --source`。
  */
 export function defaultScriptConfig(dialect: ScriptDialect): ScriptConfig {
   const common = {
     dialectSetting: "auto" as const,
     dialect,
-    emulator: null,
     labelTemplate: DEFAULT_SCRIPT_LABEL_TEMPLATE,
     lineMaxChars: DEFAULT_SCRIPT_LINE_MAX_CHARS,
     linesPerPage: DEFAULT_SCRIPT_LINES_PER_PAGE,
@@ -86,8 +92,12 @@ export function defaultScriptConfig(dialect: ScriptDialect): ScriptConfig {
   if (dialect === "nd") {
     return {
       ...common,
-      build: [{ command: "python", args: ["scripts/make.py"], cwd: "." }],
-      outputRom: "test.gba",
+      build: [
+        { command: "python", args: ["scripts/make.py"], cwd: "." },
+        { command: SCRIPT_COPY_COMMAND, args: ["test.gba", `${ND_DPE_DIR}/BPRJ0.gba`], cwd: "." },
+        { command: "python", args: ["scripts/make.py"], cwd: ND_DPE_DIR },
+      ],
+      outputRom: `${ND_DPE_DIR}/test.gba`,
       widthCheck: null,
       useGlobal: false,
       widthRegistry: null,
@@ -111,7 +121,6 @@ export function resolveScriptConfig(settings: ScriptConfigSettings, dialect: Scr
     dialect,
     build: settings.build ? settings.build.map(copyStep) : d.build,
     outputRom: settings.outputRom ?? d.outputRom,
-    emulator: settings.emulator !== undefined ? settings.emulator : d.emulator,
     widthCheck: settings.widthCheck !== undefined ? (settings.widthCheck && copyStep(settings.widthCheck)) : d.widthCheck,
     labelTemplate: settings.labelTemplate ?? d.labelTemplate,
     useGlobal: settings.useGlobal ?? d.useGlobal,

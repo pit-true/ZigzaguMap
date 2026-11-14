@@ -203,10 +203,10 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     z.call({"cmd": "setField", "id": "header.advanced", "value": True})
     z.call({"cmd": "click", "id": "header.mode.simple"})
 
-    # ---- 外部のスクリプトエディタの入口（#178）----
+    # ---- 「スクリプトを開く」（#178 で外部のエディタの入口を外し、Phase2 #200・#206 で内蔵エディタにつないで出し直した）----
     z.call({"cmd": "tab", "name": "event"})
     z.call({"cmd": "event.select", "kind": "person", "index": 0})
-    check(not field(z, "event.person.openScript")["visible"], "イベントの「スクリプトを開く」は隠れている")
+    check(field(z, "event.person.openScript")["visible"], "イベントの「スクリプトを開く」が出る（内蔵エディタにつながる）")
 
     # ---- ヘルプ（#171・#179・#180）----
     z.call({"cmd": "menu.run", "id": "help.about"})

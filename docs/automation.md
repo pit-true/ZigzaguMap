@@ -21,7 +21,7 @@ python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap
     # どのウィンドウも画面内に出ず、前面にならないこと（--project でスクリプトエディタも開く）
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
-python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、エミュレータの起動を記録だけにすること
+python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、ビルドの手順の copy
 python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>]
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）を ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
@@ -75,10 +75,17 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
 | `exit` | | 確認なしで終了する |
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
-| `process.launch` | `command`、`args`、`cwd` | エミュレータと同じく待たずに起動する命令。自動操作のときは何も起動せず記録だけする（返事の `launched` は false）。記録は `state` の `launched` と `process.launched` |
+| `process.copy` | `from`、`to`、`cwd` | ファイルを写す（ビルドの手順の `copy` と同じ。`from`・`to` は `cwd` からの相対パス）。返事の `bytes` は写した大きさ |
 | `script.open` | `path`（と `line`、1 から）か、`bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index`（0 から） | スクリプトエディタでファイルかイベントのスクリプトを開く（イベントのダブルクリックと同じ）。返事は `opened`、イベントなら `location`（`path`・`line`・`label`・`from`）、ステータスバー。ウィンドウの準備は `windows` の `ready` で待つ |
 | `script.resolve` | `bank`・`map`・`kind`・`index` | イベントのスクリプトの場所（`path`・`line`・`label`・`from`: `label` か `scriptsJson`）。見つからなければ null。開かない |
 | `scripts.table` | `action`（省略で `get`）と、その引数（下の表） | maps\scripts.json の対応表（ツール > スクリプトファイルの対応表）。返事は `rows`（各行の `bank`・`map`（null はバンク全体）・`name`・`script`・`strings`（省いていれば null）・`resolvedStrings`（実際に使う `.string`）・`create`（出力で `.s` を作る行）・`unused`（前の行と同じバンク・マップで使われない行））、`pendingFiles`（出力で作る `.s` と `.string`）、`duplicates`、`modified`（未出力の変更）、`loadError`（scripts.json が読めなかった理由）、`open`（画面が開いているか）、`selected`（選んでいる行）、`dialogs` |
+| `script.labels` | `bank`・`map`（省略で表示中のマップ） | マップのイベントのラベル（#200・#204）。`person`・`sign`・`tile`（それぞれ `index`・`label`・`kind`・`inScript`（マップの `.s` にあるか））、`mapScripts`（eventscripts の `map` の行のラベル）、`table`（ZigzaguMap が `.s` に書くマップスクリプトの表）、`script`・`strings`（マップの `.s` と `.string`）、`candidates`（`.s` のラベルの一覧）、`hasFile`（scripts_MM.json があるか）、`conditional`（`#ifdef` の中の行）、`mismatches`（照合用の座標と合わないラベル）、`modified` |
+| `script.setLabel` | `bank`・`map`（省略可）、`target`（`person` / `sign` / `tile` / `map`）、`index`、`label`（null で外す）、`kind`（人の `npc` / `trainer` / `item`） | ラベルを変える（`setEventLabel` を CommandBus で実行。元に戻せる）。返事は `script.labels` と同じ |
+| `script.realign` | `bank`・`map`（省略可） | 照合用の座標と合わないラベルを、書いた座標にあるイベントへ付け替える（「座標で付け直す」と同じ） |
+| `script.settle` | | ひな形・取り込みなどの書き足し（`.s` と `.string`）が済むまで待つ |
+| `script.rom` | `bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index` か `pointer`（両方渡すと `pointer` のスクリプトを、そのイベントのものとして出す） | 素の ROM のスクリプトを、エディタの読み取り専用のタブで開く（#206）。返事は `opened`・`tab`（`ROM:08XXXXXX`）・`text`（表示した文）・`importable`・`items`（取り込むときの名前） |
+| `script.import` | `script.rom` と同じ、`rename`（自動で付けた名前 → 新しい名前） | ROM のスクリプトを `.s` に取り込み、イベントのラベルを取り込んだ入口にする（#207。元に戻せる）。返事は取り込みの計画（`entryLabel`・`reused`・`items`・`asm`・`strings`・`blocks`（まとまりの `label`・`offset`・`size`・`pointers`）・`problems`） |
+| `script.mapScripts` | `action`（`get` / `create` / `add`（`type`）/ `addCondition`（`index`）/ `set`（`table`）/ `remove`） | 場所の設定タブのかんたん表示のマップスクリプトのパネル（#208。先に `tab` で `header` を開く）。返事は `ok`・`table`・`labels`（`script.labels`）・ステータスバー |
 | `scroll` | `target`（`map` / `movement` / `event` / `palette` / `movementPalette`）か `id`、`to`（`end` で右下の端、`start` で左上）・`x`・`y`（位置、px）・`dx`・`dy`（今の位置からの量、px）のどれか | 部品を載せたスクロールの枠を動かす（スクロールバーを動かしたときと同じく `scroll` の出来事を起こす）。返事は `view.scroll` と同じ |
 | `view.scroll` | `target` か `id` | スクロールの状態。`h`・`v`（横・縦のスクロールバーが出ていて使えるか）、`inside`（枠がウィンドウに収まっているか）、`scrollLeft`・`scrollTop`・`scrollWidth`・`scrollHeight`・`clientWidth`・`clientHeight` |
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
@@ -170,6 +177,19 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.widthCheck` | `wait`（true で、動いている検査が終わるまで待つ） | 保存時の幅検査の結果。`busy`、動かした回数 `runs`、最後の結果 `last`（`path`・終了コード `exit`・拾った誤り `errors`（`path`・`line`・`label`・`message`）・登録ファイルへの書き足し `registry`（`path`・`added`・`unresolved`・`removed`・登録の無いファイルなら `notChecked`）・`failed`）、出力の最後の 200 行 `log` |
 | `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
 
-`editor.state` には、表示中のファイルの波線 `diagnostics`（`editor.diagnostics` と同じ形）と、今のテーマ `theme` も入ります。
+| `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ |
+| `build.state` | | `running`・`step`（今の手順、0 から）・`steps`（手順の列）・`result`（`ok`・`code`・`killed`・`failedStep`・`ms`）・`problems`（拾ったエラー。`kind`・`severity`・`message`・`path`・`line`・`symbol`・`logLine`）・`lines`（ログの行数）・`outputRom` |
+| `build.log` | `from`（省略で 0） | ログの行（`stream`（`stdout` / `stderr` / `info`）・`line`・`step`） |
+| `build.stop` | | ビルドを止める（子プロセスごと） |
+| `editor.import` | `key`（省略で表示中の ROM のタブ）、`rename` | ROM のタブを取り込む（「.s に取り込む」と同じ。#207）。`rename` を渡さなければ名前の一覧のダイアログを出したまま返す（`dialog` で「取り込む」を押す） |
+| `editor.rename` | `from`、`to`（省略で名前を聞くダイアログを出す） | ラベル名を変える（F2 と同じ。#203）。返事の `result` は `count`（変えた数）・`files`・`uses`（メインで変えたイベントの数） |
 | `close` | | × と同じ。未保存が無ければ閉じる（返事の `closing` が true）。あれば確認のダイアログを出したまま返す |
 | `dialogs` / `dialog` | メインと同じ | 画面内のダイアログを読む・押す（「保存しますか？」は `yes` / `no` / `cancel`、「読み直しますか？」は `yes` / `no`） |
+
+`editor.state` には、表示中のファイルの波線 `diagnostics`（`editor.diagnostics` と同じ形）と、今のテーマ `theme` も入ります。
+
+### スクリプト連携の部品の ID
+
+- イベントタブのスクリプトのラベルの欄: `event.person.label`・`event.sign.label`・`event.trap.label`（入力欄）、`<欄>.drop`（▼）、`<欄>.list`（一覧）、`<欄>.option:<ラベル>`（一覧の行）。「スクリプトを開く」は `event.person.openScript` など。照合用の座標の知らせは `event.labelWarn`、「座標で付け直す」は `event.labelRealign`。
+- マップスクリプトのパネル（場所の設定タブのかんたん表示）: `easy.ms`（パネル）、`easy.ms.create`（表を作る）、`easy.ms.addType`（種類を足す）、`easy.ms.removeTable`、`easy.ms.item:<n>`、`easy.ms.item:<n>.script`（行き先のラベルの欄）、`easy.ms.item:<n>.open`・`.remove`・`.addCondition`、`easy.ms.item:<n>.condition:<m>.variable`・`.value`・`.script`・`.open`・`.remove`、ROM の一覧は `easy.ms.rom:<n>` と `easy.ms.romOpen:<n>`。
+- スクリプトエディタ: ROM のタブの帯 `se.romBar`、「.s に取り込む」`se.romImport`、取り込みの一覧の名前 `romImport.label:<n>`、`romImport.ok`・`romImport.cancel`。ビルドの欄 `build.panel`、`build.run`・`build.stop`・`build.clear`・`build.close`、`build.status`、`build.log`、`build.problems`、`build.problem:<n>`。

@@ -24,6 +24,12 @@ export const jaEvent = {
   /** 選んだ種別が 0 件のとき（AdvanceMap はどの種別でもこの文言を出す）。 */
   none: E["945"],
   noEventsInMap: ini.Allgemein["940"],
+  /** scripts_MM.json の座標と合わないラベル（ZigzaguMap 独自。#204）。 */
+  labelMismatch: (count: number, fixable: number) =>
+    `ラベルの照合用の座標と合わないイベントが ${count} 件あります（Bochi などでイベントの順を変えた？）。${fixable > 0 ? `${fixable} 件は書いた座標にあるイベントへ付け替えられます。` : ""}`,
+  labelMismatchItem: (label: string, target: string, index: number, x: number, y: number, candidate: number | null) =>
+    `${label}: ${target} ${index}（書いた座標 ${x},${y}）${candidate === null ? "" : ` → ${target} ${candidate}`}`,
+  labelRealign: "座標で付け直す",
   /** ステータスバーでイベントの無いマス（旧版 [Events] 44 にあたる [EventType] 05）。 */
   noEventAtCell: ini.EventType["05"],
   /** ステータスバー左欄（ホバー）。 */

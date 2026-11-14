@@ -37,12 +37,14 @@ import { ProjectSession, UnknownRomError } from "./ProjectSession";
 import { Settings, type SettingsData } from "./Settings";
 import { installShortcuts } from "./Shortcuts";
 import { timings } from "./timings";
+import { scheduleIdleGc } from "../util/idleGc";
 import { keepWindowPlacement } from "./WindowPlacementKeeper";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import { installScriptEntry } from "../ui/script/ScriptEntry";
 import type { ScriptHost } from "../ui/script/ScriptHost";
+import { ScriptLink } from "../ui/script/ScriptLink";
 import { jaScriptEditor } from "../i18n/ja.scriptEditor";
 import { errorText } from "../util/errors";
 
@@ -96,6 +98,8 @@ export class App implements ActionTarget {
   private connections: ConnectionManager | null = null;
   /** スクリプトエディタの窓口（初めてスクリプトを開くときに読み込む）。 */
   private scriptHostValue: Promise<ScriptHost> | null = null;
+  /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
+  readonly scripts: ScriptLink;
   /** 移動エリアの透明度のスライダー（初めて開くときに読み込む）。 */
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
@@ -111,6 +115,8 @@ export class App implements ActionTarget {
   ) {
     const state = new EditorState(settings, ja.statusOpenRom);
     this.state = state;
+    this.scripts = new ScriptLink(this);
+    state.on("session", () => this.scripts.attach(state.session));
     this.system = new SystemSettings(state, () => this.automation);
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
@@ -127,6 +133,7 @@ export class App implements ActionTarget {
     this.actions.register("map.insert", () => this.newMaps.insert());
     this.actions.register("dummy.manage", () => this.newMaps.bankHeader());
     // ツール > スクリプトファイルの対応表（maps\scripts.json）。画面のコードは初めて開くときに読み込む。
+    this.actions.register("tools.build", async () => (await this.scriptHost()).build());
     this.actions.register("tools.scriptsTable", async () => (await import("../ui/script/ScriptsTableDialog")).ScriptsTableDialog.get(this).open());
     this.menu = new MenuBar({
       items: () => this.menuItems(),
@@ -152,7 +159,7 @@ export class App implements ActionTarget {
     const mapTab = new MapTab(state);
     installMakeButtons(mapTab.element, { makeMap: () => this.newMaps.newMap(), makeBank: () => this.newMaps.makeBank() });
     const movementTab = new MovementTab(state);
-    const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id) });
+    const eventTab = new EventTab(state, { openMap: (id) => this.openMap(id), scriptFiles: this.scripts.files });
     this.eventTab = eventTab;
     this.tabs = { map: mapTab, movement: movementTab, event: eventTab };
     const tabControl = new TabControl(
@@ -161,7 +168,7 @@ export class App implements ActionTarget {
         { id: "movement", title: ja.tabMovement, element: movementTab.element },
         { id: "event", title: ja.tabEvents, element: eventTab.element },
         { id: "wild", title: ja.tabWild, element: new WildTab(state).element },
-        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections() }).element },
+        { id: "header", title: ja.tabHeader, element: new HeaderTab(state, { openConnections: () => void this.openConnections(), scripts: this.scripts }).element },
       ],
       (id) => state.setTab(id),
     );
@@ -197,9 +204,10 @@ export class App implements ActionTarget {
     state.on("session", () => this.worldMap.sessionChanged());
     state.on("map", () => this.worldMap.mapChanged());
     installScriptEntry({
-      available: () => state.session?.projectDir != null,
-      open: (target) => void this.scriptHost().then((h) => h.openTarget(target)).catch((e: unknown) => this.showError(e)),
+      available: () => state.session !== null,
+      open: (target, pointer) => void this.scriptHost().then((h) => h.openTarget(target, pointer)).catch((e: unknown) => this.showError(e)),
       openFile: (path, line) => void this.scriptHost().then((h) => h.openFile(path, line)).catch((e: unknown) => this.showError(e)),
+      openPointer: (pointer, target) => void this.scriptHost().then((h) => h.openRom(pointer, target)).catch((e: unknown) => this.showError(e)),
     });
     this.statusBar.render(state.status);
     this.applyLayout();
@@ -210,6 +218,8 @@ export class App implements ActionTarget {
   async start(): Promise<void> {
     installShortcuts(this);
     await this.worldMap.start();
+    // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
+    await getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget());
     await getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
       this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");
@@ -389,6 +399,8 @@ export class App implements ActionTarget {
       this.combo.setOpened(id);
       timings.mark("mapShown");
       timings.lastMapSwitchMs = performance.now() - start;
+      // 前のマップの画像やタイルセットのごみを、操作が落ち着いてから片付ける（メモリを 150MB 以下に保つ）
+      scheduleIdleGc();
       state.setStatus(ja.statusMapLoaded(id.bank, id.map));
       state.settings.update({ last: { rom: session.romPath, bank: id.bank, map: id.map, tab: state.tab } });
       await this.setTitle(map.doc.mapNameText() ?? ja.noName);
@@ -549,6 +561,8 @@ export class App implements ActionTarget {
       target = picked;
     }
     try {
+      // ひな形などの書き足しが済んでから書く
+      await this.scripts.settle();
       const result = await session.export(target);
       if (target !== undefined) this.state.settings.addRecent({ rom: session.romPath, project: session.projectDir });
       this.checkDirty(true);
@@ -573,6 +587,11 @@ export class App implements ActionTarget {
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
   scriptHost(): Promise<ScriptHost> {
     return (this.scriptHostValue ??= import("../ui/script/ScriptHost").then(({ ScriptHost }) => ScriptHost.get(this)));
+  }
+
+  /** スクリプトエディタの窓口（読み込み済みのときだけ。まだなら null）。 */
+  async scriptHostIfLoaded(): Promise<ScriptHost | null> {
+    return this.scriptHostValue ? this.scriptHostValue.catch(() => null) : null;
   }
 
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */

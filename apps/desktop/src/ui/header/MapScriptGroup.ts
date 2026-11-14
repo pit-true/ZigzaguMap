@@ -6,7 +6,7 @@ import { button, combo, edit, group, label, selectIndex, setEnabled, spin } from
 import type { DraftList } from "../form/DraftList";
 import { offsetText } from "../form/inputErrors";
 import { checkOnInput, tryInteger } from "../form/integerInput";
-import { scriptEntry, showIfScriptEntry } from "../script/ScriptEntry";
+import { scriptEntry } from "../script/ScriptEntry";
 import { scriptTypeChoices, type HeaderContext } from "./HeaderContext";
 import { newScriptDraftList, offsetToPointer, scriptDrafts, pointerToOffset, scriptOps, type ScriptDraft } from "./MapScriptDraft";
 
@@ -42,7 +42,7 @@ export class MapScriptGroup {
     this.flagValue = edit(id("flagValue"), 256, 72, 89);
     this.flagOffset = edit(id("flagOffset"), 352, 72, 97);
     this.remove = button(id("removeScript"), h.removeScript, 16, 64, 129, 17, () => this.removeSelected());
-    this.open = showIfScriptEntry(button(id("openScript"), h.openScript, 16, 104, 193, 33, () => this.openScript()));
+    this.open = button(id("openScript"), h.openScript, 16, 104, 193, 33, () => this.openScript());
     const add = button(id("addScript"), h.addScript, 16, 80, 129, 17, () => this.add());
     const save = button(id("saveScripts"), h.saveScripts, 256, 104, 193, 33, () => this.save());
     this.element.append(
@@ -199,10 +199,11 @@ export class MapScriptGroup {
     }
   }
 
-  /** 「スクリプトを開く」（入口が使えるときだけ見える。Phase2 の内蔵スクリプトエディタ用）。 */
+  /** 「スクリプトを開く」: ROM のスクリプトを読み取り専用で出す（条件表の種類は表の先頭の行のスクリプト）。 */
   private openScript(): void {
     const d = this.current;
-    if (!d) return;
-    scriptEntry.openPointer(isTableType(d.type) ? d.flagOffset : d.pointer);
+    const c = this.ctx;
+    if (!d || !c) return;
+    scriptEntry.openPointer(isTableType(d.type) ? d.flagOffset : d.pointer, { map: c.map.id, kind: "map" });
   }
 }

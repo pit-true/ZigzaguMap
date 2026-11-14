@@ -16,12 +16,15 @@ import { commit } from "../form/commit";
 import { selectIndex, setOptions } from "../form/controls";
 import { checkOnInput, readInteger, tryInteger } from "../form/integerInput";
 import type { HeaderContext } from "./HeaderContext";
-import { MapScriptGroup } from "./MapScriptGroup";
+import { MapScriptPanel } from "../script/MapScriptPanel";
+import type { ScriptLink } from "../script/ScriptLink";
 
 /** かんたん表示が App に頼むこと。 */
 export interface SimpleHeaderHost {
   /** マップコネクションの窓を開く（ツール > マップコネクションと同じ）。 */
   openConnections(): void;
+  /** スクリプト連携（マップスクリプトのパネルが使う）。 */
+  readonly scripts: ScriptLink;
 }
 
 /**
@@ -47,7 +50,8 @@ export class SimpleHeaderView {
   private readonly height: HTMLInputElement;
   private readonly borderWidth: HTMLInputElement;
   private readonly borderHeight: HTMLInputElement;
-  private readonly scripts = new MapScriptGroup("easy", 0, 0);
+  /** マップスクリプトの専用パネル（#208。オフセットの欄は出さない）。 */
+  private readonly scripts: MapScriptPanel;
   private readonly connections: HTMLElement;
   private regionTexts: string[] = [];
 
@@ -55,6 +59,7 @@ export class SimpleHeaderView {
     const t = ja.headerSimple;
     this.element = document.createElement("div");
     this.element.className = "header-simple";
+    this.scripts = new MapScriptPanel(host.scripts);
 
     // マップ名
     this.region = select("easy.region");
@@ -146,11 +151,8 @@ export class SimpleHeaderView {
       ]),
     );
 
-    // マップスクリプト（従来の表示と同じ部品）
-    const scriptBox = document.createElement("div");
-    scriptBox.className = "header-simple-scripts";
-    scriptBox.append(this.scripts.element);
-    this.element.append(scriptBox);
+    // マップスクリプト（専用のパネル。#208）
+    this.element.append(section(t.scriptSection, [this.scripts.element]));
 
     // マップコネクション
     this.connections = document.createElement("ul");

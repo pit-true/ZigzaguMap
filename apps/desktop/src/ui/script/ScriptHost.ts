@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  RenameEventLabelCommand,
   buildScriptIndex,
   eventScriptLabel,
   isEventScriptEntryActive,
@@ -11,7 +12,9 @@ import {
   parseEventScriptDefines,
   reloadScriptIndexFile,
   resolveScriptsJson,
+  type EventLabelStore,
   type EventScriptTarget,
+  type ScriptImportPlan,
   type ScriptIndex,
 } from "@zigzagumap/core";
 import type { App } from "../../app/App";
@@ -31,7 +34,9 @@ import {
   type ScriptEditorReply,
   type ScriptEditorRequest,
   type ScriptOpenRequest,
+  type ScriptRomOpenRequest,
 } from "../../windows/script-editor/protocol";
+import { RomScripts } from "./RomScripts";
 import type { ScriptTarget } from "./ScriptEntry";
 
 /** イベントのスクリプトの場所（解決の結果）。 */
@@ -83,13 +88,20 @@ export class ScriptHost {
   private ready = false;
   /** 準備ができる前に頼まれたファイル。 */
   private pending: ScriptOpenRequest[] = [];
+  /** 準備ができる前に頼まれたビルド。 */
+  private pendingBuild = false;
+  /** 準備ができる前に頼まれた ROM のスクリプト。 */
+  private pendingRoms: ScriptRomOpenRequest[] = [];
+  private readonly roms: RomScripts;
   /** ウィンドウを開いたときのプロジェクトフォルダ（変わったら閉じる）。 */
   private projectDir: string | null = null;
   private index: Promise<ScriptIndex> | null = null;
   private nextQueryId = 1;
   private readonly waiting = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 
-  private constructor(private readonly app: App) {}
+  private constructor(private readonly app: App) {
+    this.roms = new RomScripts(app);
+  }
 
   private async start(): Promise<void> {
     await listen<ScriptEditorEnvelope>(ScriptEditorEvents.request, (e) => void this.onRequest(e.payload));
@@ -105,6 +117,8 @@ export class ScriptHost {
       this.opened = false;
       this.ready = false;
       this.pending = [];
+      this.pendingRoms = [];
+      this.pendingBuild = false;
       for (const w of this.waiting.values()) w.reject(new Error("closed"));
       this.waiting.clear();
     });
@@ -144,8 +158,17 @@ export class ScriptHost {
     return true;
   }
 
-  /** イベントのスクリプトを開く。見つからなければステータスバーに出して null。 */
-  async openTarget(target: ScriptTarget): Promise<ScriptLocation | null> {
+  /**
+   * イベントのスクリプトを開く。ラベルが見つからず `pointer` が ROM を指していれば、ROM のスクリプトを読み取り専用で出す。
+   * どちらも無ければステータスバーに出して null。
+   */
+  async openTarget(target: ScriptTarget, pointer: number | null = null): Promise<ScriptLocation | null> {
+    const romPointer = pointer !== null && pointer >>> 24 >= 0x08 && pointer >>> 24 <= 0x09 ? pointer : null;
+    if (!this.app.state.session?.projectDir || (romPointer !== null && this.labelOf(target) === null)) {
+      if (romPointer !== null) await this.openRom(romPointer, target);
+      else this.app.state.setStatus(this.app.state.session?.projectDir ? t.notFound : t.noProject);
+      return null;
+    }
     let location: ScriptLocation | null;
     try {
       location = await this.resolve(target);
@@ -162,6 +185,17 @@ export class ScriptHost {
     return location;
   }
 
+  /** ビルドする（ツール > ビルド）。エディタのウィンドウを開き、下のビルドの欄で動かす。 */
+  async build(): Promise<void> {
+    if (!this.app.state.session?.projectDir) {
+      this.app.state.setStatus(t.noProject);
+      return;
+    }
+    if (this.ready) await emitTo(SCRIPT_EDITOR_WINDOW, ScriptEditorEvents.build, null);
+    else this.pendingBuild = true;
+    await this.openWindow();
+  }
+
   /**
    * イベントのスクリプトの場所を求める。eventscripts の行（`#ifdef` で複数あれば、条件が成り立つもの）のラベルを
    * 索引で引き、見つからなければ scripts.json のマップの `.s` の 1 行目。どちらも無ければ null。
@@ -169,18 +203,22 @@ export class ScriptHost {
   async resolve(target: ScriptTarget): Promise<ScriptLocation | null> {
     if (!this.app.state.session?.projectDir) throw new Error(t.noProject);
     const { bank, map } = target.map;
-    const scripts = await loadEventScripts(this.fs);
-    const defines = new Map<string, string | true>();
-    for (const include of scripts.includes()) {
-      try {
-        parseEventScriptDefines(await this.fs.readText(include), defines);
-      } catch {
-        // 読めない #include は飛ばす（insert.py もビルドの前に止まる）
+    // ZigzaguMap のラベル（scripts_MM.json か eventscripts の #ifdef の外の行。編集中の値）を先に使う
+    let label = this.labelOf(target);
+    if (label === null) {
+      const scripts = await loadEventScripts(this.fs);
+      const defines = new Map<string, string | true>();
+      for (const include of scripts.includes()) {
+        try {
+          parseEventScriptDefines(await this.fs.readText(include), defines);
+        } catch {
+          // 読めない #include は飛ばす（insert.py もビルドの前に止まる）
+        }
       }
+      const entries = scripts.entriesFor(bank, map, TARGET_OF[target.kind], target.kind === "map" ? undefined : (target.index ?? 0));
+      const entry = entries.find((e) => isEventScriptEntryActive(e, defines)) ?? entries[0];
+      label = entry ? eventScriptLabel(entry.kind, entry.symbol, defines) : null;
     }
-    const entries = scripts.entriesFor(bank, map, TARGET_OF[target.kind], target.kind === "map" ? undefined : (target.index ?? 0));
-    const entry = entries.find((e) => isEventScriptEntryActive(e, defines)) ?? entries[0];
-    const label = entry ? eventScriptLabel(entry.kind, entry.symbol, defines) : null;
     if (label) {
       const found = (await this.scriptIndex()).findLabel(label);
       if (found && isEditableScriptPath(found.path)) return { path: found.path, line: found.line, label, from: "label" };
@@ -189,6 +227,86 @@ export class ScriptHost {
     const resolved = json ? resolveScriptsJson(json, bank, map) : null;
     if (resolved && isEditableScriptPath(resolved.script)) return { path: normalizeScriptPath(resolved.script), line: 1, label, from: "scriptsJson" };
     return null;
+  }
+
+  /** ROM のスクリプトを読み取り専用で出す（#206）。プロジェクトが無く ROM だけでも出せる。 */
+  async openRom(pointer: number, target: ScriptTarget | null): Promise<ScriptRomOpenRequest | null> {
+    let request: ScriptRomOpenRequest;
+    try {
+      request = await this.roms.view(pointer, target);
+    } catch (e) {
+      this.app.state.setStatus(errorText(e), undefined, true);
+      return null;
+    }
+    if (this.ready) await emitTo(SCRIPT_EDITOR_WINDOW, ScriptEditorEvents.openRom, request);
+    else this.pendingRoms.push(request);
+    await this.openWindow();
+    this.app.state.setStatus(t.romOpened(request.key));
+    return request;
+  }
+
+  /** ROM のスクリプトを .s に取り込む（#207）。 */
+  importRom(pointer: number, target: ScriptTarget, rename: ReadonlyMap<string, string> = new Map()): Promise<ScriptImportPlan> {
+    return this.roms.import(pointer, target, rename);
+  }
+
+  /** ラベルの定義を開く（索引で引く）。見つからなければステータスバーに出して false。 */
+  async openLabel(label: string): Promise<boolean> {
+    const found = (await this.scriptIndex()).findLabel(label);
+    if (!found || !isEditableScriptPath(found.path)) {
+      this.app.state.setStatus(t.labelMissing(label));
+      return false;
+    }
+    return this.openFile(found.path, found.line);
+  }
+
+  /** プロジェクトのラベルの名前（索引から）。 */
+  async labelNames(): Promise<string[]> {
+    return (await this.scriptIndex()).labelNames();
+  }
+
+  /**
+   * エディタでラベル名を変えた（#203）。そのラベルを使うイベントかマップスクリプトがあれば、eventscripts とイベントの側を変える
+   * コマンド（元に戻せる）を実行する。変えた数を返す。
+   */
+  labelRenamed(from: string, to: string): number {
+    const session = this.app.state.session;
+    if (!session || from === to) return 0;
+    const uses = session.labels.store.usesOf(from).length + tableUses(session.labels.store, from);
+    if (uses === 0) return 0;
+    if (this.app.scripts.execute(new RenameEventLabelCommand({ from, to }))) this.app.state.setStatus(t.labelRenamed(from, to, uses));
+    return uses;
+  }
+
+  // ---- メインからの書き換え ----
+
+  /** エディタで開いているファイルの本文（開いていなければ null）。 */
+  async bufferText(path: string): Promise<string | null> {
+    if (!this.ready) return null;
+    return (await this.query({ type: "bufferText", path: normalizeScriptPath(path) })) as string | null;
+  }
+
+  /** エディタで開いているファイルの本文を書き換える（開いていなければ false）。 */
+  async setBufferText(path: string, text: string, save: boolean): Promise<boolean> {
+    if (!this.ready) return false;
+    const ok = (await this.query({ type: "setBufferText", path: normalizeScriptPath(path), text, save })) === true;
+    if (ok && save) await this.fileChanged(path);
+    return ok;
+  }
+
+  /** メインがディスクのファイルを書き換えた（ラベルの索引のそのファイルの分を読み直す）。 */
+  async fileChanged(rawPath: string): Promise<void> {
+    const path = normalizeScriptPath(rawPath);
+    if (this.index && isScriptSourcePath(path)) await reloadScriptIndexFile(await this.index, this.fs, path);
+  }
+
+  /** 編集中のラベル（ZigzaguMap のラベルの持ち方で付いているもの）。無ければ null。 */
+  labelOf(target: ScriptTarget): string | null {
+    const store = this.app.state.session?.labels.store;
+    if (!store) return null;
+    const { bank, map } = target.map;
+    if (target.kind === "map") return store.get(bank, map).mapScripts;
+    return store.label(bank, map, TARGET_OF[target.kind] as "person" | "sign" | "tile", target.index ?? 0)?.label ?? null;
   }
 
   // ---- 閉じる・未保存の確認 ----
@@ -262,14 +380,33 @@ export class ScriptHost {
       case "hello": {
         this.ready = true;
         this.opened = true;
-        const hello: ScriptEditorHello = { opens: this.pending };
+        const hello: ScriptEditorHello = { opens: this.pending, roms: this.pendingRoms, projectDir: this.app.state.session?.projectDir ?? null, build: this.pendingBuild };
         this.pending = [];
+        this.pendingRoms = [];
+        this.pendingBuild = false;
         return hello;
       }
       case "saved": {
         const path = normalizeScriptPath(request.path);
         if (this.index && isScriptSourcePath(path)) await reloadScriptIndexFile(await this.index, this.fs, path);
+        this.app.scripts.files.forget(path);
         return null;
+      }
+      case "mainDirty": {
+        const session = this.app.state.session;
+        if (!session) return 0;
+        const maps = session.modifiedMaps().length;
+        return maps + (maps === 0 && (session.hasUnsavedChanges() || session.isRegionMapModified()) ? 1 : 0);
+      }
+      case "exportMain":
+        return this.app.exportMaps(false);
+      case "importRom":
+        return this.importRom(request.pointer, request.target, new Map(Object.entries(request.rename)));
+      case "labelRenamed":
+        return this.labelRenamed(request.from, request.to);
+      case "labelUses": {
+        const store = this.app.state.session?.labels.store;
+        return store ? store.usesOf(request.label).length + tableUses(store, request.label) : 0;
       }
       case "setting":
         this.app.state.settings.update({ [request.key]: request.value });
@@ -296,6 +433,19 @@ export class ScriptHost {
       });
     });
   }
+}
+
+/** マップスクリプトの表の行き先にそのラベルがある数。 */
+function tableUses(store: EventLabelStore, label: string): number {
+  let n = 0;
+  for (const { bank, map } of store.tableMaps()) {
+    const table = store.get(bank, map).table;
+    for (const i of table?.items ?? []) {
+      if (i.script === label) n++;
+      for (const c of i.conditions) if (c.script === label) n++;
+    }
+  }
+  return n;
 }
 
 /** 同じフォルダか（大文字小文字と末尾の区切りを無視）。 */

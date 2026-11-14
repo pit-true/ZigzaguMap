@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
+import { jaBuild } from "../i18n/ja.build";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -133,6 +134,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", shortcut: ctrl("W"), enable: "rom" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
+        // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
+        { id: "tools.build", label: jaBuild.menu, accel: "B", shortcut: fkey("F7"), enable: "rom" },
         { id: "tools.previousMap", label: ja.previousMap, accel: "U", shortcut: { key: "BACKSPACE", alt: true, text: "Alt+BkSp" } },
         { id: "tools.desktopShortcut", label: ja.desktopShortcut, accel: "V" },
         sep,

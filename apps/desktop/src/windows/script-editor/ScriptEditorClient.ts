@@ -10,11 +10,16 @@ import {
   type ScriptEditorReply,
   type ScriptEditorRequest,
   type ScriptOpenRequest,
+  type ScriptRomOpenRequest,
 } from "./protocol";
 
 /** メインから届くものの受け手。 */
 export interface ScriptEditorClientListener {
   open(request: ScriptOpenRequest): void;
+  /** メインのメニューから「ビルド」を頼まれた。 */
+  build?(): void;
+  /** ROM のスクリプトを読み取り専用で開く。 */
+  openRom?(request: ScriptRomOpenRequest): void;
   /** 問い合わせに答える（返した値が答え。投げたらエラーとして返す）。 */
   query(query: ScriptEditorQuery): Promise<unknown>;
 }
@@ -36,6 +41,8 @@ export class ScriptEditorClient {
       else w.reject(new Error(reply.error));
     });
     await win.listen<ScriptOpenRequest>(ScriptEditorEvents.open, (e) => listener.open(e.payload));
+    await win.listen(ScriptEditorEvents.build, () => listener.build?.());
+    await win.listen<ScriptRomOpenRequest>(ScriptEditorEvents.openRom, (e) => listener.openRom?.(e.payload));
     await win.listen<ScriptEditorQueryEnvelope>(ScriptEditorEvents.query, (e) => {
       const { id, query } = e.payload;
       void listener
@@ -55,6 +62,11 @@ export class ScriptEditorClient {
   /** 保存したことを知らせる（返事は待たない）。 */
   saved(path: string): void {
     void this.send({ type: "saved", path }).catch(() => undefined);
+  }
+
+  /** メインへ要求を送り、返事を待つ。 */
+  request(request: ScriptEditorRequest): Promise<unknown> {
+    return this.send(request);
   }
 
   /** エディタの個人設定を変えたことを知らせる（メインが settings.json に残す。返事は待たない）。 */

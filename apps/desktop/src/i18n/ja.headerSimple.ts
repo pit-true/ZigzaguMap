@@ -41,6 +41,8 @@ export const jaHeaderSimple = {
   borderSize: "境界ブロック（横×高さ）",
   resizeBorder: "大きさを変更",
 
+  scriptSection: ini.Header["950"],
+
   connectionSection: ini.Menue["136"],
   connectionItem: (direction: string, name: string, bank: number, map: number) => `${direction}: ${name} (${bank}.${map})`,
   noConnections: "つながっているマップはありません",

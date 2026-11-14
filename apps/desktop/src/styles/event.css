@@ -93,3 +93,20 @@
   height: 23px;
   padding: 0 12px;
 }
+
+/* scripts_MM.json の座標と合わないラベルの知らせ（#204）。 */
+.event-label-warn {
+  width: 169px;
+  margin: 0 0 6px;
+  padding: 4px;
+  border: 1px solid #d0a000;
+  background: #fff6d0;
+  color: #000;
+  white-space: normal;
+  line-height: 13px;
+}
+
+.event-label-warn button {
+  margin-top: 4px;
+  width: 100%;
+}

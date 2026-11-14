@@ -10,6 +10,7 @@ export {
   DEFAULT_SCRIPT_LABEL_TEMPLATE,
   DEFAULT_SCRIPT_LINES_PER_PAGE,
   DEFAULT_SCRIPT_LINE_MAX_CHARS,
+  SCRIPT_COPY_COMMAND,
   defaultScriptConfig,
   expandScriptLabelTemplate,
   resolveScriptConfig,

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { EditorSelection } from "@codemirror/state";
 import { listDialogs, operateDialog } from "../../app/automation/dialogs";
+import { click, findField, getField, listFields, setField } from "../../app/automation/ui";
 import { nextFrame, settle, str } from "../../app/automation/registry";
 import { errorText } from "../../util/errors";
 import { FEATURE_COMMANDS } from "./automationFeatures";
@@ -71,7 +72,7 @@ function describe(w: ScriptEditorWindow): unknown {
   const active = w.active;
   const sel = w.view.state.selection;
   return {
-    tabs: w.tabs.map((tab) => ({ path: tab.path, kind: tab.kind, dirty: tab.dirty, missing: tab.missing, lineEnding: tab.lineEnding, bom: tab.bom, lines: tab.state.doc.lines })),
+    tabs: w.tabs.map((tab) => ({ path: tab.path, kind: tab.kind, dirty: tab.dirty, missing: tab.missing, lineEnding: tab.lineEnding, bom: tab.bom, lines: tab.state.doc.lines, rom: tab.rom !== null, readOnly: tab.state.readOnly })),
     active: active?.path ?? null,
     dirty: active?.dirty ?? false,
     cursor: active ? lineColumn(w, sel.main.head) : null,
@@ -160,6 +161,32 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
     await Promise.race([w.checkExternal(), settle(1500)]);
     return describe(w);
   },
+  "build.run": async (w, req) => {
+    // 動かし始めて返す（`wait: true` なら終わるまで待つ）。保存・出力の確認のダイアログが出たらそこで返る
+    const running = w.build.run({ skipConfirm: req["confirm"] === false });
+    if (req["wait"] === true) await running;
+    else await Promise.race([running, settle(500)]);
+    return { ...w.build.status, dialogs: listDialogs() };
+  },
+  "build.state": (w) => w.build.status,
+  "editor.rename": async (w, req) => {
+    // ラベル名の変更（F2 と同じ。`to` を渡すと名前を聞かない）
+    const result = await w.renameLabel(str(req, "from"), typeof req["to"] === "string" ? req["to"] : undefined);
+    return { result, ...(describe(w) as object) };
+  },
+  "editor.import": async (w, req) => {
+    // 表示中の ROM のタブを取り込む。`rename`（自動で付けた名前 → 新しい名前）を渡すと一覧を出さない。渡さなければ一覧を出したまま返す
+    const tab = typeof req["key"] === "string" ? w.tabs.find((x) => x.path === req["key"]) : w.active;
+    if (!tab?.rom) throw new Error("ROM のタブがありません");
+    const rename = req["rename"] && typeof req["rename"] === "object" ? (req["rename"] as Record<string, string>) : undefined;
+    const result = await Promise.race([w.importRom(tab, rename), settle(rename ? 30000 : 400).then(() => undefined)]);
+    return { result: result ?? null, rom: { key: tab.rom.key, importable: tab.rom.importable, items: tab.rom.items }, ...(describe(w) as object) };
+  },
+  "build.log": (w, req) => ({ lines: w.build.lines(typeof req["from"] === "number" ? req["from"] : 0) }),
+  "build.stop": async (w) => {
+    await w.build.stop();
+    return w.build.status;
+  },
   key: async (w, req) => COMMANDS["editor.key"]!(w, req),
   close: async (w) => {
     // × と同じ。未保存が無ければ返事を送ってから閉じる。あれば確認のダイアログを出したまま返る（`dialog` で答える）
@@ -172,6 +199,18 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
     return { closing: false, dialogs: listDialogs() };
   },
   dialogs: () => ({ dialogs: listDialogs() }),
+  getField: (_w, req) => getField(str(req, "id")),
+  setField: async (_w, req) => {
+    const r = setField(str(req, "id"), req["value"]);
+    await settle();
+    return { ...r, dialogs: listDialogs() };
+  },
+  click: async (_w, req) => {
+    click(str(req, "id"));
+    await settle(200);
+    return { dialogs: listDialogs(), ...(describe(_w) as object) };
+  },
+  "ui.list": (_w, req) => listFields(typeof req["root"] === "string" ? findField(req["root"]) : document),
   dialog: async (_w, req) => {
     const result = await operateDialog(req);
     await settle(200);

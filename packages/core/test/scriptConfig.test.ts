@@ -5,6 +5,7 @@ import {
   MemoryProjectFs,
   ProjectFormatError,
   SCRIPT_CONFIG_FILE,
+  SCRIPT_COPY_COMMAND,
   ScriptConfigJson,
   defaultScriptConfig,
   detectScriptDialect,
@@ -34,13 +35,16 @@ describe("方言の判定", () => {
 });
 
 describe("既定値", () => {
-  it("ND は CFRU のビルドだけ、幅検査なし、.global なし", () => {
+  it("ND は CFRU のビルド・DPE へのコピー・DPE のビルド、幅検査なし、.global なし", () => {
     const c = defaultScriptConfig("nd");
-    expect(c.build).toEqual([{ command: "python", args: ["scripts/make.py"], cwd: "." }]);
-    expect(c.outputRom).toBe("test.gba");
+    expect(c.build).toEqual([
+      { command: "python", args: ["scripts/make.py"], cwd: "." },
+      { command: SCRIPT_COPY_COMMAND, args: ["test.gba", "../NeoDark-DPE-main/BPRJ0.gba"], cwd: "." },
+      { command: "python", args: ["scripts/make.py"], cwd: "../NeoDark-DPE-main" },
+    ]);
+    expect(c.outputRom).toBe("../NeoDark-DPE-main/test.gba");
     expect(c.widthCheck).toBeNull();
     expect(c.useGlobal).toBe(false);
-    expect(c.emulator).toBeNull();
     expect(c.commandsCsv).toBeNull();
     expect(c.labelTemplate).toBe(DEFAULT_SCRIPT_LABEL_TEMPLATE);
     expect([c.lineMaxChars, c.linesPerPage]).toEqual([18, 2]);
@@ -56,10 +60,9 @@ describe("既定値", () => {
   });
 
   it("書いてある項目だけ既定値を上書きし、null は「使わない」になる", () => {
-    const c = resolveScriptConfig({ widthCheck: null, lineMaxChars: 20, emulator: "C:/mGBA/mGBA.exe" }, "chronos");
+    const c = resolveScriptConfig({ widthCheck: null, lineMaxChars: 20 }, "chronos");
     expect(c.widthCheck).toBeNull();
     expect(c.lineMaxChars).toBe(20);
-    expect(c.emulator).toBe("C:/mGBA/mGBA.exe");
     expect(c.build).toEqual(defaultScriptConfig("chronos").build);
   });
 
@@ -77,7 +80,6 @@ describe("zigzagumap.json の読み書き", () => {
       { command: "python", args: ["scripts/make.py"], cwd: "../NeoDark-DPE-main" },
     ],
     outputRom: "../NeoDark-DPE-main/test.gba",
-    emulator: null,
     widthCheck: { command: "python", args: ["check.py", "--source"], cwd: ".." },
     labelTemplate: "Script_{map}_{index}",
     useGlobal: true,
@@ -170,9 +172,8 @@ describe("プロジェクトからの読み込みと保存", () => {
 
 describe("補助", () => {
   it("ラベルの規則を埋める", () => {
-    expect(expandScriptLabelTemplate(DEFAULT_SCRIPT_LABEL_TEMPLATE, { map: "03_00", kind: "Npc", index: 0 })).toBe(
-      "EventScript_03_00_Npc0",
-    );
+    expect(expandScriptLabelTemplate(DEFAULT_SCRIPT_LABEL_TEMPLATE, { map: "Moegi", kind: "Npc", index: 3 })).toBe("Moegi_Npc3");
+    expect(expandScriptLabelTemplate("EventScript_{map}_{kind}{index}", { map: "Map3_0", kind: "Npc", index: 0 })).toBe("EventScript_Map3_0_Npc0");
   });
 
   it("設定のパスをプロジェクトフォルダにつなぐ", () => {

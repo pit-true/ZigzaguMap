@@ -21,6 +21,14 @@ export const jaScriptEditor = {
   /** タブ・ウィンドウを閉じるときの確認。 */
   confirmSave: (name: string) => `${name} の変更は保存されていません。保存しますか？`,
   confirmSaveMany: (count: number) => `保存していないファイルが ${count} 件あります。保存しますか？`,
+  /** ラベル名の変更（F2）。 */
+  renameTitle: "ラベル名の変更",
+  renamePrompt: (from: string) => `${from} の新しい名前（assembly/overworld_scripts の .s の定義と参照、イベントのラベルも変えます）`,
+  renameInvalid: (name: string) => `ラベルに使えない名前です: ${name}（半角の英字・数字・_ . $ で、数字で始めない）`,
+  renamed: (from: string, to: string, count: number, files: number, uses: number) =>
+    `${from} を ${to} に変えました（.s ${files} 件の ${count} か所、イベントとマップスクリプト ${uses} 件）`,
+  confirmRename: (from: string, to: string, uses: number) =>
+    `ラベル ${from} が ${to} に変わりました。${from} を使っているイベントとマップスクリプト（${uses} 件）も ${to} にしますか？`,
   /** 外部で変わったとき（編集中の変更があるとき）。 */
   confirmReload: (name: string) => `${name} が外部で変更されました。読み直しますか？\n「いいえ」で編集中の内容をそのまま残します。`,
 
@@ -29,6 +37,9 @@ export const jaScriptEditor = {
   notFound: "このイベントのスクリプトが見つかりません（eventscripts にも maps\\scripts.json にも当たる項目がありません）",
   labelNotFound: (label: string) => `ラベル ${label} が assembly の中に見つからないので、マップの .s を開きました`,
   opened: (path: string, line: number) => `${path} の ${line} 行目を開きました`,
+  labelMissing: (label: string) => `ラベル ${label} が assembly/overworld_scripts の中に見つかりません`,
+  romOpened: (key: string) => `${key} のスクリプトを読み取り専用で開きました`,
+  labelRenamed: (from: string, to: string, uses: number) => `ラベル ${from} を ${to} に変えました（イベントとマップスクリプト ${uses} 件。eventscripts は出力のときに書きます）`,
   /** メインを閉じる・別のプロジェクトを開くときの確認。 */
   mainDirty: (count: number) => `スクリプトエディタに保存していないファイルが ${count} 件あります。保存しますか？`,
 };

@@ -117,6 +117,143 @@
   color: var(--gray-text);
 }
 
+/* ビルドの欄（BuildPanel.ts）。エディタの下に出す。 */
+.se-build {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: 34%;
+  min-height: 120px;
+  border-top: 1px solid var(--border);
+  background: var(--face);
+}
+
+.se-build-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+}
+
+.se-build-bar button {
+  min-width: 64px;
+  height: 22px;
+}
+
+.se-build-status {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.se-build-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.se-build-problems {
+  flex: none;
+  max-height: 40%;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--window);
+}
+
+.se-build-problem {
+  padding: 1px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.se-build-problem.error {
+  color: #c00000;
+}
+
+.se-build-problem.openable {
+  cursor: pointer;
+}
+
+.se-build-problem.openable:hover {
+  background: var(--hot);
+}
+
+.se-build-log {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 2px 6px;
+  overflow: auto;
+  background: var(--window);
+  color: var(--text);
+  font: 12px Consolas, "MS Gothic", monospace;
+  white-space: pre;
+}
+
+/* ROM のスクリプトのタブ（読み取り専用。#206）の上の帯と、取り込みの一覧（#207）。 */
+.se-rom-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--face);
+  color: var(--gray-text);
+}
+
+.se-rom-bar button {
+  height: 22px;
+  color: var(--text);
+}
+
+.rom-import-note {
+  margin: 0 0 8px;
+  white-space: normal;
+}
+
+.rom-import-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  background: var(--window);
+}
+
+.rom-import-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+}
+
+.rom-import-row.reused {
+  color: var(--gray-text);
+}
+
+.rom-import-kind {
+  width: 64px;
+  flex: none;
+}
+
+.rom-import-at {
+  width: 90px;
+  flex: none;
+  font-family: Consolas, monospace;
+}
+
+.rom-import-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.rom-import-row input.invalid {
+  background: #ffe0e0;
+}
+
 .se-theme {
   flex: none;
   height: 18px;
