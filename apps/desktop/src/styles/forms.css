@@ -75,3 +75,62 @@ select {
   color: var(--gray-text);
   margin: 8px 0;
 }
+
+/* ---- 野生のグラフと検索（#398） ---- */
+.wild-chart-controls,
+.wild-search-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.wild-chart-head {
+  font-weight: bold;
+  margin: 4px 0 2px;
+}
+
+.wild-chart-canvas {
+  display: block;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  color: var(--text);
+}
+
+.wild-chart-hover,
+.wild-search-info {
+  min-height: 16px;
+  margin: 4px 0;
+}
+
+.wild-search-wrap {
+  height: 260px;
+  overflow: auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+}
+
+.wild-search-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wild-search-table th {
+  position: sticky;
+  top: 0;
+  background: var(--face);
+  cursor: pointer;
+  text-align: left;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+
+.wild-search-table td {
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+
+.wild-search-table tr.selected td {
+  background: var(--select);
+  color: var(--select-text);
+}

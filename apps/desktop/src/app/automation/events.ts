@@ -145,6 +145,8 @@ export const eventCommands: CommandTable = {
       counts: tab.counts(),
       /** 選んでいるイベント（#399。複数選択なら全部、そうでなければ欄の 1 つ）。 */
       selected: tab.selectedEvents(),
+      /** Shift＋右ドラッグのルーラーの横と縦のマス数（#400。出していなければ null）。 */
+      ruler: tab.ruler.distance(),
       fly: tab.count("fly") > 0,
       events: map?.doc.events ?? null,
       itemBalls: map?.doc.itemBalls ?? [],

@@ -1,5 +1,6 @@
 import { SeamNotice } from "../ui/connection/SeamNotice";
 import type { TownMiniView } from "../ui/view/TownMiniView";
+import type { HistoryPanel } from "../ui/history/HistoryPanel";
 import type { PointerDialog } from "../ui/pointer/PointerDialog";
 import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
@@ -66,6 +67,9 @@ export class ViewFeatures {
   readonly thumbnails: ThumbnailService;
   /** マップの拡大（#316。タブごと）。 */
   readonly zoom: Record<ZoomTab, MapZoomControls>;
+  /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
+  private historyValue: Promise<HistoryPanel> | null = null;
+  private historyCreated: HistoryPanel | null = null;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
   lastCopied: string | null = null;
 
@@ -77,6 +81,14 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
+    // 履歴の窓（Phase5 #402。表示 > 履歴の窓、Ctrl+E）
+    actions.registerCheck("view.history", () => this.historyCreated?.isOpen ?? false);
+    actions.register("view.history", async () => {
+      const panel = await this.history();
+      if (panel.isOpen) panel.close();
+      else panel.open();
+      state.emit("view");
+    });
     // マップの拡大（#316）。メニューの「拡大表示」を押したら、Ctrl＋ホイールで決めた倍率は忘れて 1 倍・2 倍に戻す
     this.zoom = {
       map: new MapZoomControls(parts.mapTab.view, state, "map"),
@@ -135,6 +147,19 @@ export class ViewFeatures {
           },
         })),
     ));
+  }
+
+  /** 履歴の窓（作っていなければ作る。#402）。 */
+  history(): Promise<HistoryPanel> {
+    const { state } = this.parts;
+    return (this.historyValue ??= import("../ui/history/HistoryPanel").then(
+      ({ HistoryPanel }) => (this.historyCreated = new HistoryPanel(state, { closed: () => state.emit("view") })),
+    ));
+  }
+
+  /** 履歴の窓（作っていなければ null。自動操作用）。 */
+  historyIfCreated(): HistoryPanel | null {
+    return this.historyCreated;
   }
 
   /** ポインタ一覧と参照元の検索の窓（作っていなければ作る）。 */

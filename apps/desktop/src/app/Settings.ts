@@ -123,6 +123,11 @@ export interface SettingsData {
   eventOpacity: number;
   /** タウンマップの小窓を出す（表示メニュー。既定オフ。#306）。 */
   showTownMap: boolean;
+  /**
+   * タウンマップの小窓で自分で決めた位置（#386）。ROM のパス（小文字）→ 紐づけ（`zigzagumap.json` の `"townMap"` の節と同じ形。
+   * 読み書きは core の `readTownLinks`・`writeTownLinks`）。プロジェクトフォルダを開いていないときだけ使う。
+   */
+  townLinks: Record<string, unknown>;
   /** ブロックパレットのタイルセット 1・2 の境目に線と「TS2 0x280〜」の見出しを出す（表示メニュー。既定オン。#308）。 */
   paletteBoundary: boolean;
   /** マップ一覧にマップの縮小（48px）を出す（表示メニュー。既定オフ。#315・Q13）。 */
@@ -195,6 +200,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   hiddenEventKinds: [],
   eventOpacity: 1,
   showTownMap: false,
+  townLinks: {},
   paletteBoundary: true,
   treeThumbnails: false,
   mapZoom: { map: 0, movement: 0, event: 0 },

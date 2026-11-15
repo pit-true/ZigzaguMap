@@ -36,6 +36,9 @@ describe("ショートカットの表（#392）", () => {
     expect(keyText("edit.redo")).toBe("Ctrl+Y、Ctrl+Shift+Z");
     expect(keyText("dive.hold")).toBe("Space");
     expect(keyText("file.reload")).toBe("F5");
+    expect(keyText("view.history")).toBe("Ctrl+E");
+    expect(keyText("blockEditor.edit.copy")).toBe("Ctrl+C");
+    expect(keyText("blockEditor.edit.swap")).toBe("X");
   });
 
   it("メニューの項目は表から作ったキーを持ち、表のメニューの操作は全部メニューにある", () => {

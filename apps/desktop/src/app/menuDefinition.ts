@@ -20,6 +20,8 @@ import { jaAssist } from "../i18n/ja.assist";
 import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
+import { jaCommands } from "../i18n/ja.commands";
+import { jaWildTools } from "../i18n/ja.wildTools";
 
 /** メニューに出すショートカットキー（`app/keymap.ts` の表の今のキーから作る。#392）。 */
 export interface Shortcut {
@@ -127,6 +129,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.clones", label: jaClone.menu },
         // タウンマップの小窓（#306。ZigzaguMap 独自）
         { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
+        // 履歴の窓（Phase5 #402。ZigzaguMap 独自）
+        { id: "view.history", label: jaCommands.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -205,6 +209,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
         // ZigzaguMap 独自（Phase4 #314）。別の ROM のタイルセットを新しいタイルセットとして取り込む。
         { id: "tools.transplant", label: jaTransplant.menu, accel: "I", enable: "map" },
+        // ZigzaguMap 独自（Phase5 #398）。種族を選び、全マップの野生からその種族が出る枠を探す。
+        { id: "tools.wildSearch", label: jaWildTools.searchMenu, accel: "G", enable: "rom" },
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
         { id: "tools.build", label: jaBuild.menu, accel: "B", enable: "rom" },
         { id: "tools.previousMap", label: ja.previousMap, accel: "U" },

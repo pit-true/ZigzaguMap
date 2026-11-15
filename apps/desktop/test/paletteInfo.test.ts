@@ -39,8 +39,8 @@ describe("ブロックの情報（#308）", () => {
   it("3 層は「重ね方: 30-トリプルレイヤー」と 3 枚目の番号、次の番号はその旨", () => {
     const text = blockInfoText(source(0x30000000, { triple: true }), 0x10);
     expect(text).toContain("重ね方: 30-トリプルレイヤー");
-    expect(text).toContain("3 枚目はブロック 0x011");
-    expect(blockInfoText(source(0, { tripleChild: true }), 0x11)).toContain("0x010 の 3 枚目に使われる");
+    expect(text).toContain("3枚目のレイヤーはブロック 0x011");
+    expect(blockInfoText(source(0, { tripleChild: true }), 0x11)).toContain("0x010 の3枚目のレイヤーに使われる");
   });
 });
 

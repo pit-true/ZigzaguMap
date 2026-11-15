@@ -33,6 +33,14 @@ export class BlockListView {
     });
   }
 
+  /** ブロックの行が見えるように一覧を送る（パレットエディタの色の使用箇所から選んだとき。#396）。 */
+  reveal(block: number): void {
+    const size = BLOCK_PIXELS * SCALE;
+    const top = Math.floor(block / COLUMNS) * size;
+    const view = this.element;
+    if (top < view.scrollTop || top + size > view.scrollTop + view.clientHeight) view.scrollTop = Math.max(0, top - Math.floor((view.clientHeight - size) / 2));
+  }
+
   /** 描き直す（データの無い位置は黒）。 */
   render(model: TilesetModel): void {
     this.blocks = model.listedBlocks;

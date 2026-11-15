@@ -6,6 +6,7 @@ import { jaPaint } from "../i18n/ja.paint";
 import { jaPen } from "../i18n/ja.pen";
 import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
+import { jaBlockTools } from "../i18n/ja.blockTools";
 
 /**
  * ショートカットキーの表（Phase5 #392）。メニューのショートカットと、各所で受けている道具のキーをここにまとめる。
@@ -25,10 +26,12 @@ export interface KeyChord {
 }
 
 /** キーを受ける場所。重なりを調べるのに使う（場所が重ならなければ同じキーでもよい）。 */
-export type KeyArea = "map" | "movement" | "event" | "otherTabs" | "toolWindows";
+export type KeyArea = "map" | "movement" | "event" | "otherTabs" | "toolWindows" | "blockEditor";
 
 const MAIN: readonly KeyArea[] = ["map", "movement", "event", "otherTabs"];
-const ANYWHERE: readonly KeyArea[] = [...MAIN, "toolWindows"];
+const ANYWHERE: readonly KeyArea[] = [...MAIN, "toolWindows", "blockEditor"];
+/** ブロックエディタの窓のメニュー（`windows/block-editor/BlockEditorMenu.ts`）。 */
+const BLOCK_EDITOR: readonly KeyArea[] = ["blockEditor"];
 
 /** 表の 1 行（操作 1 つ）。 */
 export interface KeyAction {
@@ -60,6 +63,7 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   menu("view.grid", c("G")),
   menu("view.cursorFrame", k("C")),
   menu("view.playerView", k("V")),
+  menu("view.history", c("E")),
   menu("view.paletteWidth", c("P")),
   menu("view.toolbar", c("T")),
   menu("opt.advancedHeader", c("H")),
@@ -86,6 +90,16 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   { id: "tool.pencil", defaults: [k("N")], areas: ["map", "movement"], label: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
   { id: "tool.fill", defaults: [k("B")], areas: ["map", "movement"], label: jaTools.shortcutFill, where: jaTools.shortcutToolWhere },
   { id: "tool.shift", defaults: [k("S")], areas: ["map", "movement"], label: jaTools.shortcutShift, where: jaTools.shortcutToolWhere },
+  // ブロックエディタの窓の 編集 メニュー（Phase5 #395。ID は `blockEditor.` ＋ メニューの項目の ID）
+  ...(["copy", "cut", "paste", "swap"] as const).map(
+    (name): KeyAction => ({
+      id: `blockEditor.edit.${name}`,
+      defaults: [name === "copy" ? c("C") : name === "cut" ? c("X") : name === "paste" ? c("V") : k("X")],
+      areas: BLOCK_EDITOR,
+      label: `${jaBlockTools.menuEdit} > ${jaBlockTools[name]}`,
+      where: jaBlockTools.shortcutWindowWhere,
+    }),
+  ),
 ];
 
 const BY_ID = new Map(KEY_ACTIONS.map((a) => [a.id, a]));

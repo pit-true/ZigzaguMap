@@ -41,7 +41,7 @@ describe("3 層のブロックの選び方（#300）", () => {
 
   it("ステータスバーに 3 層・描けない 3 層・次の番号を足す", () => {
     const t = lookup([0x10, 0x27f], [0x27f]);
-    expect(tripleStatusSuffix(t, 0x10)).toContain("3層");
+    expect(tripleStatusSuffix(t, 0x10)).toContain("トリプルレイヤー");
     expect(tripleStatusSuffix(t, 0x27f)).toContain("次のブロックが無い");
     expect(tripleStatusSuffix(t, 0x11)).toContain("010");
     expect(tripleStatusSuffix(t, 0x12)).toBe("");

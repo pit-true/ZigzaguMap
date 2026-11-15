@@ -1,6 +1,7 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaEventMulti } from "../i18n/ja.eventMulti";
+import { jaEventLimit } from "../i18n/ja.eventLimit";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
@@ -55,6 +56,8 @@ function otherKeys(): ShortcutRow[] {
     { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
     { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
     { keys: keyText("event.duplicate"), action: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
+    // ルーラー（Phase5 #400。ui/event/RulerLayer.ts）
+    { keys: "Shift＋右ドラッグ", action: jaEventLimit.shortcutRuler, where: jaEventLimit.shortcutWhere },
     { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
     { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
     { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
@@ -77,7 +80,7 @@ function otherKeys(): ShortcutRow[] {
     { keys: jaPen.shortcutPalettePickKeys, action: jaPen.shortcutPalettePick, where: jaPen.shortcutPalettePickWhere },
     { keys: "Ctrl（押している間）", action: jaPaint.shortcutPeek, where: jaPaint.shortcutPeekWhere },
     { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
-    // 自動ペン（Phase4 #310。app/penExtras.ts）
+    // オートペン（Phase4 #310。app/penExtras.ts）
     { keys: keyText("pen.autoPen"), action: jaPen.shortcutAutoPen, where: jaPen.shortcutAutoPenWhere },
     // 描く道具の帯（Phase5 #388〜#390。app/toolExtras.ts・input/tools/）
     { keys: keyText("tool.pencil"), action: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
@@ -100,6 +103,8 @@ function otherKeys(): ShortcutRow[] {
     { keys: jaSeams.shortcutKeys, action: jaSeams.shortcut, where: jaSeams.shortcutWhere },
     // タウンマップの小窓（Phase4 #306。ui/view/TownMiniView.ts）
     { keys: jaTownMini.shortcutKeys, action: jaTownMini.shortcut, where: jaTownMini.shortcutWhere },
+    { keys: jaTownMini.shortcutMenuKeys, action: jaTownMini.shortcutMenu, where: jaTownMini.shortcutWhere },
+    { keys: jaTownMini.shortcutDragKeys, action: jaTownMini.shortcutDrag, where: jaTownMini.shortcutWhere },
     // ポインタ一覧と参照元の検索（Phase4 #307。ui/pointer/PointerDialog.ts）
     { keys: jaPointers.shortcutRowKeys, action: jaPointers.shortcutRow, where: jaPointers.shortcutWhere },
     { keys: jaPointers.shortcutCopyKeys, action: jaPointers.shortcutCopy, where: jaPointers.shortcutWhere },
@@ -109,7 +114,7 @@ function otherKeys(): ShortcutRow[] {
     // ブロックエディタの 8 マスと 3 層目の 4 マス（Phase4 #302。windows/block-editor/BlockEditPanel.ts）
     { keys: jaBlockEditor.shortcutTileKeys, action: jaBlockEditor.shortcutTile, where: jaBlockEditor.shortcutTileWhere },
     // ブロックエディタの Phase5 の操作（#393〜#395。windows/block-editor/）
-    ...blockToolShortcutRows(),
+    ...blockToolShortcutRows(keyText),
     // マップ作成補助の窓（Phase4 #312・#338。windows/map-assist/MapAssistWindow.ts）
     { keys: jaAssist.shortcutPickKeys, action: jaAssist.shortcutPick, where: jaAssist.shortcutPickWhere },
     ...scriptEditorKeys(),
