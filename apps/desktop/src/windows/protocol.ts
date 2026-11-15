@@ -65,7 +65,11 @@ export type ToolRequest =
   | { readonly from: ToolKind; readonly id: number; readonly op: "setUi"; readonly palette?: number; readonly preview?: Record<number, readonly number[]> }
   | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind }
   /** 別の ROM からの移植（#314）: 新しいタイルセットの位置と、アニメ処理の機械語がベース ROM の同じ場所と同じか。 */
-  | { readonly from: ToolKind; readonly id: number; readonly op: "probe"; readonly newTilesets: number; readonly code: readonly TransplantCodeProbe[] };
+  | { readonly from: ToolKind; readonly id: number; readonly op: "probe"; readonly newTilesets: number; readonly code: readonly TransplantCodeProbe[] }
+  /** ブロックの入れ替え（#394）: そのタイルセットを使うマップ（返事は `{ maps: {bank, map}[] }`）。 */
+  | { readonly from: ToolKind; readonly id: number; readonly op: "tilesetUsers"; readonly tileset: number; readonly secondary: boolean }
+  /** ブロックの入れ替え（#394）: `a` と `b`（タイルセットの中の番号）を入れ替える。`remap` なら使う全マップの番号も付け替える。 */
+  | { readonly from: ToolKind; readonly id: number; readonly op: "swapBlocks"; readonly tileset: number; readonly secondary: boolean; readonly a: number; readonly b: number; readonly remap: boolean };
 
 /** ベース ROM の `address`（0x08 起点）に `bytes`（base64）と同じ機械語があるか、の問い合わせ。 */
 export interface TransplantCodeProbe {

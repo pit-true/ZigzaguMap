@@ -1,6 +1,7 @@
 import { EditError, EditErrorCode, formatHex } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { jaBlockEditor } from "../../i18n/ja.blockEditor";
+import { jaBlockTools } from "../../i18n/ja.blockTools";
 import { messageBox } from "../MessageBox";
 import { errorText } from "../../util/errors";
 
@@ -34,6 +35,8 @@ export function editErrorMessage(e: EditError): { title: string; text: string } 
       return { title: ja.errorTitle, text: h.valueOutOfRange(String(p["field"]), Number(p["min"]), Number(p["max"])) };
     case EditErrorCode.TripleLayerNoNext:
       return { title: ja.errorTitle, text: jaBlockEditor.tripleNoNext };
+    case EditErrorCode.BlockSwapRefused:
+      return { title: ja.errorTitle, text: jaBlockTools.swapRefused(String(p["reason"])) };
     default:
       return { title: ja.errorTitle, text: ja.error(e.message) };
   }

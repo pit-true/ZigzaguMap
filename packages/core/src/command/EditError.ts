@@ -71,6 +71,8 @@ export const EditErrorCode = {
   BlockIndexOutOfRange: "blockIndexOutOfRange",
   /** 表の最後のブロックは 3 層にできない（次のブロックが無い）。引数: index（タイルセットの中の番号）, count。 */
   TripleLayerNoNext: "tripleLayerNoNext",
+  /** ブロックを入れ替えられない（3 層の組が崩れるなど。#394）。引数: a, b（タイルセットの中の番号）, reason（same / child / noNext / mixed / overlap）。 */
+  BlockSwapRefused: "blockSwapRefused",
   /** タイル番号が範囲外。引数: index, count。 */
   TileIndexOutOfRange: "tileIndexOutOfRange",
   /** パレットファイルの形式が違う。引数: length。 */

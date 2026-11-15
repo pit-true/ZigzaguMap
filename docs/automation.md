@@ -359,6 +359,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 確認のスクリプトは `tests/automation/block_tools_check.py`（`--only 393` などで issue ごとに動かせる）。
 
 - ブロックエディタ（`"window": "block-editor"`）のタイルの矩形（#393）: タイル一覧 `be.tiles` の `pointer`（`down` → `move` → `up`。1 タイル 16px）で矩形を選ぶ。選んだ矩形の枠 `be.tilesFrame`（`getField` の `visible`。2 枚以上のときだけ出る）。8 マス `be.block` の `pointer` に `ctrl: true` でパレットだけ塗る、`button: 2` の `down` と `up` で矩形を拾う（離した所が 3 層目なら押したマスだけ）。窓の下の 1 行 `be.status`（`getField` の `value`。ホバーの情報と案内）。窓の `state` に `selection`（`width`・`height`・`picked`（8 マスから拾った矩形か）。選んでいなければ null）が出る。
+- ブロックのコピー・貼り付けと入れ替え（#394）: `action` の `edit.copy`・`edit.cut`・`edit.paste`・`edit.swap`、または `key`（`{"cmd":"key","key":"c","ctrl":true}`、入れ替えは `{"cmd":"key","key":"x"}`）。入れ替えはオンにしてから `be.blocks` を 2 回押し、確かめの窓（`dialogs`）を `dialog` の `press`（`yes` 付け替える / `no` タイルセットの中だけ / `cancel`）で答える。窓の `state` に `edit`（`clipboard`（`tiles`・`attribute`・`third`）と `swap`（`active`・`first`））と、窓の下の 1 行の文 `status` が出る。コマンドは `swapBlocks`（`tileset`・`secondary`・`a`・`b`（タイルセットの中の番号）・`targets`（付け替えるマップ。読み込んでおく））。メインへの頼みは `tilesetUsers`（そのタイルセットを使うマップの一覧）と `swapBlocks`（マップを読み込んでから実行）。
+- 写しでの確認: `python tests/realcopy/run.py --swap --reuse --only nd`（ND の写しで副の 2 つを入れ替えて出力・ビルドし、できた ROM の中身と開き直した絵を確かめる）。
 
 ## Phase4 の表示・一覧・調査（列 3）
 
