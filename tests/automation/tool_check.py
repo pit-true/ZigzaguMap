@@ -458,13 +458,15 @@ def check_view(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "selection"})["movement"] == 0x1A, "16 進で入れると移動許可の選択が変わる")
     z.call({"cmd": "setField", "id": "movement.value", "value": "4F"})
     check(z.call({"cmd": "selection"})["movement"] == 0x1A, "00〜3F の外は選択を変えない")
-    # 打っている途中の 1 桁では選ばない（「4F」の「4」で 04 にならない。#406）。Enter で 1 桁のまま選べる
-    z.call({"cmd": "setField", "id": "movement.value", "value": "2"})
-    check(z.call({"cmd": "selection"})["movement"] == 0x1A, "1 桁の途中では選択を変えない")
-    z.call({"cmd": "key", "id": "movement.value", "key": "Enter"})
-    check(z.call({"cmd": "selection"})["movement"] == 0x02, "1 桁のまま Enter で選ぶ（02）")
     z.call({"cmd": "mouse", "target": "movementPalette", "action": "click", "cell": [0, 5]})
     check(z.call({"cmd": "view.aids"})["movementValue"] == "05", "パレットで選ぶと欄の値も変わる")
+    # 打っている途中の 1 桁では選ばない（「4F」の「4」で 04 にならない。#406）。Enter か欄を離れると 1 桁のまま選ぶ
+    z.call({"cmd": "ui.type", "id": "movement.value", "text": "2", "blur": False})
+    check(z.call({"cmd": "selection"})["movement"] == 0x05, "1 桁の途中では選択を変えない")
+    z.call({"cmd": "key", "id": "movement.value", "key": "Enter"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x02, "1 桁のまま Enter で選ぶ（02）")
+    z.call({"cmd": "setField", "id": "movement.value", "value": "3"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x03, "1 桁のまま欄を離れると選ぶ（03）")
     screenshot(z, shots, "tool_view_movement.png")
     # グリッドの設定
     z.call({"cmd": "tab", "name": "map"})
