@@ -135,7 +135,7 @@ export { MapSourceConverter } from "./project/MapSourceConverter.js";
 export { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./project/ProjectManifest.js";
 export { MemoryProjectFs, readTextIfExists, type ProjectFs } from "./project/ProjectFs.js";
 export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
-export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js";
+export { decodeIndexedPng, decodeRgbaPng, type IndexedImage, type RgbaPng } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
 export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
@@ -238,6 +238,35 @@ export {
 } from "./tileset/TileSelection.js";
 export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
 export { colorUsage, unusedColors, type ColorUsageInput } from "./tileset/ColorUsage.js";
+export {
+  IMPORT_MAX_LAYERS,
+  IMPORT_MAX_SIDE,
+  ImportError,
+  TRANSPARENT,
+  isTransparentTile,
+  prepareImportLayers,
+  rgbaToColor,
+  splitTiles,
+  tileColors,
+  type ImportImageOptions,
+  type ImportLayers,
+  type ImportSource,
+} from "./tileset/import/ImportImage.js";
+export { TileDeduper, flipIndices, packTile, unpackTile, type ExistingTiles, type TileDedupeCounts, type TileDedupeOptions, type TileMatch } from "./tileset/import/TileDeduper.js";
+export { channels, colorDistance, countColors, fromChannels, luminance, medianCut, nearestColor, remapTile } from "./tileset/import/Quantizer.js";
+export {
+  PALETTE_COLORS,
+  PALETTE_SIZE,
+  assignPalettes,
+  colorSet,
+  indexTile,
+  reduceToFit,
+  type AssignOptions,
+  type PaletteAssignment,
+  type PaletteGroup,
+  type PaletteSlotInput,
+  type ReduceResult,
+} from "./tileset/import/PaletteAssigner.js";
 export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTilesetContent, type NewTilesetOptions, type NewTilesetPlan, type NewTilesetSource } from "./tileset/NewTileset.js";
 
 // 描画
