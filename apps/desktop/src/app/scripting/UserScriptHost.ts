@@ -27,6 +27,7 @@ import { jaUserScript as t } from "../../i18n/ja.userScript";
 import { inputDialog } from "../../ui/InputDialog";
 import { messageBox } from "../../ui/MessageBox";
 import type { EditorState } from "../EditorState";
+import { scheduleIdleGc } from "../../util/idleGc";
 
 /** スクリプトが登録した操作。 */
 export interface UserScriptAction {
@@ -145,7 +146,11 @@ export class UserScriptHost {
     this.busy = 0;
     this.actionList.length = 0;
     this.flushIdle();
-    if (had) this.parts.state.setStatus(t.stopped);
+    if (had) {
+      this.parts.state.setStatus(t.stopped);
+      // Worker との受け渡しの残り（全マップの配置など）を、落ち着いたら GC で OS へ返す（#429）
+      scheduleIdleGc(true);
+    }
     this.changed();
   }
 
@@ -206,7 +211,11 @@ export class UserScriptHost {
       return;
     }
     const worker = this.parts.createWorker();
-    worker.onmessage = (e: MessageEvent<WorkerToHost>) => void this.receive(e.data);
+    worker.onmessage = (e: MessageEvent<WorkerToHost>) => {
+      void this.receive(e.data);
+      // 頼まれて渡した配置（全マップの getCells など）の写しを、落ち着いたら集める（#429）
+      scheduleIdleGc();
+    };
     worker.onerror = (e) => this.log("error", e.message);
     this.worker = worker;
     this.unsubscribeBus = session.bus.subscribe((e) => this.onCommand(e));

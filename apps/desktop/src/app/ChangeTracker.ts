@@ -1,6 +1,7 @@
 import { ROM_BASE, affectedMaps, flattenCommandRecords, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import type { EditorState } from "./EditorState";
+import { scheduleIdleGc } from "../util/idleGc";
 
 /** 未出力の印を確かめるまでの待ち時間（ドラッグ中に何度も調べないため）。 */
 const DIRTY_CHECK_DELAY = 150;
@@ -57,6 +58,8 @@ export class ChangeTracker {
     }
     if (this.dirtyTimer) clearTimeout(this.dirtyTimer);
     this.dirtyTimer = setTimeout(() => this.checkDirty(), DIRTY_CHECK_DELAY);
+    // 描いたあとのごみ（塗りつぶしの範囲・下見・描き直しの途中の値）を、操作が落ち着いたら集める（塗りつぶしのあとに 4MB ほど残っていた。#429）
+    scheduleIdleGc();
   }
 
   /** タイルセットを変える操作なら、それを使う組を作り直して描き直す（ブロックエディタの保存など）。 */

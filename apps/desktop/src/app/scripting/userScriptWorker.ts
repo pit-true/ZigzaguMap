@@ -8,7 +8,10 @@ import { UserScriptRuntime, type HostToWorker, type UserScriptApi, type WorkerTo
  */
 const scope = self as unknown as Record<string, unknown>;
 const post = (m: WorkerToHost): void => postMessage(m);
+/** `--js-flags=--expose-gc` の GC（Worker にもある）。スクリプトからは使えないよう、下で消す前に持っておく。 */
+const gc = typeof scope["gc"] === "function" ? (scope["gc"] as (options?: object) => void) : null;
 for (const name of [
+  "gc",
   "fetch",
   "XMLHttpRequest",
   "WebSocket",
@@ -50,4 +53,24 @@ const runtime = new UserScriptRuntime(post, (code: string, api: UserScriptApi, n
   run(api, consoleFor(name));
 });
 
-onmessage = (e: MessageEvent<HostToWorker>) => runtime.receive(e.data);
+/**
+ * 頼みが落ち着いたら（最後に受けてから 1.5 秒後）、Worker の GC を 1 回走らせ、空いた領域も OS へ返す。
+ * 全マップを読むスクリプト（count.js など）のあと、Worker のヒープが 10MB ほど大きいまま残っていた（#429）。
+ */
+let gcTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleWorkerGc(): void {
+  if (!gc) return;
+  if (gcTimer !== null) clearTimeout(gcTimer);
+  gcTimer = setTimeout(() => {
+    gcTimer = null;
+    try {
+      gc({ type: "major", execution: "async", flavor: "last-resort" });
+    } catch {
+      gc();
+    }
+  }, 1500);
+}
+
+onmessage = (e: MessageEvent<HostToWorker>) => {
+  void Promise.resolve(runtime.receive(e.data)).finally(scheduleWorkerGc);
+};
