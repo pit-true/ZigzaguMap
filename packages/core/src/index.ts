@@ -215,7 +215,7 @@ export {
   type TripleLayerInfo,
 } from "./tileset/tripleLayer.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
-export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
+export { PALETTE_FILE_BYTES, PaletteFile, type PaletteFormat } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
 export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
 export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, parseColorHex, type ColorValue } from "./tileset/ColorValue.js";
@@ -234,6 +234,7 @@ export {
   type TileSelection,
 } from "./tileset/TileSelection.js";
 export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
+export { colorUsage, unusedColors, type ColorUsageInput } from "./tileset/ColorUsage.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";

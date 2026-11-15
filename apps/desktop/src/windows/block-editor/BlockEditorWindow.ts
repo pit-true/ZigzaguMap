@@ -62,6 +62,8 @@ export class BlockEditorWindow {
   private readonly stats: BlockStatsView;
   /** 数えている途中の頼み（新しい頼みが来たら前の結果は使わない）。 */
   private statsRequest = 0;
+  /** 最後に選んだ `focus` の番号（#396）。 */
+  private focusSeq = 0;
 
   static start(root: HTMLElement, client: ToolClient): BlockEditorWindow {
     return new BlockEditorWindow(root, client);
@@ -174,9 +176,21 @@ export class BlockEditorWindow {
     client.onUi(() => {
       this.model = new TilesetModel(client.snapshot, client.ui);
       this.renderTiles();
+      this.applyFocus();
     });
     void installToolAutomation(client, { files: this.io.files, actions, describe: () => this.describe() });
     this.onSnapshot();
+    this.applyFocus();
+  }
+
+  /** パレットエディタの色の使用箇所で押したブロックを選ぶ（共有の状態の `focus` が変わったときだけ。#396）。 */
+  private applyFocus(): void {
+    const focus = this.client.ui.focus;
+    if (!focus || focus.seq === this.focusSeq) return;
+    this.focusSeq = focus.seq;
+    if (!this.model.owner(focus.block)) return;
+    this.selectBlock(focus.block);
+    this.list.reveal(focus.block);
   }
 
   // ---- 操作 ----

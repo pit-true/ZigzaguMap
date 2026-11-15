@@ -55,6 +55,8 @@ export interface ToolUiState {
   readonly palette: number;
   /** 一時適用した色（パレット番号 → 16 色）。「パレットの変更を反映する」でコマンドになる。 */
   readonly preview: Readonly<Record<number, readonly number[]>>;
+  /** ブロックエディタで選ばせるブロック（パレットエディタの色の使用箇所。#396）。`seq` が変わったときだけ選ぶ。 */
+  readonly focus: { readonly block: number; readonly seq: number } | null;
 }
 
 /** 別ウィンドウ → メインの要求。 */
@@ -62,7 +64,7 @@ export type ToolRequest =
   | { readonly from: ToolKind; readonly id: number; readonly op: "hello" }
   | { readonly from: ToolKind; readonly id: number; readonly op: "execute"; readonly name: string; readonly args: Record<string, unknown> }
   | { readonly from: ToolKind; readonly id: number; readonly op: "undo" | "redo" | "export" | "commitPreview" }
-  | { readonly from: ToolKind; readonly id: number; readonly op: "setUi"; readonly palette?: number; readonly preview?: Record<number, readonly number[]> }
+  | { readonly from: ToolKind; readonly id: number; readonly op: "setUi"; readonly palette?: number; readonly preview?: Record<number, readonly number[]>; readonly focusBlock?: number }
   | { readonly from: ToolKind; readonly id: number; readonly op: "open"; readonly kind: ToolKind }
   /** 別の ROM からの移植（#314）: 新しいタイルセットの位置と、アニメ処理の機械語がベース ROM の同じ場所と同じか。 */
   | { readonly from: ToolKind; readonly id: number; readonly op: "probe"; readonly newTilesets: number; readonly code: readonly TransplantCodeProbe[] }
@@ -97,7 +99,8 @@ export type ToolMessage =
 export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: number; readonly height: number }>> = {
   // ブロックエディタは AdvanceMap の 253 に、窓の下の 1 行（ホバーの情報と案内。#393）の 18 を足す
   "block-editor": { width: 823, height: 271 },
-  "palette-editor": { width: 286, height: 186 },
+  // パレットエディタは AdvanceMap の 186 に、上のメニュー（20）と下の 16 進の RGB の行（30）を足す（#396）
+  "palette-editor": { width: 286, height: 236 },
   "block-adjust": { width: 264, height: 461 },
   transplant: { width: 760, height: 470 },
 };
