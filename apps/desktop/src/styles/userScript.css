@@ -1,0 +1,47 @@
+/* スクリプトの管理（Phase5 #405）。 */
+.user-script-dialog .dialog-body {
+  width: 440px;
+}
+
+.user-script-note {
+  color: var(--gray-text);
+}
+
+.user-script-heading {
+  margin-top: 6px;
+  font-weight: bold;
+}
+
+.user-script-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--field-border);
+  background: var(--window);
+  padding: 2px 4px;
+}
+
+.user-script-list label.error {
+  color: var(--error-text);
+}
+
+.user-script-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.user-script-actions button {
+  width: auto;
+  padding: 0 8px;
+}
+
+.user-script-log {
+  height: 120px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--field-border);
+  background: var(--window);
+  white-space: pre-wrap;
+}

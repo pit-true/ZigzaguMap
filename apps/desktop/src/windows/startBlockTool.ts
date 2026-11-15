@@ -4,6 +4,7 @@ import { ja } from "../i18n/ja";
 import type { ToolKind } from "./protocol";
 import { ToolClient } from "./ToolClient";
 import { errorText } from "../util/errors";
+import { matchesKey } from "../app/keymap";
 
 /**
  * ブロックエディタ・パレットエディタ・ブロックパレット一括変更のウィンドウの入口（tool.ts → startToolWindow から呼ばれる）。
@@ -36,16 +37,18 @@ export async function startBlockTool(kind: ToolKind, root: HTMLElement): Promise
   }
 }
 
-/** Ctrl+Z / Ctrl+Y（Ctrl+Shift+Z）はメインと同じ履歴の元に戻す・やり直す、Ctrl+S は出力。入力欄の中では反応しない。 */
+/**
+ * Ctrl+Z / Ctrl+Y（Ctrl+Shift+Z）はメインと同じ履歴の元に戻す・やり直す、Ctrl+S は出力。入力欄の中では反応しない。
+ * キーはメインと同じ表（`app/keymap.ts`。#392）から引く。
+ */
 function installKeys(client: ToolClient): void {
   document.addEventListener("keydown", (e) => {
-    if (e.defaultPrevented || !e.ctrlKey || e.altKey) return;
+    if (e.defaultPrevented) return;
     const el = e.target as HTMLElement | null;
     if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-    const key = e.key.toUpperCase();
-    if (key === "Z" && !e.shiftKey) void client.request({ op: "undo" });
-    else if (key === "Y" || (key === "Z" && e.shiftKey)) void client.request({ op: "redo" });
-    else if (key === "S") void client.request({ op: "export" });
+    if (matchesKey("edit.undo", e)) void client.request({ op: "undo" });
+    else if (matchesKey("edit.redo", e)) void client.request({ op: "redo" });
+    else if (matchesKey("file.export", e)) void client.request({ op: "export" });
     else return;
     e.preventDefault();
   });

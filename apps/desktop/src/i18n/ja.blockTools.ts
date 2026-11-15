@@ -129,13 +129,15 @@ export const jaBlockTools = {
 } as const;
 
 /** ヘルプのショートカットの一覧に足す行（app/shortcutList.ts が並べる）。 */
-export function blockToolShortcutRows(): { keys: string; action: string; where: string }[] {
+export function blockToolShortcutRows(keyText: (id: string) => string): { keys: string; action: string; where: string }[] {
   const t = jaBlockTools;
+  // 編集 メニューのキーは変えられる（app/keymap.ts の `blockEditor.edit.*`。#392）
+  const clip = ["copy", "cut", "paste"].map((n) => keyText(`blockEditor.edit.${n}`)).filter((k) => k !== "").join("、");
   return [
     { keys: t.shortcutRectKeys, action: t.shortcutRect, where: t.shortcutRectWhere },
     { keys: t.shortcutPickKeys, action: t.shortcutPick, where: t.shortcutCellsWhere },
     { keys: t.shortcutPaletteKeys, action: t.shortcutPalette, where: t.shortcutCellsWhere },
-    { keys: "Ctrl+C、Ctrl+X、Ctrl+V", action: t.shortcutClipboard, where: t.shortcutWindowWhere },
-    { keys: "X", action: t.shortcutSwap, where: t.shortcutWindowWhere },
+    { keys: clip, action: t.shortcutClipboard, where: t.shortcutWindowWhere },
+    { keys: keyText("blockEditor.edit.swap"), action: t.shortcutSwap, where: t.shortcutWindowWhere },
   ];
 }

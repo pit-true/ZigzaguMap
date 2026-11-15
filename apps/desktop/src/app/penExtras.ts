@@ -9,6 +9,7 @@ import type { BlockUsageService } from "./BlockUsageService";
 import type { EditorState } from "./EditorState";
 import type { Actions } from "./Actions";
 import type { App } from "./App";
+import { matchesKey } from "./keymap";
 
 /**
  * Phase4 で描く道具に足したもの（3 層の次の番号の印、自動ペン、マップ作成補助）。App が作ってマップタブへ取り付ける。
@@ -52,7 +53,7 @@ export class PenExtras {
     });
     // P: 自動ペンの切り替え（マップタブ。入力欄の中と、後ろを覆うダイアログの間は反応しない）
     document.addEventListener("keydown", (e) => {
-      if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.key.toUpperCase() !== "P") return;
+      if (e.defaultPrevented || e.metaKey || !matchesKey("pen.autoPen", e)) return;
       if (state.tab !== "map" || !state.map || modalOpen() || isTyping(e.target)) return;
       e.preventDefault();
       this.panel.setActive(!state.settings.data.autoPen);

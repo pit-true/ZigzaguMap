@@ -6,6 +6,7 @@ import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
 import type { MapTree } from "../ui/MapTree";
 import { ThumbnailService } from "./ThumbnailService";
+import { UserScriptHost } from "./scripting/UserScriptHost";
 import { Timelapse } from "./Timelapse";
 import { MapZoomControls } from "../ui/map/MapZoomControls";
 import { togglePatch, type ZoomTab } from "./mapZoom";
@@ -73,6 +74,8 @@ export class ViewFeatures {
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
+  /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
+  readonly userScripts: UserScriptHost;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
   lastCopied: string | null = null;
 
@@ -84,6 +87,26 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
+    // 利用者のスクリプト（Phase5 #405。設定 > スクリプトの管理...）
+    this.userScripts = new UserScriptHost({
+      state,
+      setGrid: (show) => {
+        state.settings.update({ grid: show });
+        state.emit("view");
+      },
+      createWorker: () => new Worker(new URL("./scripting/userScriptWorker.ts", import.meta.url), { type: "module" }),
+    });
+    // ホバーのマス（スクリプトの hoverChanged。Worker を作っているときだけ知らせる）
+    for (const [view, tab] of [[parts.mapTab.view, "map"], [parts.movementTab.view, "movement"], [parts.eventTab.view, "event"]] as const) {
+      view.stage.addEventListener("pointermove", (e) => this.userScripts.hover(tab, view.cellAt(e)));
+      view.stage.addEventListener("pointerleave", () => this.userScripts.hover(tab, null));
+    }
+    // ツール > スクリプト の N 番目（キーは 設定 > ショートカットの変更… で決める）
+    for (let n = 1; n <= 50; n++) actions.register(`scripts.run.${n}`, () => this.userScripts.runNth(n));
+    actions.register("scripts.manage", async () => {
+      const { UserScriptManager } = await import("../ui/userscript/UserScriptManager");
+      new UserScriptManager(state, this.userScripts);
+    });
     // マップの画像の書き出し（Phase5 #403。ファイル > マップの画像を書き出す...）
     this.timelapse = new Timelapse(state, extras.composite);
     actions.register("image.export", async () => {

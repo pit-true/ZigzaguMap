@@ -26,6 +26,7 @@ import { TownMapNoPanel } from "./TownMapNoPanel";
 import { WorldMapCanvas } from "./WorldMapCanvas";
 import { WorldMapClient } from "./WorldMapClient";
 import { errorText } from "../../util/errors";
+import { matchesKey } from "../../app/keymap";
 
 /**
  * ワールドマップエディターのウィンドウ（AdvanceMap の TWeltkarteForm）。
@@ -336,17 +337,18 @@ export class WorldMapWindow {
     } else await showError(errorText(e), jaWorldMap.error);
   }
 
-  /** Ctrl+Z / Ctrl+Y はメインの履歴、Ctrl+S はメインの「出力」。入力欄の中の Ctrl+Z は文字の取り消しに残す。 */
+  /**
+   * Ctrl+Z / Ctrl+Y はメインの履歴、Ctrl+S はメインの「出力」。入力欄の中の Ctrl+Z は文字の取り消しに残す。
+   * キーはメインと同じ表（`app/keymap.ts`。#392）から引く。
+   */
   private onKey(e: KeyboardEvent): void {
-    if (!e.ctrlKey || e.altKey) return;
-    const key = e.key.toLowerCase();
     const inText = e.target instanceof HTMLInputElement && e.target.type === "text";
-    if (key === "s") {
+    if (matchesKey("file.export", e)) {
       e.preventDefault();
       void this.client.exportMaps().catch((err: unknown) => showError(errorText(err), jaWorldMap.error));
-    } else if (!inText && (key === "z" || key === "y")) {
+    } else if (!inText && (matchesKey("edit.undo", e) || matchesKey("edit.redo", e))) {
       e.preventDefault();
-      void (key === "z" ? this.client.undo() : this.client.redo());
+      void (matchesKey("edit.undo", e) ? this.client.undo() : this.client.redo());
     }
   }
 

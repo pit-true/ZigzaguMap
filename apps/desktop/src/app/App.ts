@@ -55,6 +55,8 @@ import type { ScriptHost } from "../ui/script/ScriptHost";
 import { ScriptLink } from "../ui/script/ScriptLink";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
+import { startMainKeymap } from "./keymapSync";
+import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import type { MixingBag } from "./MixingBag";
 import { MapExtras } from "./mapExtras";
 import { registerEventKindActions } from "../ui/event/eventVisibility";
@@ -136,6 +138,8 @@ export class App implements ActionTarget {
   readonly tools: ToolExtras;
   /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
   readonly aids: ViewAids;
+  /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
+  readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
   /** Phase4 の表示・一覧・調査（接続の境目の注意など）。 */
@@ -151,6 +155,8 @@ export class App implements ActionTarget {
     this.state = state;
     this.nav = new MapNavigation({ state, openMap: (id) => this.openMap(id), showFromHistory: (id) => this.showMap(id, "history") });
     this.theme = startMainTheme(() => toTheme(state.settings.data.theme));
+    // ショートカットキー（#392）。個人設定 `shortcuts` を表に当て、別ウィンドウへも送る
+    this.keymap = startMainKeymap(() => state.settings.data.shortcuts);
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
@@ -244,6 +250,14 @@ export class App implements ActionTarget {
     this.pen = new PenExtras(state, mapTab, this.extras.blockUsage, this.actions, this);
     this.tools = new ToolExtras(state, mapTab, movementTab, this.extras.edgeResize);
     this.extras.edgeMenu.openResize = () => this.tools.openResize();
+    this.actions.register("opt.shortcuts", async () => {
+      const { openShortcutDialog } = await import("../ui/settings/ShortcutDialog");
+      openShortcutDialog((overrides) => {
+        state.settings.update({ shortcuts: overrides });
+        this.keymap.sync();
+        state.setStatus(jaShortcutEdit.changed);
+      });
+    });
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     const tabControl = new TabControl(
       [
@@ -601,7 +615,7 @@ export class App implements ActionTarget {
 
   /** メニューの全項目（今の状態で。メニューバーと自動操作の `menu.list` が使う）。 */
   menuItems(): MenuItem[] {
-    return buildMenu(recentMenuItems(this.state.settings.data));
+    return buildMenu(recentMenuItems(this.state.settings.data), this.views?.userScripts.menuItems() ?? []);
   }
 
   private rebuildTree(): void {

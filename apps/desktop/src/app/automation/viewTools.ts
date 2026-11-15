@@ -271,6 +271,29 @@ async function projectWatchState(app: App, req: AutomationRequest = {}): Promise
   return { watched: app.watcher.watchedCount, result: watchResult };
 }
 
+/** `userScripts.state {wait?}`: 利用者のスクリプト（Phase5 #405）。Worker を作っているか `active`、`files`・`enabled`、登録された操作 `actions`、ログ `logs`、読めなかったもの `loadErrors`。`wait: true` なら読み込みと動いている呼び出しが終わるまで待つ。 */
+async function userScriptsState(app: App, req: AutomationRequest = {}): Promise<unknown> {
+  const h = app.views.userScripts;
+  if (req["wait"] === true) {
+    await h.settle();
+    await h.idle();
+  }
+  return { active: h.active, files: h.listing.files, enabled: h.listing.enabled, actions: h.actions, logs: h.logs, loadErrors: Object.fromEntries(h.loadErrors) };
+}
+
+/** `userScripts.run {action, wait?}`: 登録された操作を動かす。`wait: false` でなければ終わるまで待つ（ダイアログを出す操作は false にして `dialog` で答える）。返事は `userScripts.state`。 */
+async function userScriptsRun(app: App, req: AutomationRequest): Promise<unknown> {
+  app.views.userScripts.runAction(String(req["action"]));
+  await new Promise((r) => setTimeout(r, 50));
+  return userScriptsState(app, { wait: req["wait"] !== false });
+}
+
+/** `userScripts.reload` / `userScripts.stop`: 読み直す（終わるまで待つ）・止める。返事は `userScripts.state`。 */
+async function userScriptsReload(app: App): Promise<unknown> {
+  await app.views.userScripts.reload();
+  return userScriptsState(app, { wait: true });
+}
+
 /** `mapExport.state`: マップの画像の書き出しの窓（Phase5 #403）。開いているか `open`、選択 `choice`、プレビューの大きさ `last`（プレビューを作り終えるまで待つ）。 */
 async function mapExportState(): Promise<unknown> {
   const { openMapExport } = await import("../../ui/export/MapExportDialog");
@@ -299,6 +322,13 @@ async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown>
 export const viewToolCommands: CommandTable = {
   "projectWatch.check": projectWatchCheck,
   "projectWatch.state": projectWatchState,
+  "userScripts.state": userScriptsState,
+  "userScripts.run": userScriptsRun,
+  "userScripts.reload": userScriptsReload,
+  "userScripts.stop": (app: App) => {
+    app.views.userScripts.stop();
+    return userScriptsState(app);
+  },
   "mapExport.state": mapExportState,
   "mapExport.run": mapExportRun,
   "editHistory.state": editHistoryState,

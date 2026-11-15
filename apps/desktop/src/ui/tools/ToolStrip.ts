@@ -26,14 +26,13 @@ export class ToolStrip {
     this.element.setAttribute("aria-label", jaTools.stripLabel);
     const row = document.createElement("div");
     row.className = "tool-strip-buttons";
-    for (const { id, key } of PAINT_TOOLS) {
+    for (const { id } of PAINT_TOOLS) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "tool-button";
       b.textContent = LABELS[id];
       b.title = HINTS[id];
       b.dataset["autoId"] = `tools.${tab}.${id}`;
-      b.dataset["key"] = key;
       // 押してもフォーカスを取らない（マップの上のキー操作を続けられるように）
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", () => {
