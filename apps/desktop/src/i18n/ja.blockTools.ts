@@ -76,7 +76,7 @@ export const jaBlockTools = {
   shortcutCellsWhere: "ブロックエディタの 8 マス・3層目の 4 マス",
   shortcutClipboard: "選んでいるブロックのコピー・切り取り・貼り付け（編集 メニュー）",
   shortcutSwap: "ブロックの入れ替えのオン・オフ（2 つのブロックを順に押す）",
-  shortcutWindowWhere: "ブロックエディタ",
+  shortcutWindowWhere: "ブロックエディタの窓",
 } as const;
 
 /** ヘルプのショートカットの一覧に足す行（app/shortcutList.ts が並べる）。 */
