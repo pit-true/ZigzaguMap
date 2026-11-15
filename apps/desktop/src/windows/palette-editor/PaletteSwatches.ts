@@ -37,14 +37,15 @@ export class PaletteSwatches {
     this.palette.addEventListener("change", () => onPalette(this.palette.selectedIndex));
   }
 
-  /** 16 色と、選んでいるパレット・色を出す。 */
-  show(palette: number, colors: readonly number[], selected: number): void {
+  /** 16 色と、選んでいるパレット・色を出す。`unused` の色には未使用の印（#396）。 */
+  show(palette: number, colors: readonly number[], selected: number, unused: ReadonlySet<number> | null = null): void {
     if (this.palette.selectedIndex !== palette) this.palette.selectedIndex = palette;
     this.selected = selected;
     this.swatches.forEach((s, i) => {
       const [r, g, b] = bgr555ToRgb(colors[i] ?? 0);
       s.style.background = `rgb(${r},${g},${b})`;
       s.classList.toggle("selected", i === this.selected);
+      s.classList.toggle("unused", unused?.has(i) ?? false);
     });
   }
 }

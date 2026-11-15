@@ -74,3 +74,34 @@
   margin-right: 3px;
   image-rendering: pixelated;
 }
+
+/* マップの状態の印（Phase5 #401）。印の無い行は幅 0（今までと同じ見た目）。 */
+.tree-mark {
+  width: 0;
+  height: 16px;
+  flex: none;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.tree-mark.mark-open,
+.tree-mark.mark-dirty,
+.tree-mark.mark-error {
+  width: 9px;
+  margin-right: 2px;
+}
+
+/* 開いている（右向きの三角）。 */
+.mark-open {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpath d='M1.5 1l6 3.5-6 3.5z' fill='%23e08a00' stroke='%23704000' stroke-width='0.8'/%3E%3C/svg%3E");
+}
+
+/* 未出力（青い丸）。 */
+.mark-dirty {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Ccircle cx='4.5' cy='4.5' r='3.4' fill='%233a7ae0' stroke='%23103070' stroke-width='0.8'/%3E%3C/svg%3E");
+}
+
+/* 読み込めなかった（赤い丸に白い ×）。 */
+.mark-error {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Ccircle cx='4.5' cy='4.5' r='4' fill='%23d02020'/%3E%3Cpath d='M2.8 2.8l3.4 3.4M6.2 2.8l-3.4 3.4' stroke='%23fff' stroke-width='1.2'/%3E%3C/svg%3E");
+}

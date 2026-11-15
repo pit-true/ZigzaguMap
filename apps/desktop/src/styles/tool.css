@@ -52,6 +52,32 @@
   color: var(--error-text);
 }
 
+/* ブロックエディタの「タイル:」「ブロック:」「オフセット:」と値（#383。見出しの幅で値の位置が決まる） */
+.be-field {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+  line-height: 13px;
+}
+
+.be-field-row {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.be-field-column {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.be-field-column .be-field-value {
+  padding-left: 8px;
+}
+
+.be-field-preview {
+  margin-left: 2px;
+}
+
 /* 3 層のブロックの 3 枚目（次のブロックの下層）の見出し */
 .be-third-label {
   font-size: 11px;
@@ -80,9 +106,78 @@
   box-sizing: border-box;
 }
 
+/* 使用回数・未使用の印（ブロック一覧とタイル一覧の絵の上に重ねる。#395） */
+.be-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+/* ブロック一覧の画像の書き出し（#395） */
+.be-export-main {
+  display: flex;
+  gap: 8px;
+}
+
+.be-export-form {
+  flex: 0 0 250px;
+  font-size: 12px;
+}
+
+.be-export-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.be-export-caption {
+  flex: 0 0 88px;
+}
+
+.be-export-info {
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.be-export-preview {
+  flex: 1 1 auto;
+  height: 150px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+}
+
 /* ---- パレットエディタ ---- */
-.palette-editor {
-  height: 186px;
+/* AdvanceMap の 186 に、上のメニューと、下の 16 進の RGB の行（#396）を足す */
+.palette-editor .pal-body {
+  position: relative;
+  height: 216px;
+}
+
+.pal-swatch.unused {
+  box-shadow: inset 0 0 0 2px #ff2828;
+}
+
+.pal-usage-list {
+  height: 110px;
+  overflow-y: auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  margin: 4px 0;
+}
+
+.pal-usage-row {
+  padding: 1px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pal-usage-row.selected {
+  background: var(--select);
+  color: var(--select-text, #fff);
 }
 
 .pal-caption {

@@ -42,13 +42,15 @@ describe("ブロックの使用回数（#235）", () => {
     const doc = await project.load({ bank: 0, map: 0 });
     const total = (b: number) => u.count(b, doc.primaryTileset, doc.secondaryTileset);
     const counts = new Map<number, number>();
-    for (const v of doc.grid.cells) counts.set(v & 0x3ff, (counts.get(v & 0x3ff) ?? 0) + 1);
+    // 配置とボーダーの両方を数える（#395）
+    for (const v of [...doc.grid.cells, ...doc.border.cells]) counts.set(v & 0x3ff, (counts.get(v & 0x3ff) ?? 0) + 1);
     for (const [b, n] of counts) expect(total(b)).toBe(n);
+    for (const v of doc.border.cells) expect(u.borderCount(v & 0x3ff, doc.primaryTileset, doc.secondaryTileset)).toBeGreaterThan(0);
     const bus = new CommandBus(project.gridStore());
     bus.execute(new PlaceBlockCommand({ bank: 0, map: 0, x: 0, y: 0, block: 9 }));
     bus.execute(new PaintMovementCommand({ bank: 0, map: 0, cells: [{ x: 0, y: 0, movement: 3 }] }));
     u.set(layoutOf(doc));
-    expect(u.count(9, doc.primaryTileset, doc.secondaryTileset)).toBe(1);
+    expect(u.count(9, doc.primaryTileset, doc.secondaryTileset)).toBe(1 + u.borderCount(9, doc.primaryTileset, doc.secondaryTileset));
     expect(u.mostMovement(9, doc.primaryTileset, doc.secondaryTileset)).toBe(3);
   });
   it("合成 ROM: ベース ROM のままの配置は持たずに数え、全部外すと ROM から読み直して引く", async () => {

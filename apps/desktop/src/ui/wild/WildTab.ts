@@ -1,11 +1,12 @@
-import { SetWildRateCommand, SetWildSlotCommand, WILD_SLOT_COUNTS, WildTime, type Command, type WildArea, type WildEncounters } from "@zigzagumap/core";
+import { SetWildRateCommand, SetWildSlotCommand, WILD_SLOT_COUNTS, WildAreaKind, WildTime, rateGroup, slotRate, type Command, type WildArea, type WildEncounters } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
+import { jaWildTools as wt } from "../../i18n/ja.wildTools";
 import { commit, watchCommands } from "../form/commit";
 import { autoId, button, combo, edit, label, panel, place } from "../form/controls";
 import { clampByte, toByte } from "../form/inputErrors";
 import { checkOnInput, tryInteger } from "../form/integerInput";
-import { FR_SPECIES_COUNT, SpeciesOptions } from "./SpeciesNames";
+import { FR_SPECIES_COUNT, SpeciesOptions, speciesLabel, speciesNameProvider } from "./SpeciesNames";
 
 /** 1 枠の欄。 */
 interface SlotRow {
@@ -13,6 +14,8 @@ interface SlotRow {
   readonly min: HTMLInputElement;
   readonly max: HTMLInputElement;
   readonly species: HTMLSelectElement;
+  /** 枠の割合（ゲームの処理で決まる値。#398）。 */
+  readonly rate: HTMLElement;
 }
 
 /** トラックバーの PageUp / PageDown の幅（AdvanceMap の PageSize）。 */
@@ -56,6 +59,8 @@ export class WildTab {
     this.type = combo("wild.type", w.areas, 144, 8, 97);
     this.save = button("wild.save", w.save, 256, 8, 81, 25, () => this.saveArea());
     const addType = button("wild.addType", w.addType, 256, 32, 81, 25, () => void this.openAddDialog());
+    // ZigzaguMap 独自（#398）: 出現の割合のグラフ
+    const chart = button("wild.chart", wt.chartButton, 344, 8, 81, 25, () => void this.openChart());
     this.rate = edit("wild.rate", 144, 32, 57);
     this.percent = autoId(label("", 201, 40, 40), "wild.percent");
     this.percent.style.textAlign = "right";
@@ -77,9 +82,10 @@ export class WildTab {
       checkOnInput(min, "int");
       checkOnInput(max, "int");
       const species = combo(`wild.species.${i + 1}`, [], 144, y, 97);
-      this.rows.push({ parts: [label(w.slot(i + 1), 8, y + 2), min, max, species], min, max, species });
+      const rate = autoId(label("", 248, y + 2, 120), `wild.slotRate.${i + 1}`);
+      this.rows.push({ parts: [label(w.slot(i + 1), 8, y + 2), min, max, species, rate], min, max, species, rate });
     }
-    this.frame.append(label(w.type, 8, 8), this.type, this.save, addType, label(w.rate, 8, 32), this.rate, levelHead, speciesHead, ...this.areaParts, ...this.rows.flatMap((r) => r.parts));
+    this.frame.append(label(w.type, 8, 8), this.type, this.save, addType, chart, label(w.rate, 8, 32), this.rate, levelHead, speciesHead, ...this.areaParts, ...this.rows.flatMap((r) => r.parts));
 
     this.sorry = panel("wild-sorry", 537, 80);
     this.sorry.append(label(w.noWild, 8, 8), button("wild.create", w.create, 24, 24, 225, 41, () => void this.openAddDialog()));
@@ -156,6 +162,8 @@ export class WildTab {
       const visible = !!slot && i < count;
       for (const el of row.parts) el.hidden = !visible;
       if (!visible || !template) return;
+      const kind = this.type.selectedIndex;
+      row.rate.textContent = wt.slotRate(slotRate(kind, i), kind === WildAreaKind.Fishing ? rateGroup(kind, i) : null);
       row.min.value = String(slot.minLevel);
       row.max.value = String(slot.maxLevel);
       if (row.species.options.length !== template.options.length || row.species.dataset["key"] !== template.dataset["key"]) {
@@ -201,6 +209,16 @@ export class WildTab {
       }
     }
     commit(this.state, commands);
+  }
+
+  /** 出現の割合のグラフ（#398。開いたときに読み込む）。表示中のタイプの、保存してある表で描く。 */
+  private async openChart(): Promise<void> {
+    const area = this.area;
+    if (!area) return;
+    const kind = this.type.selectedIndex;
+    const provider = speciesNameProvider(this.state.session);
+    const { openWildChart } = await import("./WildChartDialog");
+    openWildChart({ kind, areaName: ja.wild.areas[kind] ?? "", area, speciesName: (s) => speciesLabel(provider, s) });
   }
 
   /** 「タイプの追加」「野生ポケモンの追加」のダイアログ（開いたときに読み込む）。 */

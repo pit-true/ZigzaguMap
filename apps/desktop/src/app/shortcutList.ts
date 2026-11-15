@@ -1,6 +1,7 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
 import { jaEventMulti } from "../i18n/ja.eventMulti";
+import { jaEventLimit } from "../i18n/ja.eventLimit";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
@@ -52,6 +53,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
   { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
   { keys: "Ctrl+D", action: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
+  // ルーラー（Phase5 #400。ui/event/RulerLayer.ts）
+  { keys: "Shift＋右ドラッグ", action: jaEventLimit.shortcutRuler, where: jaEventLimit.shortcutWhere },
   { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
   { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
   { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
@@ -97,6 +100,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: jaSeams.shortcutKeys, action: jaSeams.shortcut, where: jaSeams.shortcutWhere },
   // タウンマップの小窓（Phase4 #306。ui/view/TownMiniView.ts）
   { keys: jaTownMini.shortcutKeys, action: jaTownMini.shortcut, where: jaTownMini.shortcutWhere },
+  { keys: jaTownMini.shortcutMenuKeys, action: jaTownMini.shortcutMenu, where: jaTownMini.shortcutWhere },
+  { keys: jaTownMini.shortcutDragKeys, action: jaTownMini.shortcutDrag, where: jaTownMini.shortcutWhere },
   // ポインタ一覧と参照元の検索（Phase4 #307。ui/pointer/PointerDialog.ts）
   { keys: jaPointers.shortcutRowKeys, action: jaPointers.shortcutRow, where: jaPointers.shortcutWhere },
   { keys: jaPointers.shortcutCopyKeys, action: jaPointers.shortcutCopy, where: jaPointers.shortcutWhere },

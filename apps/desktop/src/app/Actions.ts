@@ -121,6 +121,7 @@ export class Actions {
     h.set("image.palette", () => target.saveImage("palette"));
     h.set("tools.blockEditor", () => target.openToolWindow("block-editor"));
     h.set("tools.transplant", () => target.openToolWindow("transplant"));
+    h.set("tools.wildSearch", () => target.nav.openWildSearch());
   }
 
   /** 処理を登録する（同じ ID があれば置き換える）。機能ごとのモジュールが自分のアクションを足すのに使う。 */

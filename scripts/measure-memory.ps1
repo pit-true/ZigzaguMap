@@ -22,6 +22,8 @@
 #     pointers   … ポインタ一覧を開き、3.0 のヘッダーの参照元を探して閉じた後
 #     triple     … 3.0 の主タイルセットのブロック 0x010 を 3 層にした（メモリの上だけ。出力しない）3.0 を表示した状態
 #     autopen    … 自動ペンで 3.0 に 1 回ドラッグして描いた後（メモリの上だけ。出力しない）
+# - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
+# - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
 #   （下限の比較用。-BrowserArgs をそのアプリの WebView2 に渡す）。
 param(
@@ -36,6 +38,8 @@ param(
   [string]$Actions = "",
   [int]$Zoom = 0,
   [string]$Stages = "",
+  [switch]$BlockStats,
+  [switch]$WildSearch,
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -194,7 +198,7 @@ try {
             $info = Call @{ cmd = "blockInfo"; block = 16 }
             $attr = ([int64]$info.attribute -band 0x0FFFFFFF) -bor 0x30000000
             Call @{ cmd = "command"; name = "setBlock"; args = @{ tileset = $m.primaryTileset; secondary = $false; block = 16; attribute = $attr } } | Out-Null
-            $results += Get-Snapshot "3 層のマップを表示した状態" $proc.Id
+            $results += Get-Snapshot "トリプルレイヤーのマップを表示した状態" $proc.Id
           }
           "autopen" {
             Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
@@ -202,10 +206,25 @@ try {
             Call @{ cmd = "selectBlock"; block = 0x12B } | Out-Null
             Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(9, 13); to = @(13, 13); steps = 2 } | Out-Null
             Call @{ cmd = "autopen.set"; active = $false } | Out-Null
-            $results += Get-Snapshot "自動ペンを使った後" $proc.Id
+            $results += Get-Snapshot "オートペンを使った後" $proc.Id
           }
           default { throw "知らない場面です: $st" }
         }
+      }
+      if ($WildSearch) {
+        # ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後
+        Call @{ cmd = "action"; id = "tools.wildSearch" } | Out-Null
+        Start-Sleep -Milliseconds 500
+        Call @{ cmd = "setField"; id = "wild.search.species"; value = 16 } | Out-Null
+        Call @{ cmd = "click"; id = "wild.search.run" } | Out-Null
+        for ($i = 0; $i -lt 300; $i++) {
+          $f = Call @{ cmd = "getField"; id = "wild.search.info" }
+          if ($f.value -match "枠|ありません") { break }
+          Start-Sleep -Milliseconds 100
+        }
+        $results += Get-Snapshot "野生ポケモンの検索の後" $proc.Id
+        Call @{ cmd = "dialog"; press = "close" } | Out-Null
+        $results += Get-Snapshot "野生ポケモンの検索の窓を閉じた後" $proc.Id
       }
       Call @{ cmd = "action"; id = "tools.blockEditor" } | Out-Null
       for ($i = 0; $i -lt 100; $i++) {
@@ -214,6 +233,16 @@ try {
         Start-Sleep -Milliseconds 100
       }
       $results += Get-Snapshot "別ウィンドウ（ブロックエディタ）を開いた後" $proc.Id
+      if ($BlockStats) {
+        # ブロックエディタの 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後
+        foreach ($id in @("view.usage", "view.unusedBlocks", "view.unusedTiles")) { Call @{ cmd = "action"; id = $id; window = "block-editor" } | Out-Null }
+        for ($i = 0; $i -lt 300; $i++) {
+          $st = Call @{ cmd = "state"; window = "block-editor" }
+          if ($st.stats.counted -and $null -ne $st.stats.unusedTiles) { break }
+          Start-Sleep -Milliseconds 100
+        }
+        $results += Get-Snapshot "ブロックエディタで使用回数と未使用の印を出した後" $proc.Id
+      }
       Call @{ cmd = "close"; window = "block-editor" } | Out-Null
       $results += Get-Snapshot "別ウィンドウを閉じた後" $proc.Id
       if ($Project) {

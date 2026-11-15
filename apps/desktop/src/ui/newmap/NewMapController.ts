@@ -229,6 +229,27 @@ export class NewMapController {
   }
 
   /**
+   * マップ一覧の右クリックの「このマップを複製」（Phase5 #401）。「マップの追加/挿入」の追加と同じく、
+   * 同じバンクの最後に新しい番号で写し（InsertMapCommand。1 回の元に戻すで消える）、写したマップを開く。写した番号を返す。
+   */
+  async duplicate(source: MapId): Promise<MapId | null> {
+    const session = this.session();
+    if (!session || isWorkMapId(source)) return null;
+    try {
+      await session.project.load(source);
+      const counts = session.project.bankCounts();
+      const target = { bank: source.bank, map: counts[source.bank] ?? 0 };
+      session.bus.execute(new InsertMapCommand({ ...target, sourceBank: source.bank, sourceMap: source.map }));
+      await this.host.refreshMapList();
+      await this.host.openMap(target);
+      return target;
+    } catch (e) {
+      await showNewMapError(e);
+      return null;
+    }
+  }
+
+  /**
    * ツール > ダミーデータへ移す/ヘッダー管理 > マップバンクヘッダーの管理（マップの追加/挿入の「マップバンクヘッダーの表示」）。
    * 「新バンク番号」で足した行は、「変更の適用」で新しいバンクとして作る（ビルド側の制約で空のバンクは作れないので、
    * 各バンクに新規マップの作成と同じ初期値のマップ 0 を 1 つ置く。全部で 1 回の操作）。

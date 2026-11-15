@@ -100,6 +100,7 @@ export * from "./wild/layout.js";
 export type { WildArea, WildEncounters, WildHeader, WildInfo, WildSlot } from "./wild/types.js";
 export { WildHeaderCodec, WildInfoCodec, WildSlotCodec, wildHeaderCodec, wildInfoCodec, wildSlotCodec } from "./wild/WildCodec.js";
 export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
+export { FISHING_SLOT_RATES, FISHING_SLOT_RODS, LAND_SLOT_RATES, WATER_SLOT_RATES, levelDistribution, rateGroup, searchSpecies, slotRate, speciesTotals, type WildSearchRow } from "./wild/WildRates.js";
 
 // マップ名
 export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
@@ -217,7 +218,7 @@ export {
   type TripleLayerInfo,
 } from "./tileset/tripleLayer.js";
 export { TILES_PER_ROW, TILE_IMAGE_WIDTH, decodeTilesPng, encodeTilesPng, paletteToPlte, tilesToPixels } from "./tileset/TileImage.js";
-export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
+export { PALETTE_FILE_BYTES, PaletteFile, type PaletteFormat } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
 export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
 export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, parseColorHex, type ColorValue } from "./tileset/ColorValue.js";
@@ -235,6 +236,9 @@ export {
   type TileGrid,
   type TileSelection,
 } from "./tileset/TileSelection.js";
+export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
+export { colorUsage, unusedColors, type ColorUsageInput } from "./tileset/ColorUsage.js";
+export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTilesetContent, type NewTilesetOptions, type NewTilesetPlan, type NewTilesetSource } from "./tileset/NewTileset.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
@@ -357,6 +361,7 @@ export { AddTilesetCommand, addTilesetArgs, type AddTilesetArgs } from "./comman
 export { SetLayoutCommand, type SetLayoutArgs } from "./command/commands/layout/SetLayoutCommand.js";
 export * from "./transplant/index.js";
 export { SetTripleLayerCommand, THIRD_LAYER_TILE_COUNT, type SetTripleLayerArgs } from "./command/commands/tileset/SetTripleLayerCommand.js";
+export { SwapBlocksCommand, swapUnits, type SwapBlocksArgs, type SwapRefusal } from "./command/commands/tileset/SwapBlocksCommand.js";
 
 // タウンマップ（ワールドマップエディター）
 export * from "./regionmap/index.js";

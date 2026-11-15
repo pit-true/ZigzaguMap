@@ -13,6 +13,8 @@ import { installHistoryMouse } from "./historyMouse";
 import { MenuBar } from "../ui/MenuBar";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
+import { showMapTreeMenu } from "./MapTreeMenu";
+import { EventLimitNotice } from "../ui/event/EventLimits";
 import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
 import type { OpacityPopup } from "../ui/view/OpacityPopup";
@@ -32,7 +34,7 @@ import { FileDialogs } from "./FileDialogs";
 import { ImageExport, type ImageKind } from "./ImageExport";
 import { SettingPrompts } from "./SettingPrompts";
 import { SystemSettings } from "./SystemSettings";
-import { buildMapTree, comboGroups } from "./MapTreeModel";
+import { buildMapTree, comboGroups, copyNameOf } from "./MapTreeModel";
 import { MapNavigation } from "./MapNavigation";
 import { buildMenu, recentMenuItems, toolbarLabel, type MenuItem } from "./menuDefinition";
 import { ProjectSession } from "./ProjectSession";
@@ -117,6 +119,8 @@ export class App implements ActionTarget {
   opacityPopup: OpacityPopup | null = null;
   /** 新規マップ・作成したマップの保存と読み込み・マップの追加/挿入・マップバンクヘッダー。 */
   readonly newMaps: NewMapController;
+  /** 開こうとして読み込めなかったマップ（`B.M`。一覧の印。Phase5 #401。ROM を開き直すと空にする）。 */
+  readonly loadFailures = new Set<string>();
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
@@ -147,6 +151,7 @@ export class App implements ActionTarget {
     state.on("view", () => this.theme.sync());
     this.scripts = new ScriptLink(this);
     state.on("session", () => this.scripts.attach(state.session));
+    state.on("session", () => this.loadFailures.clear());
     this.usage = new UsageService(this);
     this.trainers = new TrainerService(this);
     this.events = new EventActions(this);
@@ -188,6 +193,21 @@ export class App implements ActionTarget {
       thumbnail: (id) => this.views.thumbnails.get(id),
       // 開いている枝に見えているマップの分だけ作る（枝を閉じたら捨てる）
       thumbnailsWanted: (ids) => this.views?.thumbnails.setWanted(ids),
+      // 状態の印と右クリック（Phase5 #401）
+      loadFailed: (id) => this.loadFailures.has(`${id.bank}.${id.map}`),
+      contextMenu: (id, _label, x, y) =>
+        showMapTreeMenu(
+          {
+            openMap: (m) => this.openMap(m),
+            copyText: (text) => this.views.copyText(text),
+            duplicate: (m) => this.newMaps.duplicate(m),
+            setStatus: (text) => this.state.setStatus(text),
+          },
+          id,
+          copyNameOf(this.state.session?.catalog.get(id)),
+          x,
+          y,
+        ),
     });
     this.combo = new MapCombo({ openMap: (id) => void this.openMap(id) });
 
@@ -252,6 +272,8 @@ export class App implements ActionTarget {
       files: this.files,
       isAutomation: () => this.automation,
     });
+    // 人の数の上限の注意（Phase5 #400）
+    this.statusBar.addSlot(new EventLimitNotice(state).element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");
@@ -361,6 +383,7 @@ export class App implements ActionTarget {
     timings.lastMapSwitchStart = start;
     try {
       const map = await session.openMap(id);
+      if (this.loadFailures.delete(`${id.bank}.${id.map}`)) this.tree.refreshMarks();
       if (nav === "visit") state.history.visit(state.map?.id ?? null, id);
       state.map = map;
       state.mapImage = new MapImage(map.doc.grid, map.tiles);
@@ -384,6 +407,8 @@ export class App implements ActionTarget {
       await this.setTitle(map.doc.mapNameText() ?? ja.noName);
       return true;
     } catch (e) {
+      this.loadFailures.add(`${id.bank}.${id.map}`);
+      this.tree.refreshMarks();
       this.showError(e);
       return false;
     }
