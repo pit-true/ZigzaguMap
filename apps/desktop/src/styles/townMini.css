@@ -1,4 +1,4 @@
-/* タウンマップの小窓（#306）。 */
+/* タウンマップの小窓（#306・#386）。 */
 .town-mini .dialog-body {
   padding: 6px;
   display: flex;
@@ -17,10 +17,32 @@
   background: #000;
 }
 
+/* 下の欄。紐づけが無いときの案内は長いので折り返す。 */
 .town-mini-label {
   width: 240px;
   min-height: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+/* 下の欄の先頭の印（枠と同じ色。ROM のデータは赤、自分で紐づけたものは水色）。 */
+.town-mini-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  vertical-align: baseline;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+}
+
+.town-mini-swatch[data-source="rom"] {
+  border-color: #ff0000;
+}
+
+.town-mini-swatch[data-source="section"],
+.town-mini-swatch[data-source="map"] {
+  border-color: #00a8d6;
+  background: #00e0ff;
 }
