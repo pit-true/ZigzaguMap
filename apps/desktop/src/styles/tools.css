@@ -92,3 +92,47 @@
 .resize-info.error {
   color: var(--error-text);
 }
+
+/* 表示の補助（Phase5 #391）: カーソルの枠とプレイヤーの視界の枠。ステージの上の要素だけで描く */
+.map-cursor-frame,
+.map-sight-frame {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.map-cursor-frame {
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.map-sight-frame {
+  border: 2px solid rgba(255, 210, 0, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 移動エリアタブの、移動許可の数値の欄 */
+.movement-value {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.movement-value input {
+  width: 26px;
+  font-family: Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.movement-value input.invalid {
+  color: var(--error-text);
+}
+
+.dialog-buttons button.wide {
+  width: auto;
+  padding: 0 8px;
+}
+

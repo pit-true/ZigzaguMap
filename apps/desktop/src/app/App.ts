@@ -60,6 +60,7 @@ import { registerEventKindActions } from "../ui/event/eventVisibility";
 import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
 import { ToolExtras } from "./toolExtras";
+import { ViewAids } from "./viewAids";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
@@ -130,6 +131,8 @@ export class App implements ActionTarget {
   readonly pen: PenExtras;
   /** Phase5 の描く道具と表示の追加分（道具の帯など）。 */
   readonly tools: ToolExtras;
+  /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
+  readonly aids: ViewAids;
   /** ミキシングバッグ（#236。マップタブ）。 */
   readonly mixingBag: MixingBag;
   /** Phase4 の表示・一覧・調査（接続の境目の注意など）。 */
@@ -233,6 +236,7 @@ export class App implements ActionTarget {
     this.pen = new PenExtras(state, mapTab, this.extras.blockUsage, this.actions, this);
     this.tools = new ToolExtras(state, mapTab, movementTab, this.extras.edgeResize);
     this.extras.edgeMenu.openResize = () => this.tools.openResize();
+    this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

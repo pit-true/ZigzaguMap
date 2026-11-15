@@ -17,6 +17,7 @@ import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
+import { jaTools } from "../i18n/ja.tools";
 import { jaCommands } from "../i18n/ja.commands";
 import { jaWildTools } from "../i18n/ja.wildTools";
 
@@ -96,6 +97,10 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       accel: "V",
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
+        // グリッドの形・カーソルの枠・プレイヤーの視界の枠（Phase5 #391。ZigzaguMap 独自）
+        { id: "view.gridSettings", label: jaTools.gridSettingsMenu, enable: "map" },
+        { id: "view.cursorFrame", label: jaTools.cursorFrameMenu, shortcut: { key: "C", text: "C" } },
+        { id: "view.playerView", label: jaTools.playerViewMenu, shortcut: { key: "V", text: "V" } },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
