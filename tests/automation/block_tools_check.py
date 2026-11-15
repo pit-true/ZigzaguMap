@@ -426,9 +426,7 @@ def check_395(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
         if out.exists() and out.stat().st_size > 0:
             break
         time.sleep(0.1)
-    ok = out.exists() and out.read_bytes()[:8] == b"PNG
-
-"
+    ok = out.exists() and out.read_bytes()[:4] == b"\x89PNG"
     w, h = struct.unpack(">II", out.read_bytes()[16:24]) if ok else (0, 0)
     check(ok and (w, h) == (64, 64), f"395: PNG に書き出す（{w}×{h}）")
     check("書き出しました" in be_state(z)["status"], "395: 窓の下に書き出した場所が出る")
