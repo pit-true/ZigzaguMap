@@ -34,8 +34,16 @@ export interface BochiImportResult {
   readonly matched: number;
   /** 足したパーツの数（同じ名前は置き換えた）。 */
   readonly parts: number;
+  /** 足したパーツ（並び順。編集中の一覧へも同じ規則で足す。#379）。 */
+  readonly incoming: readonly AutoPenPart[];
   /** 書いたパス。 */
   readonly written: readonly string[];
+}
+
+/** `base` に `incoming` を足す（同じ名前は `incoming` で置き換え、足したものは `incoming` の並びで後ろへ）。 */
+export function mergeParts(base: readonly AutoPenPart[], incoming: readonly AutoPenPart[]): AutoPenPart[] {
+  const names = new Set(incoming.map((p) => p.name));
+  return [...base.filter((p) => !names.has(p.name)), ...incoming];
 }
 
 /**
@@ -226,12 +234,10 @@ export class AutoPenLibrary {
       matched.push(sf);
       incoming.push(...sf.parts.filter((p) => !partUsesPrimary(p) || (p.primary !== undefined && primaryRefMatches(p.primary, primary))));
     }
-    if (incoming.length === 0) return { files: files.length, matched: matched.length, parts: 0, written: [] };
-    const current = this.partsFor(primary, secondary);
-    const names = new Set(incoming.map((p) => p.name));
-    const merged = [...current.filter((p) => !names.has(p.name)), ...incoming.sort((a, b) => a.order - b.order)];
-    const written = await this.save(primary, secondary, merged);
-    return { files: files.length, matched: matched.length, parts: incoming.length, written };
+    if (incoming.length === 0) return { files: files.length, matched: matched.length, parts: 0, incoming: [], written: [] };
+    incoming.sort((a, b) => a.order - b.order);
+    const written = await this.save(primary, secondary, mergeParts(this.partsFor(primary, secondary), incoming));
+    return { files: files.length, matched: matched.length, parts: incoming.length, incoming, written };
   }
 
   /** まだファイルに書いていない定義の数。 */

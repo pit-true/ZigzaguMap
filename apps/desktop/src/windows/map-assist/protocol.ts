@@ -3,6 +3,9 @@ import type { AutoPenPart } from "@zigzagumap/core";
 /**
  * マップ作成補助（別ウィンドウ。#312）とメインウィンドウのやり取り。ブロックエディタの ToolWindowHost とは別の
  * イベント名で、メイン側の MapAssistHost（開いたときに初めて読み込む）が答える。
+ *
+ * パーツの一覧の正本はメイン（AutoPenService）に置く（#379）。窓は編集のたびに一覧を `draft` で送り（番号 `seq` を 1 ずつ増やす）、
+ * メインは届いた中でいちばん新しい番号を `AssistData.seq` に入れて返す。窓は、自分が送った番号まで届いた `data` だけで一覧を置き換える。
  */
 
 /** ウィンドウのラベル（Tauri）。 */
@@ -43,10 +46,12 @@ export interface AssistData {
   readonly tripleChildren: readonly number[];
   /** マップの大きさと配置（u16）。 */
   readonly map: { readonly width: number; readonly height: number; readonly cells: readonly number[] };
-  /** 今の組のパーツ（保存したもの、無ければ同梱の既定かマップから作った候補）。 */
+  /** 今の組のパーツ（窓で編集中のもの。無ければ保存したもの、それも無ければ同梱の既定かマップから作った候補）。 */
   readonly parts: readonly AutoPenPart[];
-  /** パーツが保存していないもの（既定か候補）か。 */
+  /** パーツが保存していないもの（編集中・既定・候補）か。 */
   readonly unsaved: boolean;
+  /** メインが受け取った、窓の編集の番号（`draft` の `seq`。窓を開いたときは 0）。 */
+  readonly seq: number;
   /** メインで選んでいる範囲（無ければ null）。 */
   readonly range: AssistRange | null;
 }
@@ -62,7 +67,8 @@ export interface TidyOptions {
 export type AssistRequest = { readonly id: number } & (
   | { readonly op: "hello" }
   | { readonly op: "mapImage" }
-  | { readonly op: "save"; readonly parts: readonly AutoPenPart[] }
+  | { readonly op: "draft"; readonly seq: number; readonly parts: readonly AutoPenPart[] }
+  | { readonly op: "save"; readonly seq: number; readonly parts: readonly AutoPenPart[] }
   | { readonly op: "analyze" }
   | { readonly op: "importBochi" }
   | { readonly op: "fill"; readonly part: AutoPenPart }

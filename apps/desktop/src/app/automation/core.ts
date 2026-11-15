@@ -77,7 +77,9 @@ function key(_app: App, req: AutomationRequest): null {
 
 export const coreCommands: CommandTable = {
   open: async (app, req) => {
-    await app.opener.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null);
+    // ダイアログを出さない。開けない・未出力（未保存）の変更があるときはエラーで返す（#380）。
+    // `ask: true` なら画面からと同じく聞く（確認のダイアログのテスト用。答えるまで返事は返らない）
+    await app.opener.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null, { quiet: req["ask"] !== true });
     return describeState(app);
   },
   selectMap: async (app, req) => {

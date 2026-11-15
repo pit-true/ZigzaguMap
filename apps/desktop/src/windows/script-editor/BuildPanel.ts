@@ -112,7 +112,7 @@ export class BuildPanel {
   }
 
   /** ビルドする（動いていれば何もしない）。全部の手順が成功したら true。 */
-  async run(options: { skipConfirm?: boolean } = {}): Promise<boolean> {
+  async run(options: { skipConfirm?: boolean; quiet?: boolean } = {}): Promise<boolean> {
     if (this.state.running) return false;
     this.show();
     if (!options.skipConfirm) {
@@ -131,6 +131,8 @@ export class BuildPanel {
       steps = loaded.config.build;
       outputRom = loaded.config.outputRom;
     } catch (e) {
+      // 自動操作（`quiet`）では、ダイアログを出さずに例外にする（#380）
+      if (options.quiet) throw new Error(t.configFailed(errorText(e)));
       await messageBox(ja.errorTitle, t.configFailed(errorText(e)), "error");
       return false;
     }
@@ -238,6 +240,11 @@ export class BuildPanel {
           ? t.okShort(r.ms)
           : t.ngShort(this.state.problems.filter((p) => p.severity === "error").length)
         : "";
+  }
+
+  /** 始められなかった理由をログに足す（自動操作で、返事を返したあとに起きたエラー）。 */
+  note(e: unknown): void {
+    this.push({ stream: "stderr", line: errorText(e), step: -1 });
   }
 
   private push(line: BuildLogLine): void {

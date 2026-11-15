@@ -53,9 +53,12 @@ export const tabCommands: EditorCommandTable = {
     return describe(w);
   },
   "editor.rename": async (w, req) => {
-    // ラベル名の変更（F2 と同じ。`to` を渡すと名前を聞かない）
-    const result = await w.renameLabel(str(req, "from"), typeof req["to"] === "string" ? req["to"] : undefined);
-    return { result, ...describe(w) };
+    // ラベル名の変更（F2 と同じ）。`to` を渡すと名前を聞かず、正しくない名前・書けなかったファイルはエラーで返す。
+    // 省くと名前を聞くダイアログを出したまま返す（`dialogs` で見て、`dialog` で答える。#380）
+    const from = str(req, "from");
+    if (typeof req["to"] === "string") return { result: await w.renameLabel(from, req["to"], true), ...describe(w) };
+    const result = await waitAtMost(w.renameLabel(from), 400);
+    return { result, dialogs: listDialogs(), ...describe(w) };
   },
   "editor.import": async (w, req) => {
     // 表示中の ROM のタブを取り込む。`rename`（自動で付けた名前 → 新しい名前）を渡すと一覧を出さない。渡さなければ一覧を出したまま返す

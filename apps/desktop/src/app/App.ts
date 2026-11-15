@@ -454,12 +454,17 @@ export class App implements ActionTarget {
 
   /** 未出力の変更があれば「出力しますか」と聞く。続けてよければ true。 */
   async confirmDiscard(): Promise<boolean> {
-    const session = this.state.session;
-    if (!session || (session.modifiedMaps().length === 0 && !session.hasUnsavedChanges() && !session.isRegionMapModified())) return true;
+    if (!this.hasUnexportedChanges()) return true;
     const answer = await messageBox(ja.question, ja.saveChanges, "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return this.exportMaps(false);
     return true;
+  }
+
+  /** 未出力の変更があるか（`confirmDiscard` が聞くかどうか）。 */
+  hasUnexportedChanges(): boolean {
+    const session = this.state.session;
+    return session !== null && (session.modifiedMaps().length > 0 || session.hasUnsavedChanges() || session.isRegionMapModified());
   }
 
   /** イベントタブで選んでいるイベントを削除する（Delete キー。「イベントの削除」ボタンと同じ）。 */
@@ -485,6 +490,11 @@ export class App implements ActionTarget {
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
   confirmScriptEditor(): Promise<boolean> {
     return this.scriptEditor.confirmUnsaved();
+  }
+
+  /** スクリプトエディタの未保存のファイルの数（聞かずに調べる。自動操作の `open`）。 */
+  scriptEditorDirtyCount(): Promise<number> {
+    return this.scriptEditor.dirtyCount();
   }
 
   /** ツール > ワールドマップエディター（Ctrl+W）。別ウィンドウで開く。 */

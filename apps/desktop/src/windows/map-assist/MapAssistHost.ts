@@ -34,6 +34,7 @@ function tripleChildrenOf(tiles: TilesetView): number[] {
 /**
  * メインウィンドウ側の、マップ作成補助（#312）の窓口。ツール > マップ作成補助 を初めて選んだときに読み込む。
  * - パーツの読み書きは AutoPenService（maps\autopen）。保存はすぐファイルに書き、元に戻すの対象にしない（スタンプと同じ）。
+ *   窓で編集中の一覧も AutoPenService に預け（#379）、窓へはそれを送る。窓を閉じたら捨てる。
  * - 範囲を塗る・整えるは、メインの描く道具で 1 回の操作として書く（メインの Ctrl+Z 1 回で戻る）。
  * - タイルセットの組・パーツ・選んでいる範囲が変わったら、開いているウィンドウへ送り直す。
  */
@@ -51,6 +52,8 @@ export class MapAssistHost {
 
   private open = false;
   private queued = false;
+  /** 受け取った窓の編集のいちばん新しい番号（窓を開くたびに 0 から）。 */
+  private seq = 0;
 
   private constructor(private readonly app: App) {}
 
@@ -59,6 +62,9 @@ export class MapAssistHost {
     await onToolWindowClosed((label) => {
       if (label !== MAP_ASSIST_WINDOW) return;
       this.open = false;
+      // 保存していない編集は捨てる（今までどおり、閉じると取り消し）
+      this.app.pen.autopen.discardDrafts();
+      this.seq = 0;
       // 送った画像の文字列などのごみを片付け、空いた領域も OS へ返す
       scheduleIdleGc(true);
     });
@@ -117,14 +123,25 @@ export class MapAssistHost {
     const service = this.app.pen.autopen;
     switch (req.op) {
       case "hello":
+        this.seq = 0;
         await service.ready();
         return this.data();
       case "mapImage":
         return this.mapImage();
+      case "draft":
+        // 届く順が入れ替わっても、古い編集で上書きしない
+        if (req.seq > this.seq) {
+          this.seq = req.seq;
+          service.setDraft(req.parts);
+        }
+        return null;
       case "save":
-        return { written: await service.save(req.parts) };
-      case "analyze":
-        return { parts: await service.analyze() };
+        this.seq = Math.max(this.seq, req.seq);
+        return { written: await service.saveDraft(req.parts) };
+      case "analyze": {
+        const added = await service.addCandidates();
+        return { added: added.length, data: this.data() };
+      }
       case "importBochi":
         return this.importBochi();
       case "fill":
@@ -152,8 +169,9 @@ export class MapAssistHost {
       secondaryCount: tiles.secondaryCount,
       tripleChildren: tripleChildrenOf(tiles),
       map: { width: map.doc.width, height: map.doc.height, cells: [...map.doc.grid.cells] },
-      parts: set?.parts ?? [],
-      unsaved: set ? set.candidates || (lib?.usesDefaults(set.primary) ?? false) : false,
+      parts: this.app.pen.autopen.editing,
+      unsaved: set ? this.app.pen.autopen.draft !== null || set.candidates || (lib?.usesDefaults(set.primary) ?? false) : false,
+      seq: this.seq,
       range: this.range(),
     };
   }
@@ -244,6 +262,8 @@ export class MapAssistHost {
     const path = await this.app.files.openFile({ title: t.importTitle, filters: [{ name: t.importFilter, extensions: ["txt"] }] });
     if (!path) return null;
     const text = new TextDecoder("utf-8").decode(await readFile(path));
-    return this.app.pen.autopen.importBochi([text]);
+    const r = await this.app.pen.autopen.importBochi([text]);
+    // 返事に今の一覧も入れる（窓で編集中なら、読み込んだものを足した一覧。#379）
+    return { parts: r.parts, matched: r.matched, data: this.data() };
   }
 }

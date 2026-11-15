@@ -50,6 +50,10 @@ python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFR
 python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
     # Phase4 の描く道具（#300・#301・#310〜#313・#335〜#338）。名前は triple・tripleTools・autopen・autopenBand・assist・assistReopen・
     # assistEdge・candidates。マップ作成補助のパーツは --work（既定は一時フォルダ）の maps\autopen\ に書く。ROM には書かない
+python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダ（読むだけ）>] [--only <名前> ...]
+    # 自動操作の命令がダイアログの答えを待って止まらないこと（#380）。open（無いフォルダ・知らない種類の ROM・未出力の変更）、
+    # scripts.table の open、warp.createMap、--project でスクリプトエディタの editor.rename・build.run・未保存のままの open。
+    # 名前ごとに起動し直し、15 秒で返らない命令は失敗に数える
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
@@ -58,7 +62,7 @@ python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzag
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `open` | `rom`、`project`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ |
+| `open` | `rom`、`project`（省略可）、`ask`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ。ダイアログは出さない: 開けない（無いフォルダ・ROM でないファイルなど）ときと、未出力の変更やスクリプトエディタの未保存のファイルがある（画面からなら「出力しますか？」などと聞く）ときは、エラーで返し、開いていたものはそのまま残す（#380）。`ask: true` なら画面からと同じくダイアログで聞く（確認のテスト用。答えるまで返事は返らないので、別の接続から `dialog` で答える） |
 | `selectMap` | `bank`、`map` | マップを開く。返事の `switchMs` は切り替えにかかった時間 |
 | `tab` | `name`（`map` / `movement` / `event` / `wild` / `header`） | タブを切り替える |
 | `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`）。`group` の中や `targets` で 2 枚以上のマップを変えるときは、そのマップも先に読み込む。変わったマップには全部未出力の印が付く |
@@ -82,7 +86,7 @@ python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzag
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |
 | `state` | | 開いている ROM・プロジェクト・マップ（`map` は番号・名前・大きさと、主・副タイルセットのポインタ値 `primaryTileset`・`secondaryTileset`）、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB）、`openedUrls`（ヘルプのリンクなどで開こうとした外部の URL。新しい順。自動操作のときはブラウザを開かない） |
-| `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
+| `status` | | ステータスバーの各欄（`panels`: 画面に出ている欄の文字列を左から。隠している補助の欄・接続の注意は入れない）と `left`・`right`・`error` |
 | `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
 | `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
 | `dialog` | `input`、`press`（どちらも省略可）、`title`（省略時は手前のもの） | ダイアログに入力して、ボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。ファイルのダイアログは `input` にパスを入れて `ok`（か「開く」「保存」）、`cancel` で取り消し。返事は押す前と後の一覧 |
@@ -139,7 +143,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | action | 引数 | 動作 |
 |---|---|---|
 | `get` | | 対応表を読むだけ |
-| `open` / `close` | | 画面を開く／閉じる（メニューの `tools.scriptsTable` と同じ。CFRU-JP のフォルダが無ければ案内のダイアログを出す） |
+| `open` / `close` | | 画面を開く／閉じる（メニューの `tools.scriptsTable` と同じ）。CFRU-JP のフォルダが無ければ、案内のダイアログを出さずにエラーで返す（#380） |
 | `select` | `index` | 画面で行を選び、下の欄に入れる（行のクリックと同じ） |
 | `add` | `entry`（`bank`・`map`・`name`・`script`・`strings`）、`index`（入れる位置。省略で末尾）、`create`（true で出力のときに `.s` と `.string` を作る） | 行を足す（コマンド `addScriptsTableEntry`） |
 | `set` | `index`、`entry` | 行を書き換える（`setScriptsTableEntry`。知らない項目と `create` は残す） |
@@ -197,8 +201,8 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.hover` | `line`・`column` か `offset`、`show`（true で吹き出しを出したままにする） | その位置のホバー（`type`（`command`・`string`・`stringEqu`・`label`・`value`）、範囲 `from`・`to`・`text`、`markdown`、記号を外した `plain`）。出すものが無ければ null |
 | `editor.closeHover` | | `show` で出した吹き出し（と文字列の入力欄）を閉じる |
 | `editor.complete` | `line`・`column` か `offset`、`filter`（省略で打った分）、`limit`（既定 50）、`show`（true で候補の窓を出す） | その位置の補完（`context`（`op` / `argument`）、`argIndex`、引数の種類 `kind`、置き換える範囲 `from`・`to`、`word`、候補の総数 `total`、絞った数 `count`、候補 `items`（`label`・`type`・`detail`）） |
-| `editor.definition` | `line`・`column` か `offset`、`go`（true で移動する） | その位置の名前の定義（`definition` の `kind`（`label`・`string`・`equ`・`macro`）・`name`・`targets`（`path`・`line`））。`go` なら移動して、`moved`・`active`・`cursor`・戻る履歴の数 `back`・下の帯の `message` |
-| `editor.back` | | 定義へ移動する前の位置へ戻る（Alt+← と同じ） |
+| `editor.definition` | `line`・`column` か `offset`、`go`（true で移動する） | その位置の名前の定義（`definition` の `kind`（`label`・`string`・`equ`・`macro`）・`name`・`targets`（`path`・`line`））。`go` なら移動して、`moved`・`active`・`cursor`・戻る履歴の数 `back`・下の帯の `message`・`dialogs`。行き先のファイルを開けないときは、`editor.open` と同じくダイアログを出したまま返す |
+| `editor.back` | | 定義へ移動する前の位置へ戻る（Alt+← と同じ）。返事は `moved`・`dialogs`・`active`・`cursor`・`back`。戻る先のファイルを開けないときはダイアログを出したまま返す |
 | `editor.search` | `query`・`replace`・`regexp`・`caseSensitive`・`wholeWord`（省略で前の値）、`action`（`find`（既定）・`next`・`previous`・`replace`・`replaceAll`・`selectAll`・`close`） | 検索の欄を開いて条件を入れ、`action` を行う。返事は一致の一覧 `matches`（`line`・`column`・`text`。500 件まで）、`count`、`selection`、`dirty`。`replace` は、選んでいる一致を置き換えて次を選ぶ（一致を選んでいなければ、次の一致を選ぶだけ。置換の欄のボタンと同じ） |
 | `editor.select`（広げたもの） | 上の 1 つの範囲に加えて、`add`（true で今の選択に足す）、`ranges`（範囲の配列）、`rect`（`line`・`column`・`toLine`・`toColumn` の矩形） | 複数の範囲・矩形の選択 |
 | `editor.command` | `name`（`moveLineUp`・`moveLineDown`・`copyLineUp`・`copyLineDown`・`toggleComment`・`selectNextOccurrence`・`selectSelectionMatches`・`addCursorAbove`・`addCursorBelow`・`undo`・`redo`・`startCompletion`・`openLintPanel`・`closeLintPanel`） | エディタの操作を実行し、本文 `text` と `selection` を返す |
@@ -207,14 +211,14 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.diagnostics` | | 波線を調べ直して、表示中のファイルの波線（`line`・`column`・`severity`・`source`（`unknownCommand` などの種類か、外から足したものの出どころ）・`message`・`text`）を返す |
 | `editor.widthCheck` | `wait`（true で、動いている検査が終わるまで待つ） | 保存時の幅検査の結果。`busy`、動かした回数 `runs`、最後の結果 `last`（`path`・終了コード `exit`・拾った誤り `errors`（`path`・`line`・`label`・`message`）・登録ファイルへの書き足し `registry`（`path`・`added`・`unresolved`・`removed`・登録の無いファイルなら `notChecked`）・`failed`）、出力の最後の 200 行 `log` |
 | `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`text` の改行は `
-` などの制御記号のすぐ後ろにだけ書け、そこで `.string` の行を分ける。#221）（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
+` などの制御記号のすぐ後ろにだけ書け、そこで `.string` の行を分ける。#221）（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`・`dialogs`（`.string` を開けないときはダイアログを出したまま返す）。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
 
-| `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ |
+| `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ。保存・出力の確認のダイアログが出たら、`wait` でも答えを待たずにそこで返す。設定（scripts.json の `build`）を読めないときはダイアログを出さずにエラーで返す（#380） |
 | `build.state` | | `running`・`step`（今の手順、0 から）・`steps`（手順の列）・`result`（`ok`・`code`・`killed`・`failedStep`・`ms`）・`problems`（拾ったエラー。`kind`・`severity`・`message`・`path`・`line`・`symbol`・`logLine`）・`lines`（ログの行数）・`outputRom` |
 | `build.log` | `from`（省略で 0） | ログの行（`stream`（`stdout` / `stderr` / `info`）・`line`・`step`） |
 | `build.stop` | | ビルドを止める（子プロセスごと） |
 | `editor.import` | `key`（省略で表示中の ROM のタブ）、`rename` | ROM のタブを取り込む（「.s に取り込む」と同じ。#207。マップスクリプトの「見る」で開いたタブも）。`rename` を渡さなければ名前の一覧のダイアログを出したまま返す（`dialog` で「取り込む」を押す） |
-| `editor.rename` | `from`、`to`（省略で名前を聞くダイアログを出す） | ラベル名を変える（F2 と同じ。#203）。返事の `result` は `count`（変えた数）・`files`・`uses`（メインで変えたイベントの数） |
+| `editor.rename` | `from`、`to`（省略で名前を聞くダイアログを出す） | ラベル名を変える（F2 と同じ。#203）。返事の `result` は `count`（変えた数）・`files`・`uses`（メインで変えたイベントの数）。`to` を渡したときは、ラベル名として正しくない名前と、書けなかったファイル（ほかのファイルは変えたあと）をエラーで返す。`to` を省くと名前を聞くダイアログを出したまま返す（`result` は null、`dialogs` に出る。#380） |
 | `close` | | × と同じ。未保存が無ければ閉じる（返事の `closing` が true）。あれば確認のダイアログを出したまま返す |
 | `dialogs` / `dialog` | メインと同じ | 画面内のダイアログを読む・押す（「保存しますか？」は `yes` / `no` / `cancel`、「読み直しますか？」は `yes` / `no`） |
 
@@ -249,7 +253,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - マップ一覧の絞り込みの欄 `tree.filter`、× のボタン `tree.filterClear`。
 
 - Ctrl を押している間（#238）: 移動エリアタブとイベントタブの `canvasPng` は重ね描きを含まない。イベントタブの `mouse` の `rightClick` に `ctrl: true` を付けると、メニューを出さずにイベントの下のブロックを拾う（`selection` の `block`）。
-- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・右の順。
+- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・接続の注意・右の順（出ている欄だけ）。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
@@ -270,7 +274,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `warp.samples` | `index`（表示中のマップのワープ） | 「行き先のマップを作る」（#241）の見本の一覧（`source`・`sourceWarp`・`map`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`entry`） |
-| `warp.createMap` | `index`、`sample`（見本の番号か null で見本なし）、`copyLayout`（既定 true）、`bank`（省略でバンクを聞く窓を出す） | 窓を出さずに行き先のマップを作り、ワープを向け合って新しいマップを開く。返事は `target`（作ったマップ。取り消し・失敗なら null）・`map`・`status` |
+| `warp.createMap` | `index`、`sample`（見本の番号か null で見本なし）、`copyLayout`（既定 true）、`bank`（省略でバンクを聞く窓を出す） | 窓を出さずに行き先のマップを作り、ワープを向け合って新しいマップを開く。返事は `target`（作ったマップ）・`map`・`status`・`dialogs`。ワープが無い・バンクが範囲外か満杯・作れないときは、ダイアログを出さずにエラーで返す。`bank` を省くと、バンクを聞く窓を出したまま返す（`target` は null。答えたあとのエラーは画面からと同じくダイアログで出す。#380） |
 
 - 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶ窓（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクの窓（題名「新しいマップのバンク」）が出る。
 
@@ -336,7 +340,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
 | `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
 | `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
-| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
+| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。マップ作成補助の窓に保存していない変更があれば、窓の一覧にも足す（同じ名前は置き換える。#379）。返事は書いたパス `written` と `autopen.state` |
 | （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`（`x`・`y`・`width`・`height`・選んだブロックの並び `blocks`。空きは null。#338）・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 | `transplant.select`（移植の窓宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事は窓の `state` と同じ |
 

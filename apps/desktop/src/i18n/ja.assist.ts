@@ -30,6 +30,8 @@ export const jaAssist = {
   importTitle: "BochiBochiEditor のマップ作成補助の定義（mapassist\\*.txt）を選んでください",
   importFilter: "マップ作成補助の定義",
   imported: (parts: number, matched: number) => (matched === 0 ? "今のタイルセットに合う定義がありませんでした" : `${parts} 個のパーツを読み込んで保存しました`),
+  /** 窓に保存していない変更があるとき（読み込んだものは一覧にも足す。#379）。 */
+  importedKeeping: (parts: number) => `${parts} 個のパーツを読み込んで保存し、一覧に足しました（ほかの変更はまだ保存していません）`,
   /** 右: 枠。 */
   slots: "枠",
   putSelection: "← 左で選んだ所を入れる",

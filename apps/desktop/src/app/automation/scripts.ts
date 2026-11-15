@@ -1,6 +1,7 @@
 import type { App } from "../App";
 import { ensureScriptFile, openNewScriptDialog } from "../../ui/script/NewScriptDialog";
 import { ScriptsTableDialog, scriptsTableView } from "../../ui/script/ScriptsTableDialog";
+import { jaScriptsTable } from "../../i18n/ja.scriptsTable";
 import { listDialogs } from "./dialogs";
 import { int, settle, type AutomationRequest, type CommandTable } from "./registry";
 
@@ -51,6 +52,8 @@ async function scriptsTable(app: App, req: AutomationRequest): Promise<unknown> 
     case "get":
       return describe(app);
     case "open":
+      // プロジェクトフォルダが無ければ、案内のダイアログを出さずにエラーで返す（#380）
+      if (!s.projectDir) throw new Error(jaScriptsTable.noProject);
       await ScriptsTableDialog.get(app).open();
       return describe(app);
     case "close":

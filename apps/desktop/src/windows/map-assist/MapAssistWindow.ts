@@ -14,11 +14,16 @@ import type { AssistData, AssistImage, AssistRange } from "./protocol";
  * 右の枠に「← 左で選んだ所を入れる」で入れる。「保存」で maps\autopen へすぐ書く（元に戻すの対象にしない）。
  * 「選んだパーツで範囲を塗る」「範囲を整える」は、メインで Ctrl＋右ドラッグで選んだ範囲を 1 回の操作で書く。
  * 「マップから候補を作る（自動）」（#313）は、主タイルセットが同じ全マップから候補を作って一覧に足す（保存はしない）。
+ *
+ * 一覧の正本はメインに置く（#379）。窓の編集はすぐ画面に出し、同時に一覧を番号つきでメインへ送る。メインから届いた一覧は、
+ * 窓が送った編集をメインが全部受け取ったあとのもの（`data.seq` が送った番号以上）なら、そのまま使う（窓の外の変更も入る）。
  */
 export class MapAssistWindow {
   private data: AssistData | null = null;
   private parts: AutoPenPart[] = [];
   private dirty = false;
+  /** 送った編集のいちばん新しい番号。 */
+  private seq = 0;
   private selectedPart = -1;
   private selectedSlot = "";
   private readonly client = new MapAssistClient();
@@ -55,11 +60,12 @@ export class MapAssistWindow {
   // ---- やり取り ----
 
   private setData(data: AssistData): void {
+    const first = this.data === null;
     const changed = this.data?.key !== data.key;
     this.data = data;
-    const reset = changed || !this.dirty;
-    this.source.setData(data, changed, reset);
-    if (reset) {
+    this.source.setData(data, changed, changed);
+    // 送った編集がまだメインに届いていない間の一覧は古いので使わない（届いたあとに送り直してくる）
+    if (data.seq >= this.seq) {
       this.parts = data.parts.map(clonePart);
       this.dirty = data.unsaved;
       this.selectedPart = this.parts.length > 0 ? Math.min(Math.max(this.selectedPart, 0), this.parts.length - 1) : -1;
@@ -68,6 +74,8 @@ export class MapAssistWindow {
     this.setRange(data.range);
     this.source.render();
     this.renderList();
+    // 下の帯は、開いたときと組が変わったときだけ書き換える（読み込みなどの知らせを消さない）
+    if (first || changed) this.say(this.dirty ? t.unsaved : "");
   }
 
   private setRange(range: AssistRange | null): void {
@@ -172,7 +180,6 @@ export class MapAssistWindow {
     this.roleSelect.value = part?.role ?? "other";
     this.nameInput.disabled = this.roleSelect.disabled = !part;
     this.renderSlots();
-    if (this.dirty) this.say(t.unsaved);
   }
 
   private renderSlots(): void {
@@ -214,9 +221,18 @@ export class MapAssistWindow {
 
   // ---- 編集（保存するまでウィンドウの中だけ） ----
 
+  /** 編集した: 画面に出し、一覧をメインへ送る。 */
   private touch(): void {
     this.dirty = true;
     this.renderList();
+    this.say(t.unsaved);
+    const seq = ++this.seq;
+    this.client.request({ op: "draft", seq, parts: this.ordered() }).catch((e: unknown) => this.say(t.error(errorText(e)), true));
+  }
+
+  /** 今の並びで order を付け直した一覧。 */
+  private ordered(): AutoPenPart[] {
+    return this.parts.map((p, order) => ({ ...p, order }));
   }
 
   private addPart(kind: PartKind): void {
@@ -269,26 +285,25 @@ export class MapAssistWindow {
   }
 
   private async save(): Promise<void> {
-    const parts = this.parts.map((p, order) => ({ ...p, order }));
-    const r = (await this.client.request({ op: "save", parts })) as { written: string[] };
+    const r = (await this.client.request({ op: "save", seq: this.seq, parts: this.ordered() })) as { written: string[] };
     this.dirty = false;
     this.say(t.saved(r.written.length));
   }
 
+  /** 候補を作る。足すのはメイン（窓の編集中の一覧に足し、返事にその一覧を入れてくる）。 */
   private async analyze(): Promise<void> {
     this.say(t.analyzing);
-    const r = (await this.client.request({ op: "analyze" })) as { parts: AutoPenPart[] };
-    const names = new Set(this.parts.map((p) => p.name));
-    const add = r.parts.filter((p) => !names.has(p.name)).map(clonePart);
-    this.parts.push(...add);
-    if (add.length > 0) this.dirty = true;
-    this.renderList();
-    this.say(t.analyzed(add.length));
+    const r = (await this.client.request({ op: "analyze" })) as { added: number; data: AssistData | null };
+    if (r.data) this.setData(r.data);
+    this.say(t.analyzed(r.added));
   }
 
+  /** Bochi の定義を読み込む。ファイルに書くのも、窓の編集中の一覧に足すのもメイン。 */
   private async importBochi(): Promise<void> {
-    const r = (await this.client.request({ op: "importBochi" })) as { parts: number; matched: number } | null;
-    if (r) this.say(t.imported(r.parts, r.matched));
+    const r = (await this.client.request({ op: "importBochi" })) as { parts: number; matched: number; data: AssistData | null } | null;
+    if (!r) return;
+    if (r.data) this.setData(r.data);
+    this.say(r.matched > 0 && this.dirty ? t.importedKeeping(r.parts) : t.imported(r.parts, r.matched));
   }
 
   private async fill(): Promise<void> {

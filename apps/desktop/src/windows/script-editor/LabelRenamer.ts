@@ -22,17 +22,21 @@ export class LabelRenamer {
    * ラベル名を変える（F2）。`assembly/overworld_scripts` の下のすべての `.s` の定義と参照を変え（開いているタブは本文を、
    * 開いていないファイルはディスクを書き換える）、メインへ知らせる（メインはイベントと eventscripts の側を変えるコマンドを実行する）。
    * `to` を渡すと名前を聞かない（自動操作）。変えた数を返す。
+   * `quiet` ならエラーのダイアログを出さずに例外にする（自動操作。#380）。書けなかったファイルがあれば、ほかのファイルを
+   * 変えてメインへ知らせたあとで、まとめて例外にする。
    */
-  async rename(from: string, to?: string): Promise<{ count: number; files: string[]; uses: number } | null> {
+  async rename(from: string, to?: string, quiet = false): Promise<{ count: number; files: string[]; uses: number } | null> {
     const w = this.w;
     const next = to ?? (await inputDialog(t.renameTitle, t.renamePrompt(from), from));
     if (next === null || next === from) return null;
     if (!isScriptLabelName(next)) {
+      if (quiet) throw new Error(t.renameInvalid(next));
       await messageBox(ja.errorTitle, t.renameInvalid(next), "error");
       return null;
     }
     let count = 0;
     const files: string[] = [];
+    const failures: string[] = [];
     for (const path of await listAsmFiles(RENAME_DIR)) {
       const tab = w.findTab(path);
       try {
@@ -55,12 +59,14 @@ export class LabelRenamer {
         }
         files.push(path);
       } catch (e) {
-        await messageBox(ja.errorTitle, t.saveFailed(path, errorText(e)), "error");
+        if (quiet) failures.push(t.saveFailed(path, errorText(e)));
+        else await messageBox(ja.errorTitle, t.saveFailed(path, errorText(e)), "error");
       }
     }
     w.render();
     const uses = Number(await w.client.request({ type: "labelRenamed", from, to: next, path: w.active?.path ?? "" }).catch(() => 0));
     w.setMessage(t.renamed(from, next, count, files.length, uses));
+    if (failures.length > 0) throw new Error(failures.join("\n"));
     return { count, files, uses };
   }
 

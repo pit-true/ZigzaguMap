@@ -35,17 +35,26 @@ export class ScriptEditorEntry {
     return this.value ? this.value.catch(() => null) : null;
   }
 
+  /** エディタの未保存のファイル（読み込んでいない・調べられないときは空）。 */
+  private async dirtyFiles(): Promise<string[]> {
+    if (!this.value) return [];
+    try {
+      return await (await this.value).dirtyFiles();
+    } catch {
+      return [];
+    }
+  }
+
+  /** エディタの未保存のファイルの数（聞かずに調べる。自動操作の `open`）。 */
+  async dirtyCount(): Promise<number> {
+    return (await this.dirtyFiles()).length;
+  }
+
   /** エディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
   async confirmUnsaved(): Promise<boolean> {
-    if (!this.value) return true;
-    const host = await this.value;
-    let dirty: string[];
-    try {
-      dirty = await host.dirtyFiles();
-    } catch {
-      return true;
-    }
+    const dirty = await this.dirtyFiles();
     if (dirty.length === 0) return true;
+    const host = await this.value!;
     const answer = await messageBox(ja.question, jaScriptEditor.mainDirty(dirty.length), "warning", "yesNoCancel");
     if (answer === "cancel") return false;
     if (answer === "yes") return host.saveAll().catch(() => false);
