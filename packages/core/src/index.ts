@@ -219,6 +219,20 @@ export { PALETTE_FILE_BYTES, PaletteFile } from "./tileset/PaletteFile.js";
 export { BvdFile, type BvdData } from "./tileset/BvdFile.js";
 export { decodeTileImage, encodeTilesDib, type DecodedTiles } from "./tileset/TileBitmap.js";
 export { colorFromBgr555, colorFromChannels, colorFromRgb8, formatColorHex, parseColorHex, type ColorValue } from "./tileset/ColorValue.js";
+export {
+  BLOCK_GRID,
+  THIRD_GRID,
+  cellPosition,
+  flipSelection,
+  paintPaletteOnly,
+  pickSelection,
+  placeSelection,
+  sheetSelection,
+  singleTile,
+  type PlacedTile,
+  type TileGrid,
+  type TileSelection,
+} from "./tileset/TileSelection.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";

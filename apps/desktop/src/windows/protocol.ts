@@ -89,7 +89,8 @@ export type ToolMessage =
 
 /** 別ウィンドウの大きさ（内側）。AdvanceMap の外寸から題名の帯と枠を除いた値。 */
 export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: number; readonly height: number }>> = {
-  "block-editor": { width: 823, height: 253 },
+  // ブロックエディタは AdvanceMap の 253 に、窓の下の 1 行（ホバーの情報と案内。#393）の 18 を足す
+  "block-editor": { width: 823, height: 271 },
   "palette-editor": { width: 286, height: 186 },
   "block-adjust": { width: 264, height: 461 },
   transplant: { width: 760, height: 470 },
