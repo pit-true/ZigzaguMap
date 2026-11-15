@@ -541,7 +541,7 @@ def check_396(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
         expect_hex = [f"{((r >> 3) | ((g >> 3) << 5) | ((b >> 3) << 10)):04X}" for r, g, b in rgb]
         path = work / name
         path.write_bytes(data)
-        z.call({"cmd": "queuePath", "path": str(path)})
+        be(z, {"cmd": "queuePath", "path": str(path)})
         be(z, {"cmd": "action", "id": "palette.open"})
         got = []
         for _ in range(30):
@@ -553,7 +553,7 @@ def check_396(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
         press_if_open(z, "ok", window=BE, tries=3)
     bad = work / "short.gpl"
     bad.write_bytes(("GIMP Palette\n" + "".join(f"{r} {g} {b}\n" for r, g, b in rgb[:4])).encode())
-    z.call({"cmd": "queuePath", "path": str(bad)})
+    be(z, {"cmd": "queuePath", "path": str(bad)})
     be(z, {"cmd": "action", "id": "palette.open"})
     d = press_if_open(z, "ok", window=BE)
     check(bool(d) and "16 ではありません" in d[0].get("text", ""), f"396: 16 色でないとエラー（{d[0].get('text', '') if d else ''}）")
@@ -561,7 +561,12 @@ def check_396(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     # 色の変更は今どおり 1 回で戻せる（読み込んだ色を反映して Ctrl+Z）
     colors_before = snap(z)["primary"]["palettes"][palette * 16:palette * 16 + 16] if palette < 7 else None
     be(z, {"cmd": "action", "id": "palette.commit"})
-    press_if_open(z, "yes", window=BE, tries=5)
+    for _ in range(5):
+        d = dialogs(z, BE)
+        if d:
+            be(z, {"cmd": "dialog", "press": d[0]["buttons"][0]})
+            break
+        time.sleep(0.1)
     time.sleep(0.5)
     if colors_before is not None:
         after = snap(z)["primary"]["palettes"][palette * 16:palette * 16 + 16]
