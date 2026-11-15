@@ -131,7 +131,7 @@ def main() -> int:
         background_index(z, 0x30)
         s = be_state(z)
         check(s["triple"] and s["thirdVisible"], "302: 4 バイト目を 30 にすると 3 層目の 4 マスが出る")
-        check("3層目" in be(z, {"cmd": "getField", "id": "be.thirdLabel"})["value"], "302: 3 層目の見出し")
+        check("3枚目のレイヤー" in be(z, {"cmd": "getField", "id": "be.thirdLabel"})["value"], "302: 3 層目の見出し")
         # 8 マスの左上（下層）を拾い、反転を付けて 3 層目の 4 マスに置く
         cell_pointer(z, "be.block", 8, 8, "right")
         be(z, {"cmd": "setField", "id": "be.xflip", "value": True})
@@ -145,7 +145,7 @@ def main() -> int:
         be(z, {"cmd": "click", "id": "be.save"})
         asked = press_if_open(z, "yes")
         if asked:
-            check(any("3 層目に使われます" in d.get("text", "") for d in asked), "302: N+1 に消える値があるときは確かめる")
+            check(any("3枚目のレイヤーに使われます" in d.get("text", "") for d in asked), "302: N+1 に消える値があるときは確かめる")
         time.sleep(0.5)
         info = z.call({"cmd": "blockInfo", "block": n})
         child = z.call({"cmd": "blockInfo", "block": n + 1})

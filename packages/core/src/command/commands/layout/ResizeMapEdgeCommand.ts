@@ -8,7 +8,7 @@ import { cloneConnections, cloneEvents } from "../../../model/clone.js";
 import { mapTargets } from "../../affectedMaps.js";
 import type { DocumentContext } from "../../DocumentContext.js";
 import { EditError, EditErrorCode } from "../../EditError.js";
-import { argEnum, argInt, argMapId, type Args } from "../../jsonArgs.js";
+import { argEnum, argInt, argIntArray, argMapId, argOptInt, type Args } from "../../jsonArgs.js";
 import { SnapshotCommand } from "../base/SnapshotCommand.js";
 import { readTargets, type PairedArgs } from "../connection/PairedConnectionsCommand.js";
 import { checkMapSize } from "./mapSize.js";
@@ -18,8 +18,17 @@ export const MIN_EDGE_RESIZE = 4;
 
 const SIDES: readonly Side[] = ["up", "down", "left", "right"];
 
-/** 「辺を指定してリサイズ」の引数。`amount` は広げるマス数（負なら縮める）。`targets` は自分と、ずれを直す接続の相手。 */
-export type ResizeMapEdgeArgs = PairedArgs & { side: Side; amount: number };
+/**
+ * 広げた所を埋める柄（Phase5 #390 の対話式リサイズ）。新しい配置の座標に `ox`・`oy`（省略で 0）を足した位置で
+ * `width`×`height` をくり返す（値は u16。ブロックと移動許可）。
+ */
+export type EdgeFill = { width: number; height: number; cells: number[]; ox?: number; oy?: number };
+
+/**
+ * 「辺を指定してリサイズ」の引数。`amount` は広げるマス数（負なら縮める）。`targets` は自分と、ずれを直す接続の相手。
+ * `fill` を渡すと、増えた行・列を端の写しでなくその柄で埋める（省略で今までと同じ端の写し）。
+ */
+export type ResizeMapEdgeArgs = PairedArgs & { side: Side; amount: number; fill?: EdgeFill };
 
 interface Saved {
   grid: BlockGrid;
@@ -48,8 +57,8 @@ export class ResizeMapEdgeCommand extends SnapshotCommand<ResizeMapEdgeArgs, Sav
   readonly name = ResizeMapEdgeCommand.NAME;
 
   /** 引数を作る（`partners` は、ずれを直す接続の相手）。 */
-  static of(self: MapId, side: Side, amount: number, partners: readonly MapId[]): ResizeMapEdgeCommand {
-    return new ResizeMapEdgeCommand({ bank: self.bank, map: self.map, side, amount, targets: mapTargets([self, ...partners]) as PairedArgs["targets"] });
+  static of(self: MapId, side: Side, amount: number, partners: readonly MapId[], fill?: EdgeFill): ResizeMapEdgeCommand {
+    return new ResizeMapEdgeCommand({ bank: self.bank, map: self.map, side, amount, targets: mapTargets([self, ...partners]) as PairedArgs["targets"], ...(fill ? { fill } : {}) });
   }
 
   /** JSON の引数から作る。 */
@@ -60,6 +69,7 @@ export class ResizeMapEdgeCommand extends SnapshotCommand<ResizeMapEdgeArgs, Sav
       side: argEnum(args, "side", SIDES),
       amount: argInt(args, "amount"),
       targets: mapTargets(readTargets(args, self)) as PairedArgs["targets"],
+      ...(args["fill"] !== undefined ? { fill: readFill(args["fill"]) } : {}),
     });
   }
 
@@ -101,13 +111,25 @@ export class ResizeMapEdgeCommand extends SnapshotCommand<ResizeMapEdgeArgs, Sav
     if (width < MIN_EDGE_RESIZE || height < MIN_EDGE_RESIZE) throw new EditError(EditErrorCode.InvalidMapSize, { width, height });
     checkMapSize(width, height);
     const { dx, dy } = edgeShift(side, amount);
-    // 配置: 元の位置から写し、増えたところは端の行・列の写し
+    // 配置: 元の位置から写し、増えたところは端の行・列の写し（`fill` があればその柄）
     const old = doc.grid;
     const grid = new BlockGrid(width, height);
+    const fill = this.args.fill;
+    if (fill && (fill.width < 1 || fill.height < 1 || fill.cells.length !== fill.width * fill.height || fill.cells.some((c) => !Number.isInteger(c) || c < 0 || c > 0xffff))) {
+      throw new EditError(EditErrorCode.InvalidRawBytes, { field: "fill", expected: fill.width * fill.height * 2 });
+    }
     for (let y = 0; y < height; y++) {
-      const oy = Math.min(Math.max(y - dy, 0), h - 1);
+      const sy = y - dy;
+      const oy = Math.min(Math.max(sy, 0), h - 1);
       for (let x = 0; x < width; x++) {
-        const ox = Math.min(Math.max(x - dx, 0), w - 1);
+        const sx = x - dx;
+        if (fill && (sx < 0 || sy < 0 || sx >= w || sy >= h)) {
+          const fy = (((y + (fill.oy ?? 0)) % fill.height) + fill.height) % fill.height;
+          const fx = (((x + (fill.ox ?? 0)) % fill.width) + fill.width) % fill.width;
+          grid.cells[y * width + x] = fill.cells[fy * fill.width + fx]!;
+          continue;
+        }
+        const ox = Math.min(Math.max(sx, 0), w - 1);
         grid.cells[y * width + x] = old.cells[oy * w + ox]!;
       }
     }
@@ -146,4 +168,11 @@ export class ResizeMapEdgeCommand extends SnapshotCommand<ResizeMapEdgeArgs, Sav
       f.y = Math.max(0, f.y + dy);
     }
   }
+}
+
+/** JSON の `fill`（`{width, height, cells}`）を読む。 */
+function readFill(v: unknown): EdgeFill {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) throw new EditError(EditErrorCode.InvalidRawBytes, { field: "fill", expected: 0 });
+  const o = v as Args;
+  return { width: argInt(o, "width"), height: argInt(o, "height"), cells: argIntArray(o, "cells"), ox: argOptInt(o, "ox") ?? 0, oy: argOptInt(o, "oy") ?? 0 };
 }

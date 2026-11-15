@@ -17,7 +17,9 @@ import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
+import { jaTools } from "../i18n/ja.tools";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaWildTools } from "../i18n/ja.wildTools";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -95,6 +97,10 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       accel: "V",
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
+        // グリッドの形・カーソルの枠・プレイヤーの視界の枠（Phase5 #391。ZigzaguMap 独自）
+        { id: "view.gridSettings", label: jaTools.gridSettingsMenu, enable: "map" },
+        { id: "view.cursorFrame", label: jaTools.cursorFrameMenu, shortcut: { key: "C", text: "C" } },
+        { id: "view.playerView", label: jaTools.playerViewMenu, shortcut: { key: "V", text: "V" } },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
@@ -196,6 +202,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
         // ZigzaguMap 独自（Phase4 #314）。別の ROM のタイルセットを新しいタイルセットとして取り込む。
         { id: "tools.transplant", label: jaTransplant.menu, accel: "I", enable: "map" },
+        // ZigzaguMap 独自（Phase5 #398）。種族を選び、全マップの野生からその種族が出る枠を探す。
+        { id: "tools.wildSearch", label: jaWildTools.searchMenu, accel: "G", enable: "rom" },
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
         { id: "tools.build", label: jaBuild.menu, accel: "B", shortcut: fkey("F7"), enable: "rom" },
         { id: "tools.previousMap", label: ja.previousMap, accel: "U", shortcut: { key: "BACKSPACE", alt: true, text: "Alt+BkSp" } },

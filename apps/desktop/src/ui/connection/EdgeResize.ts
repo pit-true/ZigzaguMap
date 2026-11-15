@@ -1,4 +1,5 @@
 import {
+  boxResizeCommands,
   CommandGroup,
   MIN_EDGE_RESIZE,
   ResizeMapEdgeCommand,
@@ -8,8 +9,10 @@ import {
   isVertical,
   listScriptSourcePaths,
   maxMapHeight,
+  type BoxResize,
   type Command,
   type CoordinateRef,
+  type EdgeFill,
   type MapId,
   type Side,
 } from "@zigzagumap/core";
@@ -44,31 +47,64 @@ export class EdgeResize {
 
   /** `side` の向きへ `amount` マス広げる（負なら縮める）。 */
   async resize(side: Side, amount: number): Promise<void> {
+    const main = this.state.map;
+    if (!this.state.session || !main || amount === 0) return;
+    const { dx, dy } = edgeShift(side, amount);
+    const partners = await this.partners(dx !== 0, dy !== 0);
+    await this.run([ResizeMapEdgeCommand.of(main.id, side, amount, partners)], dx, dy);
+  }
+
+  /**
+   * 4 辺をまとめて変える（Phase5 #390 の対話式リサイズの窓。辺ごとの ResizeMapEdgeCommand を 1 回の操作にまとめる）。
+   * `fill` があれば広げた所をその柄で埋める（省略で端の写し）。左・上へずれたときの補正は辺のつまみと同じ。成功したら true。
+   */
+  async resizeBox(box: BoxResize, fill?: EdgeFill): Promise<boolean> {
+    const main = this.state.map;
+    if (!this.state.session || !main) return false;
+    if (box.left === 0 && box.right === 0 && box.up === 0 && box.down === 0) return true;
+    let commands: Command[];
+    try {
+      const partners = await this.partners(box.left !== 0, box.up !== 0);
+      commands = boxResizeCommands(main.id, main.doc.width, main.doc.height, box, partners, fill);
+    } catch (e) {
+      await showEditError(e);
+      return false;
+    }
+    return this.run(commands, box.left, box.up);
+  }
+
+  /** ずれを直す接続の相手（左右へずらすなら上下の接続、上下なら左右の接続）を読み込んで返す。 */
+  private async partners(horizontal: boolean, vertical: boolean): Promise<MapId[]> {
     const session = this.state.session;
     const main = this.state.map;
-    if (!session || !main || amount === 0) return;
-    const id = main.id;
-    const { dx, dy } = edgeShift(side, amount);
-    // ずれを直す接続の相手（左右へ広げるなら上下の接続、上下なら左右の接続）を読み込む
     const partners: MapId[] = [];
-    if (dx !== 0 || dy !== 0) {
-      for (const c of main.doc.connections ?? []) {
-        const affected = dx !== 0 ? isVertical(c.direction) : c.direction === 3 || c.direction === 4;
-        const p = { bank: c.bank, map: c.map };
-        if (!affected || partners.some((x) => x.bank === p.bank && x.map === p.map) || !session.catalog.has(p)) continue;
-        if (await session.project.load(p).then(() => true).catch(() => false)) partners.push(p);
-      }
+    if (!session || !main || (!horizontal && !vertical)) return partners;
+    for (const c of main.doc.connections ?? []) {
+      const affected = (horizontal && isVertical(c.direction)) || (vertical && (c.direction === 3 || c.direction === 4));
+      const p = { bank: c.bank, map: c.map };
+      if (!affected || partners.some((x) => x.bank === p.bank && x.map === p.map) || !session.catalog.has(p)) continue;
+      if (await session.project.load(p).then(() => true).catch(() => false)) partners.push(p);
     }
-    const commands: Command[] = [ResizeMapEdgeCommand.of(id, side, amount, partners)];
+    return partners;
+  }
+
+  /** リサイズのコマンドと、照合用の座標のずらし（プロジェクトがあるとき）を 1 回の操作で実行する。成功したら true。 */
+  private async run(resize: readonly Command[], dx: number, dy: number): Promise<boolean> {
+    const session = this.state.session;
+    const main = this.state.map;
+    if (!session || !main) return false;
+    const id = main.id;
+    const commands: Command[] = [...resize];
     if ((dx !== 0 || dy !== 0) && session.projectDir) commands.push(new ShiftEventLabelPositionsCommand({ bank: id.bank, map: id.map, dx, dy }));
     try {
       session.bus.execute(CommandGroup.of(commands));
     } catch (e) {
       await showEditError(e);
-      return;
+      return false;
     }
     this.state.setStatus(jaNeighbors.resized(main.doc.width, main.doc.height));
     if (dx !== 0 || dy !== 0) await this.reportRefs(id);
+    return true;
   }
 
   /** `.s` の中の、直さなかった座標を探して知らせる。 */

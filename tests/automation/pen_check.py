@@ -8,7 +8,7 @@
 - 見ること（`--only` で選べる。名前は下の CHECKS の鍵）:
   - triple: 3 層のブロック（#300・#301）。0x010 を 3 層にすると、パレットで 0x011 を押すと 0x010 が選ばれ、矩形の選択で 0x011 が
     書かないマスになる。0x011 は鉛筆・矩形塗り・境界ブロックに置けず、ステータスバーに理由が出る。置かれている 0x011 には印が付く。
-    マップから 0x011 を拾ったときもステータスバーに「3層」が出る（#339）。マップ作成補助の窓のブロック一覧で 0x011 を押すと
+    マップから 0x011 を拾ったときもステータスバーに「トリプルレイヤー」が出る（#339）。マップ作成補助の窓のブロック一覧で 0x011 を押すと
     0x010 を選び、矩形に入った 0x011 は空きになる（#338）。
   - autopen: 自動ペン（#310・#311）。
   - autopenBand: 隣のマップの帯の上での自動ペン（マサラタウンの上の 1 番道路。#335）。帯の上だけ・境界をまたぐドラッグのどちらも、
@@ -83,7 +83,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     # パレット（1 行 8 個）: 0x011 は (1, 2)
     r = z.call({"cmd": "mouse", "target": "palette", "action": "click", "cell": [1, 2]})
     check(selection(z)["blocks"] == [0x10], "パレットで 0x011 を押すと 0x010 が選ばれる")
-    check("3層" in z.call({"cmd": "state"})["status"]["left"], "ステータスバーに「3層」が出る")
+    check("トリプルレイヤー" in z.call({"cmd": "state"})["status"]["left"], "ステータスバーに「トリプルレイヤー」が出る")
     canvas(z, shots, "pen_triple_palette.png", "palette")
     # 矩形の選択（Ctrl＋右ドラッグ）: (0,2)〜(0,3) は右端が 3 層なので幅 2、0x011 は書かないマス
     z.call({"cmd": "mouse", "target": "palette", "action": "drag", "button": "right", "ctrl": True, "cell": [0, 2], "to": [0, 3]})
@@ -99,7 +99,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     after = z.call({"cmd": "cells"})["cells"]
     check(after == before, "鉛筆で 0x011 を置けない")
     st = z.call({"cmd": "state"})["status"]
-    check(st["error"] and "3層" in st["left"], f"書けなかった理由がステータスバーに出る（{st['left']}）")
+    check(st["error"] and "トリプルレイヤー" in st["left"], f"書けなかった理由がステータスバーに出る（{st['left']}）")
     # 矩形塗り（Ctrl＋左ドラッグ）で 2×1 の [0x010, 0x011]: 0x010 だけ書かれる
     z.call({"cmd": "selectBlock", "blocks": [0x10, 0x11], "width": 2})
     hist = z.call({"cmd": "state"})["history"]
@@ -121,7 +121,7 @@ def check_triple(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     # 拾うと 0x010 が選ばれる
     z.call({"cmd": "mouse", "target": "map", "action": "rightClick", "cell": [4, 4]})
     check(selection(z)["blocks"] == [0x10], "マップの 0x011 を拾うと 0x010 が選ばれる")
-    check("3層" in z.call({"cmd": "state"})["status"]["left"], "マップから拾ったときもステータスバーに「3層」が出る")
+    check("トリプルレイヤー" in z.call({"cmd": "state"})["status"]["left"], "マップから拾ったときもステータスバーに「トリプルレイヤー」が出る")
     screenshot(z, shots, "pen_triple_marks.png")
     z.call({"cmd": "setting", "key": "tripleChildMarks", "value": False})
     z.call({"cmd": "action", "id": "view.grid"})
@@ -534,7 +534,7 @@ def check_triple_tools(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
     z.call({"cmd": "mouse", "target": "map", "action": "drag", "alt": True, "cell": [8, 9], "to": [9, 9]})
     _, c = map_cells(z, 3, 1)
     st = status(z)
-    check(c == placed and z.call({"cmd": "state"})["history"] == hist and st["error"] and "3層" in st["left"], f"Alt の入れ替えで 0x011 を動かさない（{st['left']}）")
+    check(c == placed and z.call({"cmd": "state"})["history"] == hist and st["error"] and "トリプルレイヤー" in st["left"], f"Alt の入れ替えで 0x011 を動かさない（{st['left']}）")
     z.call({"cmd": "undo"})
 
     # 帯の上（1 番道路 3.19）: 主タイルセットの 0x011 は帯の上にも書かない
@@ -563,7 +563,7 @@ def check_triple_tools(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
     z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": cell})
     time.sleep(0.5)
     st = status(z)
-    check(map_cells(z, 3, 19)[1] == r0 and st["error"] and "3層" in st["left"], f"帯の上では 1 番道路のタイルセットで見て 0x281 を書かない（{st['left']}）")
+    check(map_cells(z, 3, 19)[1] == r0 and st["error"] and "トリプルレイヤー" in st["left"], f"帯の上では 1 番道路のタイルセットで見て 0x281 を書かない（{st['left']}）")
     z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [5, 5]})
     check(block_at(map_cells(z, 3, 1)[1], w, 5, 5) == 0x281, "主マップには 0x281 を書ける")
     if shots:

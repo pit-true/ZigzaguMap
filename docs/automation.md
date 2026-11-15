@@ -35,9 +35,9 @@ python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagum
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>]
-    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタで 3 層にする・3 層目の 4 マス・確かめの窓・1 回の取り消し・
+    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタでトリプルレイヤーにする・3枚目のレイヤーのレイヤーの 4 マス・確かめの窓・1 回の取り消し・
     # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
-    # third（3 層目の 4 タイル）・triple・thirdVisible が出る。3 層の保存は `setTripleLayer` コマンド
+    # third（3枚目のレイヤーのレイヤーの 4 タイル）・triple・thirdVisible が出る。トリプルレイヤーの保存は `setTripleLayer` コマンド
 python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り込む元の ROM> [--source ...] --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>] [--memory]
     # 別の ROM からタイルセットを取り込む窓（#314）: 一覧・絵・情報・変わることの一覧・両方と配置も写す・1 回の取り消し・出力・主だけ・
     # --memory で窓を閉じた後のメモリ。窓（"window": "transplant"）の `state` は rom・game・mapCount・selected・parts・copyLayout・
@@ -54,11 +54,13 @@ python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し>
     # 自動操作の命令がダイアログの答えを待って止まらないこと（#380）。open（無いフォルダ・知らない種類の ROM・未出力の変更）、
     # scripts.table の open、warp.createMap、--project でスクリプトエディタの editor.rename・build.run・未保存のままの open。
     # 名前ごとに起動し直し、15 秒で返らない命令は失敗に数える
+python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+    # Phase5 の描く道具（#388〜#390）。名前は fill・line・smartPath・shift・resize。出力は --work（既定は一時フォルダ）に書く。ROM には書かない
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
 
-命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`hover`・`history`・`stamps`・`warpMap`・`blockUsage`・`view`・`process`・`script`・`scripts`・`link`・`usage`・`templates`・`trainers`・`neighbors`・`bag`・`composite`、Phase4 の `viewTools`・`tileset`・`pen`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
+命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`hover`・`history`・`stamps`・`warpMap`・`blockUsage`・`view`・`process`・`script`・`scripts`・`link`・`usage`・`templates`・`trainers`・`neighbors`・`bag`・`composite`、Phase4 の `viewTools`・`tileset`・`pen`、Phase5 の `tools`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
@@ -345,18 +347,18 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（3 層か）、`tripleChild`（3 層の次の番号か。1 つ前の 3 層のブロックの 3 枚目に使われている）、`parent`（その 3 層のブロックの番号か null）、`third`（3 枚目に使う番号か null）、`unresolved`（3 層だが次のブロックが表の外で 3 枚目を描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
-| `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
-| `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
-| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
+| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（トリプルレイヤーか）、`tripleChild`（トリプルレイヤーの次の番号か。1 つ前のトリプルレイヤーのブロックの3枚目のレイヤーのレイヤーに使われている）、`parent`（そのトリプルレイヤーのブロックの番号か null）、`third`（3枚目のレイヤーのレイヤーに使う番号か null）、`unresolved`（トリプルレイヤーだが次のブロックが表の外で3枚目のレイヤーのレイヤーを描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
+| `tripleChildCells` | | 今のマップで、トリプルレイヤーの次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3枚目のレイヤーのレイヤーに使われているブロックに印を付ける がオンで、マップタブを見ているとき） |
+| `autopen.state` | | オートペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
+| `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | オートペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
 | `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。マップ作成補助の窓に保存していない変更があれば、窓の一覧にも足す（同じ名前は置き換える。#379）。返事は書いたパス `written` と `autopen.state` |
 | （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`（`x`・`y`・`width`・`height`・選んだブロックの並び `blocks`。空きは null。#338）・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 | `transplant.select`（移植の窓宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事は窓の `state` と同じ |
 
-- コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックを 3 層にする・やめる。N の 8 タイルと属性、N+1 の下層 4 タイルを書き、3 層にするときは N+1 の属性と上層を 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置も写す」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
-- ブロックエディタ（`"window": "block-editor"`）の 3 層の部品: 3層目の 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。窓の `state` には `third`（3 層目の 4 タイル）・`triple`・`thirdVisible` が出る。3 層の保存は `setTripleLayer` を通る。
-- 3 層の印: `action` の `view.tripleChildMarks`（個人設定 `tripleChildMarks`。既定 true）。
-- 自動ペンの欄（マップタブの右）: 「自動ペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
+- コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックをトリプルレイヤーにする・やめる。N の 8 タイルと属性、N+1 の下のレイヤー 4 タイルを書き、トリプルレイヤーにするときは N+1 の属性と上のレイヤーを 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置も写す」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
+- ブロックエディタ（`"window": "block-editor"`）のトリプルレイヤーの部品: 3枚目のレイヤーのレイヤーの 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。窓の `state` には `third`（3枚目のレイヤーのレイヤーの 4 タイル）・`triple`・`thirdVisible` が出る。トリプルレイヤーの保存は `setTripleLayer` を通る。
+- トリプルレイヤーの印: `action` の `view.tripleChildMarks`（個人設定 `tripleChildMarks`。既定 true）。
+- オートペンの欄（マップタブの右）: 「オートペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
 - マップ作成補助（`action` の `tools.mapAssist`、`"window": "map-assist"`）の部品: タブ `assist.tabBlocks`・`assist.tabMap`、左の絵 `assist.source`、パーツの一覧 `assist.parts`（`setField` に番号）、追加 `assist.add.fill`・`assist.add.edge`・`assist.add.piece`・`assist.add.repeat`、`assist.remove`・`assist.up`・`assist.down`、名前 `assist.name`・役割 `assist.role`、「マップから候補を作る（自動）」`assist.analyze`、「Bochi の定義を読み込む…」`assist.importBochi`（ファイルのダイアログは `queuePath` で答える）、枠 `assist.slot.<枠名>`（`assist.slot.NW` など）、「← 左で選んだ所を入れる」`assist.put`・「枠を空にする」`assist.clearSlot`・「保存」`assist.save`、範囲の操作 `assist.fill`（選んだパーツで範囲を塗る）・`assist.tidy`（範囲を整える）とそのチェック `assist.tidyEdges`・`assist.tidyRepeats`・`assist.tidyMovement`（`setField` に true / false）。範囲はメインのマップの `mouse` の `ctrl: true` の右ドラッグで選ぶ。
 - 移植の窓（`action` の `tools.transplant`、`"window": "transplant"`）: 部品は上の `transplant_check.py` の説明のとおり（`tp.pickRom`・`tp.maps`・`tp.parts`・`tp.copyLayout`・`tp.import`・`tp.close`・`tp.preview`・`tp.primaryInfo`・`tp.secondaryInfo`・`tp.report`）と、元の ROM の表示 `tp.romLabel`。窓の `state` は `rom`・`game`・`mapCount`・`selected`・`selectedSize`（選んだマップの大きさ `[幅, 高さ]`）・`parts`・`copyLayout`・`report`・`conversion`・`target`・`jsHeap`（窓の JavaScript のヒープ、バイト）。
 
@@ -364,11 +366,12 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 確認のスクリプトは `tests/automation/block_tools_check.py`（`--only 393` などで issue ごとに動かせる）。
 
-- ブロックエディタ（`"window": "block-editor"`）のタイルの矩形（#393）: タイル一覧 `be.tiles` の `pointer`（`down` → `move` → `up`。1 タイル 16px）で矩形を選ぶ。選んだ矩形の枠 `be.tilesFrame`（`getField` の `visible`。2 枚以上のときだけ出る）。8 マス `be.block` の `pointer` に `ctrl: true` でパレットだけ塗る、`button: 2` の `down` と `up` で矩形を拾う（離した所が 3 層目なら押したマスだけ）。窓の下の 1 行 `be.status`（`getField` の `value`。ホバーの情報と案内）。窓の `state` に `selection`（`width`・`height`・`picked`（8 マスから拾った矩形か）。選んでいなければ null）が出る。
+- ブロックエディタ（`"window": "block-editor"`）のタイルの矩形（#393）: タイル一覧 `be.tiles` の `pointer`（`down` → `move` → `up`。1 タイル 16px）で矩形を選ぶ。選んだ矩形の枠 `be.tilesFrame`（`getField` の `visible`。2 枚以上のときだけ出る）。8 マス `be.block` の `pointer` に `ctrl: true` でパレットだけ塗る、`button: 2` の `down` と `up` で矩形を拾う（離した所が3枚目のレイヤーなら押したマスだけ）。窓の下の 1 行 `be.status`（`getField` の `value`。ホバーの情報と案内）。窓の `state` に `selection`（`width`・`height`・`picked`（8 マスから拾った矩形か）。選んでいなければ null）が出る。
 - ブロックのコピー・貼り付けと入れ替え（#394）: `action` の `edit.copy`・`edit.cut`・`edit.paste`・`edit.swap`、または `key`（`{"cmd":"key","key":"c","ctrl":true}`、入れ替えは `{"cmd":"key","key":"x"}`）。入れ替えはオンにしてから `be.blocks` を 2 回押し、確かめの窓（`dialogs`）を `dialog` の `press`（`yes` 付け替える / `no` タイルセットの中だけ / `cancel`）で答える。窓の `state` に `edit`（`clipboard`（`tiles`・`attribute`・`third`）と `swap`（`active`・`first`））と、窓の下の 1 行の文 `status` が出る。コマンドは `swapBlocks`（`tileset`・`secondary`・`a`・`b`（タイルセットの中の番号）・`targets`（付け替えるマップ。読み込んでおく））。メインへの頼みは `tilesetUsers`（そのタイルセットを使うマップの一覧）と `swapBlocks`（マップを読み込んでから実行）。
 - 使用回数・未使用・ブロック一覧の画像（#395）: `action` の `view.usage`・`view.unusedBlocks`・`view.unusedTiles`（オン・オフ）と `tiles.exportBlocks`（書き出しの窓）。窓の `state` に `stats`（切り替え `flags`（`usage`・`unusedBlocks`・`unusedTiles`）、数え終えたか `counted`、一覧の並び（主の 640 個のあとに副）での使用回数 `counts`（表に無い番号は -1）、未使用のブロックの番号 `unusedBlocks`、未使用のタイルの通し番号 `unusedTiles`）が出る（数える前の値は null）。重ねた絵は `be.blocksOverlay`・`be.tilesOverlay`（Canvas）。書き出しの窓の部品: `be.exp.tileset`（0 か 1）・`be.exp.from`・`be.exp.to`（16 進）・`be.exp.lower`・`be.exp.upper`・`be.exp.third`（チェック）・`be.exp.columns`・`be.exp.background`（0 そのまま・1 黒・2 パレット 0 の色 0）・`be.exp.info`（ブロック数と画素の大きさ）・`be.exp.preview`（Canvas）。`dialog` の `press` の `save` で、`queuePath` で積んだパスに書く。メインへの頼みは `blockStats`（`tiles`: 未使用のタイルも数えるか）。
 - パレットエディタ（`"window": "palette-editor"`）の Phase5 の部品（#396）: 16 進の RGB の欄 `pal.rgbHex`（`setField`）と `pal.rgbApply`（`click`）、16 色の見本 `pal.color.0`〜`pal.color.15`（`click` で選ぶ）。`action` の `view.unusedColors`（オン・オフ）と `tools.colorUsage`（色の使用箇所の窓。案内 `pal.usage.info`、行 `pal.usage.<ブロックの通し番号>` を `click` するとブロックエディタで選ぶ。`dialog` の `press` の `close` で閉じる）。窓の `state` に `rgb`（欄の文字）、`showUnused`、`unusedColors`（未使用の色の番号。オフなら null）が出る。メインへの頼みは `setUi` の `focusBlock`（ブロックエディタで選ぶブロック。閉じていれば開く）。パレットファイルの読み込み（ブロックエディタの `palette.open`）は、`queuePath` で積んだファイルを中身で見分けて読む。
 - 新しいタイルセット（#397）: ブロックエディタの `action` の `tiles.newTileset` で窓を開く。部品は `be.nt.kind`（0 タイルセット1・1 タイルセット2）・`be.nt.tiles`・`be.nt.blocks`（10 進）・`be.nt.content`（0 空・1 今のタイルセットの写し）・`be.nt.limit`（上限の案内）。`dialog` の `press` の `create` で作る。メインへの頼みは `newTileset`（`secondary`・`tileCount`・`blockCount`・`copy`。core の `newTilesetCommand` で `addTileset` と `setTilesets` を 1 回の組で実行する）。
+- 野生（#398）: 野生ポケモンタブの枠の割合 `wild.slotRate.1`〜`wild.slotRate.12`（`getField` の `value`。「20%」、釣りは「70%（ボロ）」）、グラフのボタン `wild.chart`。グラフの窓の部品は `wild.chart.rod`（釣りだけ）・`wild.chart.species`（0 が全部の種族）・`wild.chart.totals`・`wild.chart.levels`（Canvas。`mouse` の `hover` に `id` と `px`）・`wild.chart.hover`（乗せた棒の値）。`dialog` の `press` の `close` で閉じる。検索は `action` の `tools.wildSearch`。部品は `wild.search.species`（種族の番号で `setField`）・`wild.search.run`（`click`）・`wild.search.info`・`wild.search.col.0`〜`wild.search.col.4`（見出し。`click` で並べ替え）・`wild.search.row.<n>`（並べた順の行。`mouse` の `dblclick` でそのマップの野生タブを開く）。
 - 写しでの確認: `python tests/realcopy/run.py --swap --reuse --only nd`（ND の写しで副の 2 つを入れ替えて出力・ビルドし、できた ROM の中身と開き直した絵を確かめる）。
 
 ## Phase4 の表示・一覧・調査（列 3）
@@ -380,8 +383,10 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `seams.state` | `wait`（true で調べ終えるまで待つ） | 接続の境目の注意（#305）。点検した主マップ `map`、調べ終えたか `done`、崩れるマスのある接続 `issues`（接続の番号 `index`・`side`・相手 `id`・マスの数 `count`・マス `cells`（主マップの左上が原点））、ステータスバーの注意の文 `status`（出ていなければ null）、主マップのタイルセット `tilesets` と上下左右の接続の相手のタイルセット `connections`（`index`・`bank`・`map`・`primary`・`secondary`。ポインタの値） |
-| `town.state` | `wait`（true で読み込みを待つ） | タウンマップの小窓（#306）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、赤い枠 `frame`（タウンマップのマス `x`・`y`・`width`・`height`。無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。小窓を作っていなければ `open: false` だけ |
-| `town.pick` | `x`、`y`（タウンマップのマス） | 小窓のマスを押したのと同じ（地名があれば一覧を `場所:<番号>` で絞る）。返事は `region` と絞り込みの欄の文 `filter` |
+| `town.state` | `wait`（true で読み込みを待つ） | タウンマップの小窓（#306・#386）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、枠 `frame`（今の面のタウンマップのマス `x`・`y`・`width`・`height`。面が違うか無ければ null）、枠をどこから出したか `source`（`map` = マップだけの紐づけ、`section` = 地名の紐づけ、`rom` = ROM のデータ、どれにも無ければ null）、面も含めた位置 `at`（`page`・`x`・`y`・`width`・`height`。無ければ null）、紐づけの一覧 `links`（`sections`: `region` と範囲、`maps`: `bank`・`map` と範囲）、保存先 `store`（`project` = `zigzagumap.json`、`personal` = 個人設定の `townLinks`）、`zigzagumap.json` を読めなかった理由 `storeError`（読めれば null）、右ドラッグやメニューで選んでいる範囲 `selection`（無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。小窓を作っていなければ `open: false` だけ |
+| `town.pick` | `x`、`y`（タウンマップのマス） | 小窓のマスを押したのと同じ（地名があれば一覧を `場所:<番号>` で絞る。地名を紐づけた範囲なら紐づけた地名）。返事は `region` と絞り込みの欄の文 `filter` |
+| `town.link` | `scope`（`section` = 今の地名（既定）/ `map` = 今のマップだけ）、`x`・`y`（タウンマップのマス）、`width`・`height`（既定 1）、`page`（省略で今の面） | 右クリックのメニューの「ここに紐づける」と同じ。すぐ保存する（取り消しの対象にしない）。小窓を出していなければ出す。範囲がタウンマップの外か、`section` で今のマップに地名が無ければエラー。返事は `town.state` と同じ形 |
+| `town.unlink` | `scope`（`section`（既定）/ `map`） | 今の地名か今のマップの紐づけを外す。返事は外したか `removed`（無ければ false）と `town.state` |
 | `pointers.state` | | ポインタ一覧（#307）。開いているか `open`、上の説明 `note`、一覧 `rows`（`kind`・`index`・`location`・`value`・`bytes`）、選んでいる行 `selected`（無ければ -1）、最後の検索 `last`（`value`・`rom`・`hits`（`offset`・`place`）・`ms`・`chunks`）、最後にコピーした文字 `lastCopied`（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
 | `pointers.search` | `address`（ROM の上の位置かポインタの値。数）、`rom`（ほかの ROM のパス。省略で開いているベース ROM） | 窓を開いて参照元を探す。返事は `last` と同じ形と、探している間のいちばん長い画面の止まり `maxGapMs` |
 | `pointers.select` | `row` | 一覧の行を押したのと同じ（イベントの行ならイベントタブで選ぶ）。返事は `selected` |
@@ -394,7 +399,29 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
 - マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。
 - タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。
+- タウンマップの紐づけ（#386）: 右クリックのメニューは `mouse` の `id: "town.canvas"` に `action: "rightClick"`（1 マス）か `action: "drag"`・`button: "right"`（`px` から `toPx` までの範囲）で出す。項目は `contextMenu.state` で読み、`contextMenu.press` の `id` で押す（`town.linkSection` = 今の地名をここに紐づける、`town.linkMap` = 今のマップだけをここに紐づける、`town.unlinkMap`・`town.unlinkSection` = 紐づけを外す。外す項目は紐づけがあるときだけ出る）。押したあとの保存は少し後に終わるので、`town.state` の `links` で確かめる。保存先はプロジェクトフォルダを開いていれば `zigzagumap.json` の `"townMap"`、ROM だけなら個人設定の `townLinks`（ROM の小文字のパスが鍵。`--profile` のフォルダの settings.json）。`maps
+egionmap.json` と ROM には書かない。
 - ポインタ一覧（#307）: `action` か `menu.run` の `tools.pointers`（Ctrl+Shift+P）。窓の ID は `pointers`（`ui.shot` で撮れる）、一覧 `pointers.list`・行 `pointers.row.<番号>`（`mouse` の `rightClick` で右クリックのメニュー。項目 `copyValue`・`copyBytes`・`copyLocation`）、アドレス `pointers.address`、ROM の選び方 `pointers.rom`（`base` / `other`。`other` はファイルのダイアログを出す）、「探す」`pointers.search`、結果の文 `pointers.status`・一覧 `pointers.results`（行 `pointers.result.<番号>`）、「閉じる」`pointers.close`。
-- パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。3 層は 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
+- パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。トリプルレイヤーは 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
 - マップ一覧のサムネイル（#315）: `action` か `menu.run` の `view.treeThumbnails`（個人設定 `treeThumbnails`。既定 false）。行の縮小は `canvas.tree-thumb`。
 - マップの拡大（#316）: `mouse` のマップのタブの `cell` は、拡大していても画面の上のマスの大きさで押す。中ボタンのドラッグはスクロールの枠 `map-tab-view`・`movement-tab-view`・`event-tab-view`（`mouse` の `id`）に `"button": "middle"` の `drag` で送る（ステージに送ると、スクロールで部品が動いて量が合わない）。メニューの `zoom.map` などは 1 倍・2 倍の切り替えで、個人設定 `mapZoom` のそのタブの値を 0 に戻す。
+
+## Phase5 の部品と命令（描く道具と表示。列 1）
+
+命令は `apps/desktop/src/app/automation/tools.ts` にまとめています。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`） |
+| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）。どちらも省略可 | 道具とスマートパスを変える（帯のボタンと N・B・S と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
+| `tool.fill` | `cell`（`[x, y]`。主マップの左上が原点。隣の帯の上も指せる）、`magic`（true でマジック塗り）、`tab`（`map` / `movement`。省略で表示中のタブ） | 塗りつぶしを 1 回行う（道具の設定は変えない）。返事の `count` は塗ったマスの数と、`selection` と同じもの |
+| `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
+| `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズの窓の OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
+| `tool.resizeDialog` | | 対話式リサイズの窓「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |
+| `view.aids` | | 表示の補助（#391）。カーソルの枠 `cursorFrame` とプレイヤーの視界の枠 `playerView`（個人設定）、グリッドの表示 `grid` と形 `gridStyle`（`width`・`height`・`offsetX`・`offsetY`（マス）・`color`・`line`）、タブごとの枠 `layers`（`map`・`movement`・`event` の、マウスのマス `cell` と枠のマスの矩形 `cursor`・`sight`。出していなければ null）、移動許可の数値の欄の文字 `movementValue` |
+
+- 道具の帯（マップタブと移動エリアタブの右の欄の上）: ボタン `tools.map.pencil`・`tools.map.fill`・`tools.map.shift`（移動エリアタブは `tools.movement.*`）、スマートパスのチェック `tools.smartPath`（`setField` に true / false）。N・B・S は `{"cmd":"key","key":"b"}` のように送る（マップタブか移動エリアタブを見ているとき）。
+- 道具を選んでから `mouse` で使う: 塗りつぶしは `click`（`ctrl: true` でマジック塗り）、マップシフトは `drag`（`shift: true` で横か縦だけ。途中で `{"cmd":"key","key":"Escape"}` を送るとやめる）、直線は鉛筆の `drag` に `shift: true`。
+- 対話式リサイズの窓の部品: 幅 `resize.width`・高さ `resize.height`・左に足す `resize.left`・上に足す `resize.top`（どれも `setField` に数の文字）、埋め方 `resize.fill`（`setField` に 0 端の写し / 1 境界ブロック / 2 選んでいるブロック）、図 `resize.view`（`ui.shot`。マップをドラッグして位置を決める）、変わる量か入力の問題 `resize.info`（`getField`）。`dialog` の `press: "ok"` で実行、`"cancel"` で閉じる。入口は場所の設定タブのかんたん表示の `easy.resizeDialog` と、辺のつまみの右クリックのメニューの `resize`（`contextMenu.press`）。
+- 表示の補助（#391）: `action` か `menu.run` の `view.cursorFrame`（C）・`view.playerView`（V）・`view.gridSettings`（窓「グリッドの設定」を開いてすぐ返す）。窓の部品は `grid.width`・`grid.height`・`grid.offsetX`・`grid.offsetY`（`setField` に数の文字）・`grid.color`（`#rrggbb`）・`grid.line`（`setField` に 0 実線 / 1 破線 / 2 点）・`grid.reset`（既定に戻す）。`dialog` の `press: "ok"` でグリッドを出して覚え、`"cancel"` で元に戻す。枠は `mouse` の `hover` で動く（`view.aids` の `layers`）。移動許可の数値の欄は `movement.value`（`setField` に 16 進 2 桁。00〜3F の外は選択を変えない）。
+- コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端の写しでなくこの柄で埋める）。

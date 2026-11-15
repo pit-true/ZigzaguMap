@@ -42,3 +42,17 @@ export {
   type UsageKind,
   type UsageRange,
 } from "./UsageConfig.js";
+export {
+  EMPTY_TOWN_LINKS,
+  TOWN_MAP_CONFIG_SECTION,
+  isTownLinkRect,
+  loadTownMapConfig,
+  parseTownMapConfig,
+  readTownLinks,
+  saveTownMapConfig,
+  stringifyTownMapConfig,
+  townMapKey,
+  writeTownLinks,
+  type TownLinkRect,
+  type TownLinks,
+} from "./TownMapConfig.js";

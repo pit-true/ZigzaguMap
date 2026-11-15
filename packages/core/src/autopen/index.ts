@@ -9,3 +9,4 @@ export { RepeatSolver, TIDY_MIN_GAIN } from "./RepeatSolver.js";
 export { TreeSolver, isTreePart } from "./TreeSolver.js";
 export { AutoPenPlanner, BRUSH_SIZES, brushCells, brushRect, firstBlock, lineCells, type BrushSize, type PenPlan } from "./AutoPenPlanner.js";
 export { analyzeParts, collectLayouts, type AnalyzeDoc, type AnalyzeInput, type AnalyzeLayout, type AnalyzeProject } from "./PartAnalyzer.js";
+export { SmartPath } from "./SmartPath.js";

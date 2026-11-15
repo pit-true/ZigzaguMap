@@ -391,9 +391,9 @@ def check_palette(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "command", "name": "setTripleLayer", "args": {"tileset": tiles["primary"], "secondary": False, "block": 16, "attribute": 0x30000000}})
     z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [0, 2]})
     text = info(z)
-    check("重ね方: 30-トリプルレイヤー" in text and "3 枚目はブロック 0x011" in text, f"3 層は「重ね方: トリプルレイヤー」（{text!r}）")
+    check("重ね方: 30-トリプルレイヤー" in text and "3枚目のレイヤーはブロック 0x011" in text, f"3 層は「重ね方: トリプルレイヤー」（{text!r}）")
     z.call({"cmd": "mouse", "target": "palette", "action": "hover", "cell": [1, 2]})
-    check("0x010 の 3 枚目に使われる" in info(z), f"3 層の次の番号（{info(z)!r}）")
+    check("0x010 の3枚目のレイヤーに使われる" in info(z), f"3 層の次の番号（{info(z)!r}）")
     shot(z, shots, "view_palette_info.png")
     z.call({"cmd": "undo"})
     # 最近使ったブロック
