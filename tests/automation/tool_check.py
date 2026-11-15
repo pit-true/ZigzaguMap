@@ -15,15 +15,19 @@
     1 回で戻る。上限を超えると実行しない。出力して読み直すと同じになる。
   - view: 表示の補助（#391）。カーソルの枠（C）・プレイヤーの視界の枠（V）・グリッドの設定・移動許可の数値の欄。既定はどれもオフか
     今の見た目で、切り替えは同じプロフィールで起動し直しても残る。
+  - shortcuts: ショートカットの変更（#392）。窓でキーを変えるとすぐ使え、前のキーは効かなくなる。重なると聞き、答えた方に残る。
+    同じプロフィールで起動し直しても残り、既定に戻せる。
 """
 from __future__ import annotations
 
 import argparse
 import base64
+import json
 import pathlib
 import shutil
 import sys
 import tempfile
+import time
 from collections import deque
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -488,6 +492,76 @@ def check_view_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
     check(a["cursorFrame"] and a["playerView"] and a["gridStyle"]["width"] == 2 and a["gridStyle"]["line"] == "dashed", "切り替えとグリッドの形は起動し直しても残る")
 
 
+def shortcut_set(z: Zigzagu, action: str, n: int, key: str, **mods) -> dict:
+    slot = f"shortcuts.{action}.{n}"
+    z.call({"cmd": "click", "id": slot})
+    z.call({"cmd": "key", "id": slot, "key": key, **mods})
+    return z.call({"cmd": "dialogs"})
+
+
+def check_shortcuts(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    st = z.call({"cmd": "shortcuts.state"})
+    check(st["keys"]["tool.pencil"] == "N" and st["keys"]["edit.redo"] == "Ctrl+Y、Ctrl+Shift+Z" and st["overrides"] == {}, "既定は今までのキー")
+    z.call({"cmd": "action", "id": "opt.shortcuts"})
+    # 鉛筆を Q と Alt+N に
+    shortcut_set(z, "tool.pencil", 0, "q")
+    shortcut_set(z, "tool.pencil", 1, "n", alt=True)
+    # カーソルの枠に B（塗りつぶしと重なる）→ 聞かれるので新しい方に残す
+    d = shortcut_set(z, "view.cursorFrame", 0, "b")
+    asked = [x for x in d.get("dialogs", []) if x.get("title") == "キーの重なり"]
+    check(len(asked) == 1, f"重なると聞く（{d}）")
+    screenshot(z, shots, "tool_shortcuts_conflict.png")
+    z.call({"cmd": "dialog", "press": "new"})
+    # グリッドの表示に Ctrl+Shift+G（重ならない）。Ctrl+P（ブロックパレットの横幅）と重ねて、前からの方に残すと変わらない
+    shortcut_set(z, "view.grid", 0, "G", ctrl=True, shift=True)
+    shortcut_set(z, "view.grid", 1, "p", ctrl=True)
+    z.call({"cmd": "dialog", "press": "old"})
+    screenshot(z, shots, "tool_shortcuts_dialog.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    st = z.call({"cmd": "shortcuts.state"})
+    check(st["keys"]["tool.pencil"] == "Q、Alt+N" and st["keys"]["view.cursorFrame"] == "B" and st["keys"]["tool.fill"] == "", f"窓で変えたキー（{st['keys']['tool.pencil']}、{st['keys']['view.cursorFrame']}、{st['keys']['tool.fill']!r}）")
+    check(st["keys"]["view.grid"] == "Ctrl+Shift+G" and st["keys"]["view.paletteWidth"] == "Ctrl+P", "前からの方に残すと、そちらは変わらない")
+    check(st["overrides"] == {"view.cursorFrame": ["B"], "view.grid": ["Ctrl+Shift+G"], "tool.pencil": ["Q", "Alt+N"], "tool.fill": []}, f"個人設定には変えたものだけ残す（{st['overrides']}）")
+    # すぐ使える
+    z.call({"cmd": "tool.set", "tool": "shift"})
+    z.call({"cmd": "key", "key": "n"})
+    check(z.call({"cmd": "tool.state"})["tool"] == "shift", "前のキー（N）では変わらない")
+    z.call({"cmd": "key", "key": "q"})
+    check(z.call({"cmd": "tool.state"})["tool"] == "pencil", "Q で鉛筆になる")
+    z.call({"cmd": "tool.set", "tool": "shift"})
+    z.call({"cmd": "key", "key": "n", "alt": True})
+    check(z.call({"cmd": "tool.state"})["tool"] == "pencil", "2 つ目のキー（Alt+N）でも鉛筆になる")
+    z.call({"cmd": "key", "key": "b"})
+    check(z.call({"cmd": "view.aids"})["cursorFrame"] is True and z.call({"cmd": "tool.state"})["tool"] == "pencil", "B はカーソルの枠に変わった（塗りつぶしにならない）")
+    z.call({"cmd": "key", "key": "g", "ctrl": True})
+    check(z.call({"cmd": "view.aids"})["grid"] is False, "前のキー（Ctrl+G）ではグリッドを出さない")
+    z.call({"cmd": "key", "key": "G", "ctrl": True, "shift": True})
+    check(z.call({"cmd": "view.aids"})["grid"] is True, "Ctrl+Shift+G でグリッドを出す")
+    menu = z.call({"cmd": "menu.list"})
+    check("Ctrl+Shift+G" in json.dumps(menu, ensure_ascii=False), "メニューの表記も変わる")
+    # 個人設定の書き込みは少し待ってまとめる（自動操作の exit は待たずに終わるので、書き込まれるまで待つ）
+    time.sleep(1)
+
+
+def check_shortcuts_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    st = z.call({"cmd": "shortcuts.state"})
+    check(st["keys"]["tool.pencil"] == "Q、Alt+N" and st["keys"]["view.grid"] == "Ctrl+Shift+G", "起動し直しても残る")
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "tool.set", "tool": "fill"})
+    z.call({"cmd": "key", "key": "q"})
+    check(z.call({"cmd": "tool.state"})["tool"] == "pencil", "起動し直しても Q で鉛筆になる")
+    z.call({"cmd": "action", "id": "opt.shortcuts"})
+    z.call({"cmd": "click", "id": "shortcuts.reset"})
+    z.call({"cmd": "dialog", "press": "ok"})
+    st = z.call({"cmd": "shortcuts.state"})
+    check(st["overrides"] == {} and st["keys"]["tool.pencil"] == "N" and st["keys"]["view.grid"] == "Ctrl+G", "既定に戻せる")
+    z.call({"cmd": "key", "key": "b"})
+    check(z.call({"cmd": "tool.state"})["tool"] == "fill", "既定に戻すと B で塗りつぶしになる")
+
+
 CHECKS = {
     "fill": check_fill,
     "line": check_line,
@@ -495,6 +569,13 @@ CHECKS = {
     "shift": check_shift,
     "resize": check_resize,
     "view": check_view,
+    "shortcuts": check_shortcuts,
+}
+
+# 同じプロフィールで起動し直して確かめるもの
+PERSIST = {
+    "view": check_view_persist,
+    "shortcuts": check_shortcuts_persist,
 }
 
 
@@ -523,10 +604,11 @@ def main() -> None:
                     z.call({"cmd": "resize", "width": 1280, "height": 900})
                     z.call({"cmd": "open", "rom": a.rom})
                     fn(z, shots, ctx)
-                if name == "view":
+                if name in PERSIST:
                     with Zigzagu(a.exe, profile=profile, extra=["--mute-audio"]) as z:
+                        z.call({"cmd": "resize", "width": 1280, "height": 900})
                         z.call({"cmd": "open", "rom": a.rom})
-                        check_view_persist(z, shots, ctx)
+                        PERSIST[name](z, shots, ctx)
             finally:
                 shutil.rmtree(profile, ignore_errors=True)
     print("失敗: " + str(len(failures)))

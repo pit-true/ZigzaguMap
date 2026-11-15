@@ -142,9 +142,26 @@ def main() -> int:
             check(hovers >= 3, f"ホバーのマスのコールバック（{hovers} 回）")
             z.call({"cmd": "undo"})
 
+            # ツール > ユーザースクリプト のメニューと、ショートカットの変更で決めたキー
+            items = [i for i in z.call({"cmd": "menu.list"}) if (i.get("id") or "").startswith("scripts.run.")]
+            labels = [i["path"][-1] for i in items]
+            check(labels[:2] == ["全マップのブロックを数える", "使えない関数を確かめる"], f"ツール > ユーザースクリプト に登録した操作が並ぶ（{labels}）")
+            z.call({"cmd": "action", "id": "opt.shortcuts"})
+            z.call({"cmd": "click", "id": "shortcuts.scripts.run.2.0"})
+            z.call({"cmd": "key", "key": "k", "ctrl": True, "shift": True, "id": "shortcuts.scripts.run.2.0"})
+            z.call({"cmd": "dialog", "press": "ok"})
+            keys = z.call({"cmd": "shortcuts.state"})["keys"]
+            check(keys.get("scripts.run.2") == "Ctrl+Shift+K", f"2 番目の操作にキーを決められる（{keys.get('scripts.run.2')}）")
+            before = sum(1 for l in z.call({"cmd": "userScripts.state"})["logs"] if "probe:" in l["text"])
+            z.call({"cmd": "key", "key": "K", "ctrl": True, "shift": True})
+            got = wait_for(lambda: sum(1 for l in z.call({"cmd": "userScripts.state"})["logs"] if "probe:" in l["text"]) > before)
+            check(bool(got), "決めたキーで操作が動く")
+            item = next((i for i in z.call({"cmd": "menu.list"}) if i.get("id") == "scripts.run.2"), {})
+            check("Ctrl+Shift+K" in str(item.get("shortcut", "")), f"メニューにキーが出る（{item.get('shortcut')}）")
+
             st = z.call({"cmd": "userScripts.stop"})
             check(not st["active"], "止めると Worker が無くなる")
-            print(f"     JavaScript のヒープ: スクリプトなし {heap_off} MB、3 つ有効 {heap_on} MB")
+            print(f"     JavaScript のヒープ: スクリプトなし {heap_off} MB、4 つ有効 {heap_on} MB")
     finally:
         shutil.rmtree(folder, ignore_errors=True)
         if original_config is None:

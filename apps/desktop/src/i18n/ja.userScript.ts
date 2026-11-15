@@ -27,4 +27,10 @@ export const jaUserScript = {
   outOfMap: (x: number, y: number) => `(${x}, ${y}) はマップの外です`,
   noBatch: "書き込みはコールバックか登録した操作の中で行ってください",
   messageTitle: "ユーザースクリプト",
+  /** ツール > スクリプト（登録した操作を並べる）。 */
+  toolsMenu: "ユーザースクリプト",
+  /** ショートカットの変更の表の行（ツール > スクリプト の N 番目の操作）。 */
+  keyLabel: (n: number) => `ツール > ユーザースクリプト > ${n} 番目の操作`,
+  keyWhere: "メインのウィンドウ",
+  slot: (n: number, key: string) => `${n} 番目${key ? `（${key}）` : ""}`,
 } as const;

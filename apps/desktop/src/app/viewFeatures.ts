@@ -101,6 +101,8 @@ export class ViewFeatures {
       view.stage.addEventListener("pointermove", (e) => this.userScripts.hover(tab, view.cellAt(e)));
       view.stage.addEventListener("pointerleave", () => this.userScripts.hover(tab, null));
     }
+    // ツール > スクリプト の N 番目（キーは 設定 > ショートカットの変更… で決める）
+    for (let n = 1; n <= 50; n++) actions.register(`scripts.run.${n}`, () => this.userScripts.runNth(n));
     actions.register("scripts.manage", async () => {
       const { UserScriptManager } = await import("../ui/userscript/UserScriptManager");
       new UserScriptManager(state, this.userScripts);

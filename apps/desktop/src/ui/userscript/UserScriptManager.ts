@@ -1,6 +1,7 @@
 import { USER_SCRIPT_DIR, saveUserScriptEnabled } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import type { UserScriptHost } from "../../app/scripting/UserScriptHost";
+import { keyText } from "../../app/keymap";
 import { jaUserScript as t } from "../../i18n/ja.userScript";
 import "../../styles/userScript.css";
 import { createDialog, dialogButton, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
@@ -100,8 +101,8 @@ export class UserScriptManager {
       const actions = document.createElement("div");
       actions.className = "user-script-actions";
       if (host.actions.length === 0) actions.append(p(t.noActions, "user-script-note"));
-      for (const a of host.actions) {
-        const b = dialogButton(`${t.run}: ${a.label}`, () => host.runAction(a.id));
+      for (const [i, a] of host.actions.entries()) {
+        const b = dialogButton(`${t.run}: ${a.label}・${t.slot(i + 1, keyText(`scripts.run.${i + 1}`))}`, () => host.runAction(a.id));
         b.dataset["autoId"] = `userScripts.action.${a.id}`;
         actions.append(b);
       }

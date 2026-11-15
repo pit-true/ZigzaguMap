@@ -159,6 +159,17 @@ export class UserScriptHost {
     this.emit("hoverChanged", cell ? { tab, x: cell.x, y: cell.y } : { tab, x: null, y: null });
   }
 
+  /** ツール > スクリプト に並べる項目（`scripts.run.N`。N は 1 から）。 */
+  menuItems(): { id: string; label: string; enable: "map" }[] {
+    return this.actionList.map((a, i) => ({ id: `scripts.run.${i + 1}`, label: a.label, enable: "map" as const }));
+  }
+
+  /** ツール > スクリプト の N 番目（1 から）を動かす。 */
+  runNth(n: number): void {
+    const a = this.actionList[n - 1];
+    if (a) this.runAction(a.id);
+  }
+
   /** 登録した操作を動かす。 */
   runAction(id: string): void {
     if (!this.actionList.some((a) => a.id === id)) return;

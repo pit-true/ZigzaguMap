@@ -2,6 +2,7 @@ import type { BlockSelection, EditorState } from "../app/EditorState";
 import { jaPaint } from "../i18n/ja.paint";
 import { isTyping, modalOpen } from "./keyGuards";
 import type { BlockPainter } from "./BlockPainter";
+import { matchesKey } from "../app/keymap";
 
 /**
  * マップタブのコピーと貼り付け（Phase3 #225。AdvanceMap には無い）。
@@ -17,12 +18,11 @@ export class StampClipboard {
     private readonly painter: BlockPainter,
   ) {
     document.addEventListener("keydown", (e) => {
-      if (e.defaultPrevented || !e.ctrlKey || e.altKey || e.shiftKey || this.state.tab !== "map" || modalOpen() || isTyping(e.target)) return;
-      const key = e.key.toUpperCase();
-      if (key === "C") {
+      if (e.defaultPrevented || this.state.tab !== "map" || modalOpen() || isTyping(e.target)) return;
+      if (matchesKey("stamp.copy", e)) {
         e.preventDefault();
         this.copy();
-      } else if (key === "V") {
+      } else if (matchesKey("stamp.paste", e)) {
         e.preventDefault();
         this.paste();
       }

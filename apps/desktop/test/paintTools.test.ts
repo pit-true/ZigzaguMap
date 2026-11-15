@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PAINT_TOOLS, toPaintTool } from "../src/app/paintTool";
+import { keyText } from "../src/app/keymap";
 import { LineGuide } from "../src/input/tools/LineGuide";
 
 describe("道具の切り替え（#388）", () => {
@@ -11,8 +12,8 @@ describe("道具の切り替え（#388）", () => {
     expect(toPaintTool(undefined)).toBe("pencil");
   });
 
-  it("キーは N・B・S で重ならない", () => {
-    expect(PAINT_TOOLS.map((t) => t.key)).toEqual(["N", "B", "S"]);
+  it("既定のキーは N・B・S（キーの表は app/keymap.ts。#392）", () => {
+    expect(PAINT_TOOLS.map((t) => keyText(t.keyAction))).toEqual(["N", "B", "S"]);
   });
 });
 
