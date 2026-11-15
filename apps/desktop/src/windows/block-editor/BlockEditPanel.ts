@@ -31,6 +31,29 @@ export interface BlockEditView {
   readonly palette: number;
 }
 
+/** 値を出す文字（見出しの枠の中に置く）。 */
+function valueText(): HTMLElement {
+  const span = document.createElement("span");
+  span.className = "be-field-value";
+  return span;
+}
+
+/**
+ * 見出しと値の枠。`row` は見出しの右に値、`column` は見出しの下に値（少し字下げ）。`after` は値の右に続けて置く部品
+ * （タイルのプレビュー）。
+ * 位置を決め打ちにしないので、見出しの文字の幅（フォントや文言）によらず値と重ならない。
+ */
+function fieldRow(caption: string, value: HTMLElement, x: number, y: number, direction: "row" | "column", after?: HTMLElement): HTMLElement {
+  const box = place(document.createElement("div"), x, y);
+  box.className += ` be-field be-field-${direction}`;
+  const head = document.createElement("span");
+  head.className = "am-label";
+  head.textContent = caption;
+  box.append(head, value);
+  if (after) box.append(after);
+  return box;
+}
+
 /** 3 層目の 4 マスと見出しの位置（パレットの欄の下。出すときはタイル一覧を下へずらす）。 */
 const THIRD_Y = 90;
 /** タイル一覧の位置と高さ（3 層目を出していないとき）。 */
@@ -66,13 +89,14 @@ export class BlockEditPanel {
     this.element = place(document.createElement("div"), 273, 0, 288, 233);
     this.element.className += " be-scroll be-main";
     this.blockBox = place(pixelCanvas("be.block", 32, 16, 2), 8, 24);
-    this.tilePreview = place(pixelCanvas("be.tile", 8, 8, 2), 152, 8);
+    this.tilePreview = pixelCanvas("be.tile", 8, 8, 2);
+    this.tilePreview.classList.add("be-field-preview");
     this.thirdBox = place(pixelCanvas("be.third", 16, 16, 2), 8, THIRD_Y);
     this.thirdLabel = autoId(label("", 48, THIRD_Y + 10), "be.thirdLabel");
     this.thirdLabel.classList.add("be-third-label");
-    this.tileLabel = autoId(label("", 128, 8), "be.tileLabel");
-    this.blockLabel = autoId(label("", 128, 32), "be.blockLabel");
-    this.offsetLabel = autoId(label("", 128, 56), "be.offsetLabel");
+    this.tileLabel = autoId(valueText(), "be.tileLabel");
+    this.blockLabel = autoId(valueText(), "be.blockLabel");
+    this.offsetLabel = autoId(valueText(), "be.offsetLabel");
     const x = check("be.xflip", t.xflip, 184, 8, 49);
     const y = check("be.yflip", t.yflip, 184, 24, 49);
     this.xflip = x.input;
@@ -88,13 +112,11 @@ export class BlockEditPanel {
       label(t.lowerUpper, 8, 8),
       this.blockBox,
       this.palette,
-      label(t.tile, 96, 8),
-      label(t.block, 96, 32),
-      label(t.offset, 96, 56),
-      this.tileLabel,
-      this.blockLabel,
-      this.offsetLabel,
-      this.tilePreview,
+      // 見出しと値は 1 つの枠に並べ、見出しの幅が変わっても値と重ならないようにする（#383）。
+      // オフセットは 6 桁で横に収まらないため、見出しの下の行に値を出す
+      fieldRow(t.tile, this.tileLabel, 96, 8, "row", this.tilePreview),
+      fieldRow(t.block, this.blockLabel, 96, 30, "row"),
+      fieldRow(t.offset, this.offsetLabel, 96, 50, "column"),
       x.root,
       y.root,
       button("be.save", t.save, 200, 48, 81, 33, () => host.save()),
