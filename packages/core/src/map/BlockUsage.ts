@@ -1,4 +1,5 @@
 import type { CfruProject } from "../project/CfruProject.js";
+import type { Rom } from "../rom/Rom.js";
 import { BLOCK_ID_MASK, MOVEMENT_MAX, MOVEMENT_SHIFT, PRIMARY_BLOCK_COUNT } from "./constants.js";
 import type { MapId } from "./types.js";
 
@@ -10,6 +11,8 @@ export interface UsageLayout {
   readonly secondary: number;
   /** 配置（u16。ブロック番号と移動許可）。 */
   readonly cells: Uint16Array;
+  /** ボーダー（u16。使用回数にだけ数え、移動許可には数えない。#395）。 */
+  readonly border?: Uint16Array;
   /**
    * 配置の見分け（同じ値のマップは 1 回だけ数える）。ベース ROM のまま共有している配置は `rom:<フッターの位置>`、
    * ZigzaguMap で持っている配置（JSON・編集したもの・新しいマップ）は `map:<バンク>.<マップ>`。
@@ -27,6 +30,8 @@ interface LayoutEntry {
   /** 配置の中身（ベース ROM のままなら null で、`read` で読み直す）。 */
   readonly cells: Uint16Array | null;
   readonly read: (() => Uint16Array) | null;
+  /** ボーダー（使用回数を外すときに引く）。 */
+  readonly border: Uint16Array;
   refs: number;
 }
 
@@ -58,6 +63,9 @@ export class BlockUsage {
   private readonly layouts = new Map<string, LayoutEntry>();
   private readonly primary = new Map<number, Counts>();
   private readonly secondary = new Map<string, Counts>();
+  /** ボーダーのブロック番号ごとの数（主・副の分け方は配置と同じ）。 */
+  private readonly borderPrimary = new Map<number, Counts>();
+  private readonly borderSecondary = new Map<string, Counts>();
 
   /** そのマップの配置を入れる・差し替える。 */
   set(layout: UsageLayout): void {
@@ -73,8 +81,10 @@ export class BlockUsage {
       entry.refs++;
       return;
     }
+    const border = layout.border ? layout.border.slice() : EMPTY_CELLS;
     this.apply(layout.primary, layout.secondary, layout.cells, 1);
-    this.layouts.set(layout.layoutKey, { primary: layout.primary, secondary: layout.secondary, cells: read ? null : layout.cells.slice(), read, refs: 1 });
+    this.applyBorder(layout.primary, layout.secondary, border, 1);
+    this.layouts.set(layout.layoutKey, { primary: layout.primary, secondary: layout.secondary, cells: read ? null : layout.cells.slice(), read, border, refs: 1 });
   }
 
   /** そのマップを外す（消したマップ）。 */
@@ -88,6 +98,7 @@ export class BlockUsage {
     if (entry.refs <= 0) {
       this.layouts.delete(key);
       this.apply(entry.primary, entry.secondary, entry.cells ?? entry.read!(), -1);
+      this.applyBorder(entry.primary, entry.secondary, entry.border, -1);
     }
   }
 
@@ -117,6 +128,30 @@ export class BlockUsage {
     }
   }
 
+  private applyBorder(primary: number, secondary: number, cells: Uint16Array, sign: 1 | -1): void {
+    if (cells.length === 0) return;
+    const p = primary >>> 0;
+    const pair = `${p}:${secondary >>> 0}`;
+    let pc = this.borderPrimary.get(p);
+    if (!pc) this.borderPrimary.set(p, (pc = new Map()));
+    let sc = this.borderSecondary.get(pair);
+    if (!sc) this.borderSecondary.set(pair, (sc = new Map()));
+    for (const v of cells) {
+      const id = v & BLOCK_ID_MASK;
+      const target = id < PRIMARY_BLOCK_COUNT ? pc : sc;
+      const n = (target.get(id) ?? 0) + sign;
+      if (n <= 0) target.delete(id);
+      else target.set(id, n);
+    }
+  }
+
+  /** ボーダーでの使用回数（その組の全マップ。共有している配置は 1 回）。 */
+  borderCount(block: number, primary: number, secondary: number): number {
+    const id = block & BLOCK_ID_MASK;
+    const counts = id < PRIMARY_BLOCK_COUNT ? this.borderPrimary.get(primary >>> 0) : this.borderSecondary.get(`${primary >>> 0}:${secondary >>> 0}`);
+    return counts?.get(id) ?? 0;
+  }
+
   private countsFor(block: number, primary: number, secondary: number): Counts | undefined {
     return (block & BLOCK_ID_MASK) < PRIMARY_BLOCK_COUNT ? this.primary.get(primary >>> 0) : this.secondary.get(`${primary >>> 0}:${secondary >>> 0}`);
   }
@@ -134,9 +169,9 @@ export class BlockUsage {
     return out;
   }
 
-  /** ブロックの使用回数（その組の全マップ。共有している配置は 1 回）。 */
+  /** ブロックの使用回数（その組の全マップの配置とボーダー。共有している配置は 1 回）。 */
   count(block: number, primary: number, secondary: number): number {
-    let n = 0;
+    let n = this.borderCount(block, primary, secondary);
     for (const c of this.movements(block, primary, secondary).values()) n += c;
     return n;
   }
@@ -167,6 +202,7 @@ export class BlockUsage {
         if (project.inBase(id) && !project.hasJson(id) && (!loaded || !project.isModified(id))) {
           const footer = rom.pointer(project.base.bankTable.headerOffset(id));
           const layoutKey = `rom:${footer}`;
+          const border = readRomBorder(rom, footer);
           const read = (): Uint16Array => {
             const width = rom.u32(footer);
             const height = rom.u32(footer + 4);
@@ -177,7 +213,7 @@ export class BlockUsage {
           };
           // 共有している配置は 2 枚目から読まない
           const cells = usage.layouts.has(layoutKey) ? EMPTY_CELLS : read();
-          usage.put({ id, primary: rom.u32(footer + 16), secondary: rom.u32(footer + 20), cells, layoutKey }, read);
+          usage.put({ id, primary: rom.u32(footer + 16), secondary: rom.u32(footer + 20), cells, border, layoutKey }, read);
         } else {
           const doc = loaded ?? (await project.peek(id));
           if (doc) usage.set(layoutOf(doc));
@@ -191,6 +227,25 @@ export class BlockUsage {
 }
 
 /** 読み込んだマップの配置（ZigzaguMap で持っている配置として数える）。 */
-export function layoutOf(doc: { id: MapId; primaryTileset: number; secondaryTileset: number; grid: { cells: Uint16Array } }): UsageLayout {
-  return { id: doc.id, primary: doc.primaryTileset >>> 0, secondary: doc.secondaryTileset >>> 0, cells: doc.grid.cells, layoutKey: `map:${doc.id.bank}.${doc.id.map}` };
+export function layoutOf(doc: { id: MapId; primaryTileset: number; secondaryTileset: number; grid: { cells: Uint16Array }; border?: { cells: Uint16Array } }): UsageLayout {
+  return {
+    id: doc.id,
+    primary: doc.primaryTileset >>> 0,
+    secondary: doc.secondaryTileset >>> 0,
+    cells: doc.grid.cells,
+    ...(doc.border ? { border: doc.border.cells } : {}),
+    layoutKey: `map:${doc.id.bank}.${doc.id.map}`,
+  };
+}
+
+/** ベース ROM のフッターのボーダー（FR は幅・高さが 0x18・0x19。読めなければ空）。 */
+function readRomBorder(rom: Rom, footer: number): Uint16Array {
+  try {
+    const w = rom.u8(footer + 0x18);
+    const h = rom.u8(footer + 0x19);
+    if (w === 0 || h === 0 || w * h > 64) return EMPTY_CELLS;
+    return rom.u16Array(rom.pointer(footer + 8), w * h);
+  } catch {
+    return EMPTY_CELLS;
+  }
 }

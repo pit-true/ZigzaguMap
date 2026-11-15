@@ -233,6 +233,7 @@ export {
   type TileGrid,
   type TileSelection,
 } from "./tileset/TileSelection.js";
+export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";

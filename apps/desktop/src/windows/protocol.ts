@@ -69,7 +69,9 @@ export type ToolRequest =
   /** ブロックの入れ替え（#394）: そのタイルセットを使うマップ（返事は `{ maps: {bank, map}[] }`）。 */
   | { readonly from: ToolKind; readonly id: number; readonly op: "tilesetUsers"; readonly tileset: number; readonly secondary: boolean }
   /** ブロックの入れ替え（#394）: `a` と `b`（タイルセットの中の番号）を入れ替える。`remap` なら使う全マップの番号も付け替える。 */
-  | { readonly from: ToolKind; readonly id: number; readonly op: "swapBlocks"; readonly tileset: number; readonly secondary: boolean; readonly a: number; readonly b: number; readonly remap: boolean };
+  | { readonly from: ToolKind; readonly id: number; readonly op: "swapBlocks"; readonly tileset: number; readonly secondary: boolean; readonly a: number; readonly b: number; readonly remap: boolean }
+  /** ブロックの使用回数と未使用のタイル（#395）。表示中のマップの組で数える（返事は BlockStats）。 */
+  | { readonly from: ToolKind; readonly id: number; readonly op: "blockStats"; readonly tiles: boolean };
 
 /** ベース ROM の `address`（0x08 起点）に `bytes`（base64）と同じ機械語があるか、の問い合わせ。 */
 export interface TransplantCodeProbe {
