@@ -1,6 +1,6 @@
 import { buildMenu, flattenMenu, type MenuItem } from "./menuDefinition";
 import { openDialogs } from "../ui/Dialog";
-import { KEY_ACTIONS, matchesKey } from "./keymap";
+import { KEY_ACTIONS, SCRIPT_KEY_SLOTS, matchesKey } from "./keymap";
 import type { App } from "./App";
 
 /**
@@ -34,6 +34,14 @@ export function installShortcuts(app: App): void {
       e.preventDefault();
       app.duplicateSelectedEvents();
       return;
+    }
+    // スクリプトの操作（Phase5 #405。ツール > スクリプト の N 番目）
+    for (let n = 1; n <= SCRIPT_KEY_SLOTS; n++) {
+      if (matchesKey(`scripts.run.${n}`, e) && openDialogs.length === 0) {
+        e.preventDefault();
+        app.actions.run(`scripts.run.${n}`);
+        return;
+      }
     }
     const id = menuIds.find((m) => matchesKey(m, e));
     const item = id ? items.get(id) : undefined;

@@ -7,6 +7,7 @@ import { jaPen } from "../i18n/ja.pen";
 import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { jaBlockTools } from "../i18n/ja.blockTools";
+import { jaUserScript } from "../i18n/ja.userScript";
 
 /**
  * ショートカットキーの表（Phase5 #392）。メニューのショートカットと、各所で受けている道具のキーをここにまとめる。
@@ -47,6 +48,9 @@ export interface KeyAction {
   readonly label?: string;
   readonly where?: string;
 }
+
+/** キーを決められるスクリプトの操作の数（ツール > スクリプト の上から N 番目。Phase5 #405）。 */
+export const SCRIPT_KEY_SLOTS = 9;
 
 /** 1 つの操作に決められるキーの数。 */
 export const MAX_KEYS = 2;
@@ -90,6 +94,14 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   { id: "tool.pencil", defaults: [k("N")], areas: ["map", "movement"], label: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
   { id: "tool.fill", defaults: [k("B")], areas: ["map", "movement"], label: jaTools.shortcutFill, where: jaTools.shortcutToolWhere },
   { id: "tool.shift", defaults: [k("S")], areas: ["map", "movement"], label: jaTools.shortcutShift, where: jaTools.shortcutToolWhere },
+  // スクリプトが登録した操作（Phase5 #405。ツール > スクリプト の上から N 番目。既定のキーは無し）
+  ...Array.from({ length: SCRIPT_KEY_SLOTS }, (_, i): KeyAction => ({
+    id: `scripts.run.${i + 1}`,
+    defaults: [],
+    areas: MAIN,
+    label: jaUserScript.keyLabel(i + 1),
+    where: jaUserScript.keyWhere,
+  })),
   // ブロックエディタの窓の 編集 メニュー（Phase5 #395。ID は `blockEditor.` ＋ メニューの項目の ID）
   ...(["copy", "cut", "paste", "swap"] as const).map(
     (name): KeyAction => ({

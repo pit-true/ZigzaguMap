@@ -603,7 +603,7 @@ export class App implements ActionTarget {
 
   /** メニューの全項目（今の状態で。メニューバーと自動操作の `menu.list` が使う）。 */
   menuItems(): MenuItem[] {
-    return buildMenu(recentMenuItems(this.state.settings.data));
+    return buildMenu(recentMenuItems(this.state.settings.data), this.views?.userScripts.menuItems() ?? []);
   }
 
   private rebuildTree(): void {

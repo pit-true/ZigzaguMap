@@ -17,6 +17,7 @@ import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
+import { jaUserScript } from "../i18n/ja.userScript";
 import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
@@ -66,7 +67,7 @@ function withKeys(items: readonly MenuItem[]): MenuItem[] {
  * 「オブジェクトの表示」の Ctrl+Z はアンドゥに使うため外した。
  * ショートカットキーは `app/keymap.ts` の表に置き、ここでは付けない（#392。利用者が変えられる）。
  */
-export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
+export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonly MenuItem[] = []): MenuItem[] {
   return withKeys([
     {
       label: ja.menuFile,
@@ -177,6 +178,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
         // ROM を開いたとき、前回のプロジェクトフォルダを窓を出さずに開く（ユーザーの要望 #278。ZigzaguMap 独自）
         { id: "opt.rememberRomProject", label: ja.rememberRomProject },
+        // 利用者の JavaScript のスクリプト（Phase5 #405。ZigzaguMap 独自）
+        { id: "scripts.manage", label: jaUserScript.menu, enable: "rom" },
         {
           label: ja.recentSettings,
           accel: "Z",
@@ -226,6 +229,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "map.find", label: jaMapFind.find, enable: "rom" },
         // ZigzaguMap 独自（Phase4 #307）。今のマップのポインタと、ROM の参照元の検索（読むだけの調査の道具）
         { id: "tools.pointers", label: jaPointers.menu, enable: "map" },
+        // 利用者のスクリプトが登録した操作（Phase5 #405。`scripts.run.N` は `scriptItems` で差し込む）
+        { label: jaUserScript.toolsMenu, enable: "rom", children: [...scriptItems, ...(scriptItems.length > 0 ? [sep] : []), { id: "scripts.manage", label: jaUserScript.menu, enable: "rom" }] },
         {
           label: ja.dummyData,
           accel: "X",
