@@ -151,8 +151,33 @@
 }
 
 /* ---- パレットエディタ ---- */
-.palette-editor {
-  height: 186px;
+/* AdvanceMap の 186 に、上のメニューと、下の 16 進の RGB の行（#396）を足す */
+.palette-editor .pal-body {
+  position: relative;
+  height: 216px;
+}
+
+.pal-swatch.unused {
+  box-shadow: inset 0 0 0 2px #ff2828;
+}
+
+.pal-usage-list {
+  height: 110px;
+  overflow-y: auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  margin: 4px 0;
+}
+
+.pal-usage-row {
+  padding: 1px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pal-usage-row.selected {
+  background: var(--select);
+  color: var(--select-text, #fff);
 }
 
 .pal-caption {

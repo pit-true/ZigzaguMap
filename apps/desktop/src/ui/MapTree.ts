@@ -1,8 +1,9 @@
 import type { MapId } from "@zigzagumap/core";
 import type { TreeNode } from "../app/MapTreeModel";
-import { HEADER_ROOT_KEY } from "../app/MapTreeModel";
+import { HEADER_ROOT_KEY, treeMark, type TreeMark } from "../app/MapTreeModel";
 import { labelMatches } from "../app/mapFind";
 import { ja } from "../i18n/ja";
+import { jaMapList } from "../i18n/ja.mapList";
 
 /** マップ一覧が使う窓口。 */
 export interface MapTreeHost {
@@ -18,6 +19,10 @@ export interface MapTreeHost {
   thumbnail?(id: MapId): ImageData | null;
   /** 開いている枝に見えているマップ（縮小を作る対象。枝を開閉・一覧を作り直したときに知らせる。#315）。 */
   thumbnailsWanted?(ids: readonly MapId[]): void;
+  /** 読み込めなかったマップか（Phase5 #401。名前の前の印）。 */
+  loadFailed?(id: MapId): boolean;
+  /** マップの項目の右クリック（Phase5 #401。`x`・`y` は画面の位置）。 */
+  contextMenu?(id: MapId, label: string, x: number, y: number): void;
 }
 
 /** 一覧の項目の情報（自動操作の `tree.list`）。 */
@@ -30,6 +35,8 @@ export interface TreeItemInfo {
   readonly selected: boolean;
   readonly opened: boolean;
   readonly dirty: boolean;
+  /** 名前の前の印（#401）。 */
+  readonly mark: TreeMark;
   readonly mapId: MapId | null;
 }
 
@@ -81,6 +88,14 @@ export class MapTree {
       if (row) this.activate(row);
     });
     this.element.addEventListener("keydown", (e) => this.onKey(e));
+    // マップの項目の右クリック（#401。開く・名前と番号のコピー・複製）
+    this.element.addEventListener("contextmenu", (e) => {
+      const row = this.rowOf(e.target);
+      if (!row?.node.mapId || row.node.filePath !== undefined || !this.host.contextMenu) return;
+      e.preventDefault();
+      this.select(row.node.key);
+      this.host.contextMenu(row.node.mapId, row.node.label, e.clientX, e.clientY);
+    });
   }
 
   /** 一覧を作り直す（展開状態はできるだけ残す）。 */
@@ -186,6 +201,7 @@ export class MapTree {
           selected: n.key === this.selectedKey,
           opened: !!(n.mapId && this.openedId && sameId(n.mapId, this.openedId)),
           dirty,
+          mark: n.mapId && n.filePath === undefined ? this.markOf(n.mapId) : null,
           mapId: n.mapId ?? null,
         });
         if (n.children) walk(n.children, depth + 1);
@@ -298,9 +314,11 @@ export class MapTree {
     element.dataset.key = node.key;
     const icon = document.createElement("span");
     icon.className = "tree-icon";
+    const mark = document.createElement("span");
+    mark.className = "tree-mark";
     const label = document.createElement("span");
     label.className = "tree-label";
-    element.append(icon, label);
+    element.append(icon, mark, label);
     wrap.append(element);
     const row: Row = { node, element, depth, parent, childBox: null };
     this.rows.set(node.key, row);
@@ -313,6 +331,10 @@ export class MapTree {
     const { node, element } = row;
     const label = element.lastElementChild as HTMLElement;
     const icon = element.firstElementChild as HTMLElement;
+    const mark = label.previousElementSibling as HTMLElement;
+    const kind = node.mapId && node.filePath === undefined ? this.markOf(node.mapId) : null;
+    mark.className = kind ? `tree-mark mark-${kind}` : "tree-mark";
+    mark.title = kind ? jaMapList.marks[kind] : "";
     if (node.filePath !== undefined) {
       label.textContent = node.label;
       element.dataset["autoId"] = `tree.mapFile.${node.key.slice(2)}`;
@@ -328,6 +350,15 @@ export class MapTree {
       if (row.depth === 0) element.dataset["autoId"] = `tree.root.${node.key}`;
     }
     element.classList.toggle("selected", node.key === this.selectedKey);
+  }
+
+  /** 名前の前の印（#401）。 */
+  private markOf(id: MapId): TreeMark {
+    return treeMark({
+      failed: !!this.host.loadFailed?.(id),
+      dirty: this.host.isDirty(id),
+      opened: !!this.openedId && sameId(this.openedId, id),
+    });
   }
 
   private expand(row: Row): void {
