@@ -43,6 +43,7 @@ import { SetPaletteColorsCommand } from "./commands/tileset/SetPaletteColorsComm
 import { SetTilesCommand } from "./commands/tileset/SetTilesCommand.js";
 import { SetTilesetHeaderCommand } from "./commands/tileset/SetTilesetHeaderCommand.js";
 import { SetTripleLayerCommand } from "./commands/tileset/SetTripleLayerCommand.js";
+import { SwapBlocksCommand } from "./commands/tileset/SwapBlocksCommand.js";
 import { AddTilesetCommand } from "./commands/tileset/AddTilesetCommand.js";
 import { SetLayoutCommand } from "./commands/layout/SetLayoutCommand.js";
 import { SetWildAreasCommand } from "./commands/wild/SetWildAreasCommand.js";
@@ -106,6 +107,8 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   RemapBlockPalettesCommand,
   SetTilesetHeaderCommand,
   SetTripleLayerCommand,
+  // ブロックの入れ替え（Phase5 #394。そのタイルセットを使うマップの番号も付け替える）
+  SwapBlocksCommand,
   AddTilesetCommand,
   SetLayoutCommand,
 ].map((c) => ({ name: c.NAME, fromJson: c.fromJson as CommandFactory }));

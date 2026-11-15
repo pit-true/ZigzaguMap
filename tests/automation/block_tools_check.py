@@ -5,12 +5,18 @@
 - 393: タイル一覧のドラッグで 2×2 を選び、8 マスに 1 回で置ける。左右反転で並びと各タイルが反転する。
   Ctrl＋左クリックでパレットだけ変わる。右ドラッグで反転とパレットごと拾って置ける。ホバーで窓の下に情報が出る。
   「変更」で 1 回の Ctrl+Z で戻る。
+- 394: Ctrl+C / Ctrl+V でブロックを貼り付け、1 回の Ctrl+Z で戻る。切り取りで空になり、戻る。
+  入れ替え（X）で副の 2 つを入れ替え、番号も付け替えるとマップの見た目が同じで、1 回で戻る。付け替えないと見た目が変わる。
+  出力すると 3.0 の配置の番号が付け替わっている（`--work` の下）。
+- 395: 表示 > 使用回数の数がマップタブの使用回数（`blockUsage` の `count`）と同じ。未使用のブロックの印が使用回数 0 と合う。
+  未使用のタイルが、ブロックから数えた値と合い、ブロックを切り取ると数え直す。ブロック一覧の画像を、選んだ範囲と幅の PNG に書き出せる。
 """
 from __future__ import annotations
 
 import argparse
 import base64
 import pathlib
+import struct
 import sys
 import tempfile
 import time
@@ -196,10 +202,241 @@ def check_393(z: Zigzagu, shots: pathlib.Path | None) -> None:
 
 
 def blocks_of(snap: dict, block: int) -> list[int]:
-    """写しから主のブロック `block` のタイル指定 8 個。"""
-    raw = base64.b64decode(snap["primary"]["blocks"])
-    o = block * 16
+    """写しからブロック `block`（通し番号）のタイル指定 8 個。"""
+    side = "secondary" if block >= 640 else "primary"
+    raw = base64.b64decode(snap[side]["blocks"])
+    o = (block - 640 if block >= 640 else block) * 16
     return [raw[o + i * 2] | (raw[o + i * 2 + 1] << 8) for i in range(8)]
+
+
+def attr_of(snap: dict, block: int) -> int:
+    side = "secondary" if block >= 640 else "primary"
+    return snap[side]["attributes"][block - 640 if block >= 640 else block]
+
+
+def key(z: Zigzagu, k: str, ctrl: bool = False) -> None:
+    be(z, {"cmd": "key", "key": k, "ctrl": ctrl})
+
+
+def snap(z: Zigzagu) -> dict:
+    return be(z, {"cmd": "snapshot"})["snapshot"]
+
+
+def map_cell_block(z: Zigzagu, x: int, y: int) -> int:
+    z.call({"cmd": "mouse", "target": "map", "cell": [x, y], "action": "rightClick"})
+    return z.call({"cmd": "selection"})["block"]["blocks"][0]
+
+
+def check_394(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> None:
+    # コピーと貼り付け（主の 1 → 2）
+    select_in_list(z, 1)
+    s1 = snap(z)
+    src = blocks_of(s1, 1)
+    dst_before = blocks_of(s1, 2)
+    key(z, "c", ctrl=True)
+    st = be_state(z)
+    check(st["edit"]["clipboard"] is not None and st["edit"]["clipboard"]["tiles"] == src, "394: Ctrl+C で選んでいるブロックをコピーする")
+    select_in_list(z, 2)
+    key(z, "v", ctrl=True)
+    time.sleep(0.3)
+    s2 = snap(z)
+    check(blocks_of(s2, 2) == src and attr_of(s2, 2) == attr_of(s1, 1), "394: Ctrl+V で貼り付ける（タイルと属性）")
+    be(z, {"cmd": "undo"})
+    time.sleep(0.3)
+    check(blocks_of(snap(z), 2) == dst_before, "394: 貼り付けは 1 回の Ctrl+Z で戻る")
+
+    # 切り取り（主の 3）
+    select_in_list(z, 3)
+    before3 = blocks_of(snap(z), 3)
+    be(z, {"cmd": "action", "id": "edit.cut"})
+    time.sleep(0.3)
+    s3 = snap(z)
+    check(blocks_of(s3, 3) == [0] * 8 and attr_of(s3, 3) == 0, "394: 切り取りで空のブロックになる")
+    check(be_state(z)["edit"]["clipboard"]["tiles"] == before3, "394: 切り取った中身を貼り付けられる")
+    be(z, {"cmd": "undo"})
+    time.sleep(0.3)
+    check(blocks_of(snap(z), 3) == before3, "394: 切り取りは 1 回の Ctrl+Z で戻る")
+
+    # 入れ替え: 3.0 で使っている副のブロック a と、使っていない副のブロック b
+    a = None
+    for y in range(0, 20):
+        for x in range(0, 24):
+            v = map_cell_block(z, x, y)
+            if v >= 640:
+                a = v
+                break
+        if a is not None:
+            break
+    check(a is not None, f"394: 3.0 で副のブロックを見つける（{a}）")
+    if a is None:
+        return
+    # b はこのマップで使っていない副のブロック
+    b = next(v for v in range(640 + 0x50, 640 + 0x100) if z.call({"cmd": "blockUsage", "block": v})["here"] == 0)
+    map_before = z.call({"cmd": "canvasPng", "target": "map"})["png"]
+    sb = snap(z)
+    ta, tb = blocks_of(sb, a), blocks_of(sb, b)
+    key(z, "x")
+    check(be_state(z)["edit"]["swap"]["active"], "394: X で入れ替えがオンになる")
+    select_in_list(z, a)
+    check(be_state(z)["edit"]["swap"]["first"] == a, "394: 1 つ目を押す")
+    select_in_list(z, b)
+    d = []
+    for _ in range(50):
+        d = dialogs(z)
+        if d:
+            break
+        time.sleep(0.1)
+    save_shot(z, shots, "block_swap_confirm.png", BE)
+    be(z, {"cmd": "dialog", "press": "yes"})
+    text = d[0].get("text", "") if d else ""
+    check("マップは" in text and "枚" in text, f"394: 入れ替えの前に、使うマップの数を出して聞く（{text[:80]}）")
+    time.sleep(1.0)
+    sa = snap(z)
+    check(blocks_of(sa, a) == tb and blocks_of(sa, b) == ta, "394: 2 つのブロックが入れ替わる")
+    map_after = z.call({"cmd": "canvasPng", "target": "map"})["png"]
+    check(map_after == map_before, "394: 番号も付け替えるとマップの見た目は同じ")
+    check(be_state(z)["status"].find("入れ替えました") >= 0, "394: 窓の下に結果が出る")
+    be(z, {"cmd": "undo"})
+    time.sleep(0.5)
+    su = snap(z)
+    check(blocks_of(su, a) == ta and blocks_of(su, b) == tb, "394: 入れ替えは 1 回の Ctrl+Z でタイルセットが戻る")
+    check(z.call({"cmd": "canvasPng", "target": "map"})["png"] == map_before, "394: 取り消してもマップの見た目は同じ")
+    # 付け替えない入れ替え
+    select_in_list(z, a)
+    select_in_list(z, b)
+    press_if_open(z, "no", tries=50)
+    time.sleep(1.0)
+    check(z.call({"cmd": "canvasPng", "target": "map"})["png"] != map_before, "394: 付け替えないとマップの見た目が変わる")
+    be(z, {"cmd": "undo"})
+    time.sleep(0.5)
+    # 付け替えて出力すると、3.0 の配置の番号が b になっている
+    select_in_list(z, a)
+    select_in_list(z, b)
+    press_if_open(z, "yes", tries=50)
+    time.sleep(1.0)
+    key(z, "x")
+    check(not be_state(z)["edit"]["swap"]["active"], "394: もう一度 X で入れ替えが終わる")
+    res = z.call({"cmd": "export", "dir": str(work)})
+    written = res.get("written", []) if isinstance(res, dict) else []
+    check(len(written) > 1, f"394: 付け替えたマップが出力される（{len(written)} 件）")
+    p30 = work / "maps" / "03" / "00.json"
+    if p30.exists():
+        import json as _json
+        layout = base64.b64decode(_json.loads(p30.read_text(encoding="utf-8"))["Layout"])
+        ids = {(layout[i] | (layout[i + 1] << 8)) & 0x3FF for i in range(0, len(layout), 2)}
+        check(b in ids and a not in ids, f"394: 出力した 3.0 の配置で {a:#x} が {b:#x} に付け替わっている")
+    else:
+        check(False, f"394: 3.0 の JSON が出力される（{p30}）")
+
+
+def wait_stats(z: Zigzagu, what: str, cond=lambda st: True) -> dict:
+    """ブロックエディタの使用回数を数え終えるまで待つ（`stats.counted` と `cond`）。"""
+    st: dict = {}
+    for _ in range(100):
+        st = be_state(z)["stats"]
+        if st["counted"] and cond(st):
+            return st
+        time.sleep(0.1)
+    check(False, f"395: {what}（数え終わらない: {st.get('counted')}）")
+    return st
+
+
+def unused_secondary_tiles(snap_: dict) -> list[int]:
+    """写しの主と副のブロックから数えた、副のタイル（0x280〜）の未使用。"""
+    used = set()
+    for side in ("primary", "secondary"):
+        raw = base64.b64decode(snap_[side]["blocks"])
+        for i in range(0, len(raw) - 1, 2):
+            used.add((raw[i] | (raw[i + 1] << 8)) & 0x3FF)
+    count = len(base64.b64decode(snap_["secondary"]["tiles"])) // 32
+    return [t for t in range(0x280, 0x280 + min(count, 0x180)) if t not in used]
+
+
+def check_395(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> None:
+    # 使用回数
+    be(z, {"cmd": "action", "id": "view.usage"})
+    st = wait_stats(z, "使用回数を数える")
+    counts = st.get("counts") or []
+    check(st["flags"]["usage"] and len(counts) > 640, f"395: 表示 > 使用回数で数える（{len(counts)} 個）")
+    # 3.0 に置いてあるブロックも比べる
+    samples = sorted({0, 1, 2, 3, 0x10, 640, 641, 642, 650, map_cell_block(z, 5, 5), map_cell_block(z, 10, 8)})
+    bad = []
+    for b in samples:
+        if b >= len(counts) or counts[b] < 0:
+            continue
+        main = z.call({"cmd": "blockUsage", "block": b})["count"]
+        if main != counts[b]:
+            bad.append((b, counts[b], main))
+    check(not bad, f"395: 使用回数がマップタブの使用回数と同じ（違い {bad}）")
+    save_shot(z, shots, "block_usage.png", BE)
+
+    # 未使用のブロック
+    be(z, {"cmd": "action", "id": "view.unusedBlocks"})
+    st = wait_stats(z, "未使用のブロック", lambda s: s["unusedBlocks"] is not None)
+    zero = [i for i, n in enumerate(st["counts"]) if n == 0]
+    check(st["unusedBlocks"] == zero and len(zero) > 0, f"395: 未使用のブロックの印が使用回数 0 と合う（{len(zero)} 個）")
+    if zero:
+        check(z.call({"cmd": "blockUsage", "block": zero[-1]})["count"] == 0, f"395: 印の付いたブロック {zero[-1]:#x} はマップタブでも 0 回")
+
+    # 未使用のタイル（副のタイルは主と副のブロックだけで決まるので、写しから数えた値と比べる）
+    be(z, {"cmd": "action", "id": "view.unusedTiles"})
+    st = wait_stats(z, "未使用のタイル", lambda s: s["unusedTiles"] is not None)
+    s0 = snap(z)
+    expect = unused_secondary_tiles(s0)
+    got = [t for t in st["unusedTiles"] if t >= 0x280]
+    check(got == expect, f"395: 副の未使用のタイルがブロックから数えた値と合う（{len(got)} / {len(expect)} 枚）")
+    save_shot(z, shots, "block_unused.png", BE)
+    # 副のブロックを 1 つ切り取ると数え直す
+    # 副のタイルを 1 つだけのブロックが使っているもの（切り取ると未使用のタイルが増える）
+    users: dict[int, set[int]] = {}
+    for side, base in (("primary", 0), ("secondary", 640)):
+        n = len(base64.b64decode(s0[side]["blocks"])) // 16
+        for blk in range(base, base + n):
+            for r in blocks_of(s0, blk):
+                users.setdefault(r & 0x3FF, set()).add(blk)
+    target = next((next(iter(u)) for t, u in sorted(users.items()) if t >= 0x280 and len(u) == 1 and next(iter(u)) >= 641), None)
+    if target is not None:
+        select_in_list(z, target)
+        be(z, {"cmd": "action", "id": "edit.cut"})
+        time.sleep(0.3)
+        s1 = snap(z)
+        expect1 = unused_secondary_tiles(s1)
+        st = wait_stats(z, "切り取りの後に数え直す", lambda s: [t for t in (s["unusedTiles"] or []) if t >= 0x280] == expect1)
+        got1 = [t for t in (st["unusedTiles"] or []) if t >= 0x280]
+        check(got1 == expect1 and len(got1) > len(got), f"395: ブロック {target:#x} を切り取ると未使用のタイルを数え直す（{len(got)} → {len(got1)} 枚）")
+        be(z, {"cmd": "undo"})
+        time.sleep(0.3)
+    for id_ in ("view.usage", "view.unusedBlocks", "view.unusedTiles"):
+        be(z, {"cmd": "action", "id": id_})
+    st = be_state(z)["stats"]
+    check(not any(st["flags"].values()) and not st["counted"] and st["counts"] is None, "395: 3 つともオフにすると結果を捨てる")
+
+    # ブロック一覧の画像の書き出し（副の 0x000〜0x00F を幅 4 で）
+    be(z, {"cmd": "action", "id": "tiles.exportBlocks"})
+    time.sleep(0.3)
+    be(z, {"cmd": "setField", "id": "be.exp.tileset", "value": 1})
+    be(z, {"cmd": "setField", "id": "be.exp.from", "value": "000"})
+    be(z, {"cmd": "setField", "id": "be.exp.to", "value": "00F"})
+    be(z, {"cmd": "setField", "id": "be.exp.columns", "value": "4"})
+    be(z, {"cmd": "setField", "id": "be.exp.upper", "value": False})
+    be(z, {"cmd": "setField", "id": "be.exp.background", "value": 1})
+    info = be(z, {"cmd": "getField", "id": "be.exp.info"})["value"]
+    check("16 個" in info and "64×64" in info, f"395: プレビューの大きさが範囲と幅に合う（{info}）")
+    save_shot(z, shots, "block_export.png", BE)
+    work.mkdir(parents=True, exist_ok=True)
+    out = work / "blocks395.png"
+    if out.exists():
+        out.unlink()
+    be(z, {"cmd": "queuePath", "path": str(out)})
+    be(z, {"cmd": "dialog", "press": "save"})
+    for _ in range(50):
+        if out.exists() and out.stat().st_size > 0:
+            break
+        time.sleep(0.1)
+    ok = out.exists() and out.read_bytes()[:4] == b"\x89PNG"
+    w, h = struct.unpack(">II", out.read_bytes()[16:24]) if ok else (0, 0)
+    check(ok and (w, h) == (64, 64), f"395: PNG に書き出す（{w}×{h}）")
+    check("書き出しました" in be_state(z)["status"], "395: 窓の下に書き出した場所が出る")
 
 
 def main() -> int:
@@ -208,6 +445,7 @@ def main() -> int:
     p.add_argument("--exe")
     p.add_argument("--shots")
     p.add_argument("--only", nargs="*")
+    p.add_argument("--work", help="出力の作業フォルダ（省略で一時フォルダ）")
     a = p.parse_args()
     shots = pathlib.Path(a.shots) if a.shots else None
     if shots:
@@ -224,6 +462,12 @@ def main() -> int:
         open_window(z, "tools.blockEditor", BE)
         if want("393"):
             check_393(z, shots)
+        if want("394"):
+            work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-swap-"))
+            check_394(z, shots, work)
+        if want("395"):
+            work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-stats-"))
+            check_395(z, shots, work)
 
     print()
     print("失敗なし" if not failures else f"失敗 {len(failures)} 件")

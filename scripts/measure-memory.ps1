@@ -22,6 +22,7 @@
 #     pointers   … ポインタ一覧を開き、3.0 のヘッダーの参照元を探して閉じた後
 #     triple     … 3.0 の主タイルセットのブロック 0x010 を 3 層にした（メモリの上だけ。出力しない）3.0 を表示した状態
 #     autopen    … 自動ペンで 3.0 に 1 回ドラッグして描いた後（メモリの上だけ。出力しない）
+# - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
 #   （下限の比較用。-BrowserArgs をそのアプリの WebView2 に渡す）。
 param(
@@ -36,6 +37,7 @@ param(
   [string]$Actions = "",
   [int]$Zoom = 0,
   [string]$Stages = "",
+  [switch]$BlockStats,
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -214,6 +216,16 @@ try {
         Start-Sleep -Milliseconds 100
       }
       $results += Get-Snapshot "別ウィンドウ（ブロックエディタ）を開いた後" $proc.Id
+      if ($BlockStats) {
+        # ブロックエディタの 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後
+        foreach ($id in @("view.usage", "view.unusedBlocks", "view.unusedTiles")) { Call @{ cmd = "action"; id = $id; window = "block-editor" } | Out-Null }
+        for ($i = 0; $i -lt 300; $i++) {
+          $st = Call @{ cmd = "state"; window = "block-editor" }
+          if ($st.stats.counted -and $null -ne $st.stats.unusedTiles) { break }
+          Start-Sleep -Milliseconds 100
+        }
+        $results += Get-Snapshot "ブロックエディタで使用回数と未使用の印を出した後" $proc.Id
+      }
       Call @{ cmd = "close"; window = "block-editor" } | Out-Null
       $results += Get-Snapshot "別ウィンドウを閉じた後" $proc.Id
       if ($Project) {
