@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   CfruProject,
   CommandBus,
+  CommandGroup,
+  AddEventCommand,
+  DuplicateEventCommand,
   EventLabelProject,
   EventLabelStore,
   MapLabelsJson,
@@ -209,6 +212,29 @@ describe("ラベルのコマンドと、イベントの付け直し", () => {
     expect(labels.store.get(id.bank, id.map).person.filter(Boolean)).toHaveLength(0);
     bus.redo();
     expect(labels.store.label(id.bank, id.map, "person", before.person + 1)?.label).toBe(`New_person${before.person + 1}`);
+  });
+
+  it("1 回の操作で 2 つ足すと、足した順に末尾の番号へラベルを付ける（#399）", async () => {
+    const { bus, labels, id, counts, added } = await setup();
+    const n = counts().person;
+    bus.execute(CommandGroup.of([new AddEventCommand({ ...id, kind: "person" }), new AddEventCommand({ ...id, kind: "person" })]));
+    expect(added).toEqual([`person${n}`, `person${n + 1}`]);
+    bus.undo();
+    expect(labels.store.get(id.bank, id.map).person.filter(Boolean)).toHaveLength(0);
+  });
+
+  it("複製は元のラベルを写し、ひな形は付けない。取り消すとラベルも消える（#399）", async () => {
+    const { bus, labels, id, counts, added } = await setup();
+    const n = counts().person;
+    bus.execute(new SetEventLabelCommand({ ...id, target: "person", index: 0, label: "Shared", kind: "trainer" }));
+    bus.execute(CommandGroup.of([new DuplicateEventCommand({ ...id, kind: "person", index: 0, x: 1, y: 1 }), new DuplicateEventCommand({ ...id, kind: "person", index: 0, x: 2, y: 2 })]));
+    expect(added).toEqual([]);
+    expect(labels.store.label(id.bank, id.map, "person", n)).toEqual({ label: "Shared", kind: "trainer" });
+    expect(labels.store.label(id.bank, id.map, "person", n + 1)).toEqual({ label: "Shared", kind: "trainer" });
+    bus.undo();
+    expect(labels.store.label(id.bank, id.map, "person", n)).toBeNull();
+    bus.redo();
+    expect(labels.store.label(id.bank, id.map, "person", n + 1)?.label).toBe("Shared");
   });
 
   it("座標で付け直すコマンド", async () => {

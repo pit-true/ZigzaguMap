@@ -40,6 +40,9 @@ const COUNT_KEYS: readonly [string, EventLabelTarget][] = [
   ["traps", "tile"],
 ];
 
+/** 番号を付け直すコマンド。 */
+const TRACKED = new Set(["removeEvent", "setEventCounts", "addEvent", "duplicateEvent"]);
+
 function mapKey(id: MapId): string {
   return `${id.bank}.${id.map}`;
 }
@@ -98,10 +101,19 @@ export class EventLabelProject {
       hooks.undone?.(command);
       return;
     }
-    const records = flattenCommandRecords(command).filter((r) => r.name === "removeEvent" || r.name === "setEventCounts" || r.name === "addEvent");
+    const records = flattenCommandRecords(command).filter((r) => TRACKED.has(r.name));
     if (records.length === 0) return;
     this.before.set(command, { labels: this.store.snapshot(), counts: new Map(this.counts) });
     const added: AddedEvents[] = [];
+    // 1 回の操作でいくつも足したとき（複製。#399）は、足した順に末尾の番号を割り当てる
+    const adds = new Map<string, number>();
+    for (const r of records) {
+      if (r.name !== "addEvent" && r.name !== "duplicateEvent") continue;
+      const a = r.args as Record<string, unknown>;
+      const k = `${String(a["bank"])}.${String(a["map"])}.${String(a["kind"])}`;
+      adds.set(k, (adds.get(k) ?? 0) + 1);
+    }
+    const addedSoFar = new Map<string, number>();
     for (const r of records) {
       const a = r.args as Record<string, unknown>;
       const id = { bank: Number(a["bank"]), map: Number(a["map"]) };
@@ -119,7 +131,17 @@ export class EventLabelProject {
         }
       } else {
         const target = TARGET_OF_KIND[String(a["kind"])];
-        if (target && now) added.push({ map: id, target, from: now[target] - 1, to: now[target] });
+        const k = `${id.bank}.${id.map}.${String(a["kind"])}`;
+        const n = addedSoFar.get(k) ?? 0;
+        addedSoFar.set(k, n + 1);
+        if (target && now) {
+          const index = now[target] - (adds.get(k) ?? 1) + n;
+          if (r.name === "duplicateEvent") {
+            // 複製は元のイベントと同じラベル（同じスクリプト）を使う。ラベルが無ければ付けない（元と同じポインタのまま）
+            const source = this.store.label(id.bank, id.map, target, Number(a["index"]));
+            if (source) this.store.set(id.bank, id.map, target, index, { ...source });
+          } else added.push({ map: id, target, from: index, to: index + 1 });
+        }
       }
       if (now) this.counts.set(mapKey(id), now);
     }
