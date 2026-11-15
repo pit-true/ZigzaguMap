@@ -142,3 +142,15 @@
   margin-left: 4px;
   font-size: 11px;
 }
+
+/* 人の数の上限の警告（Phase5 #400）。イベント数の設定の欄の下とステータスバー */
+.event-limit-warn {
+  margin: 4px 0 0;
+  color: var(--error-text);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.status-warn.event-limit {
+  color: var(--error-text);
+}
