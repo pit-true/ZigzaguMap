@@ -17,6 +17,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import AppError, Zigzagu  # noqa: E402
@@ -132,6 +133,11 @@ def main() -> int:
             check("複製しました" in status(z), f"複製をステータスバーに出す（{status(z)}）")
             shot(z, shots, "tree_duplicate.png")
             z.call({"cmd": "undo"})
+            # 一覧の作り直しは取り消しの後に非同期で行うので、少し待つ
+            for _ in range(30):
+                if item(z, *target) is None:
+                    break
+                time.sleep(0.1)
             check(item(z, *target) is None, "1 回の「元に戻す」で写したマップが消える")
     print(f"\n失敗 {len(failures)} 件" if failures else "\nすべて OK")
     return 1 if failures else 0
