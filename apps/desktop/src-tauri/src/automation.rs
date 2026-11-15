@@ -22,6 +22,8 @@ use crate::capture;
 
 /// 画面側の返事を待つ時間。
 const REPLY_TIMEOUT: Duration = Duration::from_secs(120);
+/// `exit` で個人設定の書き込みを待つ長さ。
+const EXIT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
 /// 受け付ける本文の大きさの上限（Content-Length が大きすぎると確保に失敗して落ちるため）。
 const MAX_BODY: usize = 64 * 1024 * 1024;
 
@@ -131,6 +133,10 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
             respond(&mut stream, &reply.to_string())
         }
         "exit" => {
+            // 待っている個人設定の書き込み（300ms まとめて書く）を先に済ませる。ふつうに閉じたとき（× とファイル > 終了）と同じ（#406）
+            if state.is_ready("main") {
+                forward(app, state, "main", json!({"cmd": "settings.flush"}), EXIT_FLUSH_TIMEOUT);
+            }
             respond(&mut stream, &json!({"ok": true}).to_string())?;
             app.exit(0);
             Ok(())
@@ -140,22 +146,28 @@ fn handle(mut stream: TcpStream, app: &AppHandle, state: &Automation) -> std::io
             respond(&mut stream, &json!({"ok": false, "error": error}).to_string())
         }
         _ => {
-            let id = state.next_id.fetch_add(1, Ordering::Relaxed);
-            let (tx, rx) = channel();
-            if let Ok(mut p) = state.pending.lock() {
-                p.insert(id, tx);
-            }
-            let event = if label == "main" { "automation-request" } else { "automation-request-window" };
-            let _ = app.emit_to(label.as_str(), event, json!({"id": id, "request": request}));
-            let reply = rx
-                .recv_timeout(REPLY_TIMEOUT)
-                .unwrap_or_else(|_| json!({"ok": false, "error": "画面からの返事がありません"}).to_string());
-            if let Ok(mut p) = state.pending.lock() {
-                p.remove(&id);
-            }
+            let reply = forward(app, state, &label, request, REPLY_TIMEOUT);
             respond(&mut stream, &reply)
         }
     }
+}
+
+/// 命令を画面へ渡して返事を待つ（返事が無ければエラーの JSON）。
+fn forward(app: &AppHandle, state: &Automation, label: &str, request: Value, timeout: Duration) -> String {
+    let id = state.next_id.fetch_add(1, Ordering::Relaxed);
+    let (tx, rx) = channel();
+    if let Ok(mut p) = state.pending.lock() {
+        p.insert(id, tx);
+    }
+    let event = if label == "main" { "automation-request" } else { "automation-request-window" };
+    let _ = app.emit_to(label, event, json!({"id": id, "request": request}));
+    let reply = rx
+        .recv_timeout(timeout)
+        .unwrap_or_else(|_| json!({"ok": false, "error": "画面からの返事がありません"}).to_string());
+    if let Ok(mut p) = state.pending.lock() {
+        p.remove(&id);
+    }
+    reply
 }
 
 /// 開いているウィンドウの一覧（ラベル、題名、表示中か、自動操作を受け付けるか）。
