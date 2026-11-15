@@ -30,6 +30,8 @@ export class MapTab {
   readonly bag = new MixingBag();
   /** スタンプの一覧（Phase3 #239）。 */
   readonly stamps: StampPanel;
+  /** 右の欄。 */
+  private readonly side: HTMLElement;
 
   constructor(private readonly state: EditorState) {
     this.element = document.createElement("div");
@@ -62,6 +64,7 @@ export class MapTab {
 
     const side = document.createElement("div");
     side.className = "map-side";
+    this.side = side;
     const borderBox = document.createElement("div");
     borderBox.className = "border-box";
     const borderLabel = document.createElement("div");
@@ -84,6 +87,11 @@ export class MapTab {
     state.on("view", () => this.configure());
     this.configure();
     this.showSelection();
+  }
+
+  /** 右の欄のいちばん上に部品を足す（道具の帯。Phase5 #388）。 */
+  prependSide(element: HTMLElement): void {
+    this.side.prepend(element);
   }
 
   /** 右の欄のブロックパレットの上に部品を足す（使用回数など。#235）。 */

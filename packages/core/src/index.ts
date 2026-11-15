@@ -23,6 +23,8 @@ export { MapLayoutReader } from "./map/MapLayoutReader.js";
 export { TilesetReader } from "./map/TilesetReader.js";
 export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
+export { floodRegion, matchingCells, patternCells, type FillMatch, type FillPattern, type FillPoint, type FillSource, type PatternCell } from "./map/fill.js";
+export { LineLock, type LineAxis } from "./map/lineLock.js";
 export { TilesetTable } from "./map/TilesetTable.js";
 export { LayoutSharing } from "./map/LayoutSharing.js";
 export { BlockUsage, layoutOf, type UsageLayout } from "./map/BlockUsage.js";
@@ -98,6 +100,7 @@ export * from "./wild/layout.js";
 export type { WildArea, WildEncounters, WildHeader, WildInfo, WildSlot } from "./wild/types.js";
 export { WildHeaderCodec, WildInfoCodec, WildSlotCodec, wildHeaderCodec, wildInfoCodec, wildSlotCodec } from "./wild/WildCodec.js";
 export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
+export { FISHING_SLOT_RATES, FISHING_SLOT_RODS, LAND_SLOT_RATES, WATER_SLOT_RATES, levelDistribution, rateGroup, searchSpecies, slotRate, speciesTotals, type WildSearchRow } from "./wild/WildRates.js";
 
 // マップ名
 export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
@@ -297,7 +300,9 @@ export { SetRawHeaderCommand, type SetRawHeaderArgs } from "./command/commands/h
 export { SetMapNameCommand, type SetMapNameArgs } from "./command/commands/header/SetMapNameCommand.js";
 export { MAP_SIZE_LIMIT, checkMapSize, maxMapHeight, resizeGrid } from "./command/commands/layout/mapSize.js";
 export { ResizeMapCommand, type ResizeMapArgs } from "./command/commands/layout/ResizeMapCommand.js";
-export { MIN_EDGE_RESIZE, ResizeMapEdgeCommand, edgeShift, type ResizeMapEdgeArgs } from "./command/commands/layout/ResizeMapEdgeCommand.js";
+export { MIN_EDGE_RESIZE, ResizeMapEdgeCommand, edgeShift, type EdgeFill, type ResizeMapEdgeArgs } from "./command/commands/layout/ResizeMapEdgeCommand.js";
+export { ShiftMapCommand, shiftGrid, type ShiftMapArgs } from "./command/commands/layout/ShiftMapCommand.js";
+export { boxResizeCommands, boxSize, type BoxResize } from "./command/commands/layout/resizeBox.js";
 export { SetBorderCommand, type SetBorderArgs } from "./command/commands/layout/SetBorderCommand.js";
 export { SetTilesetsCommand, type SetTilesetsArgs } from "./command/commands/layout/SetTilesetsCommand.js";
 export { SetRawFooterCommand, type SetRawFooterArgs } from "./command/commands/layout/SetRawFooterCommand.js";

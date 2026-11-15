@@ -40,6 +40,8 @@ export class MapExtras {
   readonly edgeHandles: EdgeHandles;
   /** 辺のつまみのドラッグでのリサイズ（#231）。 */
   readonly edgeResize: EdgeResize;
+  /** 辺のつまみの右クリックのメニュー（Phase5 #390 の窓の入口を足す）。 */
+  readonly edgeMenu: EdgeMenu;
   /** ブロックの使用回数の索引（#235）。 */
   readonly blockUsage: BlockUsageService;
   /** 接続している全マップ（か今のマップ）の画像（#246）。 */
@@ -80,7 +82,8 @@ export class MapExtras {
     this.connectionHandles = new ConnectionHandles(mapTab.view, state, this.neighbors, layers[0]!);
     // 主マップの辺のつまみ（右クリックで接続のメニュー。#230）
     this.edgeResize = new EdgeResize(state);
-    this.edgeHandles = new EdgeHandles(mapTab.view, state, new EdgeMenu(state), this.edgeResize);
+    this.edgeMenu = new EdgeMenu(state);
+    this.edgeHandles = new EdgeHandles(mapTab.view, state, this.edgeMenu, this.edgeResize);
     // ブロックの使用回数・移動許可の自動選択・使用の印（#235）
     this.blockUsage = new BlockUsageService(state);
     // ミキシングバッグで描くときの移動許可（#236）

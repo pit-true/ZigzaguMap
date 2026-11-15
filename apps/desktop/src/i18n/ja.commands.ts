@@ -90,6 +90,7 @@ export const jaCommands = {
     setWildSlot: "出現ポケモンの変更",
     shiftConnection: "コネクションのずれの変更",
     shiftEventLabelPositions: "ラベルの照合用の座標のずらし",
+    shiftMap: "マップシフト",
     swapBlocks: "ブロックの入れ替え",
     syncClones: "クローンを合わせる",
   } as Readonly<Record<string, string>>,

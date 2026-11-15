@@ -21,8 +21,8 @@ function comboItems(names: Readonly<Record<number, string>>): string[] {
  */
 const EXTRA_BACKGROUNDS: Readonly<Record<number, string>> = {
   0x10: "10-通常と同じ（改造後）",
-  0x30: "30-トリプルレイヤー（次のブロックの下層を3枚目に使う）",
-  0x40: "40-下層を一番下、上層を主人公より手前に置く",
+  0x30: "30-トリプルレイヤー（次のブロックの下のレイヤーを3枚目のレイヤーに使う）",
+  0x40: "40-下のレイヤーを一番下、上のレイヤーを主人公より手前に置く",
 };
 
 export const jaBlockEditor = {
@@ -111,15 +111,15 @@ export const jaBlockEditor = {
   backgrounds: comboItems({ ...hexRecord(ini.Hintergrund_FRLG), ...EXTRA_BACKGROUNDS }),
 
   /** トリプルレイヤー（ZigzaguMap だけの文言）。 */
-  tripleHeading: (next: number) => `3層目（ブロック ${hex(next, 3)} の下層）`,
+  tripleHeading: (next: number) => `3枚目のレイヤー（ブロック ${hex(next, 3)} の下のレイヤー）`,
   tripleNoNext: "次のブロックが無いため、トリプルレイヤーに設定できません。",
-  tripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3 層目に使われます。属性と上層を消します。`,
+  tripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は3枚目のレイヤーに使われます。属性と上のレイヤーを消します。`,
   undrawnLayer: "実機ではこのマスは描かれません",
 
   /** ショートカット一覧（ヘルプ）。 */
   shortcutTileKeys: "左クリック、右クリック",
-  shortcutTile: "選んでいるタイルを置く・そのマスのタイルを拾う（3 層のときは「3層目」の 4 マスも。書く先はブロック N+1 の下層）",
-  shortcutTileWhere: "ブロックエディタの 8 マス・3層目の 4 マス",
+  shortcutTile: "選んでいるタイルを置く・そのマスのタイルを拾う（トリプルレイヤーのときは「3枚目のレイヤー」の 4 マスも。書く先はブロック N+1 の下のレイヤー）",
+  shortcutTileWhere: "ブロックエディタの 8 マス・3枚目のレイヤーの 4 マス",
 } as const;
 
 /** 16 進（大文字、桁そろえ）。 */
