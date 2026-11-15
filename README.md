@@ -1456,7 +1456,8 @@ AdvanceMap の 3 つのメニューと「編集」の後ろに「表示(V)」を
 
 ### ファイルの変化の監視（#404）
 
-プロジェクトフォルダを開いているとき、メインのウィンドウに戻るたびに、次のファイルの更新日時と大きさを開いたときと比べます。`maps\BB\MM.json`・`maps\BB\scripts_MM.json`・`maps	ilesets\` の下・`maps\project.json`・`mapsegionmap.json`・`maps	rainers.json`・`maps\scripts.json`・`zigzagumap.json`。
+プロジェクトフォルダを開いているとき、メインのウィンドウに戻るたびに、次のファイルの更新日時と大きさを開いたときと比べます。`maps\BB\MM.json`・`maps\BB\scripts_MM.json`・`maps	ilesets\` の下・`maps\project.json`・`maps\regionmap.json`・`maps\trainers.json`・`maps\scripts.json`・`zigzagumap.json`。
+egionmap.json`・`maps	rainers.json`・`maps\scripts.json`・`zigzagumap.json`。
 
 - 外（Bochi・git・テキストエディタなど）で変わっていれば、変わったファイルの一覧（変更・追加・削除）を出して、読み直すか聞きます。
 - 未出力の変更があるマップがあれば、読み直すとその変更を捨てることを書いて、もう一度聞きます。
