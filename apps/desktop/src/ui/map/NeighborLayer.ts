@@ -188,8 +188,8 @@ function drawClones(
   drawEventsOn(c, events, size, null, sprites, true);
 }
 
-/** 帯の上に移動許可を重ねる（MovementLayer と同じ色と文字）。 */
-function drawMovements(
+/** 帯の上に移動許可を重ねる（MovementLayer と同じ色と文字。画像の書き出し #403 でも使う）。 */
+export function drawMovements(
   c: CanvasRenderingContext2D,
   grid: { width: number; cells: Uint16Array },
   band: { x: number; y: number; width: number; height: number },

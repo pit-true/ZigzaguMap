@@ -6,6 +6,7 @@ import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
 import type { MapTree } from "../ui/MapTree";
 import { ThumbnailService } from "./ThumbnailService";
+import { Timelapse } from "./Timelapse";
 import { MapZoomControls } from "../ui/map/MapZoomControls";
 import { togglePatch, type ZoomTab } from "./mapZoom";
 import type { MovementTab } from "../ui/tabs/MovementTab";
@@ -67,6 +68,8 @@ export class ViewFeatures {
   readonly thumbnails: ThumbnailService;
   /** マップの拡大（#316。タブごと）。 */
   readonly zoom: Record<ZoomTab, MapZoomControls>;
+  /** タイムラプスの GIF（Phase5 #403）。 */
+  readonly timelapse: Timelapse;
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
@@ -81,6 +84,13 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
+    // マップの画像の書き出し（Phase5 #403。ファイル > マップの画像を書き出す...）
+    this.timelapse = new Timelapse(state, extras.composite);
+    actions.register("image.export", async () => {
+      if (!state.map) return;
+      const { MapExportDialog } = await import("../ui/export/MapExportDialog");
+      new MapExportDialog({ state, files: parts.files, composite: extras.composite, timelapse: this.timelapse });
+    });
     // 履歴の窓（Phase5 #402。表示 > 履歴の窓、Ctrl+E）
     actions.registerCheck("view.history", () => this.historyCreated?.isOpen ?? false);
     actions.register("view.history", async () => {

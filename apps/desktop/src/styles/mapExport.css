@@ -1,0 +1,39 @@
+/* マップの画像の書き出しの窓（Phase5 #403）。 */
+.map-export-main {
+  display: flex;
+  gap: 8px;
+}
+
+.map-export-dialog fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 6px;
+}
+
+.map-export-dialog label {
+  white-space: nowrap;
+}
+
+.map-export-dialog input[type="number"] {
+  width: 64px;
+  margin-left: 4px;
+}
+
+.map-export-preview {
+  width: 360px;
+  height: 240px;
+  background: var(--face);
+  border: 1px solid var(--field-border);
+  image-rendering: pixelated;
+}
+
+.map-export-size,
+.map-export-note {
+  color: var(--gray-text);
+  max-width: 360px;
+}
+
+.map-export-dialog button {
+  white-space: nowrap;
+}
