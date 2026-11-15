@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import base64
 import pathlib
+import shutil
 import sys
 import tempfile
 import time
@@ -696,12 +697,16 @@ def main() -> None:
             if a.only and name not in a.only:
                 continue
             print(f"== {name}")
-            # 確かめることごとに起動し直す（開き直しを確かめるため。個人設定も別の一時フォルダ）
-            with tempfile.TemporaryDirectory(prefix="zzm-pen-", ignore_cleanup_errors=True) as profile:
+            # 確かめることごとに起動し直す（開き直しを確かめるため。個人設定も別の一時フォルダ）。
+            # 一時フォルダは WebView2 がしばらく掴むことがあり、TemporaryDirectory だと消せずに例外になるので、消せない分は残す
+            profile = tempfile.mkdtemp(prefix="zzm-pen-")
+            try:
                 with Zigzagu(a.exe, profile=profile, extra=["--mute-audio"]) as z:
                     z.call({"cmd": "resize", "width": 1280, "height": 900})
                     z.call({"cmd": "open", "rom": a.rom})
                     fn(z, shots, ctx)
+            finally:
+                shutil.rmtree(profile, ignore_errors=True)
     print("失敗: " + str(len(failures)))
     sys.exit(1 if failures else 0)
 
