@@ -202,7 +202,7 @@ try {
             Call @{ cmd = "selectBlock"; block = 0x12B } | Out-Null
             Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(9, 13); to = @(13, 13); steps = 2 } | Out-Null
             Call @{ cmd = "autopen.set"; active = $false } | Out-Null
-            $results += Get-Snapshot "自動ペンを使った後" $proc.Id
+            $results += Get-Snapshot "オートペンを使った後" $proc.Id
           }
           default { throw "知らない場面です: $st" }
         }
