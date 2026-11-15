@@ -201,7 +201,33 @@ async function editHistoryGoTo(app: App, req: AutomationRequest): Promise<unknow
   return { steps: Math.abs(after - before), ...((await editHistoryState(app)) as object) };
 }
 
+/** 最後に `projectWatch.check` で始めた調べ（自動操作用）。 */
+let watchRun: Promise<unknown> | null = null;
+let watchResult: unknown = null;
+
+/**
+ * `projectWatch.check`: ファイルの変化を調べる（Phase5 #404。メインのウィンドウに戻ったときと同じ）。聞くダイアログが出たら、
+ * 待たずに返す（`dialog` で答え、`projectWatch.state` で結果を読む）。返事は `projectWatch.state` と同じ。
+ */
+async function projectWatchCheck(app: App): Promise<unknown> {
+  watchResult = null;
+  const run = app.watcher.check().then((r) => (watchResult = r));
+  watchRun = run;
+  const { openDialogs } = await import("../../ui/Dialog");
+  for (let i = 0; i < 400 && watchResult === null && openDialogs.length === 0; i++) await new Promise((r) => setTimeout(r, 25));
+  return projectWatchState(app);
+}
+
+/** `projectWatch.state {wait?}`: 控えているファイルの数 `watched`、最後の調べの結果 `result`（`changes`・`reloaded`。途中なら null）。`wait: true` なら終わるまで待つ。 */
+async function projectWatchState(app: App, req: AutomationRequest = {}): Promise<unknown> {
+  await app.watcher.settle();
+  if (req["wait"] === true && watchRun) await watchRun;
+  return { watched: app.watcher.watchedCount, result: watchResult };
+}
+
 export const viewToolCommands: CommandTable = {
+  "projectWatch.check": projectWatchCheck,
+  "projectWatch.state": projectWatchState,
   "editHistory.state": editHistoryState,
   "editHistory.goTo": editHistoryGoTo,
   "zoom.state": zoomState,

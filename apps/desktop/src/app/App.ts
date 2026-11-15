@@ -14,6 +14,7 @@ import { MenuBar } from "../ui/MenuBar";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
 import { showMapTreeMenu } from "./MapTreeMenu";
+import { ProjectWatcher } from "./ProjectWatcher";
 import { EventLimitNotice } from "../ui/event/EventLimits";
 import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
@@ -119,6 +120,8 @@ export class App implements ActionTarget {
   readonly newMaps: NewMapController;
   /** 開こうとして読み込めなかったマップ（`B.M`。一覧の印。Phase5 #401。ROM を開き直すと空にする）。 */
   readonly loadFailures = new Set<string>();
+  /** ファイルの変化の監視（Phase5 #404。メインのウィンドウに戻ったときに調べる）。 */
+  readonly watcher: ProjectWatcher;
   /** 自動操作で起動したか（PC 全体に影響する操作をしない、ウィンドウの位置を覚えない）。 */
   automation = false;
   /** 個人設定の置き場所（通常の場所なら null）。 */
@@ -147,6 +150,11 @@ export class App implements ActionTarget {
     state.on("session", () => this.scripts.attach(state.session));
     state.on("session", () => this.loadFailures.clear());
     this.usage = new UsageService(this);
+    this.watcher = new ProjectWatcher({
+      state,
+      reopen: (rom, project) => this.opener.openSession(rom, project, { reload: true, confirmed: true }),
+      openMap: (id) => this.openMap(id),
+    });
     this.trainers = new TrainerService(this);
     this.events = new EventActions(this);
     this.system = new SystemSettings(state, () => this.automation);
@@ -307,7 +315,11 @@ export class App implements ActionTarget {
       prefetch?.args ?? invoke<StartupArgs>("startup_args"),
       this.worldMap.start(),
       // 外のエディタで .s を書き換えたかもしれないので、前面に戻ったらラベルの一覧を読み直す
-      getCurrentWindow().listen("tauri://focus", () => this.scripts.files.forget()),
+      // 外で maps\ などを書き換えたかもしれないので、読み直すか聞く（Phase5 #404）
+      getCurrentWindow().listen("tauri://focus", () => {
+        this.scripts.files.forget();
+        this.watcher.onFocus();
+      }),
       getCurrentWebview().onDragDropEvent((event) => {
         const p = event.payload;
         this.root.classList.toggle("dragging", p.type === "enter" || p.type === "over");

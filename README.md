@@ -1454,6 +1454,18 @@ AdvanceMap の 3 つのメニューと「編集」の後ろに「表示(V)」を
 
 自動操作の命令は `editHistory.state`・`editHistory.goTo`（docs/automation.md）。窓を開く・閉じるは `action` の `view.history`。
 
+### ファイルの変化の監視（#404）
+
+プロジェクトフォルダを開いているとき、メインのウィンドウに戻るたびに、次のファイルの更新日時と大きさを開いたときと比べます。`maps\BB\MM.json`・`maps\BB\scripts_MM.json`・`maps	ilesets\` の下・`maps\project.json`・`mapsegionmap.json`・`maps	rainers.json`・`maps\scripts.json`・`zigzagumap.json`。
+
+- 外（Bochi・git・テキストエディタなど）で変わっていれば、変わったファイルの一覧（変更・追加・削除）を出して、読み直すか聞きます。
+- 未出力の変更があるマップがあれば、読み直すとその変更を捨てることを書いて、もう一度聞きます。
+- 読み直すときは、ROM とプロジェクトを開き直し（F5 の再読み込みと同じ読み込み）、開いていたマップを開き直します。元に戻す・やり直すの履歴は空になります。
+- 「いいえ」を選んだ変化は、次からは聞きません。ZigzaguMap が出力で書いたファイルは数えません。
+- 監視の部品（Rust）は足していません。戻ったときに調べるだけです。
+
+自動操作の命令は `projectWatch.check`・`projectWatch.state`（docs/automation.md）。
+
 ## 画面の構成
 
 AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。
