@@ -13,6 +13,7 @@ import { installHistoryMouse } from "./historyMouse";
 import { MenuBar } from "../ui/MenuBar";
 import { Splitter } from "../ui/Splitter";
 import { StatusBar } from "../ui/StatusBar";
+import { EventLimitNotice } from "../ui/event/EventLimits";
 import { TabControl } from "../ui/TabControl";
 import type { ConnectionManager } from "../ui/connection/ConnectionManager";
 import type { OpacityPopup } from "../ui/view/OpacityPopup";
@@ -248,6 +249,8 @@ export class App implements ActionTarget {
       files: this.files,
       isAutomation: () => this.automation,
     });
+    // 人の数の上限の注意（Phase5 #400）
+    this.statusBar.addSlot(new EventLimitNotice(state).element);
     const splitter = new Splitter(this.left, 120, (width) => settings.update({ leftWidth: width }));
     this.splitter = splitter;
     this.hint = document.createElement("p");

@@ -8,7 +8,11 @@ import { formatHex } from "@zigzagumap/core";
 const hex = (v: number, digits: number): string => formatHex(v, digits);
 
 /** マス番号（0〜11）の場所の名前。 */
-const CELL_NAMES = ["下層 左上", "下層 右上", "下層 左下", "下層 右下", "上層 左上", "上層 右上", "上層 左下", "上層 右下", "3層目 左上", "3層目 右上", "3層目 左下", "3層目 右下"];
+const CELL_NAMES = [
+  "下のレイヤー 左上", "下のレイヤー 右上", "下のレイヤー 左下", "下のレイヤー 右下",
+  "上のレイヤー 左上", "上のレイヤー 右上", "上のレイヤー 左下", "上のレイヤー 右下",
+  "3枚目のレイヤー 左上", "3枚目のレイヤー 右上", "3枚目のレイヤー 左下", "3枚目のレイヤー 右下",
+];
 
 function flipName(h: boolean, v: boolean): string {
   if (h && v) return "左右・上下";
@@ -36,7 +40,7 @@ export const jaBlockTools = {
   shortcutPick: "置いてあるタイルを反転とパレットごと矩形で拾う",
   shortcutPaletteKeys: "Ctrl＋左クリック",
   shortcutPalette: "タイルは変えずに、パレットだけを今のパレットにする",
-  shortcutCellsWhere: "ブロックエディタの 8 マス・3層目の 4 マス",
+  shortcutCellsWhere: "ブロックエディタの 8 マス・3枚目のレイヤーの 4 マス",
 } as const;
 
 /** ヘルプのショートカットの一覧に足す行（app/shortcutList.ts が並べる）。 */

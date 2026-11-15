@@ -1,5 +1,6 @@
 import type { BlockSelection } from "../../app/EditorState";
 import type { TilesetView } from "../../app/TilesetView";
+import { shadeTripleChild } from "../tripleLayerShade";
 
 /**
  * ブロックパレットに重ねて描く段（下から順）。
@@ -26,30 +27,20 @@ export interface PaletteGeometry {
 /** 重ねて描くもの。 */
 export type PaletteLayer = (c: CanvasRenderingContext2D, g: PaletteGeometry) => void;
 
-/** 3 層の次の番号（単独では置けないブロック。#300）の絵を薄くして斜線を引く（Q4 の推奨）。`blocks` の段。 */
+/**
+ * 3 層の次の番号（単独では置けないブロック。#300）の絵を薄くして灰色の斜線を引く（Q4 の推奨）。`blocks` の段。
+ * ブロックエディタの一覧・マップ作成補助の一覧と同じ見せ方（shadeTripleChild。#387 でそろえた）。
+ */
 export function tripleChildLayer(tiles: TilesetView): PaletteLayer {
   return (ctx, g) => {
-    ctx.save();
+    const s = g.size;
     for (let block = 0; block < g.count; block++) {
       if (!tiles.triple.isTripleChild(block)) continue;
       const p = g.cellOf(block);
-      const x = p.col * g.size;
-      const y = p.row * g.size;
-      const s = g.size;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-      ctx.fillRect(x, y, s, s);
-      ctx.strokeStyle = "rgba(200, 0, 0, 0.8)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x + 0.5, y + s - 0.5);
-      ctx.lineTo(x + s - 0.5, y + 0.5);
-      ctx.moveTo(x + 0.5, y + s / 2);
-      ctx.lineTo(x + s / 2, y + 0.5);
-      ctx.moveTo(x + s / 2, y + s - 0.5);
-      ctx.lineTo(x + s - 0.5, y + s / 2);
-      ctx.stroke();
+      const image = ctx.getImageData(p.col * s, p.row * s, s, s);
+      shadeTripleChild(image.data, s, 0, 0);
+      ctx.putImageData(image, p.col * s, p.row * s);
     }
-    ctx.restore();
   };
 }
 

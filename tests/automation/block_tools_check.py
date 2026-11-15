@@ -176,7 +176,7 @@ def check_393(z: Zigzagu, shots: pathlib.Path | None) -> None:
     # ホバー
     pointer(z, "be.block", "move", *CELL_XY[5])
     text = be(z, {"cmd": "getField", "id": "be.status"})["value"]
-    check("上層 右上" in text and "タイル" in text and "パレット" in text and "反転" in text, f"393: 8 マスのホバーで情報が出る（{text}）")
+    check("上のレイヤー 右上" in text and "タイル" in text and "パレット" in text and "反転" in text, f"393: 8 マスのホバーで情報が出る（{text}）")
     pointer(z, "be.tiles", "move", *tile_xy(0x123))
     text = be(z, {"cmd": "getField", "id": "be.status"})["value"]
     check("123" in text, f"393: タイル一覧のホバーでタイル番号が出る（{text}）")

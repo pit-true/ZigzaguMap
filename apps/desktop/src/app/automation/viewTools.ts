@@ -37,20 +37,37 @@ function catalogGet(app: App, req: AutomationRequest): unknown {
 }
 
 /**
- * `town.state {wait?}`: タウンマップの小窓（#306）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、
- * 赤い枠 `frame`（タウンマップのマス。無ければ null）、マウスの下の地名 `hovered`、下の欄の文 `label`。`wait: true` なら読み込みを待つ。
- * 小窓を作っていなければ作らずに `open: false` を返す。
+ * `town.state {wait?}`: タウンマップの小窓（#306・#386）。出しているか `open`、読み込み済みか `loaded`、面 `page`、今のマップの地名 `region`、
+ * 枠 `frame`（今の面のタウンマップのマス。無ければ null）、枠をどこから出したか `source`（`map` = マップ単位の紐づけ、`section` = 地名の紐づけ、
+ * `rom` = ROM のデータ、無ければ null）と面も含めた位置 `at`（`page`・`x`・`y`・`width`・`height`。無ければ null）、紐づけの一覧 `links`
+ * （`sections`: `region` と範囲、`maps`: `bank`・`map` と範囲）、保存先 `store`（`project` = zigzagumap.json、`personal` = 個人設定）、
+ * 読めなかったときの理由 `storeError`、右ドラッグで選んでいる範囲 `selection`、マウスの下の地名 `hovered`、下の欄の文 `label`。
+ * `wait: true` なら読み込みを待つ。小窓を作っていなければ作らずに `open: false` を返す。
  */
 async function townState(app: App, req: AutomationRequest): Promise<unknown> {
   const town = app.views.townIfCreated();
   if (!town) return { open: false, loaded: false };
   if (req["wait"] === true) await town.settle();
+  const f = town.currentFrame();
+  const links = town.links;
   return {
     open: town.isOpen,
     loaded: town.loaded,
     page: town.currentPage,
     region: town.currentRegion,
     frame: town.frameRect(),
+    source: f?.source ?? null,
+    at: f ? { ...f.rect } : null,
+    links: {
+      sections: [...links.sections].map(([region, r]) => ({ region, ...r })),
+      maps: [...links.maps].map(([key, r]) => {
+        const [bank, map] = key.split(".").map(Number);
+        return { bank, map, ...r };
+      }),
+    },
+    store: town.linkPlace,
+    storeError: town.store.error,
+    selection: town.selection,
     hovered: town.hovered,
     label: document.querySelector<HTMLElement>('[data-auto-id="town.label"]')?.textContent ?? null,
   };
@@ -61,6 +78,35 @@ async function townPick(app: App, req: AutomationRequest): Promise<unknown> {
   const town = await app.views.town();
   const region = town.pick(int(req, "x"), int(req, "y"));
   return { region, filter: app.treeFilter.input.value };
+}
+
+/** 紐づけの単位（`section` / `map`）。 */
+function townScope(req: AutomationRequest): "section" | "map" {
+  const scope = req["scope"] ?? "section";
+  if (scope !== "section" && scope !== "map") throw new Error(`scope は section / map のどちらかです: ${String(scope)}`);
+  return scope;
+}
+
+/**
+ * `town.link {scope?, x, y, width?, height?, page?}`: 小窓の右クリックのメニューの「ここに紐づける」と同じ（#386）。`scope` は `section`（既定。
+ * 今の地名）か `map`（今のマップだけ）、範囲はタウンマップのマス（`width`・`height` は既定 1、`page` は省くと今の面）。すぐ保存する。
+ * 小窓を出していなければ出す。返事は `town.state` と同じ形。
+ */
+async function townLink(app: App, req: AutomationRequest): Promise<unknown> {
+  const town = await app.views.town();
+  if (!town.isOpen) await app.views.setTownMap(true);
+  await town.settle();
+  const opt = (key: string, fallback: number | undefined): number | undefined => (req[key] === undefined ? fallback : int(req, key));
+  await town.link(townScope(req), { x: int(req, "x"), y: int(req, "y"), width: opt("width", 1)!, height: opt("height", 1)!, page: opt("page", undefined) });
+  return townState(app, {});
+}
+
+/** `town.unlink {scope?}`: 今の地名（`section`。既定）か今のマップ（`map`）の紐づけを外す。返事は外したか `removed` と `town.state`。 */
+async function townUnlink(app: App, req: AutomationRequest): Promise<unknown> {
+  const town = await app.views.town();
+  await town.settle();
+  const removed = await town.unlink(townScope(req));
+  return { removed, ...((await townState(app, {})) as object) };
 }
 
 /**
@@ -190,6 +236,8 @@ export const viewToolCommands: CommandTable = {
   "pointers.select": pointersSelect,
   "town.state": townState,
   "town.pick": townPick,
+  "town.link": townLink,
+  "town.unlink": townUnlink,
   "seams.state": seamsState,
   "catalog.get": catalogGet,
 };

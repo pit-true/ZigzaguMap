@@ -6,9 +6,9 @@ export const jaPaletteInfo = {
   block: (block: number, secondary: boolean) => `ブロック 0x${hex(block, 3)} タイルセット${secondary ? 2 : 1}`,
   behavior: (name: string) => `挙動: ${name}`,
   layer: (name: string) => `重ね方: ${name}`,
-  tripleNext: (third: number) => `（3層。3 枚目はブロック 0x${hex(third, 3)} の下層）`,
-  tripleUnresolved: "（3層。次のブロックが無いので 3 枚目は描けない）",
-  tripleChild: (parent: number) => `（3層 0x${hex(parent, 3)} の 3 枚目に使われる。単独では置けない）`,
+  tripleNext: (third: number) => `（トリプルレイヤー。3枚目のレイヤーはブロック 0x${hex(third, 3)} の下のレイヤー）`,
+  tripleUnresolved: "（トリプルレイヤー。次のブロックが無いので3枚目のレイヤーは描けない）",
+  tripleChild: (parent: number) => `（トリプルレイヤー 0x${hex(parent, 3)} の3枚目のレイヤーに使われる。単独では置けない）`,
   undrawn: "（実機ではこのマスは描かれない）",
   wild: { 1: "野生: 草むら", 2: "野生: 水上" } as Readonly<Record<number, string>>,
   /** 表示メニュー。 */

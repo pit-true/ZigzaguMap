@@ -46,6 +46,8 @@ import { EventScriptLabels } from "./EventScriptLabels";
 import { EventSelection, eventsInRect, type EventRef } from "./EventSelection";
 import { duplicatePlan, groupDragStart, groupMoveCommand, type GroupDragStart } from "./EventMultiEdit";
 import { jaEventMulti } from "../../i18n/ja.eventMulti";
+import { jaEventLimit } from "../../i18n/ja.eventLimit";
+import { Ruler } from "./RulerLayer";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -118,6 +120,10 @@ export class EventTab {
   readonly multi = new EventSelection();
   /** Shift＋ドラッグの矩形（#399。ドラッグの間だけ）。 */
   private rect: { from: RawCell; to: RawCell } | null = null;
+  /** Shift＋右ドラッグのルーラー（#400。ドラッグの間だけ）。 */
+  readonly ruler = new Ruler();
+  /** ルーラーを伸ばして離した直後の右クリックのメニューを出さない（#400）。 */
+  private skipMenu = false;
   /** 右クリックの「ここに○○を追加」（#304）。 */
   readonly quickAdd: EventQuickAdd;
   private readonly selectListeners = new Set<() => void>();
@@ -376,6 +382,7 @@ export class EventTab {
     // 複数選択の枠と、Shift＋ドラッグの矩形（#399）
     if (this.showCursor && this.multi.multiple) drawSelectionFrames(this.view.layer, this.multi.placed(this.placed).filter((p) => p !== selected), this.view.cellSize);
     if (this.rect) drawSelectRect(this.view.layer, this.rect.from, this.rect.to, this.view.cellSize);
+    this.ruler.draw(this.view.layer, this.view.cellSize);
     // ワープできないブロックの上のワープに印（#240）
     if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
   }
@@ -426,9 +433,16 @@ export class EventTab {
    * 複数選択の中のイベントをつかむと、選んでいるものをまとめて動かす。
    */
   press(cell: RawCell, info: PressInfo = { button: 0, shift: false }): boolean {
+    this.skipMenu = false;
     // Ctrl を押している間はイベントをつかまない（重ね描きを隠して下のブロックを見るため。#238）
     const hit = ctrlPeek.held ? null : eventAt(this.placed, cell.x, cell.y);
     if (info.shift && info.button === 0 && !ctrlPeek.held) return this.shiftPress(cell, hit);
+    // Shift＋右ドラッグはルーラー（#400。イベントはつかまない）
+    if (info.shift && info.button === 2 && !ctrlPeek.held) {
+      this.ruler.start(cell);
+      this.showRuler();
+      return true;
+    }
     if (!hit) {
       // 空いた所を押したら複数選択をやめる（欄のイベントはそのまま）
       if (this.multi.multiple) {
@@ -463,6 +477,10 @@ export class EventTab {
 
   /** つかんだイベントを動かす（マップの外へも動かせる。負の座標は 16 ビットで回る）。 */
   dragTo(cell: RawCell): void {
+    if (this.ruler.active) {
+      this.ruler.move(cell);
+      return this.showRuler();
+    }
     if (this.rect) {
       this.rect = { from: this.rect.from, to: cell };
       return this.draw();
@@ -486,6 +504,10 @@ export class EventTab {
   }
 
   release(): void {
+    if (this.ruler.active) {
+      this.skipMenu = this.ruler.stop();
+      return this.draw();
+    }
     if (this.rect) return this.finishRect();
     this.drag = null;
     const last = this.lastDrag;
@@ -496,6 +518,13 @@ export class EventTab {
       return;
     }
     this.editor.endSession();
+  }
+
+  /** ルーラーの距離をステータスバーに出して描き直す（#400）。 */
+  private showRuler(): void {
+    const d = this.ruler.distance();
+    if (d) this.state.setStatus(jaEventLimit.ruler(d.dx, d.dy));
+    this.draw();
   }
 
   /** Shift＋ドラッグの矩形を離した: 中のイベントを選びに足す（#399）。 */
@@ -614,6 +643,11 @@ export class EventTab {
 
   /** 右クリック: イベントの上なら選んで、「イベントを削除」と「スクリプトを開く」のメニューを出す。 */
   contextMenu(cell: RawCell, x: number, y: number): void {
+    // ルーラーを伸ばして離したときはメニューを出さない（#400。同じマスで離したら今までどおり出す）
+    if (this.skipMenu) {
+      this.skipMenu = false;
+      return;
+    }
     // Ctrl を押している間はイベントを無いものとして、下のブロックを拾う（#238）
     if (ctrlPeek.held) return this.pickBlock(cell);
     const hit = eventAt(this.placed, cell.x, cell.y);
