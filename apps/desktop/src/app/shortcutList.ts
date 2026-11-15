@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
+import { jaEventMulti } from "../i18n/ja.eventMulti";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
@@ -44,6 +45,11 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
   { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
   { keys: "Delete", action: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
+  // イベントの複数選択・まとめての移動・複製（Phase5 #399。ui/event/EventTab.ts・app/Shortcuts.ts）
+  { keys: "Shift＋クリック", action: jaEventMulti.shortcutToggle, where: jaEventMulti.shortcutWhere },
+  { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
+  { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
+  { keys: "Ctrl+D", action: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
   { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
   { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
   { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
