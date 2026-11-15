@@ -35,9 +35,9 @@ python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagum
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>]
-    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタでトリプルレイヤーにする・3枚目のレイヤーの 4 マス・確かめの窓・1 回の取り消し・
+    # トリプルレイヤー（#299・#302）: blockInfo、ブロックエディタでトリプルレイヤーにする・3枚目のレイヤーのレイヤーの 4 マス・確かめの窓・1 回の取り消し・
     # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
-    # third（3枚目のレイヤーの 4 タイル）・triple・thirdVisible が出る。トリプルレイヤーの保存は `setTripleLayer` コマンド
+    # third（3枚目のレイヤーのレイヤーの 4 タイル）・triple・thirdVisible が出る。トリプルレイヤーの保存は `setTripleLayer` コマンド
 python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り込む元の ROM> [--source ...] --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>] [--memory]
     # 別の ROM からタイルセットを取り込む窓（#314）: 一覧・絵・情報・変わることの一覧・両方と配置も写す・1 回の取り消し・出力・主だけ・
     # --memory で窓を閉じた後のメモリ。窓（"window": "transplant"）の `state` は rom・game・mapCount・selected・parts・copyLayout・
@@ -97,9 +97,12 @@ python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し>
 | `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
+| `event.state` | | 選択中の種別と番号、`selected`（選んでいるイベント。複数選択なら全部。#399）、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
+| `event.selectMany` | `items`（`[{"kind": "person", "index": 0}, ...]`） | イベントを複数選ぶ（Phase5 #399。Shift＋クリックで足したのと同じ。最後のものを欄に出す）。2 つ以上なら `event.state` の `selected` に全部が出る。返事は選択と `selected` |
+| `event.duplicate` | | 選んでいるイベントを複製する（Ctrl+D と同じ。#399）。返事は `ok`・`status`・写しの `selected`・`counts` |
+| `event.deleteSelected` | `confirm`（省略で true） | 選んでいるイベントをまとめて削除する（Delete キーと同じ。#399。確認は 1 回）。`confirm` の扱いと返事は `event.delete` と同じ |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
 | `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |
 | `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
@@ -336,8 +339,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（トリプルレイヤーか）、`tripleChild`（トリプルレイヤーの次の番号か。1 つ前のトリプルレイヤーのブロックの3枚目のレイヤーに使われている）、`parent`（そのトリプルレイヤーのブロックの番号か null）、`third`（3枚目のレイヤーに使う番号か null）、`unresolved`（トリプルレイヤーだが次のブロックが表の外で3枚目のレイヤーを描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
-| `tripleChildCells` | | 今のマップで、トリプルレイヤーの次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3枚目のレイヤーに使われているブロックに印を付ける がオンで、マップタブを見ているとき） |
+| `blockInfo` | `block`（通し番号。省略で選んでいるブロック） | ブロックの重ね方（#299）。`attribute`（属性 u32）、`layerMode`（ビット 28〜30 の値 0〜7）、`triple`（トリプルレイヤーか）、`tripleChild`（トリプルレイヤーの次の番号か。1 つ前のトリプルレイヤーのブロックの3枚目のレイヤーのレイヤーに使われている）、`parent`（そのトリプルレイヤーのブロックの番号か null）、`third`（3枚目のレイヤーのレイヤーに使う番号か null）、`unresolved`（トリプルレイヤーだが次のブロックが表の外で3枚目のレイヤーのレイヤーを描けない）、`undrawn`（値 5〜7。実機ではそのマスを描かない） |
+| `tripleChildCells` | | 今のマップで、トリプルレイヤーの次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3枚目のレイヤーのレイヤーに使われているブロックに印を付ける がオンで、マップタブを見ているとき） |
 | `autopen.state` | | オートペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
 | `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | オートペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
 | `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。マップ作成補助の窓に保存していない変更があれば、窓の一覧にも足す（同じ名前は置き換える。#379）。返事は書いたパス `written` と `autopen.state` |
@@ -345,11 +348,17 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `transplant.select`（移植の窓宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事は窓の `state` と同じ |
 
 - コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックをトリプルレイヤーにする・やめる。N の 8 タイルと属性、N+1 の下のレイヤー 4 タイルを書き、トリプルレイヤーにするときは N+1 の属性と上のレイヤーを 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置も写す」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
-- ブロックエディタ（`"window": "block-editor"`）のトリプルレイヤーの部品: 3枚目のレイヤーの 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。窓の `state` には `third`（3枚目のレイヤーの 4 タイル）・`triple`・`thirdVisible` が出る。トリプルレイヤーの保存は `setTripleLayer` を通る。
+- ブロックエディタ（`"window": "block-editor"`）のトリプルレイヤーの部品: 3枚目のレイヤーのレイヤーの 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。窓の `state` には `third`（3枚目のレイヤーのレイヤーの 4 タイル）・`triple`・`thirdVisible` が出る。トリプルレイヤーの保存は `setTripleLayer` を通る。
 - トリプルレイヤーの印: `action` の `view.tripleChildMarks`（個人設定 `tripleChildMarks`。既定 true）。
 - オートペンの欄（マップタブの右）: 「オートペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
 - マップ作成補助（`action` の `tools.mapAssist`、`"window": "map-assist"`）の部品: タブ `assist.tabBlocks`・`assist.tabMap`、左の絵 `assist.source`、パーツの一覧 `assist.parts`（`setField` に番号）、追加 `assist.add.fill`・`assist.add.edge`・`assist.add.piece`・`assist.add.repeat`、`assist.remove`・`assist.up`・`assist.down`、名前 `assist.name`・役割 `assist.role`、「マップから候補を作る（自動）」`assist.analyze`、「Bochi の定義を読み込む…」`assist.importBochi`（ファイルのダイアログは `queuePath` で答える）、枠 `assist.slot.<枠名>`（`assist.slot.NW` など）、「← 左で選んだ所を入れる」`assist.put`・「枠を空にする」`assist.clearSlot`・「保存」`assist.save`、範囲の操作 `assist.fill`（選んだパーツで範囲を塗る）・`assist.tidy`（範囲を整える）とそのチェック `assist.tidyEdges`・`assist.tidyRepeats`・`assist.tidyMovement`（`setField` に true / false）。範囲はメインのマップの `mouse` の `ctrl: true` の右ドラッグで選ぶ。
 - 移植の窓（`action` の `tools.transplant`、`"window": "transplant"`）: 部品は上の `transplant_check.py` の説明のとおり（`tp.pickRom`・`tp.maps`・`tp.parts`・`tp.copyLayout`・`tp.import`・`tp.close`・`tp.preview`・`tp.primaryInfo`・`tp.secondaryInfo`・`tp.report`）と、元の ROM の表示 `tp.romLabel`。窓の `state` は `rom`・`game`・`mapCount`・`selected`・`selectedSize`（選んだマップの大きさ `[幅, 高さ]`）・`parts`・`copyLayout`・`report`・`conversion`・`target`・`jsHeap`（窓の JavaScript のヒープ、バイト）。
+
+## Phase5 の部品と命令（ブロックエディタ・パレット・野生。列 2）
+
+確認のスクリプトは `tests/automation/block_tools_check.py`（`--only 393` などで issue ごとに動かせる）。
+
+- ブロックエディタ（`"window": "block-editor"`）のタイルの矩形（#393）: タイル一覧 `be.tiles` の `pointer`（`down` → `move` → `up`。1 タイル 16px）で矩形を選ぶ。選んだ矩形の枠 `be.tilesFrame`（`getField` の `visible`。2 枚以上のときだけ出る）。8 マス `be.block` の `pointer` に `ctrl: true` でパレットだけ塗る、`button: 2` の `down` と `up` で矩形を拾う（離した所が3枚目のレイヤーなら押したマスだけ）。窓の下の 1 行 `be.status`（`getField` の `value`。ホバーの情報と案内）。窓の `state` に `selection`（`width`・`height`・`picked`（8 マスから拾った矩形か）。選んでいなければ null）が出る。
 
 ## Phase4 の表示・一覧・調査（列 3）
 
@@ -376,7 +385,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
 - マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。
 - タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。
-- タウンマップの紐づけ（#386）: 右クリックのメニューは `mouse` の `id: "town.canvas"` に `action: "rightClick"`（1 マス）か `action: "drag"`・`button: "right"`（`px` から `toPx` までの範囲）で出す。項目は `contextMenu.state` で読み、`contextMenu.press` の `id` で押す（`town.linkSection` = 今の地名をここに紐づける、`town.linkMap` = 今のマップだけをここに紐づける、`town.unlinkMap`・`town.unlinkSection` = 紐づけを外す。外す項目は紐づけがあるときだけ出る）。押したあとの保存は少し後に終わるので、`town.state` の `links` で確かめる。保存先はプロジェクトフォルダを開いていれば `zigzagumap.json` の `"townMap"`、ROM だけなら個人設定の `townLinks`（ROM の小文字のパスが鍵。`--profile` のフォルダの settings.json）。`mapsegionmap.json` と ROM には書かない。
+- タウンマップの紐づけ（#386）: 右クリックのメニューは `mouse` の `id: "town.canvas"` に `action: "rightClick"`（1 マス）か `action: "drag"`・`button: "right"`（`px` から `toPx` までの範囲）で出す。項目は `contextMenu.state` で読み、`contextMenu.press` の `id` で押す（`town.linkSection` = 今の地名をここに紐づける、`town.linkMap` = 今のマップだけをここに紐づける、`town.unlinkMap`・`town.unlinkSection` = 紐づけを外す。外す項目は紐づけがあるときだけ出る）。押したあとの保存は少し後に終わるので、`town.state` の `links` で確かめる。保存先はプロジェクトフォルダを開いていれば `zigzagumap.json` の `"townMap"`、ROM だけなら個人設定の `townLinks`（ROM の小文字のパスが鍵。`--profile` のフォルダの settings.json）。`maps
+egionmap.json` と ROM には書かない。
 - ポインタ一覧（#307）: `action` か `menu.run` の `tools.pointers`（Ctrl+Shift+P）。窓の ID は `pointers`（`ui.shot` で撮れる）、一覧 `pointers.list`・行 `pointers.row.<番号>`（`mouse` の `rightClick` で右クリックのメニュー。項目 `copyValue`・`copyBytes`・`copyLocation`）、アドレス `pointers.address`、ROM の選び方 `pointers.rom`（`base` / `other`。`other` はファイルのダイアログを出す）、「探す」`pointers.search`、結果の文 `pointers.status`・一覧 `pointers.results`（行 `pointers.result.<番号>`）、「閉じる」`pointers.close`。
 - パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。トリプルレイヤーは 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
 - マップ一覧のサムネイル（#315）: `action` か `menu.run` の `view.treeThumbnails`（個人設定 `treeThumbnails`。既定 false）。行の縮小は `canvas.tree-thumb`。

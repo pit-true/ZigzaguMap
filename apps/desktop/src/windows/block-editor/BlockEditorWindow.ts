@@ -1,6 +1,19 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { THIRD_LAYER_TILE_COUNT, attributeBytes, attributeFromBytes, isTripleLayer, packTileRef, unpackTileRef } from "@zigzagumap/core";
+import {
+  THIRD_LAYER_TILE_COUNT,
+  attributeBytes,
+  attributeFromBytes,
+  isTripleLayer,
+  paintPaletteOnly,
+  pickSelection,
+  placeSelection,
+  singleTile,
+  unpackTileRef,
+  type PlacedTile,
+  type TileSelection,
+} from "@zigzagumap/core";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
+import { jaBlockTools as tt } from "../../i18n/ja.blockTools";
 import { askYesNo, showError } from "../../ui/MessageBox";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
@@ -9,6 +22,7 @@ import { AttributePanel, type AttributeBytes } from "./AttributePanel";
 import { BlockEditPanel } from "./BlockEditPanel";
 import { createBlockEditorMenu } from "./BlockEditorMenu";
 import { BlockListView } from "./BlockListView";
+import { BlockEditorStatus } from "./BlockEditorStatus";
 import { TilesetIo } from "./TilesetIo";
 import { TileSheetView } from "./TileSheetView";
 import { errorText } from "../../util/errors";
@@ -32,12 +46,14 @@ export class BlockEditorWindow {
   private third: number[] | null = null;
   /** 読み込んだときの確定した中身（変わったら読み直す）。 */
   private loaded = "";
-  private tile: number | null = null;
+  /** タイル一覧で選んだ矩形か、8 マスから拾った矩形（#393）。 */
+  private selection: TileSelection | null = null;
   private readonly list: BlockListView;
   private readonly sheet: TileSheetView;
   private readonly panel: BlockEditPanel;
   private readonly attributes: AttributePanel;
   private readonly io: TilesetIo;
+  private readonly status = new BlockEditorStatus();
 
   static start(root: HTMLElement, client: ToolClient): BlockEditorWindow {
     return new BlockEditorWindow(root, client);
@@ -49,11 +65,12 @@ export class BlockEditorWindow {
   ) {
     this.model = new TilesetModel(client.snapshot, client.ui);
     this.list = new BlockListView((block) => this.selectBlock(block));
-    this.sheet = new TileSheetView((tile) => this.selectTile(tile));
+    this.sheet = new TileSheetView({ select: (selection) => this.selectTiles(selection), hover: (tile) => this.hoverSheet(tile) });
     this.panel = new BlockEditPanel(
       {
-        place: (cell) => this.placeTile(cell),
-        pick: (cell) => this.pickTile(cell),
+        place: (cell, paletteOnly) => this.placeTile(cell, paletteOnly),
+        pick: (from, to) => this.pickTile(from, to),
+        hover: (cell) => this.hoverCell(cell),
         flipChanged: () => this.renderPanel(),
         paletteChanged: (palette) => void client.setUi({ palette }),
         save: () => void this.save(),
@@ -97,7 +114,7 @@ export class BlockEditorWindow {
     body.className = "be-body";
     body.append(this.list.element, this.panel.element, this.attributes.element);
     root.classList.add("block-editor");
-    root.append(menu.element, body);
+    root.append(menu.element, body, this.status.element);
 
     client.onSnapshot(() => this.onSnapshot());
     client.onUi(() => {
@@ -125,8 +142,10 @@ export class BlockEditorWindow {
     this.renderPanel();
   }
 
-  private selectTile(tile: number): void {
-    this.tile = tile;
+  /** タイル一覧で矩形を選んだ（1 枚なら 1 × 1）。 */
+  private selectTiles(selection: TileSelection): void {
+    this.selection = selection.width * selection.height === 1 ? singleTile(selection.refs[0]!) : selection;
+    this.status.show(selection.width * selection.height > 1 ? tt.selectionSize(selection.width, selection.height) : "");
     this.renderPanel();
   }
 
@@ -136,24 +155,70 @@ export class BlockEditorWindow {
     return this.third && this.tripleEditing() ? { list: this.third, index: cell - 8 } : null;
   }
 
-  /** マス `cell` に、選んでいるタイル・反転・パレットを置く。 */
-  private placeTile(cell: number): void {
+  /** マスの今の値（無ければ 0）。 */
+  private cellValue(cell: number): number {
     const slot = this.cellSlot(cell);
-    if (!slot || this.tile === null) return;
-    slot.list[slot.index] = packTileRef({ tile: this.tile, hflip: this.panel.xflip.checked, vflip: this.panel.yflip.checked, palette: this.client.ui.palette });
+    return slot ? (slot.list[slot.index] ?? 0) : 0;
+  }
+
+  /**
+   * マス `cell` を左上にして、選んでいる矩形を置く（反転は選択全体に当て、パレットは今のもの。拾った矩形は拾ったときのもの）。
+   * `paletteOnly`（Ctrl＋左クリック）なら、選択の大きさの範囲のパレットだけを今のパレットにする。はみ出た分は置かない。
+   */
+  private placeTile(cell: number, paletteOnly: boolean): void {
+    if (!this.cellSlot(cell)) return;
+    const palette = this.client.ui.palette;
+    let placed: PlacedTile[];
+    if (paletteOnly) placed = paintPaletteOnly(this.selection ?? { width: 1, height: 1 }, cell, palette, (c) => this.cellValue(c));
+    else if (this.selection) placed = placeSelection(this.selection, cell, { hflip: this.panel.xflip.checked, vflip: this.panel.yflip.checked, palette });
+    else return;
+    for (const p of placed) {
+      const slot = this.cellSlot(p.cell);
+      if (slot) slot.list[slot.index] = p.ref;
+    }
     this.renderPanel();
   }
 
-  /** マス `cell` のタイル・反転・パレットを拾う。 */
-  private pickTile(cell: number): void {
-    const slot = this.cellSlot(cell);
-    if (!slot) return;
-    const ref = unpackTileRef(slot.list[slot.index] ?? 0);
-    this.tile = ref.tile;
-    this.panel.xflip.checked = ref.hflip;
-    this.panel.yflip.checked = ref.vflip;
-    if (ref.palette !== this.client.ui.palette) void this.client.setUi({ palette: ref.palette });
+  /**
+   * マス `from` から `to` までの矩形を拾う。1 マスなら今までどおり、タイルを選び、反転とパレットの欄をそのマスの値にする。
+   * 2 マス以上なら反転とパレットごと矩形で持ち（反転の欄は外す）、そのまま置ける。
+   */
+  private pickTile(from: number, to: number): void {
+    if (!this.cellSlot(from)) return;
+    const picked = pickSelection(from, this.cellSlot(to) ? to : from, (c) => this.cellValue(c));
+    this.sheet.clearFrame();
+    if (picked.width * picked.height === 1) {
+      const ref = unpackTileRef(picked.refs[0]!);
+      this.selection = singleTile(ref.tile);
+      this.panel.xflip.checked = ref.hflip;
+      this.panel.yflip.checked = ref.vflip;
+      if (ref.palette !== this.client.ui.palette) void this.client.setUi({ palette: ref.palette });
+      this.status.show("");
+    } else {
+      this.selection = picked;
+      this.panel.xflip.checked = false;
+      this.panel.yflip.checked = false;
+      this.status.show(tt.pickedSize(picked.width, picked.height));
+    }
     this.renderPanel();
+  }
+
+  private hoverSheet(tile: number | null): void {
+    this.status.hover(tile === null ? null : tt.hoverSheet(tile, this.client.ui.palette));
+  }
+
+  private hoverCell(cell: number | null): void {
+    if (cell === null || !this.cellSlot(cell)) {
+      this.status.hover(null);
+      return;
+    }
+    const ref = unpackTileRef(this.cellValue(cell));
+    this.status.hover(tt.hoverCell(cell, ref.tile, ref.palette, ref.hflip, ref.vflip));
+  }
+
+  /** 選んでいる矩形の左上のタイル（Tile 欄とプレビュー）。 */
+  private get tile(): number | null {
+    return this.selection ? (this.selection.refs[0]! & 0x3ff) : null;
   }
 
   /**
@@ -262,6 +327,7 @@ export class BlockEditorWindow {
       blockCounts: [this.model.primaryBlockCount, this.model.secondaryBlockCount],
       block: this.block,
       tile: this.tile,
+      selection: this.selection ? { width: this.selection.width, height: this.selection.height, picked: this.selection.keepPalette } : null,
       tiles: this.tiles,
       third: this.third,
       triple: this.tripleEditing(),
