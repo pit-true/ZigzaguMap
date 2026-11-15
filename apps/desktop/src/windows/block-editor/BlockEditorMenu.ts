@@ -17,6 +17,9 @@ export const BLOCK_EDITOR_MENU: readonly MenuItem[] = [
       { id: "tiles.save2", label: t.saveTileset2, accel: "X" },
       { id: "tiles.open2", label: t.openTileset2, accel: "Y" },
       { id: "tiles.reload", label: t.reloadBlocks, accel: "Z" },
+      // ZigzaguMap だけの項目（#395）
+      { separator: true },
+      { id: "tiles.exportBlocks", label: tt.exportMenu, accel: "E" },
     ],
   },
   {
@@ -51,6 +54,15 @@ export const BLOCK_EDITOR_MENU: readonly MenuItem[] = [
       { id: "edit.paste", label: tt.paste, accel: "P", shortcut: { key: "v", ctrl: true, text: "Ctrl+V" } },
       { separator: true },
       { id: "edit.swap", label: tt.swap, accel: "S", shortcut: { key: "x", text: "X" } },
+    ],
+  },
+  {
+    label: tt.menuView,
+    accel: "V",
+    children: [
+      { id: "view.usage", label: tt.viewUsage, accel: "U" },
+      { id: "view.unusedBlocks", label: tt.viewUnusedBlocks, accel: "B" },
+      { id: "view.unusedTiles", label: tt.viewUnusedTiles, accel: "T" },
     ],
   },
 ];

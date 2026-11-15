@@ -23,6 +23,8 @@ import { AttributePanel, type AttributeBytes } from "./AttributePanel";
 import { BlockEditPanel } from "./BlockEditPanel";
 import { createBlockEditorMenu, menuShortcut } from "./BlockEditorMenu";
 import { BlockEditActions } from "./BlockEditActions";
+import { BlockStatsView } from "./BlockStatsView";
+import { openBlockSheetExport } from "./BlockSheetExportDialog";
 import { BlockListView } from "./BlockListView";
 import { BlockEditorStatus } from "./BlockEditorStatus";
 import { TilesetIo } from "./TilesetIo";
@@ -57,6 +59,9 @@ export class BlockEditorWindow {
   private readonly io: TilesetIo;
   private readonly status = new BlockEditorStatus();
   private readonly edits: BlockEditActions;
+  private readonly stats: BlockStatsView;
+  /** 数えている途中の頼み（新しい頼みが来たら前の結果は使わない）。 */
+  private statsRequest = 0;
 
   static start(root: HTMLElement, client: ToolClient): BlockEditorWindow {
     return new BlockEditorWindow(root, client);
@@ -84,6 +89,7 @@ export class BlockEditorWindow {
       accept: (next, prev) => this.acceptAttribute(next, prev),
       changed: () => this.renderPanel(),
     });
+    this.stats = new BlockStatsView(this.list.element, this.sheet.element);
     const self = this;
     this.edits = new BlockEditActions({
       client,
@@ -126,8 +132,27 @@ export class BlockEditorWindow {
       "edit.cut": () => this.edits.cut(),
       "edit.paste": () => this.edits.paste(),
       "edit.swap": () => this.edits.toggleSwap(),
+      "view.usage": () => this.toggleStats("usage"),
+      "view.unusedBlocks": () => this.toggleStats("unusedBlocks"),
+      "view.unusedTiles": () => this.toggleStats("unusedTiles"),
+      "tiles.exportBlocks": () =>
+        openBlockSheetExport({
+          get model() {
+            return self.model;
+          },
+          files: this.io.files,
+          saved: (path) => this.status.show(tt.exported(path)),
+        }),
     };
-    const menu = createBlockEditorMenu(actions, (e) => void showError(errorText(e)), (id) => id === "edit.swap" && this.edits.swapActive);
+    const menu = createBlockEditorMenu(actions, (e) => void showError(errorText(e)), (id) =>
+      id === "edit.swap"
+        ? this.edits.swapActive
+        : id === "view.usage"
+          ? this.stats.flags.usage
+          : id === "view.unusedBlocks"
+            ? this.stats.flags.unusedBlocks
+            : id === "view.unusedTiles" && this.stats.flags.unusedTiles,
+    );
     document.addEventListener("keydown", (e) => {
       if (e.defaultPrevented) return;
       const el = e.target as HTMLElement | null;
@@ -160,6 +185,31 @@ export class BlockEditorWindow {
   private onListClick(picked: number): void {
     this.selectBlock(picked);
     if (this.edits.swapActive && this.block !== null) void this.edits.pick(this.block);
+  }
+
+  /** 表示 メニューの使用回数・未使用の印を切り替え、オンなら数え直す。 */
+  private async toggleStats(key: "usage" | "unusedBlocks" | "unusedTiles"): Promise<void> {
+    this.stats.flags[key] = !this.stats.flags[key];
+    await this.refreshStats();
+  }
+
+  /** 使用回数と未使用のタイルを数え直す（どれかがオンのときだけ。メインのウィンドウで数える）。 */
+  private async refreshStats(): Promise<void> {
+    const id = ++this.statsRequest;
+    if (!this.stats.active) {
+      this.stats.clear();
+      return;
+    }
+    this.status.show(tt.counting);
+    try {
+      const r = (await this.client.request({ op: "blockStats", tiles: this.stats.flags.unusedTiles })) as { counts: number[]; unusedTiles: number[] | null; ms: number };
+      if (id !== this.statsRequest) return;
+      this.stats.set(r.counts, r.unusedTiles);
+      this.stats.render(this.model.listedBlocks);
+      this.status.show(tt.counted(r.counts.filter((n) => n === 0).length, r.unusedTiles?.length ?? null, r.ms));
+    } catch (e) {
+      this.status.show(errorText(e));
+    }
   }
 
   /** 選んでいるブロックの、手元で編集中の中身（コピー用）。 */
@@ -334,6 +384,8 @@ export class BlockEditorWindow {
     }
     this.list.render(this.model);
     this.renderTiles();
+    // 編集の後に数え直す（オンのときだけ）
+    if (this.stats.active) void this.refreshStats();
     const s = this.client.snapshot;
     void getCurrentWindow()
       .setTitle(t.windowTitle(s.primary?.index ?? null, s.secondary?.index ?? null))
@@ -380,6 +432,7 @@ export class BlockEditorWindow {
       xflip: this.panel.xflip.checked,
       yflip: this.panel.yflip.checked,
       edit: this.edits.describe(),
+      stats: this.stats.describe(),
       status: this.status.text,
       title: document.title,
     };

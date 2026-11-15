@@ -80,6 +80,50 @@
   box-sizing: border-box;
 }
 
+/* 使用回数・未使用の印（ブロック一覧とタイル一覧の絵の上に重ねる。#395） */
+.be-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+/* ブロック一覧の画像の書き出し（#395） */
+.be-export-main {
+  display: flex;
+  gap: 8px;
+}
+
+.be-export-form {
+  flex: 0 0 250px;
+  font-size: 12px;
+}
+
+.be-export-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.be-export-caption {
+  flex: 0 0 88px;
+}
+
+.be-export-info {
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.be-export-preview {
+  flex: 1 1 auto;
+  height: 150px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+}
+
 /* ---- パレットエディタ ---- */
 .palette-editor {
   height: 186px;
