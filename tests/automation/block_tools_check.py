@@ -387,7 +387,14 @@ def check_395(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     check(got == expect, f"395: 副の未使用のタイルがブロックから数えた値と合う（{len(got)} / {len(expect)} 枚）")
     save_shot(z, shots, "block_unused.png", BE)
     # 副のブロックを 1 つ切り取ると数え直す
-    target = next((b for b in range(641, 640 + 0x80) if any((r & 0x3FF) >= 0x280 for r in blocks_of(s0, b))), None)
+    # 副のタイルを 1 つだけのブロックが使っているもの（切り取ると未使用のタイルが増える）
+    users: dict[int, set[int]] = {}
+    for side, base in (("primary", 0), ("secondary", 640)):
+        n = len(base64.b64decode(s0[side]["blocks"])) // 16
+        for blk in range(base, base + n):
+            for r in blocks_of(s0, blk):
+                users.setdefault(r & 0x3FF, set()).add(blk)
+    target = next((next(iter(u)) for t, u in sorted(users.items()) if t >= 0x280 and len(u) == 1 and next(iter(u)) >= 641), None)
     if target is not None:
         select_in_list(z, target)
         be(z, {"cmd": "action", "id": "edit.cut"})
@@ -396,7 +403,7 @@ def check_395(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
         expect1 = unused_secondary_tiles(s1)
         st = wait_stats(z, "切り取りの後に数え直す", lambda s: [t for t in (s["unusedTiles"] or []) if t >= 0x280] == expect1)
         got1 = [t for t in (st["unusedTiles"] or []) if t >= 0x280]
-        check(got1 == expect1, f"395: ブロック {target:#x} を切り取ると未使用のタイルを数え直す（{len(got)} → {len(got1)} 枚）")
+        check(got1 == expect1 and len(got1) > len(got), f"395: ブロック {target:#x} を切り取ると未使用のタイルを数え直す（{len(got)} → {len(got1)} 枚）")
         be(z, {"cmd": "undo"})
         time.sleep(0.3)
     for id_ in ("view.usage", "view.unusedBlocks", "view.unusedTiles"):
