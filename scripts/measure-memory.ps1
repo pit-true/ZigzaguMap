@@ -194,7 +194,7 @@ try {
             $info = Call @{ cmd = "blockInfo"; block = 16 }
             $attr = ([int64]$info.attribute -band 0x0FFFFFFF) -bor 0x30000000
             Call @{ cmd = "command"; name = "setBlock"; args = @{ tileset = $m.primaryTileset; secondary = $false; block = 16; attribute = $attr } } | Out-Null
-            $results += Get-Snapshot "3 層のマップを表示した状態" $proc.Id
+            $results += Get-Snapshot "トリプルレイヤーのマップを表示した状態" $proc.Id
           }
           "autopen" {
             Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null

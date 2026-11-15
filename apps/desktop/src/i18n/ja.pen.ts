@@ -8,13 +8,13 @@ function hex3(n: number): string {
 
 export const jaPen = {
   /** ステータスバーのブロックの表示に足す（#300）。 */
-  tripleSuffix: "　3層",
-  tripleUnresolvedSuffix: "　3層（次のブロックが無い）",
-  tripleChildSuffix: (parent: number) => `　3層 ${hex3(parent)} の3枚目（単独では置けない）`,
+  tripleSuffix: "　トリプルレイヤー",
+  tripleUnresolvedSuffix: "　トリプルレイヤー（次のブロックが無い）",
+  tripleChildSuffix: (parent: number) => `　トリプルレイヤー ${hex3(parent)} の3枚目のレイヤー（単独では置けない）`,
   /** 3 層の次の番号を書かなかったとき（#301）。 */
-  tripleChildSkipped: (n: number) => `3層のブロックの3枚目に使われているブロックは置けません（${n} マスを飛ばしました）`,
+  tripleChildSkipped: (n: number) => `トリプルレイヤーの3枚目のレイヤーに使われているブロックは置けません（${n} マスを飛ばしました）`,
   /** 表示メニューの印（#301）。 */
-  tripleChildMarks: "3層の3枚目のブロックに印を付ける",
+  tripleChildMarks: "3枚目のレイヤーに使われているブロックに印を付ける",
 
   /** 自動ペン（#310）。マップタブの右の欄。 */
   autoPen: "自動ペン (P)",
@@ -37,7 +37,7 @@ export const jaPen = {
   shortcutAutoPen: "自動ペンの切り替え",
   shortcutAutoPenWhere: "マップタブ",
   shortcutPalettePickKeys: "Ctrl＋右ドラッグ",
-  shortcutPalettePick: "矩形を選ぶ（右端が 3 層のブロックなら 1 マス広げ、入った 3 層の次の番号は書かないマスにする）",
+  shortcutPalettePick: "矩形を選ぶ（右端がトリプルレイヤーのブロックなら 1 マス広げ、入ったトリプルレイヤーの次の番号は書かないマスにする）",
   shortcutPalettePickWhere: "マップタブのブロックパレット",
   /** 種類と役割の名前。 */
   kinds: { fill: "面", edge: "縁つき", piece: "部品", repeat: "くり返し" } as Record<string, string>,
