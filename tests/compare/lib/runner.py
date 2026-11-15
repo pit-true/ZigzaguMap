@@ -84,7 +84,7 @@ def run_scenario(cfg, scn: dict, run_dir: pathlib.Path, only_zz: bool, log) -> d
             am = json.loads((sdir / "advancemap" / "steps.json").read_text(encoding="utf-8"))
             # キャッシュ内の絶対パスを結果フォルダ内のものへ付け替える
             for s in am["steps"]:
-                for k in ("image", "window"):
+                for k in ("image", "window", "base"):
                     if s.get("obs", {}).get(k):
                         s["obs"][k] = str(sdir / "advancemap" / pathlib.Path(s["obs"][k]).name)
             log("  AdvanceMap: 前回の結果を使う")
