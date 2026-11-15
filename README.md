@@ -1562,6 +1562,28 @@ AdvanceMap の 3 つのメニューと「編集」の後ろに「表示(V)」を
 
 自動操作の命令は `mapExport.state`・`mapExport.run`（docs/automation.md）。窓を開くのは `action` の `image.export`。
 
+### ファイルの変化の監視（#404）
+
+プロジェクトフォルダを開いているとき、メインのウィンドウに戻るたびに、次のファイルの更新日時と大きさを開いたときと比べます。`maps\BB\MM.json`・`maps\BB\scripts_MM.json`・`maps\tilesets\` の下・`maps\project.json`・`maps\regionmap.json`・`maps\trainers.json`・`maps\scripts.json`・`zigzagumap.json`。
+
+- 外（Bochi・git・テキストエディタなど）で変わっていれば、変わったファイルの一覧（変更・追加・削除）を出して、読み直すか聞きます。
+- 未出力の変更があるマップがあれば、読み直すとその変更を捨てることを書いて、もう一度聞きます。
+- 読み直すときは、ROM とプロジェクトを開き直し（F5 の再読み込みと同じ読み込み）、開いていたマップを開き直します。元に戻す・やり直すの履歴は空になります。
+- 「いいえ」を選んだ変化は、次からは聞きません。ZigzaguMap が出力で書いたファイルは数えません。
+- 監視の部品（Rust）は足していません。戻ったときに調べるだけです。
+- 設定 > 外で変わったファイルを調べる（既定オン）を外すと、戻ったときに調べません。
+
+自動操作の命令は `projectWatch.check`・`projectWatch.state`（docs/automation.md）。
+
+### すべての設定の窓（#404）
+
+設定 > すべての設定... で、表示と設定のメニューの項目を 1 つの窓に並べます（メニューはそのまま残しています）。
+
+- 上の欄は個人の設定（AppData の `settings.json`）です。メニューの並びのまま、サブメニューごとに枠で分けます。チェックの付く項目はチェックの欄で、変えるとメニューを押したのと同じになり、メニューのチェックもそろいます（メニューで変えたときも窓がそろいます）。窓を開く項目（グリッドの設定・ショートカットの変更・スクリプトの管理など）は「開く...」のボタンです。項目はメニューの定義から作るので、Phase5 で足した道具・グリッド・カーソルの枠・視界・監視の設定も並びます。
+- 下の欄はプロジェクトの設定（`zigzagumap.json` の `script` の節）です。ビルドしてできる ROM・イベントのラベルの名前の形・`.global` にするか・1 行の文字数の上限・1 ページの行数を変えて「プロジェクトの設定を保存」で書きます。空の欄は既定の値（欄に薄く出る）に戻します。ほかの項目と節（`userScripts` など）は残します。保存した `zigzagumap.json` は、外で変わったファイルとは数えません。
+
+自動操作の命令は `allSettings.state`・`allSettings.save`（docs/automation.md）。窓を開くのは `action` の `opt.allSettings`。
+
 ## 画面の構成
 
 AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。

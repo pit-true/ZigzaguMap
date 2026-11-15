@@ -152,6 +152,12 @@ export class ProjectSession {
     return this.catalogValue;
   }
 
+  /** ZigzaguMap がプロジェクトフォルダに書いた・消したファイルを知らせてもらう（Phase5 #404）。やめる関数を返す。 */
+  onWrite(listener: (path: string) => void): () => void {
+    this.fs.writeListeners.add(listener);
+    return () => this.fs.writeListeners.delete(listener);
+  }
+
   /** プロジェクトフォルダ（素の ROM だけなら null）。 */
   get projectDir(): string | null {
     return this.fs.root;

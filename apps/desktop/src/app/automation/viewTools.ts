@@ -247,6 +247,30 @@ async function editHistoryGoTo(app: App, req: AutomationRequest): Promise<unknow
   return { steps: Math.abs(after - before), ...((await editHistoryState(app)) as object) };
 }
 
+/** 最後に `projectWatch.check` で始めた調べ（自動操作用）。 */
+let watchRun: Promise<unknown> | null = null;
+let watchResult: unknown = null;
+
+/**
+ * `projectWatch.check`: ファイルの変化を調べる（Phase5 #404。メインのウィンドウに戻ったときと同じ）。聞くダイアログが出たら、
+ * 待たずに返す（`dialog` で答え、`projectWatch.state` で結果を読む）。返事は `projectWatch.state` と同じ。
+ */
+async function projectWatchCheck(app: App): Promise<unknown> {
+  watchResult = null;
+  const run = app.watcher.check().then((r) => (watchResult = r));
+  watchRun = run;
+  const { openDialogs } = await import("../../ui/Dialog");
+  for (let i = 0; i < 400 && watchResult === null && openDialogs.length === 0; i++) await new Promise((r) => setTimeout(r, 25));
+  return projectWatchState(app);
+}
+
+/** `projectWatch.state {wait?}`: 控えているファイルの数 `watched`、最後の調べの結果 `result`（`changes`・`reloaded`。途中なら null）。`wait: true` なら終わるまで待つ。 */
+async function projectWatchState(app: App, req: AutomationRequest = {}): Promise<unknown> {
+  await app.watcher.settle();
+  if (req["wait"] === true && watchRun) await watchRun;
+  return { watched: app.watcher.watchedCount, result: watchResult };
+}
+
 /** `userScripts.state {wait?}`: 利用者のスクリプト（Phase5 #405）。Worker を作っているか `active`、`files`・`enabled`、登録された操作 `actions`、ログ `logs`、読めなかったもの `loadErrors`。`wait: true` なら読み込みと動いている呼び出しが終わるまで待つ。 */
 async function userScriptsState(app: App, req: AutomationRequest = {}): Promise<unknown> {
   const h = app.views.userScripts;
@@ -295,7 +319,40 @@ async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown>
   throw new Error(`action が不正です: ${String(action)}`);
 }
 
+/**
+ * `allSettings.state`: すべての設定の窓（Phase5 #404。`action` の `opt.allSettings` で開く）。開いているか `open`、チェックの欄の
+ * 状態 `checks`（アクション ID → チェック）、プロジェクトの欄の値 `project`、最後の保存の結果 `message`。欄は `allSettings.<アクション ID>`
+ * （`setField` に true / false、窓を開く項目は `click`）、プロジェクトの欄は `allSettings.project.<項目>`、保存は `allSettings.project.save`。
+ */
+async function allSettingsState(): Promise<unknown> {
+  const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
+  const d = openAllSettings();
+  if (!d) return { open: false };
+  await d.ready;
+  const checks: Record<string, boolean> = {};
+  for (const el of document.querySelectorAll<HTMLInputElement>(".all-settings-dialog input[type=checkbox][data-action]")) checks[el.dataset["action"]!] = el.checked;
+  const project: Record<string, string | boolean> = {};
+  for (const el of document.querySelectorAll<HTMLInputElement>(".all-settings-project input")) {
+    project[el.dataset["autoId"]!.replace("allSettings.project.", "")] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  return { open: true, checks, project, message: d.message };
+}
+
+/** `allSettings.save`: プロジェクトの欄を保存して終わるまで待つ。返事は保存できたか `ok` と `allSettings.state`。 */
+async function allSettingsSave(): Promise<unknown> {
+  const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
+  const d = openAllSettings();
+  if (!d) throw new Error("すべての設定の窓が開いていません");
+  await d.ready;
+  const ok = await d.saveProject();
+  return { ok, ...((await allSettingsState()) as object) };
+}
+
 export const viewToolCommands: CommandTable = {
+  "allSettings.state": allSettingsState,
+  "allSettings.save": allSettingsSave,
+  "projectWatch.check": projectWatchCheck,
+  "projectWatch.state": projectWatchState,
   "userScripts.state": userScriptsState,
   "userScripts.run": userScriptsRun,
   "userScripts.reload": userScriptsReload,

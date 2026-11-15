@@ -101,6 +101,10 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `clipboard.last` | | 最後にコピーした文字（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
 | `editHistory.state` | | 履歴の窓（Phase5 #402。窓を作っていなければ作るが、開きはしない）。`open`（出しているか）、`position`（今の位置。実行済みの操作の数）、`rows`（新しい順。`position`（押したときに移る位置）・`text`・`current`・`redo`（やり直せる分）。最後が「（最初の状態）」で `position` 0）。開く・閉じるは `action` の `view.history` |
 | `editHistory.goTo` | `position` | 履歴の窓の行を押す（窓を出していれば画面の行を押し、出していなければ同じ処理を呼ぶ）。その位置まで戻す・進める。返事は `editHistory.state` と同じものと、動かした回数 `steps` |
+| `allSettings.state` | | すべての設定の窓（Phase5 #404。`action` の `opt.allSettings` で開く）。`open`、チェックの欄の状態 `checks`（アクション ID → チェック）、プロジェクトの欄の値 `project`、最後の保存の結果 `message`。欄は `allSettings.<アクション ID>`（`setField` に true / false、窓を開く項目は `click`）、プロジェクトの欄は `allSettings.project.<outputRom / labelTemplate / useGlobal / lineMaxChars / linesPerPage>` |
+| `allSettings.save` | | プロジェクトの欄を zigzagumap.json に保存して終わるまで待つ。返事は `ok` と `allSettings.state` |
+| `projectWatch.check` | | ファイルの変化を調べる（Phase5 #404。メインのウィンドウに戻ったときと同じ。設定 `watchProject`（`opt.watchProject`）が外れていても調べる）。聞くダイアログが出たら待たずに返す（`dialog` の `press: "yes"` / `"no"` で答える）。返事は `projectWatch.state` と同じ |
+| `projectWatch.state` | `wait`（省略可） | 控えているファイルの数 `watched`、最後の `projectWatch.check` の結果 `result`（`changes`（`changed`・`added`・`removed`。プロジェクトフォルダからの相対パス）・`reloaded`。答え待ちなら null）。`wait: true` なら終わるまで待つ |
 | `userScripts.state` | `wait`（省略可） | 利用者のスクリプト（Phase5 #405）。Worker を作っているか `active`、置き場所の `files`、有効な `enabled`、登録された操作 `actions`（`id`・`label`）、`logs`（`level`・`text`）、読めなかったもの `loadErrors`。`wait: true` なら読み込みと動いている呼び出しが終わるまで待つ。管理の窓は `action` の `scripts.manage`、チェックは `setField` の `userScripts.enable.<ファイル名>` |
 | `userScripts.run` | `action`、`wait`（省略可） | 登録された操作を動かす（メニューからは `menu.run` / `action` の `scripts.run.<N>`。N は ツール > ユーザースクリプト の上からの番号で、キーの表の ID も同じ）。`wait: false` でなければ終わるまで待つ（ダイアログを出す操作は false にして `dialog` で答える）。返事は `userScripts.state` |
 | `userScripts.reload` / `userScripts.stop` | | 読み直す（終わるまで待つ）／Worker を終わらせる。返事は `userScripts.state` |

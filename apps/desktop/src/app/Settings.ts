@@ -115,6 +115,8 @@ export interface SettingsData {
   showClones: boolean;
   /** ROM ごとに前回のプロジェクトフォルダを覚え、ROM を開いたときフォルダを選ぶ窓を出さずにそれを開く（設定メニュー。既定オン。ユーザーの要望 #278）。 */
   rememberRomProject: boolean;
+  /** メインのウィンドウに戻ったとき、プロジェクトのファイルが外で変わったか調べる（設定メニュー。既定オン。Phase5 #404）。 */
+  watchProject: boolean;
   /** ROM のパス（小文字）→ 前回いっしょに開いたプロジェクトフォルダ（最近開いたものの件数に関係なく残す）。 */
   romProjects: Record<string, string>;
   /** イベントタブで隠すイベントの種類（表示メニュー。`person`・`sign`・`trap`・`warp`。隠した種類は描かず、クリックでも選ばない。#304）。 */
@@ -196,6 +198,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   autoPenTint: true,
   showClones: false,
   rememberRomProject: true,
+  watchProject: true,
   romProjects: {},
   hiddenEventKinds: [],
   eventOpacity: 1,

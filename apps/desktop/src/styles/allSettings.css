@@ -1,0 +1,60 @@
+/* すべての設定の窓（Phase5 #404）。 */
+.all-settings-dialog .dialog-body {
+  width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.all-settings-heading {
+  margin: 6px 0 2px;
+  font-weight: bold;
+}
+
+.all-settings-note {
+  font-weight: normal;
+  color: var(--gray-text);
+}
+
+.all-settings-error {
+  color: var(--error-text);
+}
+
+.all-settings-personal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+
+.all-settings-dialog fieldset {
+  margin: 0;
+  padding: 2px 6px 4px;
+}
+
+.all-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.all-settings-row button {
+  width: auto;
+  padding: 0 8px;
+  margin-left: auto;
+}
+
+.all-settings-project .all-settings-row span {
+  width: 240px;
+  flex: none;
+}
+
+.all-settings-project input[type="text"],
+.all-settings-project input[type="number"] {
+  flex: 1;
+}
+
+.all-settings-project > button {
+  width: auto;
+  padding: 0 10px;
+  margin-top: 4px;
+}

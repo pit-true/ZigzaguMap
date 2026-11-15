@@ -19,7 +19,7 @@ describe("メニューの構成（Phase1 のフィードバック）", () => {
       expect(view).toContain(id);
       expect(settings).not.toContain(id);
     }
-    expect(settings).toEqual(["opt.rememberLast", "opt.autoSearch", "opt.backupOnOpen", "opt.romShortcut", "opt.contextMenu", "opt.alignConnections", "opt.rememberRomProject", "scripts.manage", "recent.max", "recent.clear", "recent.showPath", "theme.light", "theme.dark", "opt.shortcuts"]);
+    expect(settings).toEqual(["opt.rememberLast", "opt.autoSearch", "opt.backupOnOpen", "opt.romShortcut", "opt.contextMenu", "opt.alignConnections", "opt.rememberRomProject", "opt.watchProject", "scripts.manage", "recent.max", "recent.clear", "recent.showPath", "theme.light", "theme.dark", "opt.shortcuts", "opt.allSettings"]);
   });
 
   it("設定 > テーマに明るい標準色とダークがある（Phase2。画面全体の配色なので設定に置く）", () => {
