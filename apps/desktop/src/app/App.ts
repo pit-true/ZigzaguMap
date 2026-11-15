@@ -250,6 +250,17 @@ export class App implements ActionTarget {
     this.pen = new PenExtras(state, mapTab, this.extras.blockUsage, this.actions, this);
     this.tools = new ToolExtras(state, mapTab, movementTab, this.extras.edgeResize);
     this.extras.edgeMenu.openResize = () => this.tools.openResize();
+    // すべての設定（Phase5 #404）
+    this.actions.register("opt.allSettings", async () => {
+      const { AllSettingsDialog } = await import("../ui/settings/AllSettingsDialog");
+      new AllSettingsDialog({
+        state,
+        actions: this.actions,
+        menu: () => this.menuItems(),
+        projectFs: () => (this.state.session?.projectDir ? this.state.session.files : null),
+        reloadScriptConfig: () => this.scripts.attach(this.state.session),
+      });
+    });
     this.actions.register("opt.shortcuts", async () => {
       const { openShortcutDialog } = await import("../ui/settings/ShortcutDialog");
       openShortcutDialog((overrides) => {

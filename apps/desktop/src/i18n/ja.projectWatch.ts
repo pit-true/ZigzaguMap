@@ -1,6 +1,8 @@
 /** ファイルの変化の監視（Phase5 #404）の文言（ZigzaguMap 独自）。 */
 export const jaProjectWatch = {
   title: "ファイルの変化",
+  /** 設定メニュー。 */
+  menu: "外で変わったファイルを調べる",
   changed: (path: string) => `変更: ${path}`,
   added: (path: string) => `追加: ${path}`,
   removed: (path: string) => `削除: ${path}`,

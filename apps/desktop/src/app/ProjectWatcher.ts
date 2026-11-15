@@ -69,8 +69,9 @@ export class ProjectWatcher {
     return this.stamps?.size ?? 0;
   }
 
-  /** メインのウィンドウに戻ったとき（同時に何度も来たら 1 回にまとめる）。 */
+  /** メインのウィンドウに戻ったとき（同時に何度も来たら 1 回にまとめる）。設定 > 外で変わったファイルを調べる が外れていれば調べない。 */
   onFocus(): void {
+    if (!this.host.state.settings.data.watchProject) return;
     void this.check();
   }
 

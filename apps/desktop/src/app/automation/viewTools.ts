@@ -319,7 +319,38 @@ async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown>
   throw new Error(`action が不正です: ${String(action)}`);
 }
 
+/**
+ * `allSettings.state`: すべての設定の窓（Phase5 #404。`action` の `opt.allSettings` で開く）。開いているか `open`、チェックの欄の
+ * 状態 `checks`（アクション ID → チェック）、プロジェクトの欄の値 `project`、最後の保存の結果 `message`。欄は `allSettings.<アクション ID>`
+ * （`setField` に true / false、窓を開く項目は `click`）、プロジェクトの欄は `allSettings.project.<項目>`、保存は `allSettings.project.save`。
+ */
+async function allSettingsState(): Promise<unknown> {
+  const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
+  const d = openAllSettings();
+  if (!d) return { open: false };
+  await d.ready;
+  const checks: Record<string, boolean> = {};
+  for (const el of document.querySelectorAll<HTMLInputElement>(".all-settings-dialog input[type=checkbox][data-action]")) checks[el.dataset["action"]!] = el.checked;
+  const project: Record<string, string | boolean> = {};
+  for (const el of document.querySelectorAll<HTMLInputElement>(".all-settings-project input")) {
+    project[el.dataset["autoId"]!.replace("allSettings.project.", "")] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  return { open: true, checks, project, message: d.message };
+}
+
+/** `allSettings.save`: プロジェクトの欄を保存して終わるまで待つ。返事は保存できたか `ok` と `allSettings.state`。 */
+async function allSettingsSave(): Promise<unknown> {
+  const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
+  const d = openAllSettings();
+  if (!d) throw new Error("すべての設定の窓が開いていません");
+  await d.ready;
+  const ok = await d.saveProject();
+  return { ok, ...((await allSettingsState()) as object) };
+}
+
 export const viewToolCommands: CommandTable = {
+  "allSettings.state": allSettingsState,
+  "allSettings.save": allSettingsSave,
   "projectWatch.check": projectWatchCheck,
   "projectWatch.state": projectWatchState,
   "userScripts.state": userScriptsState,

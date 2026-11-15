@@ -60,6 +60,7 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.autoPenTint": "autoPenTint",
   "view.clones": "showClones",
   "opt.rememberRomProject": "rememberRomProject",
+  "opt.watchProject": "watchProject",
   "view.paletteBoundary": "paletteBoundary",
   "view.treeThumbnails": "treeThumbnails",
 };
@@ -132,6 +133,11 @@ export class Actions {
   /** チェックつきの項目の状態の答え方を登録する（設定の真偽値で答えられない項目用）。 */
   registerCheck(id: string, isChecked: () => boolean): void {
     this.checks.set(id, isChecked);
+  }
+
+  /** チェックの付く項目か（すべての設定の窓がチェックの欄にするか決めるのに使う。Phase5 #404）。 */
+  isCheckable(id: string): boolean {
+    return this.checks.has(id) || id in TOGGLES || /^(sort|theme|neighbors)\./.test(id);
   }
 
   /** 実装済みか。 */

@@ -1,0 +1,22 @@
+/** すべての設定の窓（Phase5 #404）の文言（ZigzaguMap 独自）。 */
+export const jaSettingsWindow = {
+  menu: "すべての設定...",
+  title: "すべての設定",
+  personal: "個人の設定（AppData の settings.json）",
+  personalNote: "メニューの項目と同じです。変えるとすぐ反映し、メニューのチェックも同じになります。",
+  project: "プロジェクトの設定（zigzagumap.json）",
+  noProject: "プロジェクトフォルダを開くと変えられます",
+  open: "開く...",
+  save: "プロジェクトの設定を保存",
+  close: "閉じる",
+  saved: "zigzagumap.json に保存しました",
+  saveFailed: (error: string) => `zigzagumap.json に保存できません: ${error}`,
+  loadFailed: (error: string) => `zigzagumap.json を読めません: ${error}`,
+  outputRom: "ビルドしてできる ROM（outputRom）",
+  labelTemplate: "イベントのラベルの名前の形（labelTemplate）",
+  useGlobal: "ラベルを .global にする（useGlobal）",
+  lineMaxChars: "1 行の文字数の上限（lineMaxChars）",
+  linesPerPage: "1 ページの行数（linesPerPage）",
+  defaultValue: (v: string) => `空なら既定（${v}）`,
+  badNumber: (name: string) => `${name} は 1 以上の整数で書いてください`,
+} as const;

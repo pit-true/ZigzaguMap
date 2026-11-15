@@ -22,6 +22,8 @@ import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaSettingsWindow } from "../i18n/ja.settingsWindow";
+import { jaProjectWatch } from "../i18n/ja.projectWatch";
 import { jaMapExport } from "../i18n/ja.mapExport";
 import { jaWildTools } from "../i18n/ja.wildTools";
 
@@ -178,6 +180,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
         // ROM を開いたとき、前回のプロジェクトフォルダを窓を出さずに開く（ユーザーの要望 #278。ZigzaguMap 独自）
         { id: "opt.rememberRomProject", label: ja.rememberRomProject },
+        // ファイルの変化の監視（Phase5 #404。ZigzaguMap 独自）
+        { id: "opt.watchProject", label: jaProjectWatch.menu },
         // 利用者の JavaScript のスクリプト（Phase5 #405。ZigzaguMap 独自）
         { id: "scripts.manage", label: jaUserScript.menu, enable: "rom" },
         {
@@ -200,6 +204,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         },
         // ショートカットの変更（Phase5 #392。ZigzaguMap 独自）
         { id: "opt.shortcuts", label: jaShortcutEdit.menu },
+        // すべての設定（Phase5 #404。ZigzaguMap 独自。表示と設定のメニューの項目とプロジェクトの設定を 1 つの窓に並べる）
+        { id: "opt.allSettings", label: jaSettingsWindow.menu },
       ],
     },
     {

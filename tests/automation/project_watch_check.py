@@ -7,6 +7,8 @@
 - 「はい」なら読み直し、開いていたマップ（3.0）を開き直す（履歴は空になる）。
 - 未出力の変更があると、変更を捨てることを別に聞く。「いいえ」なら読み直さず、変更は残る。
 - ZigzaguMap が出力したファイルは数えない（出力のあとに調べても聞かない）。
+- すべての設定の窓（#404、Q14）: チェックの欄がメニューのチェックと同じで、窓で変えるとメニューも変わる。設定 > 外で変わったファイルを調べる も並ぶ。
+  プロジェクトの欄（zigzagumap.json）を保存でき、ほかの節は残り、監視は自分で書いたものとして数えない（最後に元の中身へ戻す）。
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import Zigzagu  # noqa: E402
@@ -43,6 +46,8 @@ def main() -> int:
     args = ap.parse_args()
     target = pathlib.Path(args.project) / "maps" / "03" / "00.json"
     original = target.read_bytes()
+    config = pathlib.Path(args.project) / "zigzagumap.json"
+    original_config = config.read_bytes() if config.exists() else None
 
     def touch(n: int) -> None:
         target.write_bytes(original + b"\n" * n)
@@ -95,8 +100,40 @@ def main() -> int:
             z.call({"cmd": "export"}, timeout=300)
             r = z.call({"cmd": "projectWatch.check"})["result"]
             check(r is not None and not dialogs(z) and r["changes"]["changed"] == [], f"出力したファイルは数えない（{r and r['changes']}）")
+            # すべての設定の窓
+            def menu_checked(id_: str) -> bool:
+                return next((i for i in z.call({"cmd": "menu.list"}) if i.get("id") == id_), {}).get("checked", False)
+
+            z.call({"cmd": "action", "id": "opt.allSettings"})
+            st = z.call({"cmd": "allSettings.state"})
+            check(st["open"] and st["checks"].get("view.grid") == menu_checked("view.grid"), "チェックの欄がメニューと同じ（グリッドの表示）")
+            check("opt.watchProject" in st["checks"] and st["checks"]["opt.watchProject"], "外で変わったファイルを調べる が並び、既定はオン")
+            check("view.cursorFrame" in st["checks"] and "view.playerView" in st["checks"], "Phase5 の表示の補助（カーソルの枠・視界）も並ぶ")
+            grid = menu_checked("view.grid")
+            z.call({"cmd": "setField", "id": "allSettings.view.grid", "value": not grid})
+            time.sleep(0.2)
+            check(menu_checked("view.grid") == (not grid), "窓で変えるとメニューのチェックも変わる")
+            z.call({"cmd": "action", "id": "view.grid"})
+            time.sleep(0.2)
+            check(z.call({"cmd": "allSettings.state"})["checks"]["view.grid"] == grid, "メニューで変えると窓も変わる")
+            z.call({"cmd": "setField", "id": "allSettings.project.lineMaxChars", "value": "17"})
+            r = z.call({"cmd": "allSettings.save"})
+            saved = config.read_text(encoding="utf-8") if config.exists() else ""
+            check(r["ok"] and '"lineMaxChars": 17' in saved, f"プロジェクトの欄を zigzagumap.json に保存できる（{r['message']}）")
+            if original_config is not None:
+                import json as _json
+                before = _json.loads(original_config.decode("utf-8-sig"))
+                after = _json.loads(saved)
+                check(all(k in after for k in before), "zigzagumap.json のほかの節は残る")
+            z.call({"cmd": "dialog", "press": "close"})
+            r = z.call({"cmd": "projectWatch.check"})["result"]
+            check(r is not None and not dialogs(z) and r["changes"]["changed"] == [] and r["changes"]["added"] == [], f"窓で保存した zigzagumap.json は外の変化として数えない（{r and r['changes']}）")
     finally:
         target.write_bytes(original)
+        if original_config is None:
+            config.unlink(missing_ok=True)
+        else:
+            config.write_bytes(original_config)
     print(f"\n失敗 {len(failures)} 件" if failures else "\nすべて OK")
     return 1 if failures else 0
 
