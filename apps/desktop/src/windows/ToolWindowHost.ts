@@ -140,6 +140,13 @@ export class ToolWindowHost {
         return null;
       case "probe":
         return (await import("./transplant/transplantProbe")).probeTransplant(this.requireSession().project, req.newTilesets, req.code);
+      case "tilesetUsers":
+        return { maps: await (await import("./block-editor/blockSwapHost")).tilesetUsers(this.requireSession().project, { pointer: req.tileset, secondary: req.secondary }) };
+      case "swapBlocks": {
+        const session = this.requireSession();
+        const swap = await import("./block-editor/blockSwapHost");
+        return swap.swapBlocks(session.project, session.bus, { pointer: req.tileset, secondary: req.secondary }, req.a, req.b, req.remap);
+      }
     }
   }
 
