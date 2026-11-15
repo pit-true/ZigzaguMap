@@ -1,5 +1,6 @@
 import { ja } from "../i18n/ja";
 import { jaEventDelete } from "../i18n/ja.eventDelete";
+import { jaEventMulti } from "../i18n/ja.eventMulti";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaNeighbors } from "../i18n/ja.neighbors";
@@ -13,6 +14,7 @@ import { jaPointers } from "../i18n/ja.pointers";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaBlockEditor } from "../i18n/ja.blockEditor";
 import { jaTools } from "../i18n/ja.tools";
+import { blockToolShortcutRows } from "../i18n/ja.blockTools";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
 /** ショートカットの一覧の 1 行。 */
@@ -45,6 +47,11 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
   { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
   { keys: "Delete", action: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
+  // イベントの複数選択・まとめての移動・複製（Phase5 #399。ui/event/EventTab.ts・app/Shortcuts.ts）
+  { keys: "Shift＋クリック", action: jaEventMulti.shortcutToggle, where: jaEventMulti.shortcutWhere },
+  { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
+  { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
+  { keys: "Ctrl+D", action: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
   { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
   { keys: jaMapFind.mouseForward, action: jaMapFind.shortcutForward, where: ja.shortcuts.mainWindow },
   { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
@@ -98,6 +105,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "右クリック", action: jaEventDelete.shortcutMenu, where: jaEventDelete.shortcutWhere },
   // ブロックエディタの 8 マスと 3 層目の 4 マス（Phase4 #302。windows/block-editor/BlockEditPanel.ts）
   { keys: jaBlockEditor.shortcutTileKeys, action: jaBlockEditor.shortcutTile, where: jaBlockEditor.shortcutTileWhere },
+  // ブロックエディタの Phase5 の操作（#393〜#395。windows/block-editor/）
+  ...blockToolShortcutRows(),
   // マップ作成補助の窓（Phase4 #312・#338。windows/map-assist/MapAssistWindow.ts）
   { keys: jaAssist.shortcutPickKeys, action: jaAssist.shortcutPick, where: jaAssist.shortcutPickWhere },
   ...scriptEditorKeys(),

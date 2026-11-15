@@ -7,10 +7,12 @@ import type { TileSheetView } from "./TileSheetView";
 
 /** ブロックの編集面が使う窓口。 */
 export interface BlockEditPanelHost {
-  /** マス `cell` を左クリック（置く）。0〜7 は 8 マス、8〜11 は 3 層目の 4 マス。 */
-  place(cell: number): void;
-  /** マス `cell` を右クリック（拾う）。 */
-  pick(cell: number): void;
+  /** マス `cell` を左クリック（置く）。0〜7 は 8 マス、8〜11 は 3 層目の 4 マス。`paletteOnly` は Ctrl＋左クリック（パレットだけ塗る）。 */
+  place(cell: number, paletteOnly: boolean): void;
+  /** マス `from` で右ボタンを押し、マス `to` で離した（矩形で拾う。1 マスなら from と to が同じ）。 */
+  pick(from: number, to: number): void;
+  /** マスの上にマウスが来た（外れたら null）。 */
+  hover(cell: number | null): void;
   /** 左右逆・上下逆を変えた。 */
   flipChanged(): void;
   /** パレットを選んだ。 */
@@ -104,23 +106,45 @@ export class BlockEditPanel {
     );
     this.showThird(false);
 
-    this.blockBox.addEventListener("pointerdown", (e) => {
-      const p = pointIn(this.blockBox, e);
-      if (p.x < 0 || p.y < 0 || p.x >= 64 || p.y >= 32) return;
-      const cell = (p.x >= 32 ? 4 : 0) + (p.y >= 16 ? 2 : 0) + ((p.x % 32) >= 16 ? 1 : 0);
-      if (e.button === 0) host.place(cell);
-      else if (e.button === 2) host.pick(cell);
-    });
-    this.thirdBox.addEventListener("pointerdown", (e) => {
-      const p = pointIn(this.thirdBox, e);
-      if (p.x < 0 || p.y < 0 || p.x >= 32 || p.y >= 32) return;
-      const cell = 8 + (p.y >= 16 ? 2 : 0) + (p.x >= 16 ? 1 : 0);
-      if (e.button === 0) host.place(cell);
-      else if (e.button === 2) host.pick(cell);
-    });
+    this.listenCells(this.blockBox, host, (x, y) => (x < 0 || y < 0 || x >= 64 || y >= 32 ? null : (x >= 32 ? 4 : 0) + (y >= 16 ? 2 : 0) + (x % 32 >= 16 ? 1 : 0)));
+    this.listenCells(this.thirdBox, host, (x, y) => (x < 0 || y < 0 || x >= 32 || y >= 32 ? null : 8 + (y >= 16 ? 2 : 0) + (x >= 16 ? 1 : 0)));
     this.xflip.addEventListener("change", () => host.flipChanged());
     this.yflip.addEventListener("change", () => host.flipChanged());
     this.palette.addEventListener("change", () => host.paletteChanged(this.palette.selectedIndex));
+  }
+
+  /**
+   * 8 マス・3 層目のマウス操作。左クリックで置く（Ctrl でパレットだけ）、右ボタンの押した所から離した所までで矩形を拾う
+   * （#393。離す位置がもう一方の格子なら押したマスだけ）。乗せたマスを窓口に知らせる。
+   */
+  private listenCells(canvas: HTMLCanvasElement, host: BlockEditPanelHost, cellAt: (x: number, y: number) => number | null): void {
+    let pickFrom: number | null = null;
+    const cellOf = (e: PointerEvent): number | null => {
+      const p = pointIn(canvas, e);
+      return cellAt(p.x, p.y);
+    };
+    canvas.addEventListener("pointerdown", (e) => {
+      const cell = cellOf(e);
+      if (cell === null) return;
+      if (e.button === 0) host.place(cell, e.ctrlKey);
+      else if (e.button === 2) {
+        pickFrom = cell;
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch {
+          // 自動操作でまねたイベントはつかめない。
+        }
+      }
+    });
+    canvas.addEventListener("pointermove", (e) => host.hover(cellOf(e)));
+    canvas.addEventListener("pointerleave", () => host.hover(null));
+    // 右ボタンを離したのが別の部品の上でも、押した部品で受ける（3 層目へ離したときは 8 マスの外として押したマスだけ拾う）
+    canvas.addEventListener("pointerup", (e) => {
+      if (pickFrom === null) return;
+      const from = pickFrom;
+      pickFrom = null;
+      host.pick(from, cellOf(e) ?? from);
+    });
   }
 
   /** 欄と 8 マス・プレビューを描き直す。 */

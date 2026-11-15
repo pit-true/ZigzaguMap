@@ -99,9 +99,12 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `tree.select` / `tree.open` | `key`、`text`、または `bank` と `map` | 項目を左クリック（選ぶだけ）／ダブルクリック（マップなら開いて開き終わるまで待つ、グループなら開閉）する。親が閉じていれば開いてから押す |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
-| `event.state` | | 選択中の種別と番号、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
+| `event.state` | | 選択中の種別と番号、`selected`（選んでいるイベント。複数選択なら全部。#399）、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
+| `event.selectMany` | `items`（`[{"kind": "person", "index": 0}, ...]`） | イベントを複数選ぶ（Phase5 #399。Shift＋クリックで足したのと同じ。最後のものを欄に出す）。2 つ以上なら `event.state` の `selected` に全部が出る。返事は選択と `selected` |
+| `event.duplicate` | | 選んでいるイベントを複製する（Ctrl+D と同じ。#399）。返事は `ok`・`status`・写しの `selected`・`counts` |
+| `event.deleteSelected` | `confirm`（省略で true） | 選んでいるイベントをまとめて削除する（Delete キーと同じ。#399。確認は 1 回）。`confirm` の扱いと返事は `event.delete` と同じ |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
 | `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |
 | `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
@@ -352,6 +355,12 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - 自動ペンの欄（マップタブの右）: 「自動ペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
 - マップ作成補助（`action` の `tools.mapAssist`、`"window": "map-assist"`）の部品: タブ `assist.tabBlocks`・`assist.tabMap`、左の絵 `assist.source`、パーツの一覧 `assist.parts`（`setField` に番号）、追加 `assist.add.fill`・`assist.add.edge`・`assist.add.piece`・`assist.add.repeat`、`assist.remove`・`assist.up`・`assist.down`、名前 `assist.name`・役割 `assist.role`、「マップから候補を作る（自動）」`assist.analyze`、「Bochi の定義を読み込む…」`assist.importBochi`（ファイルのダイアログは `queuePath` で答える）、枠 `assist.slot.<枠名>`（`assist.slot.NW` など）、「← 左で選んだ所を入れる」`assist.put`・「枠を空にする」`assist.clearSlot`・「保存」`assist.save`、範囲の操作 `assist.fill`（選んだパーツで範囲を塗る）・`assist.tidy`（範囲を整える）とそのチェック `assist.tidyEdges`・`assist.tidyRepeats`・`assist.tidyMovement`（`setField` に true / false）。範囲はメインのマップの `mouse` の `ctrl: true` の右ドラッグで選ぶ。
 - 移植の窓（`action` の `tools.transplant`、`"window": "transplant"`）: 部品は上の `transplant_check.py` の説明のとおり（`tp.pickRom`・`tp.maps`・`tp.parts`・`tp.copyLayout`・`tp.import`・`tp.close`・`tp.preview`・`tp.primaryInfo`・`tp.secondaryInfo`・`tp.report`）と、元の ROM の表示 `tp.romLabel`。窓の `state` は `rom`・`game`・`mapCount`・`selected`・`selectedSize`（選んだマップの大きさ `[幅, 高さ]`）・`parts`・`copyLayout`・`report`・`conversion`・`target`・`jsHeap`（窓の JavaScript のヒープ、バイト）。
+
+## Phase5 の部品と命令（ブロックエディタ・パレット・野生。列 2）
+
+確認のスクリプトは `tests/automation/block_tools_check.py`（`--only 393` などで issue ごとに動かせる）。
+
+- ブロックエディタ（`"window": "block-editor"`）のタイルの矩形（#393）: タイル一覧 `be.tiles` の `pointer`（`down` → `move` → `up`。1 タイル 16px）で矩形を選ぶ。選んだ矩形の枠 `be.tilesFrame`（`getField` の `visible`。2 枚以上のときだけ出る）。8 マス `be.block` の `pointer` に `ctrl: true` でパレットだけ塗る、`button: 2` の `down` と `up` で矩形を拾う（離した所が 3 層目なら押したマスだけ）。窓の下の 1 行 `be.status`（`getField` の `value`。ホバーの情報と案内）。窓の `state` に `selection`（`width`・`height`・`picked`（8 マスから拾った矩形か）。選んでいなければ null）が出る。
 
 ## Phase4 の表示・一覧・調査（列 3）
 

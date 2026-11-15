@@ -23,6 +23,12 @@ export function installShortcuts(app: App): void {
       app.deleteSelectedEvent();
       return;
     }
+    // Ctrl+D: イベントタブで選んでいるイベントを複製する（Phase5 #399）
+    if (key === "D" && e.ctrlKey && !e.altKey && !e.shiftKey && app.state.tab === "event" && openDialogs.length === 0) {
+      e.preventDefault();
+      app.duplicateSelectedEvents();
+      return;
+    }
     const item = items.find(
       (i) => i.shortcut!.key === key && !!i.shortcut!.ctrl === e.ctrlKey && !!i.shortcut!.alt === e.altKey && !!i.shortcut!.shift === e.shiftKey,
     );

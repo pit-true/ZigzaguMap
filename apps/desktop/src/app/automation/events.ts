@@ -104,6 +104,38 @@ export const eventCommands: CommandTable = {
     tab.select(kind(req), int(req, "index"));
     return tab.selection;
   },
+  // 複数選択（Phase5 #399）。`items: [{kind, index}, ...]`。最後のものを欄に出す
+  "event.selectMany": (app, req) => {
+    const tab = eventTab(app);
+    const items = req["items"];
+    if (!Array.isArray(items) || items.length === 0) throw new Error("items に [{kind, index}, ...] を指定してください");
+    tab.selectMany(
+      items.map((i: unknown) => {
+        const r = { ...(i as object) } as AutomationRequest;
+        return { kind: kind(r), index: int(r, "index") };
+      }),
+    );
+    return { ...tab.selection, selected: tab.selectedEvents() };
+  },
+  // Ctrl+D と同じ（#399）
+  "event.duplicate": (app) => {
+    const tab = eventTab(app);
+    const ok = tab.duplicateSelected();
+    return { ok, status: app.state.status.left, selected: tab.selectedEvents(), counts: tab.counts() };
+  },
+  // 選んでいるものを削除する（#399。Delete キーと同じ）。`confirm: false` なら確かめずに消し、そうでなければダイアログを出したまま返す
+  "event.deleteSelected": async (app, req) => {
+    const tab = eventTab(app);
+    const list = tab.selectedEvents();
+    if (req["confirm"] === false) {
+      const ok = await app.events.deleteEvents(list, false);
+      await app.scripts.settle();
+      return { ok, status: app.state.status.left, selected: tab.selectedEvents(), counts: tab.counts() };
+    }
+    void app.events.deleteEvents(list, true);
+    for (let i = 0; i < 200 && !openDialogs.some((d) => d.title === jaEventDelete.title); i++) await settle(25);
+    return { dialogs: openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons })) };
+  },
   "event.state": (app) => {
     const tab = eventTab(app);
     const map = app.state.map;
@@ -111,6 +143,8 @@ export const eventCommands: CommandTable = {
       ...tab.selection,
       count: tab.count(),
       counts: tab.counts(),
+      /** 選んでいるイベント（#399。複数選択なら全部、そうでなければ欄の 1 つ）。 */
+      selected: tab.selectedEvents(),
       fly: tab.count("fly") > 0,
       events: map?.doc.events ?? null,
       itemBalls: map?.doc.itemBalls ?? [],

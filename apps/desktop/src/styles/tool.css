@@ -58,6 +58,28 @@
   white-space: nowrap;
 }
 
+/* タイル一覧で選んだ矩形の枠（2 枚以上のとき。絵の上に重ねる。#393） */
+.be-select-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #ff3030;
+  outline: 1px solid #000;
+  pointer-events: none;
+}
+
+/* 窓の下の 1 行（ホバーの情報と案内。#393） */
+.be-status {
+  height: 18px;
+  line-height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top: 1px solid var(--border, #a0a0a0);
+  box-sizing: border-box;
+}
+
 /* ---- パレットエディタ ---- */
 .palette-editor {
   height: 186px;

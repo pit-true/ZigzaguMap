@@ -197,6 +197,7 @@ export class App implements ActionTarget {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
       deleteEvent: (kind, index) => void events.deleteEvent(kind, index),
+      deleteEvents: (list) => void events.deleteEvents(list),
       pickUnused: (kind) => events.pickUnused(kind),
       createWarpMap: (index) => void events.warpMapCreator().then((c) => c.run(index)),
       editTrainer: (index) => void this.trainers.editForPerson(index),
@@ -475,6 +476,11 @@ export class App implements ActionTarget {
   /** イベントタブで選んでいるイベントを削除する（Delete キー。「イベントの削除」ボタンと同じ）。 */
   deleteSelectedEvent(): void {
     this.eventTab.removeSelected();
+  }
+
+  /** イベントタブで選んでいるイベントを複製する（Ctrl+D。#399）。 */
+  duplicateSelectedEvents(): void {
+    this.eventTab.duplicateSelected();
   }
 
   /** イベントタブでイベントを選ぶ（ひな形を置いたあと）。 */
