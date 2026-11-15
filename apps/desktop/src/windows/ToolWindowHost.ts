@@ -147,6 +147,15 @@ export class ToolWindowHost {
         const swap = await import("./block-editor/blockSwapHost");
         return swap.swapBlocks(session.project, session.bus, { pointer: req.tileset, secondary: req.secondary }, req.a, req.b, req.remap);
       }
+      case "blockStats": {
+        const session = this.requireSession();
+        const map = this.app.state.map;
+        if (!map) throw new Error(t.notOpen);
+        const usage = await this.app.extras.blockUsage.build();
+        if (!usage) throw new Error(t.notOpen);
+        const stats = await import("./block-editor/blockStatsHost");
+        return stats.blockStats(session.project, usage, map.doc.primaryTileset, map.doc.secondaryTileset, req.tiles);
+      }
     }
   }
 

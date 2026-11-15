@@ -1,4 +1,5 @@
 import { formatHex } from "@zigzagumap/core";
+import { ini } from "./ini";
 
 /**
  * ブロックエディタに Phase5 で足した操作の文言（ZigzaguMap 独自。#393〜#397）。
@@ -64,6 +65,34 @@ export const jaBlockTools = {
       mixed: "トリプルレイヤーのブロック（N と N+1 の組）は、ほかのトリプルレイヤーのブロックとだけ入れ替えられます。",
       overlap: "トリプルレイヤーのブロックの組が重なるため、入れ替えられません。",
     })[reason] ?? "このブロックは入れ替えられません。",
+
+  // ---- #395 使用回数・未使用・画像の書き出し ----
+  menuView: "表示",
+  viewUsage: "使用回数",
+  viewUnusedBlocks: "未使用のブロック",
+  viewUnusedTiles: "未使用のタイル",
+  counting: "使用回数を数えています…",
+  counted: (unusedBlocks: number, unusedTiles: number | null, ms: number) =>
+    `使用回数を数えました（未使用のブロック ${unusedBlocks} 個${unusedTiles === null ? "" : `、未使用のタイル ${unusedTiles} 枚`}、${ms}ms）`,
+  exportMenu: "ブロック一覧の画像の書き出し…",
+  exportTitle: "ブロック一覧の画像の書き出し",
+  exportTileset: "タイルセット",
+  exportTileset1: ini.BlockEditorForm["131"],
+  exportTileset2: ini.BlockEditorForm["132"],
+  exportRange: "範囲（16 進）",
+  exportLayers: "レイヤー",
+  exportLower: "下",
+  exportUpper: "上",
+  exportThird: "3枚目",
+  exportColumns: "幅（ブロック数）",
+  exportBackground: "透明の扱い",
+  exportBgTransparent: "そのまま（透明）",
+  exportBgBlack: "黒",
+  exportBgPalette0: "パレット0の色0",
+  exportInfo: (blocks: number, w: number, h: number) => `${blocks} 個のブロック、${w}×${h} 画素`,
+  exportSave: "書き出す…",
+  exportFailed: "PNG を作れませんでした。",
+  exported: (path: string) => `書き出しました: ${path}`,
 
   /** ショートカット一覧（ヘルプ）。 */
   shortcutRectKeys: "ドラッグ",
