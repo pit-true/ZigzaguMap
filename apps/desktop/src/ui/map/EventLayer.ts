@@ -151,16 +151,47 @@ export function drawEventsOn(
     drawBox(c, e.kind, x, y, cellSize, alpha);
     if (cloneMarks && e.clone) drawCloneMark(c, x, y, cellSize);
   }
-  if (selected) {
-    c.globalAlpha = 1;
-    c.fillStyle = "#ff0000";
-    const x = selected.x * cellSize;
-    const y = selected.y * cellSize;
-    c.fillRect(x, y, cellSize, scale);
-    c.fillRect(x, y + cellSize - scale, cellSize, scale);
-    c.fillRect(x, y, scale, cellSize);
-    c.fillRect(x + cellSize - scale, y, scale, cellSize);
-  }
+  if (selected) drawFrame(c, selected, cellSize, "#ff0000");
+}
+
+/** 選択の枠（マスの縁の 1 画素。拡大に合わせて太くする）。 */
+function drawFrame(c: CanvasRenderingContext2D, e: { x: number; y: number }, cellSize: number, color: string): void {
+  const scale = cellSize / 16;
+  c.globalAlpha = 1;
+  c.fillStyle = color;
+  const x = e.x * cellSize;
+  const y = e.y * cellSize;
+  c.fillRect(x, y, cellSize, scale);
+  c.fillRect(x, y + cellSize - scale, cellSize, scale);
+  c.fillRect(x, y, scale, cellSize);
+  c.fillRect(x + cellSize - scale, y, scale, cellSize);
+}
+
+/** 複数選択の枠の色（欄に出している 1 つの赤い枠と分ける。Phase5 #399）。 */
+const MULTI_FRAME = "#ff9a00";
+
+/** 複数選択で選んでいるもの全部に枠を付ける（#399。画面だけ）。 */
+export function drawSelectionFrames(canvas: HTMLCanvasElement, events: readonly PlacedEvent[], cellSize: number): void {
+  const c = canvas.getContext("2d")!;
+  for (const e of events) drawFrame(c, e, cellSize, MULTI_FRAME);
+}
+
+/** Shift＋ドラッグの矩形（#399。両端のマスを含む、点線の枠と薄い塗り）。 */
+export function drawSelectRect(canvas: HTMLCanvasElement, a: { x: number; y: number }, b: { x: number; y: number }, cellSize: number): void {
+  const c = canvas.getContext("2d")!;
+  const x = Math.min(a.x, b.x) * cellSize;
+  const y = Math.min(a.y, b.y) * cellSize;
+  const w = (Math.abs(a.x - b.x) + 1) * cellSize;
+  const h = (Math.abs(a.y - b.y) + 1) * cellSize;
+  c.save();
+  c.globalAlpha = 1;
+  c.fillStyle = "rgba(255, 154, 0, 0.18)";
+  c.fillRect(x, y, w, h);
+  c.strokeStyle = MULTI_FRAME;
+  c.lineWidth = Math.max(1, cellSize / 16);
+  c.setLineDash([4, 3]);
+  c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  c.restore();
 }
 
 /** クローンの印の色（白い縁の水色の三角）。 */

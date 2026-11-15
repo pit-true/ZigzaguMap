@@ -1,6 +1,7 @@
 import { jaEventDelete as t } from "../../i18n/ja.eventDelete";
 import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
-import { romAddress, type EventDeletePlan } from "./EventDeleter";
+import { romAddress, type EventDeleteBatch, type EventDeletePlan } from "./EventDeleter";
+import { jaEventMulti } from "../../i18n/ja.eventMulti";
 import type { RemovalKept, RomEraseBlocked } from "@zigzagumap/core";
 
 /** イベントの名前（「人 3」）。 */
@@ -71,15 +72,31 @@ export function eventDeleteLines(plan: EventDeletePlan): string[] {
   return lines;
 }
 
+/** いくつかをまとめて消すときの行（#399。1 行目が見出し、そのあとにイベントごとの行を空行で区切って並べる）。 */
+export function eventDeleteBatchLines(batch: EventDeleteBatch): string[] {
+  if (batch.plans.length === 1) return eventDeleteLines(batch.plans[0]!);
+  const lines = [jaEventMulti.introMany(batch.plans.length)];
+  for (const plan of batch.plans) lines.push("", ...eventDeleteLines(plan).slice(2));
+  return lines;
+}
+
 /** 確認のダイアログ。「削除」なら true。 */
 export function confirmEventDelete(plan: EventDeletePlan): Promise<boolean> {
+  return confirmEventDeleteLines(eventDeleteLines(plan));
+}
+
+/** まとめて消すときの確認のダイアログ（#399。確認は 1 回）。「削除」なら true。 */
+export function confirmEventDeleteBatch(batch: EventDeleteBatch): Promise<boolean> {
+  return confirmEventDeleteLines(eventDeleteBatchLines(batch));
+}
+
+function confirmEventDeleteLines(lines: readonly string[]): Promise<boolean> {
   return new Promise((resolve) => {
     const finish = (ok: boolean): void => {
       frame.remove();
       resolve(ok);
     };
     const frame = createDialog({ title: t.title, className: "event-delete-dialog", width: 620, onClose: () => finish(false) });
-    const lines = eventDeleteLines(plan);
     const intro = document.createElement("p");
     intro.className = "event-delete-intro";
     intro.textContent = lines[0]!;

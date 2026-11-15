@@ -7,6 +7,7 @@ import { ConnectMapsCommand } from "./commands/connection/ConnectMapsCommand.js"
 import { DisconnectMapsCommand } from "./commands/connection/DisconnectMapsCommand.js";
 import { FillLayoutCommand } from "./commands/connection/createConnectedMap.js";
 import { AddEventCommand } from "./commands/event/AddEventCommand.js";
+import { DuplicateEventCommand } from "./commands/event/DuplicateEventCommand.js";
 import { MoveEventCommand } from "./commands/event/MoveEventCommand.js";
 import { RemoveEventCommand } from "./commands/event/RemoveEventCommand.js";
 import { SetEventCountsCommand } from "./commands/event/SetEventCountsCommand.js";
@@ -57,6 +58,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetEventFieldsCommand,
   SetEventCountsCommand,
   SetItemBallCommand,
+  DuplicateEventCommand,
   // フライトポジション（maps\regionmap.json の HealLocations に出力する）
   SetFlyPositionCommand,
   // ヘッダー
