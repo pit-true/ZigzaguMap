@@ -37,9 +37,9 @@ export const jaBlockTools = {
   copied: (block: number) => `ブロック ${hex(block, 3)} をコピーしました`,
   cutDone: (block: number) => `ブロック ${hex(block, 3)} を切り取りました（空のブロックにしました）`,
   pasted: (block: number) => `ブロック ${hex(block, 3)} に貼り付けました`,
-  pasteTripleNoNext: "次のブロックが無いため、3 層のブロックは貼り付けられません。",
-  pasteTripleNextIsTriple: (next: number) => `次のブロック ${hex(next, 3)} も 3 層なので、3 層のブロックは貼り付けられません。`,
-  pasteTripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3 層目に使われます。属性と上層を消します。`,
+  pasteTripleNoNext: "次のブロックが無いため、トリプルレイヤーのブロックは貼り付けられません。",
+  pasteTripleNextIsTriple: (next: number) => `次のブロック ${hex(next, 3)} もトリプルレイヤーなので、トリプルレイヤーのブロックは貼り付けられません。`,
+  pasteTripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3枚目のレイヤーに使われます。属性と上のレイヤーを消します。`,
   swapStart: "入れ替え: 1 つ目のブロックを押してください（もう一度 X で終わる）",
   swapOff: "入れ替えを終えました",
   swapSecond: (block: number) => `入れ替え: 1 つ目はブロック ${hex(block, 3)}。2 つ目のブロックを押してください`,
@@ -59,10 +59,10 @@ export const jaBlockTools = {
   swapRefused: (reason: string) =>
     ({
       same: "同じブロックは入れ替えられません。",
-      child: "3 層のブロックの 3 層目に使われているブロックは、単独では入れ替えられません。3 層のブロックを選んでください。",
-      noNext: "表の最後の 3 層のブロックは、3 層目が無いため入れ替えられません。",
-      mixed: "3 層のブロック（N と N+1 の組）は、ほかの 3 層のブロックとだけ入れ替えられます。",
-      overlap: "3 層のブロックの組が重なるため、入れ替えられません。",
+      child: "トリプルレイヤーの 3枚目のレイヤーに使われているブロックは、単独では入れ替えられません。トリプルレイヤーのブロックを選んでください。",
+      noNext: "表の最後のトリプルレイヤーのブロックは、3枚目のレイヤーが無いため入れ替えられません。",
+      mixed: "トリプルレイヤーのブロック（N と N+1 の組）は、ほかのトリプルレイヤーのブロックとだけ入れ替えられます。",
+      overlap: "トリプルレイヤーのブロックの組が重なるため、入れ替えられません。",
     })[reason] ?? "このブロックは入れ替えられません。",
 
   /** ショートカット一覧（ヘルプ）。 */
