@@ -19,6 +19,7 @@ import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaTools } from "../i18n/ja.tools";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaMapExport } from "../i18n/ja.mapExport";
 import { jaWildTools } from "../i18n/ja.wildTools";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -73,6 +74,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "file.export", label: ja.exportMaps, accel: "M", shortcut: ctrl("S") },
         { id: "file.exportTo", label: ja.exportMapsTo, accel: "W" },
         { id: "file.backup", label: ja.createBackup, accel: "X", enable: "map" },
+        // マップの画像の書き出し（Phase5 #403。ZigzaguMap 独自）
+        { id: "image.export", label: jaMapExport.menu, enable: "map" },
         sep,
         {
           label: ja.mapMenu,
