@@ -6,10 +6,19 @@ export interface RawCell {
   readonly y: number;
 }
 
+/** 押したときのボタンと修飾キー（Phase5 #399・#400。Shift＋クリックの複数選択、Shift＋右ドラッグのルーラー）。 */
+export interface PressInfo {
+  /** 0 = 左、2 = 右。 */
+  readonly button: number;
+  readonly shift: boolean;
+}
+
 /** マップ上の操作の受け手（イベントタブ）。 */
 export interface EventMapHandlers {
-  /** 押した（左右どちらのボタンでも、修飾キーに関係なく同じ）。イベントをつかんだら true。 */
-  press(cell: RawCell): boolean;
+  /**
+   * 押した（Shift を押していなければ、左右どちらのボタンでも同じ）。イベントをつかんだら（Shift＋ドラッグの矩形・ルーラーを始めたら）true。
+   */
+  press(cell: RawCell, info: PressInfo): boolean;
   /** つかんだまま別のマスへ動かした。 */
   drag(cell: RawCell): void;
   /** 離した。 */
@@ -41,7 +50,7 @@ export class EventMapInput {
       const cell = this.cellAt(e);
       if (!cell || !this.inside(cell)) return;
       e.preventDefault();
-      if (!handlers.press(cell)) return;
+      if (!handlers.press(cell, { button: e.button, shift: e.shiftKey })) return;
       stage.setPointerCapture(e.pointerId);
       this.dragging = { pointerId: e.pointerId, button: e.button, last: cell };
     });

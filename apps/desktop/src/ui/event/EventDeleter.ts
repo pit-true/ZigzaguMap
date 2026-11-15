@@ -67,6 +67,23 @@ export interface EventDeletePlan {
   readonly files: readonly { readonly path: string; readonly before: string; readonly after: string }[];
 }
 
+/** いくつかを続けて消すときの計画の途中の状態（#399。前の計画で書き換えた後の本文を次の計画が読む）。 */
+interface PlanChain {
+  /** 前の計画で書き換えたファイルの本文（パス → 書き換え後）。 */
+  readonly texts: Map<string, string>;
+  /** 一緒に消すイベント（このイベントを除いても、ほかから使われているとは数えない）。 */
+  readonly deleting: readonly { readonly kind: DeletableKind; readonly index: number }[];
+  /** 前の計画で埋めると決めた ROM の範囲（同じ範囲を 2 回記録しない）。 */
+  readonly erased: { address: number; length: number }[];
+}
+
+/** いくつかのイベントをまとめて消す計画（#399。確認は 1 回）。 */
+export interface EventDeleteBatch {
+  readonly plans: readonly EventDeletePlan[];
+  /** 書き換えるファイル（同じファイルは 1 つにまとめ、`before` は今の本文、`after` は全部を消した後）。 */
+  readonly files: readonly { readonly path: string; readonly before: string; readonly after: string }[];
+}
+
 /**
  * イベントの削除（#220）。右クリックの「イベントを削除」、Delete キー、「イベントの削除」ボタンは、どれもここを通る。
  *
@@ -80,7 +97,7 @@ export class EventDeleter {
   constructor(private readonly app: App) {}
 
   /** 計画を作る（何も変えない）。 */
-  async plan(map: MapId, kind: DeletableKind, index: number): Promise<EventDeletePlan> {
+  async plan(map: MapId, kind: DeletableKind, index: number, chain: PlanChain | null = null): Promise<EventDeletePlan> {
     const session = this.app.state.session;
     const doc = session?.project.loaded(map);
     if (!session || !doc?.events) throw new Error("マップが開かれていません");
@@ -89,7 +106,7 @@ export class EventDeleter {
     const base = { map, kind, index, label, pointer, project, hiddenItem };
     if (kind === "warp" || hiddenItem) return { ...base, script: null, registry: null, rom: null, romNote: null, files: [] };
     if (label && project) {
-      const { script, registry, files } = await this.planScript(session, map, kind, index, label);
+      const { script, registry, files } = await this.planScript(session, map, kind, index, label, chain);
       return { ...base, script, registry, rom: null, romNote: null, files };
     }
     if (pointer === null) return { ...base, script: null, registry: null, rom: null, romNote: null, files: [] };
@@ -97,17 +114,51 @@ export class EventDeleter {
     if (!session.project.rom.inRange(offset) || offset < ROM_HEADER_SIZE) return { ...base, script: null, registry: null, rom: null, romNote: "outside", files: [] };
     if (!project) return { ...base, script: null, registry: null, rom: null, romNote: "noProject", files: [] };
     if (session.romErase.loadError !== null) return { ...base, script: null, registry: null, rom: null, romNote: "broken", files: [] };
-    const rom = await this.planRom(session, map, kind, index, offset);
+    const rom = await this.planRom(session, map, kind, index, offset, chain);
     return { ...base, script: null, registry: null, rom, romNote: null, files: [] };
   }
 
+  /**
+   * 同じマップのいくつかのイベントを消す計画（#399）。1 つずつ計画し、前の計画で書き換えた `.s`・`.string` の本文を次の計画が読む。
+   * 一緒に消すイベントは、互いに「ほかから使われている」とは数えない。
+   */
+  async planMany(map: MapId, events: readonly { kind: DeletableKind; index: number }[]): Promise<EventDeleteBatch> {
+    const chain: PlanChain = { texts: new Map(), deleting: events, erased: [] };
+    const first = new Map<string, string>();
+    const plans: EventDeletePlan[] = [];
+    for (const e of events) {
+      const plan = await this.plan(map, e.kind, e.index, chain);
+      for (const f of plan.files) {
+        if (!first.has(f.path)) first.set(f.path, f.before);
+        chain.texts.set(f.path, f.after);
+      }
+      for (const s of plan.rom?.erase ?? []) chain.erased.push({ address: s.offset + ROM_BASE, length: s.length });
+      plans.push(plan);
+    }
+    const files = [...first].map(([path, before]) => ({ path, before, after: chain.texts.get(path)! })).filter((f) => f.before !== f.after);
+    return { plans, files };
+  }
+
   /** 実行する。成功したら書き換えたファイルのパスを返す。 */
-  async run(plan: EventDeletePlan): Promise<string[]> {
-    const commands: Command[] = [new RemoveEventCommand({ ...plan.map, kind: plan.kind, index: plan.index })];
+  run(plan: EventDeletePlan): Promise<string[]> {
+    return this.runMany({ plans: [plan], files: plan.files });
+  }
+
+  /**
+   * まとめて実行する（1 回の元に戻すで全部戻る）。オブジェクトは種類ごとに番号の大きい方から消す（前に詰まっても番号がずれない）。
+   * 成功したら書き換えたファイルのパスを返す。
+   */
+  async runMany(batch: EventDeleteBatch): Promise<string[]> {
+    const plans = batch.plans;
+    if (plans.length === 0) return [];
+    const map = plans[0]!.map;
+    const order = [...plans].sort((a, b) => (a.kind === b.kind ? b.index - a.index : a.kind < b.kind ? -1 : 1));
+    const commands: Command[] = order.map((p) => new RemoveEventCommand({ ...p.map, kind: p.kind, index: p.index }));
     // 人を消したら、隣のマップのクローンも消す（#242。同じ 1 回の操作にまとめる）
-    const sync = plan.kind === "person" ? await cloneSyncFor(this.app.state, plan.map) : null;
+    const sync = plans.some((p) => p.kind === "person") ? await cloneSyncFor(this.app.state, map) : null;
     if (sync) commands.push(sync);
-    if (plan.rom && plan.rom.erase.length > 0) {
+    for (const plan of plans) {
+      if (!plan.rom || plan.rom.erase.length === 0) continue;
       const event = plan.kind === "warp" ? "person" : plan.kind;
       commands.push(
         new AddRomEraseRangesCommand({
@@ -118,32 +169,32 @@ export class EventDeleter {
     const command = CommandGroup.of(commands);
     if (!this.app.scripts.execute(command)) throw new Error(this.app.state.status.left);
     if (sync) reportClones(this.app.state, sync.changes);
-    if (plan.files.length === 0) return [];
-    const kept = await this.app.scripts.replaceTexts(plan.files);
-    const done = plan.files.filter((f) => !kept.includes(f.path));
+    if (batch.files.length === 0) return [];
+    const kept = await this.app.scripts.replaceTexts(batch.files);
+    const done = batch.files.filter((f) => !kept.includes(f.path));
     this.app.scripts.attachReplacements(command, done);
     return done.map((f) => f.path);
   }
 
   // ---- ラベルのスクリプト ----
 
-  private async planScript(session: ProjectSession, map: MapId, kind: DeletableKind, index: number, label: string) {
+  private async planScript(session: ProjectSession, map: MapId, kind: DeletableKind, index: number, label: string, chain: PlanChain | null) {
     const fs = session.files;
-    const read = async (path: string) => ({ path, text: (await this.app.scripts.files.read(path))?.text ?? "" });
+    const read = async (path: string) => ({ path, text: chain?.texts.get(path) ?? (await this.app.scripts.files.read(path))?.text ?? "" });
     const asm = await Promise.all((await listProjectFiles(fs, "assembly", /\.s$/i).catch(() => [] as string[])).map(read));
     const strings = await Promise.all((await listProjectFiles(fs, "strings", /\.string$/i).catch(() => [] as string[])).map(read));
     const others = [
       ...(await Promise.all((await listProjectFiles(fs, "src", /\.(c|h|s)$/i).catch(() => [] as string[])).map(read))),
       ...(await Promise.all(OTHER_ROOT_FILES.map(async (p) => ({ path: p, text: (await readTextIfExists(fs, p)) ?? "" })))),
     ];
-    const input = { entry: label, asm, strings, external: externalLabels(session, map, kind, index, label), others };
+    const input = { entry: label, asm, strings, external: externalLabels(session, map, kind, index, label, chain?.deleting ?? []), others };
     let script = planScriptRemoval(input);
     let registry: EventDeletePlan["registry"] = null;
     const extra: { path: string; before: string; after: string }[] = [];
     const config = (await this.app.scripts.scriptConfig())?.config;
     const reg = config?.widthRegistry;
     if (reg && script.removedStrings.length > 0) {
-      const registryText = (await readTextIfExists(fs, reg.path)) ?? "";
+      const registryText = chain?.texts.get(reg.path) ?? (await readTextIfExists(fs, reg.path)) ?? "";
       const json = registryText.trim() ? (JSON.parse(registryText) as { files?: Record<string, Record<string, unknown>> }) : { files: {} };
       // Python の REGISTRY に登録のある文字列は残す（消すと検査が「登録した名前がファイルに無い」で止まる）
       const listed = config.widthCheck ? await registeredNames(config.widthCheck) : null;
@@ -174,7 +225,7 @@ export class EventDeleter {
 
   // ---- 素の ROM のスクリプト ----
 
-  private async planRom(session: ProjectSession, map: MapId, kind: DeletableKind, index: number, offset: number) {
+  private async planRom(session: ProjectSession, map: MapId, kind: DeletableKind, index: number, offset: number, chain: PlanChain | null) {
     const fs = session.files;
     const tools = await disasmTools(session);
     const references: { address: number; where: string }[] = [];
@@ -188,12 +239,15 @@ export class EventDeleter {
         if (d) docs.set(`${id.bank}.${id.map}`, { id, doc: d });
       }
     }
+    // このイベントと、一緒に消すイベント（#399）は数えない
+    const gone = [{ kind, index }, ...(chain?.deleting ?? [])];
+    const deleted = (same: boolean, k: DeletableKind, i: number) => same && gone.some((g) => g.kind === k && g.index === i);
     for (const { id, doc: d } of docs.values()) {
       const where = (what: string) => `マップ ${id.bank}.${id.map} の${what}`;
       const same = id.bank === map.bank && id.map === map.map;
-      d.events?.persons.forEach((p, i) => !(same && kind === "person" && i === index) && references.push({ address: p.script >>> 0, where: where(`人 ${i}`) }));
-      d.events?.signs.forEach((s, i) => s.content.type === "script" && !(same && kind === "sign" && i === index) && references.push({ address: s.content.script >>> 0, where: where(`看板 ${i}`) }));
-      d.events?.traps.forEach((t, i) => !(same && kind === "trap" && i === index) && references.push({ address: t.script >>> 0, where: where(`スクリプト ${i}`) }));
+      d.events?.persons.forEach((p, i) => !deleted(same, "person", i) && references.push({ address: p.script >>> 0, where: where(`人 ${i}`) }));
+      d.events?.signs.forEach((s, i) => s.content.type === "script" && !deleted(same, "sign", i) && references.push({ address: s.content.script >>> 0, where: where(`看板 ${i}`) }));
+      d.events?.traps.forEach((t, i) => !deleted(same, "trap", i) && references.push({ address: t.script >>> 0, where: where(`スクリプト ${i}`) }));
       for (const m of d.mapScripts ?? []) {
         references.push({ address: m.pointer >>> 0, where: where("マップスクリプト") });
         for (const e of m.table?.entries ?? []) references.push({ address: e.script >>> 0, where: where("マップスクリプトの条件表") });
@@ -210,7 +264,7 @@ export class EventDeleter {
     }
     // .s に直接書いたアドレス（goto 0x0816F58D など）
     for (const path of await listProjectFiles(fs, "assembly", /\.s$/i).catch(() => [] as string[])) {
-      const text = (await this.app.scripts.files.read(path))?.text ?? "";
+      const text = chain?.texts.get(path) ?? (await this.app.scripts.files.read(path))?.text ?? "";
       for (const [n, line] of text.split(/\r\n|\n|\r/).entries()) {
         for (const m of line.replace(/@.*$/, "").matchAll(/\b0x0?([89][0-9A-Fa-f]{6})\b/g)) {
           references.push({ address: Number.parseInt(m[1]!, 16), where: `${path}:${n + 1}` });
@@ -226,7 +280,7 @@ export class EventDeleter {
       ignore: originalEventTable(session, map),
       references,
       protect,
-      recorded: session.romErase.ranges,
+      recorded: [...session.romErase.ranges, ...(chain?.erased ?? [])],
     });
     return { erase: plan.erase, keep: plan.keep, problems: plan.problems };
   }
@@ -250,11 +304,19 @@ function scriptOf(session: ProjectSession, doc: MapDocument, map: MapId, kind: D
 }
 
 /** ほかから使われているラベル（消すイベントの分を除く）。 */
-function externalLabels(session: ProjectSession, map: MapId, kind: DeletableKind, index: number, label: string): Set<string> {
+function externalLabels(
+  session: ProjectSession,
+  map: MapId,
+  kind: DeletableKind,
+  index: number,
+  label: string,
+  deleting: readonly { kind: DeletableKind; index: number }[] = [],
+): Set<string> {
   const store = session.labels.store;
   const out = store.usedLabels();
-  const target = kind === "warp" ? "person" : LABEL_TARGET[kind];
-  const others = store.usesOf(label).filter((u) => !(u.bank === map.bank && u.map === map.map && u.target === target && u.index === index));
+  // このイベントと、一緒に消すイベント（#399）の分は数えない
+  const gone = [{ kind, index }, ...deleting].map((g) => ({ target: g.kind === "warp" ? "person" : LABEL_TARGET[g.kind], index: g.index }));
+  const others = store.usesOf(label).filter((u) => !(u.bank === map.bank && u.map === map.map && gone.some((g) => g.target === u.target && g.index === u.index)));
   if (others.length === 0) out.delete(label);
   for (const t of store.tableMaps()) {
     const table = store.get(t.bank, t.map).table;

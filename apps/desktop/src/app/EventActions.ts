@@ -139,6 +139,34 @@ export class EventActions {
     }
   }
 
+  /**
+   * いくつかのイベントをまとめて削除する（#399。複数選択の Delete キー・右クリック）。確認のダイアログは 1 回で、
+   * 1 回の元に戻すで全部戻る。1 つだけなら `deleteEvent` と同じ。`confirm` が false なら確かめずに消す（自動操作用）。
+   */
+  async deleteEvents(events: readonly { kind: string; index: number }[], confirm = true): Promise<boolean> {
+    const list = events.filter((e) => e.kind !== "fly") as { kind: "person" | "sign" | "warp" | "trap"; index: number }[];
+    if (list.length === 1) return this.deleteEvent(list[0]!.kind, list[0]!.index, confirm);
+    const state = this.app.state;
+    const id = state.map?.id;
+    if (!id || list.length === 0) return false;
+    const { jaEventDelete: t } = await import("../i18n/ja.eventDelete");
+    const { jaEventMulti: m } = await import("../i18n/ja.eventMulti");
+    try {
+      state.setStatus(t.planning);
+      const deleter = await this.eventDeleter();
+      const batch = await deleter.planMany(id, list);
+      const { confirmEventDeleteBatch } = await import("../ui/event/EventDeleteDialog");
+      state.setStatus("");
+      if (confirm && !(await confirmEventDeleteBatch(batch))) return false;
+      const files = await deleter.runMany(batch);
+      state.setStatus(files.length > 0 ? m.deletedManyWithFiles(list.length, files) : m.deletedMany(list.length));
+      return true;
+    } catch (e) {
+      state.setStatus(t.failed(errorText(e)), undefined, true);
+      return false;
+    }
+  }
+
   /** ワープの「行き先のマップを作る」（#241。初めて使うときに読み込む）。 */
   warpMapCreator(): Promise<import("../ui/event/WarpMapCreator").WarpMapCreator> {
     return (this.warpMapCreatorValue ??= import("../ui/event/WarpMapCreator").then(({ WarpMapCreator }) => new WarpMapCreator(this.app)));

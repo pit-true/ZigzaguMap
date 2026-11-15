@@ -17,14 +17,14 @@ import { jaWarpMap } from "../../i18n/ja.warpMap";
 import { jaTrainer } from "../../i18n/ja.trainer";
 import { showContextMenu } from "../ContextMenu";
 import { showError } from "../MessageBox";
-import { drawEvents, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
+import { drawEvents, drawSelectRect, drawSelectionFrames, eventAt, placedEvents, type EventOverlay, type PlacedEvent } from "../map/EventLayer";
 import { MapView } from "../map/MapView";
 import { spriteSourceFor } from "../map/spriteCanvases";
 import { personGraphicsId } from "../map/cloneLook";
 import { EventCommonPanel } from "./EventCommonPanel";
 import { EventEditor } from "./EventEditor";
 import { EventManagerPanel, type EventCounts } from "./EventManagerPanel";
-import { EventMapInput, type RawCell } from "./EventMapInput";
+import { EventMapInput, type PressInfo, type RawCell } from "./EventMapInput";
 import { EventOffsets, hasAnyEvent, listCount, mapFly, type UiKind } from "./eventModel";
 import { FlyPanel } from "./panels/FlyPanel";
 import type { PanelHost, ScriptEventKind, UnusedKind } from "./panels/KindPanel";
@@ -43,6 +43,9 @@ import { EventQuickAdd } from "./EventQuickAdd";
 import { tabZoom } from "../../app/mapZoom";
 import { visibleEvents } from "./eventVisibility";
 import { EventScriptLabels } from "./EventScriptLabels";
+import { EventSelection, eventsInRect, type EventRef } from "./EventSelection";
+import { duplicatePlan, groupDragStart, groupMoveCommand, type GroupDragStart } from "./EventMultiEdit";
+import { jaEventMulti } from "../../i18n/ja.eventMulti";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
@@ -51,6 +54,8 @@ export interface EventTabHost {
   readonly scriptFiles: ScriptFiles;
   /** イベントを削除する（#220。確認のダイアログを出してから。スクリプトの記述と ROM の範囲も）。 */
   deleteEvent(kind: Exclude<UiKind, "fly">, index: number): void;
+  /** いくつかのイベントをまとめて削除する（#399。確認のダイアログは 1 回）。 */
+  deleteEvents?(list: readonly EventRef[]): void;
   /** 範囲の中で使われていない最小の番号（#227。「未使用を選ぶ」ボタン）。 */
   pickUnused?(kind: UnusedKind): Promise<number | null>;
   /** 「ここにひな形を置く」（#243。マスの位置）。 */
@@ -106,8 +111,13 @@ export class EventTab {
   private offsets: EventOffsets | null = null;
   private itemsLoaded = false;
   private unsubscribe: (() => void) | null = null;
-  private drag: { kind: UiKind; index: number; key: string } | null = null;
+  /** つかんだイベント。`group` があれば、選んでいるものをまとめて動かす（#399）。 */
+  private drag: { kind: UiKind; index: number; key: string; start: RawCell; group: GroupDragStart | null } | null = null;
   private dragCount = 0;
+  /** 複数選択（#399）。1 つだけ選んでいるときは空。 */
+  readonly multi = new EventSelection();
+  /** Shift＋ドラッグの矩形（#399。ドラッグの間だけ）。 */
+  private rect: { from: RawCell; to: RawCell } | null = null;
   /** 右クリックの「ここに○○を追加」（#304）。 */
   readonly quickAdd: EventQuickAdd;
   private readonly selectListeners = new Set<() => void>();
@@ -169,7 +179,7 @@ export class EventTab {
     this.element.append(area, side);
 
     new EventMapInput(this.view, {
-      press: (cell) => this.press(cell),
+      press: (cell, info) => this.press(cell, info),
       drag: (cell) => this.dragTo(cell),
       release: () => this.release(),
       activate: (cell) => this.activate(cell),
@@ -194,6 +204,7 @@ export class EventTab {
     state.on("session", () => this.attachSession());
     state.on("map", () => {
       this.index = 0;
+      this.multi.clear();
       this.view.setImage(state.mapImage);
       this.refresh(true);
     });
@@ -218,11 +229,33 @@ export class EventTab {
 
   /** 種別と番号を選ぶ（番号は個数の範囲に収める）。 */
   select(kind: UiKind, index: number): void {
+    this.multi.clear();
+    this.focus(kind, index);
+  }
+
+  /** 欄に出すイベントを変える（複数選択はそのまま。#399）。 */
+  private focus(kind: UiKind, index: number): void {
     this.kind = kind;
     this.index = index;
     this.editor.endSession();
     this.refresh();
     for (const l of this.selectListeners) l();
+  }
+
+  /**
+   * 選んでいるイベント（#399。複数選択なら全部、そうでなければ欄に出している 1 つ。イベントが無ければ空）。
+   */
+  selectedEvents(): EventRef[] {
+    if (this.multi.multiple) return [...this.multi.list()];
+    return this.count() > 0 ? [{ kind: this.kind, index: this.kind === "fly" ? (this.fly()?.index ?? 0) : this.index }] : [];
+  }
+
+  /** いくつかを選ぶ（自動操作用。1 つなら `select` と同じ）。 */
+  selectMany(refs: readonly EventRef[]): void {
+    const last = refs.at(-1);
+    if (!last) return;
+    this.multi.set(refs);
+    this.focus(last.kind, last.kind === "fly" ? 0 : last.index);
   }
 
   /** 選ぶイベントが変わったときに呼ぶ関数を足す（ポインタ一覧の行の連動など。#307）。 */
@@ -272,6 +305,8 @@ export class EventTab {
   /** パネルとマップの描画を、いまのマップと選択に合わせる。 */
   private refresh(resetManager = false): void {
     const doc = this.state.map?.doc ?? null;
+    // 消した・取り消したイベントは複数選択から外す（#399）
+    this.multi.prune((r) => r.index < this.count(r.kind) || (r.kind === "fly" && this.count("fly") > 0));
     const count = this.count();
     if (this.index >= count) this.index = Math.max(0, count - 1);
     if (this.index < 0) this.index = 0;
@@ -338,6 +373,9 @@ export class EventTab {
     const selected = this.showCursor ? this.selectedPlaced() : null;
     const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites, this.state.settings.data.eventOpacity);
+    // 複数選択の枠と、Shift＋ドラッグの矩形（#399）
+    if (this.showCursor && this.multi.multiple) drawSelectionFrames(this.view.layer, this.multi.placed(this.placed).filter((p) => p !== selected), this.view.cellSize);
+    if (this.rect) drawSelectRect(this.view.layer, this.rect.from, this.rect.to, this.view.cellSize);
     // ワープできないブロックの上のワープに印（#240）
     if (!sprites && this.state.map) drawWarpWarnings(this.view.layer, this.warpWarnings().map((i) => this.state.map!.doc.events!.warps[i]!), this.view.cellSize);
   }
@@ -382,24 +420,64 @@ export class EventTab {
 
   // ---- マップ上の操作 ----
 
-  /** マスを押した。イベントがあれば選んでつかむ。 */
-  press(cell: RawCell): boolean {
+  /**
+   * マスを押した。イベントがあれば選んでつかむ。
+   * Shift＋左（#399）: イベントの上なら選びに足す・外す、空いた所なら矩形の選択を始める。
+   * 複数選択の中のイベントをつかむと、選んでいるものをまとめて動かす。
+   */
+  press(cell: RawCell, info: PressInfo = { button: 0, shift: false }): boolean {
     // Ctrl を押している間はイベントをつかまない（重ね描きを隠して下のブロックを見るため。#238）
     const hit = ctrlPeek.held ? null : eventAt(this.placed, cell.x, cell.y);
+    if (info.shift && info.button === 0 && !ctrlPeek.held) return this.shiftPress(cell, hit);
     if (!hit) {
+      // 空いた所を押したら複数選択をやめる（欄のイベントはそのまま）
+      if (this.multi.multiple) {
+        this.multi.clear();
+        this.draw();
+      }
       this.hover(cell);
       return false;
     }
-    this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
-    this.drag = { kind: hit.kind, index: hit.index, key: `drag.${++this.dragCount}` };
+    const ref = { kind: hit.kind, index: hit.index };
+    const group = this.multi.multiple && this.multi.has(ref) ? groupDragStart(this.multi.list(), this.placed) : null;
+    if (group) this.focus(hit.kind, hit.kind === "fly" ? 0 : hit.index);
+    else this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
+    this.drag = { kind: hit.kind, index: hit.index, key: `drag.${++this.dragCount}`, start: cell, group };
     return true;
+  }
+
+  /** Shift＋左を押した（#399）。 */
+  private shiftPress(cell: RawCell, hit: PlacedEvent | null): boolean {
+    if (!hit) {
+      this.rect = { from: cell, to: cell };
+      this.draw();
+      return true;
+    }
+    const primary = this.selectedEvents()[0] ?? null;
+    const next = this.multi.toggle({ kind: hit.kind, index: hit.index }, primary);
+    if (next) this.focus(next.kind, next.kind === "fly" ? 0 : next.index);
+    else this.draw();
+    if (this.multi.multiple) this.state.setStatus(jaEventMulti.selected(this.multi.list().length));
+    return false;
   }
 
   /** つかんだイベントを動かす（マップの外へも動かせる。負の座標は 16 ビットで回る）。 */
   dragTo(cell: RawCell): void {
+    if (this.rect) {
+      this.rect = { from: this.rect.from, to: cell };
+      return this.draw();
+    }
     const d = this.drag;
-    const id = this.state.map?.id;
-    if (!d || !id) return;
+    const map = this.state.map;
+    if (!d || !map) return;
+    const id = map.id;
+    if (d.group) {
+      // まとめて動かす（#399。マップの中のものはマップの外へ出さない。1 回の元に戻すで全部戻る）
+      const command = groupMoveCommand(id, map.doc, d.group, cell.x - d.start.x, cell.y - d.start.y);
+      const person = d.group.items.some((i) => i.ref.kind === "person");
+      if (command && this.editor.run(command, d.key)) this.lastDrag = { command, id, key: d.key, kind: person ? "person" : d.kind };
+      return;
+    }
     const x = cell.x & 0xffff;
     const y = cell.y & 0xffff;
     const command =
@@ -408,6 +486,7 @@ export class EventTab {
   }
 
   release(): void {
+    if (this.rect) return this.finishRect();
     this.drag = null;
     const last = this.lastDrag;
     this.lastDrag = null;
@@ -417,6 +496,42 @@ export class EventTab {
       return;
     }
     this.editor.endSession();
+  }
+
+  /** Shift＋ドラッグの矩形を離した: 中のイベントを選びに足す（#399）。 */
+  private finishRect(): void {
+    const r = this.rect!;
+    this.rect = null;
+    const primary = this.selectedEvents()[0] ?? null;
+    const next = this.multi.addAll(eventsInRect(this.placed, r.from, r.to), primary);
+    if (next) this.focus(next.kind, next.kind === "fly" ? 0 : next.index);
+    else this.draw();
+    if (this.multi.multiple) this.state.setStatus(jaEventMulti.selected(this.multi.list().length));
+  }
+
+  /**
+   * 選んでいるイベントを複製する（#399。Ctrl+D・右クリックの「複製」）。1 マス右下（ふさがっていれば近くの空いたマス）に置き、
+   * 番号は種類ごとの末尾に足す。写しを選ぶ。1 回の元に戻すで全部消える。
+   */
+  duplicateSelected(): boolean {
+    const map = this.state.map;
+    if (!map) return false;
+    const plan = duplicatePlan(map.id, map.doc, this.selectedEvents(), this.placed);
+    if (!plan) {
+      this.state.setStatus(jaEventMulti.nothingToDuplicate, undefined, true);
+      return false;
+    }
+    this.editor.endSession();
+    // 人を写したら、隣のマップのクローンも合わせる（#242）
+    const ok = plan.person ? this.editor.runWithClones(plan.command, map.id) : this.editor.run(plan.command);
+    this.editor.endSession();
+    if (!ok) return false;
+    const refs = plan.copies.map((c) => ({ kind: c.kind, index: c.index }));
+    this.selectMany(refs);
+    const one = plan.copies.length === 1 ? plan.copies[0]! : null;
+    const text = one ? jaEventMulti.duplicatedOne(`${ja.event.kindNames[one.kind] ?? one.kind}${one.index}`, one.x, one.y) : jaEventMulti.duplicated(plan.copies.length);
+    this.state.setStatus(plan.skipped > 0 ? text + jaEventMulti.skipped(plan.skipped) : text);
+    return true;
   }
 
   /** ダブルクリック: ワープは「マップの移動」、看板・スクリプト・人は「スクリプトを開く」（入口が使えるときだけ）。 */
@@ -484,7 +599,15 @@ export class EventTab {
    */
   removeSelected(): void {
     const id = this.state.map?.id;
-    if (!id || this.kind === "fly" || this.count() === 0) return;
+    if (!id) return;
+    // 複数選択なら、まとめて消す（#399。フライトポジションは消さない。確認は 1 回）
+    if (this.multi.multiple && this.host.deleteEvents) {
+      const list = this.multi.list().filter((r) => r.kind !== "fly");
+      if (list.length === 0) return this.state.setStatus(jaEventDelete.cannotFly, undefined, true);
+      this.editor.endSession();
+      return this.host.deleteEvents(list);
+    }
+    if (this.kind === "fly" || this.count() === 0) return;
     this.editor.endSession();
     this.host.deleteEvent(this.kind, this.index);
   }
@@ -504,19 +627,29 @@ export class EventTab {
       if (templates.length > 0) showContextMenu(x, y, templates);
       return;
     }
-    this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
+    // 複数選択の中のイベントなら、選んだままにする（#399。「削除」と「複製」は選んでいる全部に）
+    const many = this.multi.multiple && this.multi.has({ kind: hit.kind, index: hit.index });
+    if (many) this.focus(hit.kind, hit.kind === "fly" ? 0 : hit.index);
+    else this.select(hit.kind, hit.kind === "fly" ? 0 : hit.index);
     const kind = hit.kind;
     const index = hit.index;
     const scriptKind = kind === "person" || kind === "sign" || kind === "trap" ? kind : null;
     const signItem = kind === "sign" && this.state.map?.doc.events?.signs[index]?.content.type !== "script";
+    const deletable = many ? this.multi.list().filter((r) => r.kind !== "fly").length : kind !== "fly" ? 1 : 0;
     showContextMenu(x, y, [
-      { id: "delete", label: jaEventDelete.menuDelete, enabled: kind !== "fly", run: () => this.removeSelected() },
+      {
+        id: "delete",
+        label: many ? jaEventMulti.menuDeleteMany(deletable) : jaEventDelete.menuDelete,
+        enabled: deletable > 0,
+        run: () => this.removeSelected(),
+      },
       {
         id: "openScript",
         label: jaEventDelete.menuOpenScript,
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
+      { id: "duplicate", label: jaEventMulti.menuDuplicate, enabled: kind !== "fly" || many, run: () => void this.duplicateSelected() },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
       // 「トレーナーを編集」（#274。人だけ。trainers.json を書くのでプロジェクトフォルダがあるときだけ。クローンは参照先を直す）
