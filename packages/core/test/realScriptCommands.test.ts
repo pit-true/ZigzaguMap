@@ -23,10 +23,9 @@ function load(dir: string): ScriptCommandTable {
 const stringArgs = (t: ScriptCommandTable, name: string) =>
   t.get(name)!.args.filter((a) => a.kind === "string").map((a) => a.name);
 
-/** 両方のファイルで、呼び先のマクロが xse_commands.s に無いもの（古い XSE の名前を呼ぶ別名）。 */
+/** 両方のファイルで、呼び先のマクロが xse_commands.s に無いもの（古い XSE の名前を呼ぶ別名。setorcopyvar の系統は下の SETORCOPYVAR_CALLERS）。 */
 const MISSING_CALLEES = [
   "writebytetooffset",
-  "copyvarifnotzero",
   "comparefarbytetobyte",
   "comparefarbytes",
   "comparevars",
@@ -53,36 +52,49 @@ const MISSING_CALLEES = [
   "updatecoinsbox",
   "setescape",
   "warppanel2",
-  "giveitem",
-  "finditem",
-  "obtainitem",
-  "putitemaway",
-  "giveitemwithfanfare",
   "comparedayofweek",
   "comparehour",
 ];
 
+/**
+ * setorcopyvar を呼ぶ別名と、それを呼ぶ命令。xse_commands.s に setorcopyvar が無いと組めない
+ * （ND と Chronos は 2026-11 に setorcopyvar を足したので、今は組める）。
+ */
+const SETORCOPYVAR_CALLERS = ["copyvarifnotzero", "giveitem", "finditem", "obtainitem", "putitemaway", "giveitemwithfanfare"];
+
+/** フォルダの xse_commands.s に setorcopyvar のマクロがあるか。 */
+const hasSetorcopyvar = (dir: string) => /^\s*\.macro\s+setorcopyvar\s/m.test(readFileSync(join(dir, "xse_commands.s"), "utf8"));
+
+/** 呼び先が欠けて組めない命令（setorcopyvar が無ければ、その系統も）。 */
+const missingCallees = (dir: string) => [...MISSING_CALLEES, ...(hasSetorcopyvar(dir) ? [] : SETORCOPYVAR_CALLERS)];
+
+/** マクロの数と読めた数（setorcopyvar があれば、そのマクロ 1 つと、組めるようになった系統の分だけ増える）。 */
+const counts = (dir: string, commands: number, parsed: number) =>
+  hasSetorcopyvar(dir) ? { commands: commands + 1, parsed: parsed + 1 + SETORCOPYVAR_CALLERS.length } : { commands, parsed };
+
 describe.skipIf(!ndDir)("ND の xse_commands.s（ZIGZAGU_ND_DIR）", () => {
   it("全マクロを読み、読めないものは理由つきで一覧に出る", () => {
     const t = load(ndDir!);
-    expect(t.commands).toHaveLength(312);
-    expect(t.parsedCount).toBe(276);
-    expect(t.problems.map((p) => p.name).sort()).toEqual([...MISSING_CALLEES, "setobjectxyperm"].sort());
+    const n = counts(ndDir!, 312, 276);
+    expect(t.commands).toHaveLength(n.commands);
+    expect(t.parsedCount).toBe(n.parsed);
+    expect(t.problems.map((p) => p.name).sort()).toEqual([...missingCallees(ndDir!), "setobjectxyperm"].sort());
     expect(t.problems.find((p) => p.name === "setobjectxyperm")!.reason).toContain("自分を呼び出しています");
     expect(t.problems.find((p) => p.name === "setescape")!.reason).toContain("マクロ map が見つかりません");
   });
 
-  it("giveitem / obtainitem / finditem は setorcopyvar が無くて組めず、switch / case は組める", () => {
+  it("giveitem / obtainitem / finditem は setorcopyvar が無ければ組めず、あれば組める。switch / case は組める", () => {
     const t = load(ndDir!);
+    const has = hasSetorcopyvar(ndDir!);
     for (const name of ["giveitem", "obtainitem", "finditem"]) {
-      expect(t.canAssemble(name), name).toBe(false);
-      expect(t.get(name)!.missingCalls.map((m) => m.name), name).toEqual(["setorcopyvar"]);
+      expect(t.canAssemble(name), name).toBe(has);
+      expect(t.get(name)!.missingCalls.map((m) => m.name), name).toEqual(has ? [] : ["setorcopyvar"]);
     }
-    expect(t.get("obtainitem")!.missingCalls[0]!.via).toEqual(["obtainitem", "giveitem", "copyvarifnotzero"]);
+    if (!has) expect(t.get("obtainitem")!.missingCalls[0]!.via).toEqual(["obtainitem", "giveitem", "copyvarifnotzero"]);
     for (const name of ["switch", "case", "msgbox"]) expect(t.canAssemble(name), name).toBe(true);
-    // 組めない命令は、呼び先の欠けた MISSING_CALLEES（自分を呼ぶ setobjectxyperm は呼び先があるので入らない）
+    // 組めない命令は、呼び先の欠けたもの（自分を呼ぶ setobjectxyperm は呼び先があるので入らない）
     const absent = t.commands.filter((c) => c.missingCalls.length > 0).map((c) => c.name);
-    expect(absent.sort()).toEqual([...MISSING_CALLEES].sort());
+    expect(absent.sort()).toEqual(missingCallees(ndDir!).sort());
   });
 
   it("loadpointer は 10 バイトの 2 ポインタ、msgbox・customchoice の文字列の引数は 2 つと 4 つ", () => {
@@ -117,9 +129,10 @@ describe.skipIf(!ndDir)("ND の xse_commands.s（ZIGZAGU_ND_DIR）", () => {
 describe.skipIf(!chronosDir)("Chronos の xse_commands.s（ZIGZAGU_CHRONOS_DIR）", () => {
   it("全マクロを読み、読めないものは理由つきで一覧に出る", () => {
     const t = load(chronosDir!);
-    expect(t.commands).toHaveLength(314);
-    expect(t.parsedCount).toBe(278);
-    expect(t.problems.map((p) => p.name).sort()).toEqual([...MISSING_CALLEES, "setobjectxyperm"].sort());
+    const n = counts(chronosDir!, 314, 278);
+    expect(t.commands).toHaveLength(n.commands);
+    expect(t.parsedCount).toBe(n.parsed);
+    expect(t.problems.map((p) => p.name).sort()).toEqual([...missingCallees(chronosDir!), "setobjectxyperm"].sort());
   });
 
   it("loadpointer は 6 バイトの 1 ポインタ、msgbox・customchoice の文字列の引数は 1 つと 2 つ", () => {
