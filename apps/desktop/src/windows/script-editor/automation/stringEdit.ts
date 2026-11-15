@@ -1,4 +1,5 @@
-import { settle, str } from "../../../app/automation/registry";
+import { listDialogs } from "../../../app/automation/dialogs";
+import { settle, str, waitAtMost } from "../../../app/automation/registry";
 import { openStringEditor } from "../extensions/stringEdit";
 import { ctxOf, needPos, type EditorCommandTable } from "./common";
 
@@ -12,8 +13,15 @@ export const stringEditCommands: EditorCommandTable = {
       await settle(200);
       return { shown: document.querySelector('[data-auto-id="se.stringEdit"]') !== null };
     }
-    const path = await w.editStringBody(str(req, "label"), str(req, "text"));
+    // `.string` を開けないときは、ダイアログを出したまま返す（`editor.open` と同じ。#380）
+    const path = await waitAtMost(w.editStringBody(str(req, "label"), str(req, "text")), 1500);
     const tab = path ? w.tabs.find((x) => x.path === path) : null;
-    return { path, dirty: tab?.dirty ?? false, active: w.active?.path ?? null, tabs: w.tabs.map((x) => ({ path: x.path, dirty: x.dirty })) };
+    return {
+      path,
+      dirty: tab?.dirty ?? false,
+      active: w.active?.path ?? null,
+      tabs: w.tabs.map((x) => ({ path: x.path, dirty: x.dirty })),
+      dialogs: listDialogs(),
+    };
   },
 };

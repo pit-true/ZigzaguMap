@@ -80,6 +80,35 @@ export function listDialogs(): Record<string, unknown>[] {
   return entries().map(describe);
 }
 
+/**
+ * `start` で始めた処理が終わるか、ダイアログが新しく出るまで待つ（出たら null。答えを待って止まらないように、出したまま返すため。#380）。
+ * 処理を始める前のダイアログの数と比べる（始めてすぐ出すダイアログも数える）。長く動く処理（ビルドなど）を待つときに使う。
+ * 時間で区切ってよいものは `waitAtMost`。
+ */
+export function untilDialog<V>(start: () => Promise<V>, pollMs = 100): Promise<V | null> {
+  const before = entries().length;
+  const promise = start();
+  if (entries().length > before) return Promise.resolve(null);
+  return new Promise<V | null>((resolve, reject) => {
+    const timer = setInterval(() => {
+      if (entries().length > before) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, pollMs);
+    promise.then(
+      (v) => {
+        clearInterval(timer);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearInterval(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** `dialog`: 手前のダイアログ（`title` を渡すとその題名のもの）に入力して、ボタンを押す。 */
 export async function operateDialog(req: AutomationRequest): Promise<unknown> {
   const press = optStr(req, "press") ?? optStr(req, "button");

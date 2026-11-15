@@ -368,8 +368,8 @@ export class ScriptEditorWindow {
   // ---- ラベル名の変更（#203）・外部の変更 ----
 
   /** ラベル名を変える（F2。LabelRenamer）。`to` を渡すと名前を聞かない（自動操作）。変えた数を返す。 */
-  renameLabel(from: string, to?: string): Promise<{ count: number; files: string[]; uses: number } | null> {
-    return this.renamer.rename(from, to);
+  renameLabel(from: string, to?: string, quiet = false): Promise<{ count: number; files: string[]; uses: number } | null> {
+    return this.renamer.rename(from, to, quiet);
   }
 
   /** 開いているファイルが外部で変わっていないか調べる（1 秒ごとと、前面に戻ったとき。ExternalChanges）。 */

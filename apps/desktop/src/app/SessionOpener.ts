@@ -16,6 +16,10 @@ export interface SessionOpenerHost {
   confirmDiscard(): Promise<boolean>;
   /** スクリプトエディタに未保存のファイルがあれば「保存しますか？」と聞く。続けてよければ true。 */
   confirmScriptEditor(): Promise<boolean>;
+  /** 未出力の変更があるか（`confirmDiscard` が聞くかどうか）。 */
+  hasUnexportedChanges(): boolean;
+  /** スクリプトエディタの未保存のファイルの数（`confirmScriptEditor` が聞くかどうか。エディタを読み込んでいなければ 0）。 */
+  scriptEditorDirtyCount(): Promise<number>;
   /** 開いたセッションを画面に付ける（一覧・ROM の情報・題名・ステータスバー）。 */
   attachSession(session: ProjectSession, rom: string): Promise<void>;
   openMap(id: MapId): Promise<void>;
@@ -113,14 +117,29 @@ export class SessionOpener {
    * ROM と（あれば）プロジェクトフォルダを開く。未出力の変更があれば先に確かめる。
    * 開けなかったときはエラーを出し、開いていたものはそのまま残す。
    * `reload` は ROM の再読み込み（マップを開かない）、`confirmed` は未出力の確認が済んでいる、`bytes` は読み済みの ROM。
+   * `quiet` は自動操作の `open`（#380）。ダイアログを出さず、聞く必要があるときや開けないときは例外にする（開いていたものは残す）。
    */
-  async openSession(rom: string, project: string | null, options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array } = {}): Promise<void> {
+  async openSession(
+    rom: string,
+    project: string | null,
+    options: { reload?: boolean; confirmed?: boolean; bytes?: Uint8Array; quiet?: boolean } = {},
+  ): Promise<void> {
     const host = this.host;
     const reload = options.reload ?? false;
+    const quiet = options.quiet ?? false;
     // 別のプロジェクトフォルダへ移るときは、スクリプトエディタの未保存も確かめる（エディタは閉じる）
     const folder = (p: string | null | undefined): string => (p ?? "").replace(/[\\/]+$/, "").toLowerCase();
-    if (folder(project) !== folder(host.state.session?.projectDir) && !(await host.confirmScriptEditor())) return;
-    if (!options.confirmed && !(await host.confirmDiscard())) return;
+    if (folder(project) !== folder(host.state.session?.projectDir)) {
+      if (quiet) {
+        const dirty = await host.scriptEditorDirtyCount();
+        if (dirty > 0) throw new Error(ja.openBlockedScripts(dirty));
+      } else if (!(await host.confirmScriptEditor())) return;
+    }
+    if (!options.confirmed) {
+      if (quiet) {
+        if (host.hasUnexportedChanges()) throw new Error(ja.openBlockedUnexported);
+      } else if (!(await host.confirmDiscard())) return;
+    }
     const state = host.state;
     const previous = state.session;
     state.setStatus(ja.loading);
@@ -129,6 +148,10 @@ export class SessionOpener {
       session = await ProjectSession.open(rom, project, options.bytes);
     } catch (e) {
       await previous?.reattach().catch(() => undefined);
+      if (quiet) {
+        this.restoreStatus();
+        throw new Error(openErrorText(e));
+      }
       await this.showOpenError(e);
       return;
     }
@@ -144,15 +167,25 @@ export class SessionOpener {
         await host.openMap(target);
       }
     } catch (e) {
+      if (quiet) throw e;
       host.showError(e);
     }
   }
 
   /** 開けなかったときのエラー（ステータスバーを元に戻してから出す）。 */
   private async showOpenError(e: unknown): Promise<void> {
+    this.restoreStatus();
+    await showError(openErrorText(e));
+  }
+
+  /** 開けなかったときのステータスバー（開いているものがあれば、その表示に戻す）。 */
+  private restoreStatus(): void {
     const state = this.host.state;
     state.setStatus(state.session ? ja.statusRomLoaded : ja.statusOpenRom);
-    if (e instanceof UnknownRomError) await showError(ja.unknownRomType);
-    else await showError(errorText(e));
   }
+}
+
+/** 開けなかったときのエラーの文言。 */
+function openErrorText(e: unknown): string {
+  return e instanceof UnknownRomError ? ja.unknownRomType : errorText(e);
 }

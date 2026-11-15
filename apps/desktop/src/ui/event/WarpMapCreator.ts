@@ -1,4 +1,4 @@
-import { BlockRenderer, MAX_MAPS_PER_BANK, createMapForWarp, findWarpSamples, renderBlocks, type MapId, type WarpSample } from "@zigzagumap/core";
+import { BlockRenderer, EditError, MAX_MAPS_PER_BANK, createMapForWarp, findWarpSamples, renderBlocks, type MapId, type WarpSample } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import { ja } from "../../i18n/ja";
 import { jaNeighbors } from "../../i18n/ja.neighbors";
@@ -6,7 +6,7 @@ import { jaWarpMap as t } from "../../i18n/ja.warpMap";
 import "../../styles/warpMap.css";
 import { canvasOf } from "../canvas";
 import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
-import { showEditError } from "../form/inputErrors";
+import { editErrorMessage, showEditError } from "../form/inputErrors";
 import { inputDialog } from "../InputDialog";
 import { showError } from "../MessageBox";
 
@@ -19,9 +19,13 @@ export interface WarpMapChoice {
   readonly copyLayout: boolean;
 }
 
-/** 自動操作から渡す指定（`sample` を渡すと見本の窓を出さない。`bank` を渡すとバンクを聞かない）。 */
+/**
+ * 自動操作から渡す指定（`sample` を渡すと見本の窓を出さない。`bank` を渡すとバンクを聞かない）。
+ * `quiet` ならエラーのダイアログを出さずに例外にする（自動操作の `warp.createMap`。#380）。
+ */
 export interface WarpMapOptions extends Partial<WarpMapChoice> {
   readonly bank?: number;
+  readonly quiet?: boolean;
 }
 
 /**
@@ -45,7 +49,9 @@ export class WarpMapCreator {
     const session = state.session;
     const map = state.map;
     if (!session || !map) return null;
+    const quiet = options.quiet ?? false;
     if (!map.doc.events?.warps[index]) {
+      if (quiet) throw new Error(t.noWarp);
       await showError(t.noWarp);
       return null;
     }
@@ -54,7 +60,7 @@ export class WarpMapCreator {
     const choice = options.sample !== undefined ? { sample: options.sample ?? null, copyLayout: options.copyLayout ?? true } : await this.choose(samples);
     if (!choice) return null;
     const sample = choice.sample === null ? null : (samples[choice.sample] ?? null);
-    const target = await this.askSlot(options.bank);
+    const target = await this.askSlot(options.bank, quiet);
     if (!target) return null;
     try {
       const sampleDoc = sample ? await session.project.load(sample.map) : null;
@@ -62,6 +68,7 @@ export class WarpMapCreator {
         createMapForWarp(session.project.editorContext(), { from: map.id, warpIndex: index, target, sample, copyLayout: choice.copyLayout }, sampleDoc),
       );
     } catch (e) {
+      if (quiet) throw e instanceof EditError ? new Error(editErrorMessage(e).text) : e;
       await showEditError(e);
       return null;
     }
@@ -72,7 +79,7 @@ export class WarpMapCreator {
   }
 
   /** 新しいマップを置くバンクを聞く（既定は今のマップのバンク。満杯なら新しいバンク）。 */
-  private async askSlot(given?: number): Promise<MapId | null> {
+  private async askSlot(given: number | undefined, quiet: boolean): Promise<MapId | null> {
     const session = this.app.state.session!;
     const counts = session.project.bankCounts();
     const current = this.app.state.map!.id.bank;
@@ -83,14 +90,13 @@ export class WarpMapCreator {
       if (text === null) return null;
       bank = Number(text.trim());
     }
-    if (!Number.isInteger(bank) || bank < 0 || bank > counts.length) {
-      await showError(jaNeighbors.bankInvalid(counts.length));
+    const fail = async (text: string): Promise<null> => {
+      if (quiet) throw new Error(text);
+      await showError(text);
       return null;
-    }
-    if (bank < counts.length && counts[bank]! >= MAX_MAPS_PER_BANK) {
-      await showError(jaNeighbors.bankFull(bank));
-      return null;
-    }
+    };
+    if (!Number.isInteger(bank) || bank < 0 || bank > counts.length) return fail(jaNeighbors.bankInvalid(counts.length));
+    if (bank < counts.length && counts[bank]! >= MAX_MAPS_PER_BANK) return fail(jaNeighbors.bankFull(bank));
     return { bank, map: bank < counts.length ? counts[bank]! : 0 };
   }
 

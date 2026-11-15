@@ -191,6 +191,10 @@ export const ja = {
   errorTitle: A["02"],
   /** 70「変更を保存しますか？」の読み替え。 */
   saveChanges: "変更を出力しますか？",
+  /** 自動操作の `open` で、未出力の変更があるとき（聞かずにエラーにする。#380）。 */
+  openBlockedUnexported: "出力していない変更があるので開きません（先に export で出力するか、undo で戻してください）",
+  /** 自動操作の `open` で、スクリプトエディタに未保存のファイルがあるとき（#380）。 */
+  openBlockedScripts: (count: number) => `スクリプトエディタに保存していないファイルが ${count} 件あるので開きません（先に保存してください）`,
   openMapTitle: A["42"],
   openMapPrompt: A["43"],
   invalidInput: A["44"],
