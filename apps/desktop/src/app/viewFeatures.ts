@@ -6,6 +6,7 @@ import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
 import type { MapTree } from "../ui/MapTree";
 import { ThumbnailService } from "./ThumbnailService";
+import { UserScriptHost } from "./scripting/UserScriptHost";
 import { MapZoomControls } from "../ui/map/MapZoomControls";
 import { togglePatch, type ZoomTab } from "./mapZoom";
 import type { MovementTab } from "../ui/tabs/MovementTab";
@@ -70,6 +71,8 @@ export class ViewFeatures {
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
+  /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
+  readonly userScripts: UserScriptHost;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
   lastCopied: string | null = null;
 
@@ -81,6 +84,19 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
+    // 利用者のスクリプト（Phase5 #405。設定 > スクリプトの管理...）
+    this.userScripts = new UserScriptHost({
+      state,
+      setGrid: (show) => {
+        state.settings.update({ grid: show });
+        state.emit("view");
+      },
+      createWorker: () => new Worker(new URL("./scripting/userScriptWorker.ts", import.meta.url), { type: "module" }),
+    });
+    actions.register("scripts.manage", async () => {
+      const { UserScriptManager } = await import("../ui/userscript/UserScriptManager");
+      new UserScriptManager(state, this.userScripts);
+    });
     // 履歴の窓（Phase5 #402。表示 > 履歴の窓、Ctrl+E）
     actions.registerCheck("view.history", () => this.historyCreated?.isOpen ?? false);
     actions.register("view.history", async () => {

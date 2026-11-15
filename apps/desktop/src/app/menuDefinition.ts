@@ -17,6 +17,7 @@ import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
+import { jaUserScript } from "../i18n/ja.userScript";
 import { jaCommands } from "../i18n/ja.commands";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -163,6 +164,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "opt.alignConnections", label: jaNeighbors.alignConnections, accel: "C" },
         // ROM を開いたとき、前回のプロジェクトフォルダを窓を出さずに開く（ユーザーの要望 #278。ZigzaguMap 独自）
         { id: "opt.rememberRomProject", label: ja.rememberRomProject },
+        // 利用者の JavaScript のスクリプト（Phase5 #405。ZigzaguMap 独自）
+        { id: "scripts.manage", label: jaUserScript.menu, enable: "rom" },
         {
           label: ja.recentSettings,
           accel: "Z",

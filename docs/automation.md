@@ -99,6 +99,9 @@ python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し>
 | `clipboard.last` | | 最後にコピーした文字（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
 | `editHistory.state` | | 履歴の窓（Phase5 #402。窓を作っていなければ作るが、開きはしない）。`open`（出しているか）、`position`（今の位置。実行済みの操作の数）、`rows`（新しい順。`position`（押したときに移る位置）・`text`・`current`・`redo`（やり直せる分）。最後が「（最初の状態）」で `position` 0）。開く・閉じるは `action` の `view.history` |
 | `editHistory.goTo` | `position` | 履歴の窓の行を押す（窓を出していれば画面の行を押し、出していなければ同じ処理を呼ぶ）。その位置まで戻す・進める。返事は `editHistory.state` と同じものと、動かした回数 `steps` |
+| `userScripts.state` | `wait`（省略可） | 利用者のスクリプト（Phase5 #405）。Worker を作っているか `active`、置き場所の `files`、有効な `enabled`、登録された操作 `actions`（`id`・`label`）、`logs`（`level`・`text`）、読めなかったもの `loadErrors`。`wait: true` なら読み込みと動いている呼び出しが終わるまで待つ。管理の窓は `action` の `scripts.manage`、チェックは `setField` の `userScripts.enable.<ファイル名>` |
+| `userScripts.run` | `action`、`wait`（省略可） | 登録された操作を動かす。`wait: false` でなければ終わるまで待つ（ダイアログを出す操作は false にして `dialog` で答える）。返事は `userScripts.state` |
+| `userScripts.reload` / `userScripts.stop` | | 読み直す（終わるまで待つ）／Worker を終わらせる。返事は `userScripts.state` |
 | `setting` | `key`、`value` | 個人設定の値をこの起動の間だけ変える（ファイルには保存しない）。`theme`（`light` / `dark`）はすぐ画面と開いている別ウィンドウに当てる（メニューの 設定 > テーマ と同じ。`menu.list` の `theme.light`・`theme.dark` の `checked` も変わる） |
 | `event.select` | `kind`（`person` / `sign` / `warp` / `trap` / `fly`）、`index` | イベントを選ぶ |
 | `event.state` | | 選択中の種別と番号、`selected`（選んでいるイベント。複数選択なら全部。#399）、`ruler`（Shift＋右ドラッグのルーラーの `dx`・`dy`。出していなければ null。#400）、個数、表示中のマップのイベントと落とし物、`warpWarnings`（ワープできないブロックの上にあるワープの番号。#240）、`clones`（クローンの人の `index` と参照先 `target`（`bank`・`map`・`localId`）。#242。元の人の番号 `originIndex`（元のマップを読んでいない・元の人がいなければ null）と描く画像番号 `graphicsId`。#298） |

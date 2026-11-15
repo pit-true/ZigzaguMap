@@ -377,3 +377,25 @@ export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export { COMPOSITE_MAX_SIDE, compositeScale, layoutComposite, type CompositeLayout, type CompositeMap, type CompositeSource } from "./render/MapComposite.js";
+export {
+  USER_SCRIPT_DIR,
+  USER_SCRIPT_SECTION,
+  isUserScriptName,
+  loadUserScriptListing,
+  parseUserScriptSettings,
+  saveUserScriptEnabled,
+  stringifyUserScriptSettings,
+  type UserScriptListing,
+  type UserScriptSettings,
+} from "./userscript/UserScriptConfig.js";
+export {
+  USER_SCRIPT_EVENTS,
+  USER_SCRIPT_METHODS,
+  USER_SCRIPT_WRITES,
+  isUserScriptMethod,
+  type HostToWorker,
+  type UserScriptEvent,
+  type UserScriptMethod,
+  type WorkerToHost,
+} from "./userscript/UserScriptProtocol.js";
+export { UserScriptRuntime, type UserScriptApi } from "./userscript/UserScriptRuntime.js";
