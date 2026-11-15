@@ -18,6 +18,7 @@ import {
 } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { jaNeighbors } from "../../i18n/ja.neighbors";
+import { jaTools } from "../../i18n/ja.tools";
 import { showContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { showEditError } from "../form/inputErrors";
 import { inputDialog } from "../InputDialog";
@@ -33,6 +34,9 @@ const EMERGE = ConnectionDirection.Emerge;
  * ダイブ先・浮上先をつなぐ／作る。どれも両側の接続を 1 回の操作で変える（1 回の取り消しで戻る）。
  */
 export class EdgeMenu {
+  /** 大きさと位置を変える窓を開く（Phase5 #390。ToolExtras が入れる。無ければメニューに出さない）。 */
+  openResize: (() => void) | null = null;
+
   constructor(private readonly state: EditorState) {}
 
   /** 辺 `side` のメニューを (x, y) に出す。 */
@@ -58,6 +62,10 @@ export class EdgeMenu {
       { id: "emergeNew", label: jaNeighbors.menuEmergeNew, enabled: !has(EMERGE), run: () => void this.run(() => this.newMap(side, EMERGE)) },
       { id: "emergeConnect", label: jaNeighbors.menuEmergeConnect, enabled: !has(EMERGE), run: () => void this.run(() => this.connect(side, EMERGE)) },
     );
+    if (this.openResize) {
+      const open = this.openResize;
+      items.push({ id: "resize", label: jaTools.resizeOpen, run: () => open() });
+    }
     showContextMenu(x, y, items);
   }
 

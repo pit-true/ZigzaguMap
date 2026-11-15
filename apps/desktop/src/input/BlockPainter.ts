@@ -14,6 +14,11 @@ import { usableSelection } from "./paintCommands";
 import { tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { tripleStatusSuffix } from "./tripleRules";
+import { currentTool, type PaintTool } from "../app/paintTool";
+import { BlockFillTool } from "./tools/FillTool";
+import { LineGuide } from "./tools/LineGuide";
+import { ShiftTool } from "./tools/ShiftTool";
+import { SmartPathTool } from "./tools/SmartPathTool";
 
 /**
  * マップタブのマウス操作（AdvanceMap に合わせ、Phase3 で道具を足した）。
@@ -35,6 +40,12 @@ import { tripleStatusSuffix } from "./tripleRules";
  *
  * 道具ごとに分けている（Phase4 #318）: ここはマウスの振り分けと鉛筆・拾う・座標の表示。ドラッグの道具（矩形の選択・矩形塗り・
  * 入れ替え）は BlockDragTools、自動ペンは AutoPenTool、書き込み（3 層の次の番号を落とす所を含む）は BlockWriter。
+ *
+ * Phase5（#388・#389・#390）: 道具の帯で選んだ道具（app/paintTool.ts）で左ボタンの動きを変える。鉛筆のときは上のとおり（今と同じ）。
+ * - 塗りつぶし: 左クリックで塗りつぶし（tools/FillTool）、Ctrl＋クリックでマジック塗り。Alt＋左ドラッグの入れ替えはそのまま。
+ * - シフト: 左ドラッグでマップシフト（tools/ShiftTool）。Ctrl＋左ドラッグの矩形塗りと Alt＋左ドラッグの入れ替えはそのまま。
+ * - 直線: 鉛筆（とスマートパス・自動ペン）で Shift を押しながら描くと、横か縦に固定する（tools/LineGuide）。
+ * - スマートパス: 帯のチェックがオンで選択が 3×3 なら、鉛筆と塗りつぶしをこれで描く（tools/SmartPathTool）。自動ペンが先。
  */
 export class BlockPainter {
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
@@ -51,6 +62,16 @@ export class BlockPainter {
   usage: BlockUsageService | null = null;
   /** 自動ペン（Phase4 #310。PenExtras が入れる）。オンでパーツのブロックを選んでいれば、左ボタンの描画を受ける。 */
   autoPen: AutoPenTool | null = null;
+  /** 塗りつぶしとマジック塗り（Phase5 #388）。 */
+  readonly fill: BlockFillTool;
+  /** マップシフト（Phase5 #390）。 */
+  readonly shift: ShiftTool;
+  /** スマートパス（Phase5 #389）。 */
+  readonly smartPath: SmartPathTool;
+  /** 直線（Phase5 #389）。 */
+  private readonly line = new LineGuide();
+  /** 左ボタンを押したときの道具（離すまで変えない）。 */
+  private pressTool: PaintTool | null = null;
 
   constructor(
     private readonly view: MapView,
@@ -62,27 +83,54 @@ export class BlockPainter {
     const preview = new PreviewCanvas(view);
     this.writer = new BlockWriter(state, this.cells, preview, () => this.drags.tool !== null);
     this.drags = new BlockDragTools(state, this.writer, preview, (rect) => this.fillRect(rect), onPicked);
+    this.shift = new ShiftTool(view, state, preview);
+    this.smartPath = new SmartPathTool(state, this.writer);
+    this.fill = new BlockFillTool(state, {
+      cells: this.cells,
+      writeFill: (list) => this.writeTiled(list),
+      smartFill: (area) => this.smartPath.fill(area),
+    });
     const startDrag = (tool: DragToolKind, cell: Cell): void => this.drags.start(tool, cell);
     attachCellPointer(view.stage, (e) => this.cellAt(e), {
       down: (cell, g) => {
-        if (g.button === 0 && g.ctrl) startDrag("rect", cell);
+        const tool = g.button === 0 ? currentTool(state) : null;
+        this.pressTool = tool;
+        if (tool === "fill" && !g.alt) {
+          // 塗りつぶし（Ctrl＋クリックでマジック塗り）。ダブルクリックで隣のマップを開くときは取り消せるよう覚える
+          this.cells.pressStart();
+          this.fill.fill(cell, g.ctrl);
+        } else if (tool === "shift" && !g.ctrl && !g.alt) this.shift.begin(cell, g.shift);
+        else if (g.button === 0 && g.ctrl) startDrag("rect", cell);
         else if (g.button === 0 && g.alt) startDrag("swap", cell);
         else if (g.button === 0) {
+          this.pressTool = "pencil";
           // ダブルクリックで隣のマップを開くとき、この押下で描いた分を取り消せるよう覚える
           this.cells.pressStart();
+          this.line.begin(cell, g.shift);
           if (this.autoPen?.begin(cell)) return;
+          if (this.smartPath.begin(cell)) return;
           this.paint(cell, false);
         } else if (g.ctrl) startDrag("pick", cell);
       },
-      move: (cell, g) => {
+      move: (cell, g, live) => {
+        if (this.shift.active) return this.shift.move(cell, live.shift);
         const dragging = this.drags.tool !== null;
-        if (!dragging && g.button === 0 && this.autoPen?.drag(cell)) return;
-        if (dragging) this.drags.move(cell);
-        else if (g.button === 0 && this.isSingle()) this.paint(cell, true);
+        if (dragging) return this.drags.move(cell);
+        // 塗りつぶしは押したときに 1 回だけ
+        if (g.button !== 0 || this.pressTool !== "pencil") return;
+        for (const c of this.line.next(cell, live.shift)) {
+          if (this.autoPen?.drag(c)) continue;
+          if (this.smartPath.drag(c)) continue;
+          if (this.isSingle()) this.paint(c, true);
+        }
       },
       up: (cell, g) => {
         this.cells.pressEnd();
         this.autoPen?.end();
+        this.smartPath.end();
+        this.line.end();
+        this.pressTool = null;
+        if (this.shift.end()) return;
         if (this.drags.end(cell)) return;
         if (g.button === 2 && cell) this.pick(cell);
       },
@@ -122,7 +170,11 @@ export class BlockPainter {
 
   /** 矩形塗り（1 回の操作）。 */
   private fillRect(rect: CellRect): void {
-    const list = tileRect(rect, this.state.selection);
+    this.writeTiled(tileRect(rect, this.state.selection));
+  }
+
+  /** 選択の柄で埋めたマスを 1 回の操作で書く（矩形塗りと塗りつぶし。袋を使う選択なら各マスを袋から選ぶ）。 */
+  private writeTiled(list: readonly FillCell[]): void {
     if (this.bag?.appliesTo(this.state.selection)) return this.writer.write(this.fromBag(list), false, false, true);
     this.writer.write(list, false, false);
   }
