@@ -11,6 +11,7 @@
   python tests/realcopy/run.py --template --reuse      # 使われている番号の索引とイベントのひな形（lib/template.py）
   python tests/realcopy/run.py --transplant --source-rom <素の BPRJ> --reuse  # 別の ROM からのタイルセットの移植（lib/transplant.py。Phase4 #314）
   python tests/realcopy/run.py --triple --reuse        # トリプルレイヤーの出力・ビルド・できた ROM の中身（lib/triple.py。Phase4 #317）
+  python tests/realcopy/run.py --maplist --only nd     # マップ一覧の「このマップを複製」を出力してビルドする（lib/maplist.py。Phase5 #401）
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
 
 --smoke: 写しを作り、ZigzaguMap で写しの ROM とプロジェクトを開いて何もせずに出力し、写しでビルドする
@@ -38,6 +39,7 @@ from lib.builder import build_fixture, build_nd_dpe  # noqa: E402
 from lib.connection import connection_one  # noqa: E402
 from lib.template import template_one  # noqa: E402
 from lib.transplant import transplant_one  # noqa: E402
+from lib.maplist import maplist_one  # noqa: E402
 from lib.triple import triple_one  # noqa: E402
 from lib.delete import delete_one  # noqa: E402
 from lib.link import link_one  # noqa: E402
@@ -202,7 +204,9 @@ def phase4_fixture(cfg, name: str, args, log_dir: pathlib.Path, kind: str) -> tu
         print("       " + text, flush=True)
 
     with Zigzagu(cfg, f"{kind}-{name}", args.exe) as z:
-        if kind == "transplant":
+        if kind == "maplist":
+            maplist_one(fx, z, check, log, args.timeout, log_dir / f"maplist-{name}")
+        elif kind == "transplant":
             transplant_one(fx, z, check, log, args.timeout, log_dir / f"transplant-{name}", pathlib.Path(args.source_rom))
         else:
             triple_one(fx, z, check, log, args.timeout, log_dir / f"triple-{name}")
@@ -223,6 +227,7 @@ def main() -> int:
     ap.add_argument("--transplant", action="store_true", help="別の ROM からのタイルセットの移植（Phase4）を出力してビルドし、ROM の中身を確かめる")
     ap.add_argument("--source-rom", help="--transplant で取り込む元の ROM（素の BPRJ。読むだけ）")
     ap.add_argument("--triple", action="store_true", help="トリプルレイヤー（Phase4）を出力してビルドし、ROM の中身と開き直しを確かめる")
+    ap.add_argument("--maplist", action="store_true", help="マップ一覧の「このマップを複製」（Phase5）を出力してビルドし、ROM の中身を確かめる")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
     ap.add_argument("--dpe", action="store_true")
@@ -232,8 +237,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.all:
         args.smoke = args.link = args.delete = True
-    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple]):
-        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --all を付けてください")
+    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.maplist]):
+        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --maplist か --all を付けてください")
     if args.transplant and not args.source_rom:
         ap.error("--transplant には --source-rom（取り込む元の ROM）が要ります")
     cfg = config.load(args.config, args.exe)
@@ -259,11 +264,12 @@ def main() -> int:
     runs += [(n, "template") for n in names if args.template]
     runs += [(n, "transplant") for n in names if args.transplant]
     runs += [(n, "triple") for n in names if args.triple]
+    runs += [(n, "maplist") for n in names if args.maplist]
     for name, kind in runs:
-        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple]) == 1 else f"{name} ({kind})"
+        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.maplist]) == 1 else f"{name} ({kind})"
         print(f"\n== {key}")
         try:
-            if kind in ("transplant", "triple"):
+            if kind in ("transplant", "triple", "maplist"):
                 ok, lines = phase4_fixture(cfg, name, args, log_dir, kind)
             else:
                 run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]
