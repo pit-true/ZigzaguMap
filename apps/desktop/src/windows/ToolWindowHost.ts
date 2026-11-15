@@ -152,6 +152,13 @@ export class ToolWindowHost {
         const swap = await import("./block-editor/blockSwapHost");
         return swap.swapBlocks(session.project, session.bus, { pointer: req.tileset, secondary: req.secondary }, req.a, req.b, req.remap);
       }
+      case "newTileset": {
+        const session = this.requireSession();
+        const map = this.app.state.map;
+        if (!map) throw new Error(t.notOpen);
+        const host = await import("./block-editor/newTilesetHost");
+        return host.createNewTileset(session.project, session.bus, map.doc.id, { secondary: req.secondary, tileCount: req.tileCount, blockCount: req.blockCount, copy: req.copy });
+      }
       case "blockStats": {
         const session = this.requireSession();
         const map = this.app.state.map;
