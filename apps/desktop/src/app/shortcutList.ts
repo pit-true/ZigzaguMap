@@ -12,6 +12,7 @@ import { jaTownMini } from "../i18n/ja.townMini";
 import { jaPointers } from "../i18n/ja.pointers";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaBlockEditor } from "../i18n/ja.blockEditor";
+import { blockToolShortcutRows } from "../i18n/ja.blockTools";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
 /** ショートカットの一覧の 1 行。 */
@@ -90,6 +91,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "右クリック", action: jaEventDelete.shortcutMenu, where: jaEventDelete.shortcutWhere },
   // ブロックエディタの 8 マスと 3 層目の 4 マス（Phase4 #302。windows/block-editor/BlockEditPanel.ts）
   { keys: jaBlockEditor.shortcutTileKeys, action: jaBlockEditor.shortcutTile, where: jaBlockEditor.shortcutTileWhere },
+  // ブロックエディタの Phase5 の操作（#393〜#395。windows/block-editor/）
+  ...blockToolShortcutRows(),
   // マップ作成補助の窓（Phase4 #312・#338。windows/map-assist/MapAssistWindow.ts）
   { keys: jaAssist.shortcutPickKeys, action: jaAssist.shortcutPick, where: jaAssist.shortcutPickWhere },
   ...scriptEditorKeys(),
