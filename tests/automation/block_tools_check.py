@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import base64
 import pathlib
+import re
 import struct
 import sys
 import tempfile
@@ -620,7 +621,8 @@ def check_397(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     work.mkdir(parents=True, exist_ok=True)
     res = z.call({"cmd": "export", "dir": str(work)})
     written = res.get("written", []) if isinstance(res, dict) else []
-    tj = [w for w in written if "tilesets" in w and "secondary_" in w and w.endswith("tileset.json")]
+    # 新しいタイルセットは ROM の外の位置（1F00000 など）の名前で出る（前の確かめで変えた元の副タイルセットも出ることがある）
+    tj = [w for w in written if re.search(r"tilesets/secondary_[0-9A-F]{7}/tileset\.json$", w.replace("\\", "/"))]
     check(len(tj) == 1, f"397: maps/tilesets に新しい副タイルセットを出力する（{tj}）")
     if tj:
         import json as _json
