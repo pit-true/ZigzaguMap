@@ -18,7 +18,9 @@ import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibili
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaUserScript } from "../i18n/ja.userScript";
+import { jaTools } from "../i18n/ja.tools";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaMapExport } from "../i18n/ja.mapExport";
 import { jaWildTools } from "../i18n/ja.wildTools";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
@@ -73,6 +75,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "file.export", label: ja.exportMaps, accel: "M", shortcut: ctrl("S") },
         { id: "file.exportTo", label: ja.exportMapsTo, accel: "W" },
         { id: "file.backup", label: ja.createBackup, accel: "X", enable: "map" },
+        // マップの画像の書き出し（Phase5 #403。ZigzaguMap 独自）
+        { id: "image.export", label: jaMapExport.menu, enable: "map" },
         sep,
         {
           label: ja.mapMenu,
@@ -97,6 +101,10 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       accel: "V",
       children: [
         { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
+        // グリッドの形・カーソルの枠・プレイヤーの視界の枠（Phase5 #391。ZigzaguMap 独自）
+        { id: "view.gridSettings", label: jaTools.gridSettingsMenu, enable: "map" },
+        { id: "view.cursorFrame", label: jaTools.cursorFrameMenu, shortcut: { key: "C", text: "C" } },
+        { id: "view.playerView", label: jaTools.playerViewMenu, shortcut: { key: "V", text: "V" } },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },

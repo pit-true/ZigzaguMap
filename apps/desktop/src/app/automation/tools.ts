@@ -15,6 +15,9 @@ import { describeSelection } from "./status";
  * - `tool.resize {left, right, up, down, fill?}`: 4 辺を広げる・縮める（対話式リサイズの窓の OK と同じ。`fill` は `edge`（既定）/ `border` /
  *   `selection`）。返事の `done` は実行できたか（できなければエラーのダイアログが出たまま返る）、`width`・`height` は変えたあとの大きさ。
  * - `tool.resizeDialog`: 対話式リサイズの窓を開いてすぐ返す（部品は `resize.width` など。`setField` で入れ、`dialog` の `press: "ok"` で実行）。
+ * - `view.aids`: 表示の補助（#391）。`cursorFrame`・`playerView`（個人設定）、グリッドの形 `gridStyle`（確かめて直した値）と表示 `grid`、
+ *   タブごとの枠 `layers`（`map` / `movement` / `event` の `cell`（マウスのマス）・`cursor`・`sight`（マスの矩形。出していなければ null））、
+ *   移動許可の数値の欄の文字 `movementValue`。
  * マウスで道具を使うときは、`tool.set` で道具を選んでから `mouse`（`shift: true` で直線）を使う。
  */
 
@@ -85,6 +88,19 @@ async function resizeDialog(app: App): Promise<unknown> {
   return { dialogs: listDialogs() };
 }
 
+function aids(app: App): unknown {
+  const a = app.aids;
+  const s = app.state.settings.data;
+  return {
+    cursorFrame: s.cursorFrame,
+    playerView: s.playerView,
+    grid: s.grid,
+    gridStyle: a.gridStyle,
+    layers: { map: a.layers.map.state, movement: a.layers.movement.state, event: a.layers.event.state },
+    movementValue: document.querySelector<HTMLInputElement>('[data-auto-id="movement.value"]')?.value ?? null,
+  };
+}
+
 export const toolCommands: CommandTable = {
   "tool.state": state,
   "tool.set": set,
@@ -92,4 +108,5 @@ export const toolCommands: CommandTable = {
   "tool.shift": shift,
   "tool.resize": resize,
   "tool.resizeDialog": resizeDialog,
+  "view.aids": aids,
 };

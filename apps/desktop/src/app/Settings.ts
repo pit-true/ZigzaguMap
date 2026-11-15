@@ -138,6 +138,12 @@ export interface SettingsData {
   paintTool: string;
   /** スマートパス（マップタブの道具の帯。選択がちょうど 3×3 のとき周りに合わせて描く。Phase5 #389。既定オフ）。 */
   smartPath: boolean;
+  /** カーソルの枠（表示メニュー。C。Phase5 #391。既定オフ）。 */
+  cursorFrame: boolean;
+  /** プレイヤーの視界の枠（表示メニュー。V。Phase5 #391。既定オフ）。 */
+  playerView: boolean;
+  /** グリッドの形（表示 > グリッドの設定…。Phase5 #391。既定は今までの見た目。読むときは normalizeGridStyle で確かめる）。 */
+  gridStyle: { width: number; height: number; offsetX: number; offsetY: number; color: string; line: string };
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -195,6 +201,9 @@ export const DEFAULT_SETTINGS: SettingsData = {
   mapZoom: { map: 0, movement: 0, event: 0 },
   paintTool: "pencil",
   smartPath: false,
+  cursorFrame: false,
+  playerView: false,
+  gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

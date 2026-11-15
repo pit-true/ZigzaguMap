@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compositeScale, layoutComposite, type CompositeSource, type MapConnection } from "../src/index.js";
+import { EXPORT_PAD, compositeScale, exportCrop, layoutComposite, rectsOverlap, type CompositeSource, type MapConnection } from "../src/index.js";
 
 const conn = (direction: number, offset: number, bank: number, map: number): MapConnection => ({ direction, offset, bank, map, padding: 0 });
 
@@ -27,5 +27,25 @@ describe("layoutComposite（#246）", () => {
     expect(compositeScale({ x: 0, y: 0, width: 100, height: 50 }, 16)).toBe(1);
     expect(compositeScale({ x: 0, y: 0, width: 1100, height: 50 }, 16)).toBe(2);
     expect(compositeScale({ x: 0, y: 0, width: 3000, height: 50 }, 16)).toBe(4);
+  });
+});
+
+describe("書き出しの範囲（#403）", () => {
+  const layout = {
+    maps: [
+      { id: { bank: 3, map: 0 }, x: 0, y: 0, width: 20, height: 10 },
+      { id: { bank: 3, map: 1 }, x: 0, y: -15, width: 20, height: 15 },
+    ],
+    bounds: { x: 0, y: -15, width: 20, height: 25 },
+  };
+  it("このマップ・全マップ・周りの帯", () => {
+    expect(exportCrop(layout, false, null)).toEqual({ x: 0, y: 0, width: 20, height: 10 });
+    expect(exportCrop(layout, true, null)).toEqual(layout.bounds);
+    expect(exportCrop(layout, false, EXPORT_PAD)).toEqual({ x: -7, y: -5, width: 34, height: 20 });
+  });
+  it("重なり", () => {
+    const crop = exportCrop(layout, false, EXPORT_PAD);
+    expect(rectsOverlap(crop, layout.maps[1]!)).toBe(true);
+    expect(rectsOverlap({ x: 0, y: 0, width: 20, height: 10 }, layout.maps[1]!)).toBe(false);
   });
 });

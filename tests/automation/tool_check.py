@@ -13,6 +13,8 @@
     移動エリアタブでも同じ。出力して読み直すと同じになる。
   - resize: 対話式リサイズ（#390）。窓で幅・高さ・位置・埋め方を決めて広げると、イベントと接続（相手の逆の接続も）がずれずに付いてくる。
     1 回で戻る。上限を超えると実行しない。出力して読み直すと同じになる。
+  - view: 表示の補助（#391）。カーソルの枠（C）・プレイヤーの視界の枠（V）・グリッドの設定・移動許可の数値の欄。既定はどれもオフか
+    今の見た目で、切り替えは同じプロフィールで起動し直しても残る。
 """
 from __future__ import annotations
 
@@ -414,12 +416,85 @@ def check_resize(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
         z.call({"cmd": "dialog", "press": "ok"})
 
 
+def check_view(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    a = z.call({"cmd": "view.aids"})
+    check(not a["cursorFrame"] and not a["playerView"] and not a["grid"], "既定はカーソルの枠・視界の枠・グリッドがどれもオフ")
+    check(a["gridStyle"] == {"width": 1, "height": 1, "offsetX": 0, "offsetY": 0, "color": "#000000", "line": "solid"}, "グリッドの形の既定は今の見た目")
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [5, 5]})
+    check(z.call({"cmd": "view.aids"})["layers"]["map"]["cursor"] is None, "オフのときは枠を出さない")
+    # C でカーソルの枠
+    z.call({"cmd": "key", "key": "c"})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [5, 5]})
+    a = z.call({"cmd": "view.aids"})
+    check(a["cursorFrame"] and a["layers"]["map"]["cursor"] == {"x": 5, "y": 5, "width": 1, "height": 1}, f"C でカーソルの枠（{a['layers']['map']['cursor']}）")
+    z.call({"cmd": "selectBlock", "blocks": [1, 2, 3, 4, 5, 6], "width": 3})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [6, 7]})
+    c = z.call({"cmd": "view.aids"})["layers"]["map"]["cursor"]
+    check(c == {"x": 6, "y": 7, "width": 3, "height": 2}, f"スタンプのときは選択の大きさの枠（{c}）")
+    # V で視界の枠
+    z.call({"cmd": "key", "key": "v"})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [10, 8]})
+    sight = z.call({"cmd": "view.aids"})["layers"]["map"]["sight"]
+    check(sight == {"x": 3, "y": 4, "width": 15, "height": 10}, f"V で 15×10 マスの視界の枠（主人公は左に 7・上に 4 マス。{sight}）")
+    screenshot(z, shots, "tool_view_frames.png")
+    # イベントタブと移動エリアタブでも
+    z.call({"cmd": "tab", "name": "event"})
+    z.call({"cmd": "mouse", "target": "event", "action": "hover", "cell": [4, 4]})
+    ev = z.call({"cmd": "view.aids"})["layers"]["event"]
+    check(ev["cursor"] == {"x": 4, "y": 4, "width": 1, "height": 1} and ev["sight"] is not None, "イベントタブでも枠が出る")
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "mouse", "target": "movement", "action": "hover", "cell": [2, 3]})
+    mv = z.call({"cmd": "view.aids"})["layers"]["movement"]
+    check(mv["cursor"] == {"x": 2, "y": 3, "width": 1, "height": 1}, "移動エリアタブでも枠が出る")
+    # 移動許可の数値の欄
+    check(z.call({"cmd": "view.aids"})["movementValue"] == "00", "移動許可の数値の欄は今の値（00）")
+    z.call({"cmd": "setField", "id": "movement.value", "value": "1a"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x1A, "16 進で入れると移動許可の選択が変わる")
+    z.call({"cmd": "setField", "id": "movement.value", "value": "4F"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x1A, "00〜3F の外は選択を変えない")
+    z.call({"cmd": "mouse", "target": "movementPalette", "action": "click", "cell": [0, 5]})
+    check(z.call({"cmd": "view.aids"})["movementValue"] == "05", "パレットで選ぶと欄の値も変わる")
+    screenshot(z, shots, "tool_view_movement.png")
+    # グリッドの設定
+    z.call({"cmd": "tab", "name": "map"})
+    before = z.call({"cmd": "canvasPng", "target": "map"})
+    z.call({"cmd": "action", "id": "view.gridSettings"})
+    z.call({"cmd": "setField", "id": "grid.width", "value": "2"})
+    z.call({"cmd": "setField", "id": "grid.height", "value": "3"})
+    z.call({"cmd": "setField", "id": "grid.offsetX", "value": "1"})
+    z.call({"cmd": "setField", "id": "grid.color", "value": "#ff0000"})
+    z.call({"cmd": "setField", "id": "grid.line", "value": 1})
+    screenshot(z, shots, "tool_view_grid_dialog.png")
+    z.call({"cmd": "dialog", "press": "ok"})
+    a = z.call({"cmd": "view.aids"})
+    check(a["grid"] and a["gridStyle"] == {"width": 2, "height": 3, "offsetX": 1, "offsetY": 0, "color": "#ff0000", "line": "dashed"}, f"OK でグリッドを出して形を覚える（{a['gridStyle']}）")
+    canvas(z, shots, "tool_view_grid.png", "map")
+    check(z.call({"cmd": "canvasPng", "target": "map"}) != before, "グリッドが描かれる")
+    # キャンセルは元に戻す
+    z.call({"cmd": "action", "id": "view.gridSettings"})
+    z.call({"cmd": "setField", "id": "grid.width", "value": "5"})
+    z.call({"cmd": "dialog", "press": "cancel"})
+    check(z.call({"cmd": "view.aids"})["gridStyle"]["width"] == 2, "キャンセルでは変えない")
+    # Ctrl+G の切り替えは今のまま
+    z.call({"cmd": "key", "key": "g", "ctrl": True})
+    check(z.call({"cmd": "view.aids"})["grid"] is False, "Ctrl+G でグリッドを隠せる")
+    ctx["viewProfileCheck"] = True
+
+
+def check_view_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    a = z.call({"cmd": "view.aids"})
+    check(a["cursorFrame"] and a["playerView"] and a["gridStyle"]["width"] == 2 and a["gridStyle"]["line"] == "dashed", "切り替えとグリッドの形は起動し直しても残る")
+
+
 CHECKS = {
     "fill": check_fill,
     "line": check_line,
     "smartPath": check_smart_path,
     "shift": check_shift,
     "resize": check_resize,
+    "view": check_view,
 }
 
 
@@ -448,6 +523,10 @@ def main() -> None:
                     z.call({"cmd": "resize", "width": 1280, "height": 900})
                     z.call({"cmd": "open", "rom": a.rom})
                     fn(z, shots, ctx)
+                if name == "view":
+                    with Zigzagu(a.exe, profile=profile, extra=["--mute-audio"]) as z:
+                        z.call({"cmd": "open", "rom": a.rom})
+                        check_view_persist(z, shots, ctx)
             finally:
                 shutil.rmtree(profile, ignore_errors=True)
     print("失敗: " + str(len(failures)))
