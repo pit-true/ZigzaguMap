@@ -71,10 +71,10 @@ def main() -> int:
         z.call({"cmd": "mouse", "target": "event", "cell": [p["x"], p["y"]], "action": "rightClick"})
         menu = z.call({"cmd": "contextMenu.state"})
         ids = [i["id"] for i in menu["items"]] if menu else []
-        # 先頭が「イベントを削除」「スクリプトを開く」。そのあとは「ここに○○を追加」（#304）だけで、
+        # 先頭が「イベントを削除」「スクリプトを開く」「複製」（Phase5 #399）。そのあとは「ここに○○を追加」（#304）だけで、
         # プロジェクトフォルダが要る項目（トレーナーを編集・ここにひな形を置く・落とし物）は出ない
-        check(ids[:2] == ["delete", "openScript"] and ids[2:] == ["add.person", "add.sign", "add.trap", "add.warp"],
-              f"人の箱の右クリックで「イベントを削除」「スクリプトを開く」と「ここに○○を追加」が出る（{ids}）")
+        check(ids[:3] == ["delete", "openScript", "duplicate"] and ids[3:] == ["add.person", "add.sign", "add.trap", "add.warp"],
+              f"人の箱の右クリックで「イベントを削除」「スクリプトを開く」「複製」と「ここに○○を追加」が出る（{ids}）")
         check(z.call({"cmd": "event.state"})["kind"] == "person" and z.call({"cmd": "event.state"})["index"] == 0, "右クリックした人が選ばれる")
         shot(z, shots, "delete-1-context-menu.png")
         r = z.call({"cmd": "contextMenu.press", "id": "delete"})
