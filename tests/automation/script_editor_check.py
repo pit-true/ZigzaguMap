@@ -254,7 +254,7 @@ def main() -> int:
         # ---- 別のプロジェクトへ移るときは、メインの画面内のダイアログで聞き、エディタを閉じる ----
         ed(z, "editor.type", text="@ discard\n", line=1, column=1)
         disk = s_file.read_bytes()
-        opener = threading.Thread(target=lambda: z.call({"cmd": "open", "rom": a.rom}, timeout=60), daemon=True)
+        opener = threading.Thread(target=lambda: z.call({"cmd": "open", "rom": a.rom, "ask": True}, timeout=60), daemon=True)
         opener.start()
         t0 = time.time()
         dialogs = []
