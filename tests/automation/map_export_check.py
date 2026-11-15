@@ -3,7 +3,7 @@
   python tests/automation/map_export_check.py --rom <素の BPRJ> --work <書き出し先のフォルダ> [--exe <zigzagumap.exe>] [--shots <フォルダ>]
 
 - ファイル > マップの画像を書き出す... で窓が開き、プレビューの大きさが選択に合う（このマップ・周りの境界・全マップ）。
-- PNG と BMP をファイルに書け、画像の大きさが合う。つなぎ合わせ（全マップ）もファイルに書ける。
+- PNG と BMP をファイルに書け、画像の大きさが合う。グリッド（表示 > グリッドの設定 の形）を重ねられる。つなぎ合わせ（全マップ）もファイルに書ける。
 - 3.0 を 100×75（幅 100 での最大）に広げて 12 回描き、タイムラプスの GIF を書く。GIF のコマの数と大きさが合い、作る前と後の JavaScript のヒープを出す。
 """
 from __future__ import annotations
@@ -96,6 +96,18 @@ def main() -> int:
         check(st["open"] and st["choice"]["format"] == "png", "窓が開き、形式の初めは PNG")
         check(st["last"]["width"] == w * 16 and st["last"]["height"] == h * 16, f"このマップのプレビューの大きさ（{st['last']}）")
         shot(z, shots, "export_map.png")
+
+        # グリッド（#391 の形。ここでは 2 マスごとの赤い線）
+        z.call({"cmd": "setting", "key": "gridStyle", "value": {"width": 2, "height": 2, "offsetX": 0, "offsetY": 0, "color": "#ff0000", "line": "solid"}})
+        run(z, "save", work / "nogrid.png")
+        z.call({"cmd": "setField", "id": "mapExport.grid", "value": True})
+        st = z.call({"cmd": "mapExport.state"})
+        check(st["choice"]["grid"] and st["last"]["width"] == w * 16, "グリッドを付けても大きさは同じ")
+        run(z, "save", work / "grid.png")
+        a, b = (work / "nogrid.png").read_bytes(), (work / "grid.png").read_bytes()
+        check(a[1:4] == b[1:4] == b"PNG" and a != b, "グリッドを付けると画像が変わる")
+        shot(z, shots, "export_grid.png")
+        z.call({"cmd": "setField", "id": "mapExport.grid", "value": False})
 
         z.call({"cmd": "setField", "id": "mapExport.border", "value": True})
         st = z.call({"cmd": "mapExport.state"})

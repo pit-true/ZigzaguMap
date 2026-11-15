@@ -13,6 +13,7 @@ export const jaMapExport = {
   traps: "スクリプトタイル",
   signs: ini.EventType["03"],
   movement: "移動許可",
+  grid: "グリッド（表示 > グリッドの設定 の形）",
   border: "境界ブロック（周り）",
   neighbors: "隣のマップの帯（周り）",
   format: "形式",

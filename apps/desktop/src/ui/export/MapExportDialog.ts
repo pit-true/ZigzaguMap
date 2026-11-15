@@ -4,6 +4,7 @@ import { encodeDib } from "../../app/ImageExport";
 import { folderOf, writeFile, type FileDialogs } from "../../app/FileDialogs";
 import type { Timelapse } from "../../app/Timelapse";
 import { jaMapExport as t } from "../../i18n/ja.mapExport";
+import { normalizeGridStyle } from "../map/gridStyle";
 import "../../styles/mapExport.css";
 import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
 
@@ -23,6 +24,7 @@ export interface MapExportChoice {
   traps: boolean;
   signs: boolean;
   movement: boolean;
+  grid: boolean;
   border: boolean;
   neighbors: boolean;
   format: "png" | "bmp";
@@ -31,7 +33,7 @@ export interface MapExportChoice {
 }
 
 /** 窓の選択から画像の作り方を作る。 */
-export function compositeOptionsOf(c: MapExportChoice): Omit<CompositeOptions, "ask" | "scale"> {
+export function compositeOptionsOf(c: MapExportChoice, gridStyle: unknown = null): Omit<CompositeOptions, "ask" | "scale"> {
   return {
     whole: c.whole,
     events: "none",
@@ -39,6 +41,7 @@ export function compositeOptionsOf(c: MapExportChoice): Omit<CompositeOptions, "
     movement: c.movement,
     border: c.border,
     neighbors: !c.whole && c.neighbors,
+    grid: c.grid ? normalizeGridStyle(gridStyle) : null,
   };
 }
 
@@ -66,6 +69,7 @@ export class MapExportDialog {
     traps: true,
     signs: true,
     movement: false,
+    grid: false,
     border: false,
     neighbors: false,
     format: "png",
@@ -108,7 +112,7 @@ export class MapExportDialog {
       l.append(input, label);
       return l;
     };
-    const check = (key: "persons" | "warps" | "traps" | "signs" | "movement" | "border" | "neighbors", label: string): HTMLElement => {
+    const check = (key: "persons" | "warps" | "traps" | "signs" | "movement" | "grid" | "border" | "neighbors", label: string): HTMLElement => {
       const l = document.createElement("label");
       const input = document.createElement("input");
       input.type = "checkbox";
@@ -157,6 +161,7 @@ export class MapExportDialog {
         check("traps", t.traps),
         check("signs", t.signs),
         check("movement", t.movement),
+        check("grid", t.grid),
         check("border", t.border),
         check("neighbors", t.neighbors),
       ),
@@ -214,7 +219,7 @@ export class MapExportDialog {
   /** ファイルに保存する。保存したパス（取りやめたら null）。 */
   async save(): Promise<string | null> {
     const png = this.choice.format === "png";
-    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice), ask: true });
+    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice, this.host.state.settings.data.gridStyle), ask: true });
     if (!r) return null;
     try {
       const settings = this.host.state.settings;
@@ -242,7 +247,7 @@ export class MapExportDialog {
 
   /** クリップボードへコピーする。 */
   async copy(): Promise<{ width: number; height: number } | null> {
-    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice), ask: true });
+    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice, this.host.state.settings.data.gridStyle), ask: true });
     if (!r) return null;
     try {
       await writeClipboard(r.canvas);
@@ -269,7 +274,7 @@ export class MapExportDialog {
     });
     if (!path) return null;
     if (!/\.[^\\/.]+$/.test(path)) path += ".gif";
-    const r = await timelapse.render(compositeOptionsOf(this.choice), { delayMs: this.choice.delayMs, skip: this.choice.skip });
+    const r = await timelapse.render(compositeOptionsOf(this.choice, this.host.state.settings.data.gridStyle), { delayMs: this.choice.delayMs, skip: this.choice.skip });
     if (!r) return null;
     await writeFile(path, r.gif);
     settings.update({ imageDir: folderOf(path) });
@@ -293,7 +298,7 @@ export class MapExportDialog {
 
   private async renderPreview(): Promise<void> {
     if (this.closed) return;
-    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice), ask: false });
+    const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice, this.host.state.settings.data.gridStyle), ask: false });
     if (this.closed || !r) {
       if (r) release(r.canvas);
       return;

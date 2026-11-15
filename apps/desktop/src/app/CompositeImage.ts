@@ -21,6 +21,8 @@ import { scheduleIdleGc } from "../util/idleGc";
 import type { EditorState } from "./EditorState";
 import { renderBand } from "./neighbors/NeighborService";
 import { drawMovements } from "../ui/map/NeighborLayer";
+import { drawGrid } from "../ui/map/MapView";
+import type { GridStyle } from "../ui/map/gridStyle";
 import { TilesetView } from "./TilesetView";
 
 /** 重ねるイベント（なし／人だけ／全部）。 */
@@ -65,6 +67,8 @@ export interface CompositeOptions {
   readonly border?: boolean;
   /** マップの周り（`EXPORT_PAD`）に隣のマップを描く（`whole` でないとき。#403）。 */
   readonly neighbors?: boolean;
+  /** グリッドを重ねる（形は 表示 > グリッドの設定 と同じ。マップごとにマップの左上にそろえる。#403）。 */
+  readonly grid?: GridStyle | null;
 }
 
 /** マップのイベントを、イベントタブと同じ印の並びにする（`persons` なら人だけ。クローンの見た目は `graphics` で引く。#298）。 */
@@ -138,9 +142,9 @@ export class CompositeImage {
       if (!rectsOverlap(b, m)) continue;
       // 隣の帯だけのとき（全マップでない）は、今のマップを最後に描く（帯が今のマップにかからないように）
       if (!options.whole && i === 0 && layout.maps.length > 1) continue;
-      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites);
+      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites, options.grid ?? null);
     }
-    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites);
+    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites, options.grid ?? null);
     tilesets.clear();
     return { canvas, layout, scale, drawn };
   }
@@ -158,6 +162,7 @@ export class CompositeImage {
     movement: boolean,
     graphics: PersonGraphics,
     sprites: ReturnType<typeof spriteSourceFor> | null,
+    grid: GridStyle | null,
   ): Promise<void> {
     const session = this.state.session!;
     const main = this.state.map!;
@@ -179,6 +184,15 @@ export class CompositeImage {
       c.drawImage(bitmap, 0, 0);
       bitmap.close();
       if (movement) drawMovements(c, doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, BLOCK_PIXELS, opacity);
+      if (grid) {
+        const lines = document.createElement("canvas");
+        lines.width = one.width;
+        lines.height = one.height;
+        drawGrid(lines, BLOCK_PIXELS, grid);
+        c.drawImage(lines, 0, 0);
+        lines.width = 0;
+        lines.height = 0;
+      }
       drawEventsOn(c, placedEvents(doc, kinds, graphics), BLOCK_PIXELS, null, sprites);
       out.drawImage(one, ((m.x - b.x) * BLOCK_PIXELS) / scale, ((m.y - b.y) * BLOCK_PIXELS) / scale, one.width / scale, one.height / scale);
       one.width = 0;
