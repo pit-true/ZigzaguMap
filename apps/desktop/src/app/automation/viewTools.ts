@@ -180,7 +180,30 @@ function zoomWheel(app: App, req: AutomationRequest): unknown {
   return { ...(zoomState(app, req) as object), at: after, drift: Math.round(Math.hypot(after.x - before.x, after.y - before.y)) };
 }
 
+/**
+ * `editHistory.state`: 履歴の窓（Phase5 #402）。出しているか `open`、今の位置 `position`（実行済みの数）、行 `rows`
+ * （新しい順。`position`（押したときに移る位置）・`text`・`current`・`redo`。最後が「（最初の状態）」）。
+ */
+async function editHistoryState(app: App): Promise<unknown> {
+  const panel = await app.views.history();
+  return { open: panel.isOpen, position: app.state.session?.bus.position ?? 0, rows: panel.rows() };
+}
+
+/** `editHistory.goTo {position}`: 履歴の窓の行を押す（その位置まで戻す・進める。窓が開いていれば画面の行を押す）。返事は `editHistory.state` と同じ形と `steps`。 */
+async function editHistoryGoTo(app: App, req: AutomationRequest): Promise<unknown> {
+  const panel = await app.views.history();
+  const position = int(req, "position");
+  const row = document.querySelector<HTMLElement>(`[data-auto-id="editHistory.list"] .history-row[data-position="${position}"]`);
+  const before = app.state.session?.bus.position ?? 0;
+  if (row) row.click();
+  else panel.goTo(position);
+  const after = app.state.session?.bus.position ?? 0;
+  return { steps: Math.abs(after - before), ...((await editHistoryState(app)) as object) };
+}
+
 export const viewToolCommands: CommandTable = {
+  "editHistory.state": editHistoryState,
+  "editHistory.goTo": editHistoryGoTo,
   "zoom.state": zoomState,
   "zoom.wheel": zoomWheel,
   "thumbs.state": thumbsState,

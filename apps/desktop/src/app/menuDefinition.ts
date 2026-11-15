@@ -17,6 +17,7 @@ import { jaThumbnails } from "../i18n/ja.thumbnails";
 import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibility";
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
+import { jaCommands } from "../i18n/ja.commands";
 
 /** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
 export interface Shortcut {
@@ -117,6 +118,8 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         { id: "view.clones", label: jaClone.menu },
         // タウンマップの小窓（#306。ZigzaguMap 独自）
         { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
+        // 履歴の窓（Phase5 #402。ZigzaguMap 独自）
+        { id: "view.history", label: jaCommands.menu, shortcut: ctrl("E"), enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",

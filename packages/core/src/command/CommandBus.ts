@@ -93,6 +93,28 @@ export class CommandBus {
     return this.done.map((c) => ({ name: c.name, args: c.args }));
   }
 
+  /** 取り消した（やり直せる）コマンドの一覧を、次にやり直すものから順に返す（Phase5 #402 の履歴の窓）。 */
+  redoHistory(): CommandRecord[] {
+    return [...this.undone].reverse().map((c) => ({ name: c.name, args: c.args }));
+  }
+
+  /** 実行済みのコマンドの数（履歴の今の位置。0 は最初の状態）。 */
+  get position(): number {
+    return this.done.length;
+  }
+
+  /**
+   * 履歴の位置を `position` にする（そこまで元に戻す・やり直す。#402）。範囲の外は端に寄せる。
+   * 1 つずつ undo・redo するので、購読者には 1 回ごとに知らせる。動かした回数を返す。
+   */
+  goTo(position: number): number {
+    const target = Math.max(0, Math.min(this.done.length + this.undone.length, Math.floor(position)));
+    let steps = 0;
+    while (this.done.length > target && this.undo()) steps++;
+    while (this.done.length < target && this.redo()) steps++;
+    return steps;
+  }
+
   /** 履歴を空にする（ROM を開き直したときなど）。 */
   clear(): void {
     this.done.length = 0;
