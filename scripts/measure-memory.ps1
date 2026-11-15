@@ -23,6 +23,7 @@
 #     triple     … 3.0 の主タイルセットのブロック 0x010 を 3 層にした（メモリの上だけ。出力しない）3.0 を表示した状態
 #     autopen    … 自動ペンで 3.0 に 1 回ドラッグして描いた後（メモリの上だけ。出力しない）
 # - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
+# - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
 #   （下限の比較用。-BrowserArgs をそのアプリの WebView2 に渡す）。
 param(
@@ -38,6 +39,7 @@ param(
   [int]$Zoom = 0,
   [string]$Stages = "",
   [switch]$BlockStats,
+  [switch]$WildSearch,
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -208,6 +210,21 @@ try {
           }
           default { throw "知らない場面です: $st" }
         }
+      }
+      if ($WildSearch) {
+        # ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後
+        Call @{ cmd = "action"; id = "tools.wildSearch" } | Out-Null
+        Start-Sleep -Milliseconds 500
+        Call @{ cmd = "setField"; id = "wild.search.species"; value = 16 } | Out-Null
+        Call @{ cmd = "click"; id = "wild.search.run" } | Out-Null
+        for ($i = 0; $i -lt 300; $i++) {
+          $f = Call @{ cmd = "getField"; id = "wild.search.info" }
+          if ($f.value -match "枠|ありません") { break }
+          Start-Sleep -Milliseconds 100
+        }
+        $results += Get-Snapshot "野生ポケモンの検索の後" $proc.Id
+        Call @{ cmd = "dialog"; press = "close" } | Out-Null
+        $results += Get-Snapshot "野生ポケモンの検索の窓を閉じた後" $proc.Id
       }
       Call @{ cmd = "action"; id = "tools.blockEditor" } | Out-Null
       for ($i = 0; $i -lt 100; $i++) {

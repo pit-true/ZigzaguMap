@@ -18,6 +18,18 @@ export interface MapNavigationHost {
 export class MapNavigation {
   constructor(private readonly host: MapNavigationHost) {}
 
+  /** ツール > 野生ポケモンの検索…（#398）。行のダブルクリックでそのマップを開いて野生タブにする。 */
+  async openWildSearch(): Promise<void> {
+    const { openWildSearch } = await import("../ui/wild/WildSearchDialog");
+    openWildSearch({
+      state: this.host.state,
+      openWild: async (id) => {
+        await this.host.openMap(id);
+        this.host.state.setTab("wild");
+      },
+    });
+  }
+
   /** ツール > マップを指定して開く（Ctrl+M）。初期値は今のマップ。 */
   async openMapByNumber(): Promise<void> {
     const state = this.host.state;
