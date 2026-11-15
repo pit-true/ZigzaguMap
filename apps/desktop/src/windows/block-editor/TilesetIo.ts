@@ -1,5 +1,6 @@
 import {
   BvdFile,
+  EditError,
   PaletteFile,
   TILE_BYTES,
   decodeTileImage,
@@ -9,6 +10,7 @@ import {
 import { FileDialogs, folderOf, readFile as readBytes, writeFile, type FileFilter } from "../../app/FileDialogs";
 import { ja } from "../../i18n/ja";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
+import { jaPaletteTools as pt } from "../../i18n/ja.paletteTools";
 import { inputDialog } from "../../ui/InputDialog";
 import { showError, showInfo } from "../../ui/MessageBox";
 import type { ToolClient } from "../ToolClient";
@@ -185,7 +187,7 @@ export class TilesetIo {
     const palette = this.host.palette;
     const path = await this.files.openFile({
       title: t.open,
-      filters: [filter(t.palFilter, "pal"), filter(ja.allFiles, "*")],
+      filters: [filter(t.palFilter, "pal"), { name: pt.paletteFilter, extensions: ["pal", "gpl", "act"] }, filter(ja.allFiles, "*")],
       directory: this.directory,
       fileName: `Pal${palette}`,
     });
@@ -200,9 +202,11 @@ export class TilesetIo {
     }
     let colors: number[];
     try {
-      colors = PaletteFile.read(bytes);
-    } catch {
-      await showError(t.paletteFileSize(bytes.length));
+      // AdvanceMap の .pal に加えて、JASC-PAL・GIMP の .gpl・Adobe の .act も読む（#396）
+      colors = PaletteFile.readAny(bytes).colors;
+    } catch (e) {
+      const p = e instanceof EditError ? e.params : {};
+      await showError(typeof p["format"] === "string" && typeof p["colors"] === "number" ? pt.paletteColors(p["format"], p["colors"]) : t.paletteFileSize(bytes.length));
       return;
     }
     await this.host.client.setUi({ preview: { [palette]: colors } });

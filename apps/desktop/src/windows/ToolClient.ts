@@ -20,7 +20,7 @@ type RequestBody = ToolRequest extends infer R ? (R extends ToolRequest ? Omit<R
  */
 export class ToolClient {
   snapshot: ToolSnapshot = { version: 0, map: null, primary: null, secondary: null };
-  ui: ToolUiState = { palette: 0, preview: {} };
+  ui: ToolUiState = { palette: 0, preview: {}, focus: null };
   private readonly pending = new PendingReplies();
   private readonly snapshotListeners = new Set<() => void>();
   private readonly uiListeners = new Set<() => void>();
@@ -50,7 +50,7 @@ export class ToolClient {
   }
 
   /** 共有の表示の状態を変える。 */
-  setUi(patch: { palette?: number; preview?: Record<number, readonly number[]> }): Promise<unknown> {
+  setUi(patch: { palette?: number; preview?: Record<number, readonly number[]>; focusBlock?: number }): Promise<unknown> {
     return this.request({ op: "setUi", ...patch });
   }
 
