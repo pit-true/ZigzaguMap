@@ -1,7 +1,7 @@
 import { newTilesetLimits } from "@zigzagumap/core";
 import { ja } from "../../i18n/ja";
 import { jaBlockTools as tt } from "../../i18n/ja.blockTools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../../ui/Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../../ui/Dialog";
 import { showError } from "../../ui/MessageBox";
 import { errorText } from "../../util/errors";
 import type { ToolClient } from "../ToolClient";
@@ -66,9 +66,7 @@ export function openNewTileset(host: NewTilesetHost): void {
       await showError(errorText(e));
     }
   };
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(tt.newTilesetCreate, () => void create()), dialogButton(ja.cancel, finish));
+  const buttons = dialogButtonRow(dialogButton(tt.newTilesetCreate, () => void create()), dialogButton(ja.cancel, finish));
   frame.body.append(form, buttons);
   handleDialogKeys(frame, finish);
   frame.register({

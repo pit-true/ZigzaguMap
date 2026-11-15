@@ -129,7 +129,7 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },
         // 3 層の次の番号が置かれているマスの印（Phase4 #301。ZigzaguMap 独自）
         { id: "view.tripleChildMarks", label: jaPen.tripleChildMarks },
-        // 自動ペンで描けるブロックの色（Phase4 #310。ZigzaguMap 独自）
+        // オートペンで描けるブロックの色（Phase4 #310。ZigzaguMap 独自）
         { id: "view.autoPenTint", label: jaPen.autoPenTint },
         // クローン（Phase3 #242。ZigzaguMap 独自）: 印を付けたときだけ、隣のマップへクローンを自動で作り、帯の上に見せる
         { id: "view.clones", label: jaClone.menu },
@@ -215,7 +215,7 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "tools.blockEditor", label: ja.blockEditor, accel: "R", enable: "map" },
         { id: "tools.connections", label: ja.connections, accel: "S", enable: "map" },
         { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", enable: "rom" },
-        // ZigzaguMap 独自（Phase4 #312）。自動ペンのパーツを作る・直す、範囲を塗る・整える。
+        // ZigzaguMap 独自（Phase4 #312）。オートペンのパーツを作る・直す、範囲を塗る・整える。
         { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },

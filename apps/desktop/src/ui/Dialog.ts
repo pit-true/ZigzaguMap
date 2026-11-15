@@ -145,6 +145,14 @@ export function dialogButton(text: string, onClick: () => void): HTMLButtonEleme
   return b;
 }
 
+/** ダイアログの下のボタンの行（右に寄せて並べる。どのダイアログも同じ見た目）。 */
+export function dialogButtonRow(...buttons: readonly HTMLElement[]): HTMLDivElement {
+  const row = document.createElement("div");
+  row.className = "dialog-buttons";
+  row.append(...buttons);
+  return row;
+}
+
 /** 題名の帯をつかんで動かせるようにする。 */
 function makeDraggable(box: HTMLElement, bar: HTMLElement, centered: boolean): void {
   bar.addEventListener("pointerdown", (e) => {

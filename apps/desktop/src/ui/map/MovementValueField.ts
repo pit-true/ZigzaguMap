@@ -18,6 +18,7 @@ export function movementHex(value: number): string {
 /**
  * 移動エリアタブのパレットの上の、移動許可の数値の欄（Phase5 #391）。16 進 2 桁（00〜3F）を入れると選択が変わり、
  * パレットの選択も動く。パレットで選んだときは欄の値も変わる。範囲の外の値は赤くして選択を変えない。部品の ID は `movement.value`。
+ * 打っている途中の 1 桁（「4F」の「4」）では選ばない。2 桁そろったときか、1 桁のまま Enter を押したとき・欄を離れたときに選ぶ（#406）。
  */
 export class MovementValueField {
   readonly element: HTMLElement;
@@ -36,11 +37,16 @@ export class MovementValueField {
     this.input.maxLength = 2;
     this.input.spellcheck = false;
     this.input.dataset["autoId"] = "movement.value";
-    this.input.addEventListener("input", () => this.apply());
+    this.input.addEventListener("input", () => this.apply(false));
     this.input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this.input.select();
+      if (e.key !== "Enter") return;
+      this.apply(true);
+      this.input.select();
     });
-    this.input.addEventListener("blur", () => this.sync());
+    this.input.addEventListener("blur", () => {
+      this.apply(true);
+      this.sync();
+    });
     this.element.append(document.createTextNode(jaTools.movementValue), this.input);
     state.on("movement", () => {
       if (document.activeElement !== this.input) this.sync();
@@ -48,10 +54,13 @@ export class MovementValueField {
     this.sync();
   }
 
-  private apply(): void {
-    const v = parseMovementHex(this.input.value);
+  /** 欄の値で選ぶ。`commit` でなければ 2 桁そろうまで待つ（1 桁の間は赤くもしない）。 */
+  private apply(commit: boolean): void {
+    const text = this.input.value.trim();
+    const v = parseMovementHex(text);
+    const typing = !commit && v !== null && text.length < 2;
     this.input.classList.toggle("invalid", v === null);
-    if (v === null || v === this.state.movement) return;
+    if (typing || v === null || v === this.state.movement) return;
     this.state.selectMovement(v);
     this.onPicked();
   }

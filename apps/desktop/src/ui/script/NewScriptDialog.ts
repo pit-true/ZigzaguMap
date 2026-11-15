@@ -11,7 +11,7 @@ import {
 } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { jaScriptsTable as t } from "../../i18n/ja.scriptsTable";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { askYesNo, showError } from "../MessageBox";
 import { autoId } from "../form/controls";
 import { InputError, StringsField, currentMap, field, parseBank, parseMap, runScriptsCommand, showScriptsError } from "./scriptsTableForm";
@@ -94,9 +94,7 @@ export function openNewScriptDialog(state: EditorState, request: NewScriptReques
         busy = false;
       }
     };
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    buttons.append(
+    const buttons = dialogButtonRow(
       autoId(dialogButton(t.create, () => void ok()), "scriptsTable.new.create"),
       autoId(dialogButton(t.cancel, () => finish(null)), "scriptsTable.new.cancel"),
     );

@@ -4,7 +4,8 @@ import type { UserScriptHost } from "../../app/scripting/UserScriptHost";
 import { keyText } from "../../app/keymap";
 import { jaUserScript as t } from "../../i18n/ja.userScript";
 import "../../styles/userScript.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, type DialogFrame, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 
 let current: UserScriptManager | null = null;
 
@@ -14,7 +15,7 @@ export function openUserScriptManager(): UserScriptManager | null {
 }
 
 /**
- * 設定 > スクリプトの管理...（Phase5 #405）。置き場所の `.js` の一覧と有効・無効（チェック）、読み直し、止める、
+ * 設定 > スクリプトの管理…（Phase5 #405）。置き場所の `.js` の一覧と有効・無効（チェック）、読み直し、止める、
  * スクリプトが登録した操作の実行、ログ。チェックを変えると `zigzagumap.json` に書いて読み直す。
  */
 export class UserScriptManager {
@@ -30,13 +31,9 @@ export class UserScriptManager {
     current = this;
     this.frame = createDialog({ title: t.title, className: "user-script-dialog", onClose: () => this.close() });
     this.body = document.createElement("div");
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    const reload = dialogButton(t.reload, () => void host.reload());
-    reload.dataset["autoId"] = "userScripts.reload";
-    const stop = dialogButton(t.stop, () => host.stop());
-    stop.dataset["autoId"] = "userScripts.stop";
-    buttons.append(reload, stop, dialogButton(t.close, () => this.close()));
+    const reload = autoId(dialogButton(t.reload, () => void host.reload()), "userScripts.reload");
+    const stop = autoId(dialogButton(t.stop, () => host.stop()), "userScripts.stop");
+    const buttons = dialogButtonRow(reload, stop, dialogButton(t.close, () => this.close()));
     this.frame.body.append(this.body, buttons);
     handleDialogKeys(this.frame, () => this.close());
     this.frame.register({

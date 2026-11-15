@@ -1,6 +1,6 @@
 /** 利用者の JavaScript のスクリプト（Phase5 #405）の文言（ZigzaguMap 独自）。 */
 export const jaUserScript = {
-  menu: "スクリプトの管理...",
+  menu: "スクリプトの管理…",
   title: "スクリプトの管理",
   folder: (dir: string) => `置き場所: プロジェクトフォルダの ${dir}\（チェックしたものを zigzagumap.json に書いて動かします）`,
   noProject: "プロジェクトフォルダを開くと使えます",

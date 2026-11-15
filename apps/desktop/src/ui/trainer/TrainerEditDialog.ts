@@ -1,7 +1,7 @@
 import type { TrainerData, TrainerEntry } from "@zigzagumap/core";
 import { jaTrainer as t } from "../../i18n/ja.trainer";
 import "../../styles/template.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { autoId } from "../form/controls";
 import { showError } from "../MessageBox";
 import { hex, mergeParty, parseNumber, parseParty, partyText } from "./trainerText";
@@ -135,8 +135,7 @@ export function openTrainerEditDialog(input: TrainerEditInput): Promise<TrainerE
         void showError(e instanceof Error ? e.message : String(e));
       }
     };
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
+    const buttons = dialogButtonRow();
     const revertLabel = input.inRom ? t.revert : t.removeEntry;
     if (input.edited) buttons.append(autoId(dialogButton(revertLabel, () => finish({ kind: "revert" })), "trainerEdit.revert"));
     buttons.append(autoId(dialogButton(t.ok, ok), "trainerEdit.ok"), autoId(dialogButton(t.cancel, () => finish(null)), "trainerEdit.cancel"));

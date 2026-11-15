@@ -2,7 +2,8 @@ import { searchSpecies, rateGroup, type MapId, type WildEncounters, type WildSea
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaWildTools as wt } from "../../i18n/ja.wildTools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 import { FR_SPECIES_COUNT, SpeciesOptions } from "./SpeciesNames";
 import { shownWild } from "./WildTab";
 
@@ -106,12 +107,9 @@ export function openWildSearch(host: WildSearchHost): void {
   top.className = "wild-search-top";
   const caption = document.createElement("span");
   caption.textContent = wt.searchSpecies;
-  const go = dialogButton(wt.searchRun, () => void run());
-  go.dataset["autoId"] = "wild.search.run";
+  const go = autoId(dialogButton(wt.searchRun, () => void run()), "wild.search.run");
   top.append(caption, species, go);
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(wt.close, finish));
+  const buttons = dialogButtonRow(dialogButton(wt.close, finish));
   frame.body.append(top, info, wrap, buttons);
   handleDialogKeys(frame, finish);
   frame.register({

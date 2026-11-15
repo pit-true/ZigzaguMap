@@ -1,5 +1,5 @@
 import { jaPaletteTools as pt } from "../../i18n/ja.paletteTools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../../ui/Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../../ui/Dialog";
 
 /** 色の使用箇所の窓に渡すもの。 */
 export interface ColorUsageHost {
@@ -37,9 +37,7 @@ export function openColorUsage(host: ColorUsageHost): void {
     });
     list.append(row);
   }
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(pt.close, finish));
+  const buttons = dialogButtonRow(dialogButton(pt.close, finish));
   frame.body.append(info, list, buttons);
   handleDialogKeys(frame, finish);
   frame.register({

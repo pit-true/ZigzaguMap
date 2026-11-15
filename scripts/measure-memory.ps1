@@ -21,7 +21,14 @@
 #     transplant … 別の ROM からの取り込み（移植）の窓を開いて閉じた後
 #     pointers   … ポインタ一覧を開き、3.0 のヘッダーの参照元を探して閉じた後
 #     triple     … 3.0 の主タイルセットのブロック 0x010 を 3 層にした（メモリの上だけ。出力しない）3.0 を表示した状態
-#     autopen    … 自動ペンで 3.0 に 1 回ドラッグして描いた後（メモリの上だけ。出力しない）
+#     autopen    … オートペンで 3.0 に 1 回ドラッグして描いた後（メモリの上だけ。出力しない）
+#   Phase5 の仕上げ（#406）で足したもの:
+#     tools       … 描く道具（塗りつぶし・マジック塗り・マップシフト・直線・スマートパス）を 3.0 で使い、全部戻した後（メモリの上だけ）
+#     export      … 3.0 を 12 回描いてから、ファイル > マップの画像を書き出す... で PNG（このマップと接続している全マップ）と
+#                   タイムラプスの GIF を一時フォルダに書き、窓を閉じて描いたものを戻した後
+#     userscripts … -Project のフォルダの zigzagumap-scripts\ に docs/userscripts の例（grass.js・count.js）を置いて有効にし、
+#                   count.js の操作で全マップを数えた後（-Project が要る。写しを渡す。最後に置いたファイルと zigzagumap.json を元に戻す）
+#   `all` は Phase4 の 6 つと Phase5 の tools・export（userscripts は -Project があるときだけ足す）。
 # - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
 # - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
@@ -46,7 +53,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Call($obj) {
-  $body = [Text.Encoding]::UTF8.GetBytes(($obj | ConvertTo-Json -Compress))
+  $body = [Text.Encoding]::UTF8.GetBytes(($obj | ConvertTo-Json -Depth 10 -Compress))
   $r = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/" -Method Post -Body $body -ContentType "application/json" -UseBasicParsing -TimeoutSec 120
   $j = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()) | ConvertFrom-Json
   if (-not $j.ok) { throw "自動操作の入口がエラーを返しました: $($j.error)" }
@@ -160,7 +167,10 @@ try {
       $results += Get-Snapshot "イベントタブで索引を作った後" $proc.Id
       Call @{ cmd = "tab"; name = "map" } | Out-Null
       $extra = @($Stages -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-      if ($extra -contains "all") { $extra = @("zoom8", "assist", "transplant", "pointers", "triple", "autopen") }
+      if ($extra -contains "all") {
+        $extra = @("zoom8", "assist", "transplant", "pointers", "triple", "autopen", "tools", "export")
+        if ($Project) { $extra += "userscripts" }
+      }
       foreach ($st in $extra) {
         switch ($st) {
           "zoom8" {
@@ -207,6 +217,86 @@ try {
             Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(9, 13); to = @(13, 13); steps = 2 } | Out-Null
             Call @{ cmd = "autopen.set"; active = $false } | Out-Null
             $results += Get-Snapshot "オートペンを使った後" $proc.Id
+          }
+          "tools" {
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            $h0 = (Call @{ cmd = "editHistory.state" }).position
+            Call @{ cmd = "selectBlock"; block = 0x0D } | Out-Null
+            Call @{ cmd = "tool.set"; tool = "fill" } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "click"; cell = @(10, 10) } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "click"; cell = @(10, 10); ctrl = $true } | Out-Null
+            Call @{ cmd = "tool.set"; tool = "shift" } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(5, 5); to = @(9, 7); steps = 4 } | Out-Null
+            Call @{ cmd = "tool.set"; tool = "pencil" } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(2, 2); to = @(12, 3); steps = 6; shift = $true } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "drag"; ctrl = $true; button = "right"; cell = @(0, 0); to = @(2, 2) } | Out-Null
+            Call @{ cmd = "tool.set"; smartPath = $true } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(4, 12); to = @(10, 12); steps = 4 } | Out-Null
+            Call @{ cmd = "tool.set"; smartPath = $false } | Out-Null
+            Call @{ cmd = "editHistory.goTo"; position = $h0 } | Out-Null
+            $results += Get-Snapshot "描く道具を使って戻した後" $proc.Id
+          }
+          "export" {
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            $h0 = (Call @{ cmd = "editHistory.state" }).position
+            for ($i = 0; $i -lt 12; $i++) {
+              $cells = @(); for ($dy = 0; $dy -lt 4; $dy++) { $cells += @{ x = 2 + $i; y = 2 + $dy; block = 0x10 + $i } }
+              Call @{ cmd = "command"; name = "paintBlocks"; args = @{ bank = 3; map = 0; cells = $cells } } | Out-Null
+            }
+            $dir = Join-Path $profile "export"
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Call @{ cmd = "action"; id = "image.export" } | Out-Null
+            Call @{ cmd = "mapExport.state" } | Out-Null
+            Call @{ cmd = "queuePath"; path = (Join-Path $dir "map.png") } | Out-Null
+            Call @{ cmd = "mapExport.run"; action = "save" } | Out-Null
+            Call @{ cmd = "setField"; id = "mapExport.rangeWhole"; value = $true } | Out-Null
+            Call @{ cmd = "mapExport.state" } | Out-Null
+            Call @{ cmd = "queuePath"; path = (Join-Path $dir "whole.png") } | Out-Null
+            Call @{ cmd = "mapExport.run"; action = "save" } | Out-Null
+            Call @{ cmd = "setField"; id = "mapExport.rangeMap"; value = $true } | Out-Null
+            Call @{ cmd = "queuePath"; path = (Join-Path $dir "timelapse.gif") } | Out-Null
+            Call @{ cmd = "mapExport.run"; action = "timelapse" } | Out-Null
+            Call @{ cmd = "dialog"; press = "close" } | Out-Null
+            Call @{ cmd = "editHistory.goTo"; position = $h0 } | Out-Null
+            $results += Get-Snapshot "画像とタイムラプスを書き出した後" $proc.Id
+          }
+          "userscripts" {
+            if (-not $Project) { throw "userscripts には -Project が要ります" }
+            $sdir = Join-Path $Project "zigzagumap-scripts"
+            $config = Join-Path $Project "zigzagumap.json"
+            $hadDir = Test-Path $sdir
+            $configBefore = if (Test-Path $config) { [IO.File]::ReadAllBytes($config) } else { $null }
+            $placed = @()
+            try {
+              New-Item -ItemType Directory -Path $sdir -Force | Out-Null
+              foreach ($n in @("grass.js", "count.js")) {
+                $to = Join-Path $sdir $n
+                if (-not (Test-Path $to)) { Copy-Item (Join-Path $PSScriptRoot "..\docs\userscripts\$n") $to; $placed += $to }
+              }
+              Call @{ cmd = "userScripts.reload" } | Out-Null
+              Call @{ cmd = "action"; id = "scripts.manage" } | Out-Null
+              foreach ($n in @("grass.js", "count.js")) { Call @{ cmd = "setField"; id = "userScripts.enable.$n"; value = $true } | Out-Null }
+              $us = Call @{ cmd = "userScripts.state"; wait = $true }
+              if (@($us.actions | Where-Object { $_.id -eq "countBlocks" }).Count -gt 0) {
+                Call @{ cmd = "userScripts.run"; action = "countBlocks"; wait = $false } | Out-Null
+                # 入力の窓（数えるブロック番号）に 00D で答え、ログに結果が出るまで待つ
+                for ($i = 0; $i -lt 50; $i++) {
+                  try { Call @{ cmd = "dialog"; input = "00D"; press = "ok" } | Out-Null; break } catch { Start-Sleep -Milliseconds 100 }
+                }
+                for ($i = 0; $i -lt 600; $i++) {
+                  $us = Call @{ cmd = "userScripts.state" }
+                  if (@($us.logs | Where-Object { $_.text -match "ブロック 00D は" }).Count -gt 0) { break }
+                  Start-Sleep -Milliseconds 200
+                }
+              }
+              try { Call @{ cmd = "dialog"; press = "close" } | Out-Null } catch {}
+              $results += Get-Snapshot "スクリプトを有効にした後" $proc.Id
+            } finally {
+              try { Call @{ cmd = "userScripts.stop" } | Out-Null } catch {}
+              foreach ($f in $placed) { Remove-Item -Force $f -ErrorAction SilentlyContinue }
+              if (-not $hadDir) { Remove-Item -Recurse -Force $sdir -ErrorAction SilentlyContinue }
+              if ($null -ne $configBefore) { [IO.File]::WriteAllBytes($config, $configBefore) } elseif (Test-Path $config) { Remove-Item -Force $config }
+            }
           }
           default { throw "知らない場面です: $st" }
         }

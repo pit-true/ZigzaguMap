@@ -7,8 +7,8 @@ import type { PaletteGeometry } from "../map/paletteLayers";
 const TINT = "rgba(255, 64, 160, 0.28)";
 
 /**
- * 自動ペンで描けるブロック（パーツに入っているブロック）に、ブロックパレットで薄い色を重ねる（#310）。
- * 表示 > 自動ペンで描けるブロックに色を付ける（設定 `autoPenTint`、既定オン）で、自動ペンがオンのときだけ描く。
+ * オートペンで描けるブロック（パーツに入っているブロック）に、ブロックパレットで薄い色を重ねる（#310）。
+ * 表示 > オートペンで描けるブロックに色を付ける（設定 `autoPenTint`、既定オン）で、オートペンがオンのときだけ描く。
  */
 export class AutoPenTint {
   constructor(

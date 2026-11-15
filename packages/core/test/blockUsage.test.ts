@@ -75,7 +75,7 @@ describe.skipIf(!romPath)("ブロックの使用回数（素の BPRJ）", () => 
     const pallet = await project.load({ bank: 3, map: 0 });
     const tree = pallet.grid.getBlock(0, 5);
     expect(u.mostMovement(tree, pallet.primaryTileset, pallet.secondaryTileset)).toBe(1);
-    // 数え直す: 主が同じで、配置（フッター）が違うマップを 1 回ずつ
+    // 数え直す: 主が同じで、配置（フッター）が違うマップを 1 回ずつ（配置と境界ブロック）
     const seen = new Set<number>();
     let n = 0;
     for (const id of project.mapIds()) {
@@ -85,6 +85,8 @@ describe.skipIf(!romPath)("ブロックの使用回数（素の BPRJ）", () => 
       const doc = await project.peek(id);
       if (!doc || doc.primaryTileset >>> 0 !== pallet.primaryTileset >>> 0) continue;
       for (const v of doc.grid.cells) if ((v & 0x3ff) === tree) n++;
+      // 境界ブロック（ボーダー）に置いたものも数える（Phase5 #395）
+      for (const v of doc.border.cells) if ((v & 0x3ff) === tree) n++;
     }
     expect(u.count(tree, pallet.primaryTileset, pallet.secondaryTileset)).toBe(n);
     expect(n).toBeGreaterThan(1000);

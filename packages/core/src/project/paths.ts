@@ -25,7 +25,7 @@ export const TILESET_IMAGE_FILE = "tiles.png";
 export const REGION_MAP_PATH = `${MAPS_DIR}/regionmap.json`;
 /** スタンプのフォルダ（maps/stamps。1 つのスタンプが 1 ファイル）。 */
 export const STAMPS_DIR = `${MAPS_DIR}/stamps`;
-/** 自動ペンのパーツの定義のフォルダ（maps/autopen。タイルセット 1 つが 1 ファイル。Phase4 #303）。 */
+/** オートペンのパーツの定義のフォルダ（maps/autopen。タイルセット 1 つが 1 ファイル。Phase4 #303）。 */
 export const AUTOPEN_DIR = `${MAPS_DIR}/autopen`;
 /** ZigzaguMap で足した・変えたトレーナー（maps/trainers.json。Phase3 #245）。 */
 export const TRAINERS_JSON_PATH = `${MAPS_DIR}/trainers.json`;
@@ -46,7 +46,7 @@ export function mapSourcePath(id: MapId): string {
 
 /**
  * タイルセットの識別子（`primary_298B44` の形。番号はヘッダーの位置の 16 進 6 桁）。maps/tilesets のフォルダ名と、
- * 自動ペンのパーツのファイル名（maps/autopen/<識別子>.json）に使う。
+ * オートペンのパーツのファイル名（maps/autopen/<識別子>.json）に使う。
  */
 export function tilesetFileBase(headerAddress: number, secondary: boolean): string {
   return `${secondary ? "secondary" : "primary"}_${formatHex(headerAddress >>> 0, 6)}`;

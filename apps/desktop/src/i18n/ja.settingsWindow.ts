@@ -1,12 +1,12 @@
 /** すべての設定の窓（Phase5 #404）の文言（ZigzaguMap 独自）。 */
 export const jaSettingsWindow = {
-  menu: "すべての設定...",
+  menu: "すべての設定…",
   title: "すべての設定",
   personal: "個人の設定（AppData の settings.json）",
   personalNote: "メニューの項目と同じです。変えるとすぐ反映し、メニューのチェックも同じになります。",
   project: "プロジェクトの設定（zigzagumap.json）",
   noProject: "プロジェクトフォルダを開くと変えられます",
-  open: "開く...",
+  open: "開く…",
   save: "プロジェクトの設定を保存",
   close: "閉じる",
   saved: "zigzagumap.json に保存しました",

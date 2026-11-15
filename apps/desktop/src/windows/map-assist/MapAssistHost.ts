@@ -209,7 +209,7 @@ export class MapAssistHost {
     return { get: (x, y) => painter.writer.cellValue({ x, y }) };
   }
 
-  /** 選んだパーツで範囲を塗る（自動ペンと同じ処理。1 回の操作）。書いたマスの数。 */
+  /** 選んだパーツで範囲を塗る（オートペンと同じ処理。1 回の操作）。書いたマスの数。 */
   private fill(part: AutoPenPart): number {
     const set = this.app.pen.autopen.set;
     if (!set) throw new Error(t.noMap);

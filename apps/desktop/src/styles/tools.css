@@ -38,8 +38,9 @@
   white-space: nowrap;
 }
 
+/* 選択が 3×3 でないとき（使えない）。ほかの部品の無効の文字と同じ色にして、黒と見分けられるようにする（#406） */
 .tool-strip-smart.unavailable {
-  color: var(--note-text);
+  color: var(--disabled-text);
 }
 
 /* 移動エリアタブの右の欄（道具の帯・数値の欄・パレット） */

@@ -3,7 +3,7 @@ import { writeFile, type FileDialogs } from "../../app/FileDialogs";
 import { ja } from "../../i18n/ja";
 import { jaBlockEditor } from "../../i18n/ja.blockEditor";
 import { jaBlockTools as tt } from "../../i18n/ja.blockTools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../../ui/Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../../ui/Dialog";
 import { showError } from "../../ui/MessageBox";
 import { errorText } from "../../util/errors";
 import type { TilesetModel } from "../TilesetModel";
@@ -115,9 +115,7 @@ export function openBlockSheetExport(host: BlockSheetExportHost): void {
       await showError(errorText(e));
     }
   };
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(tt.exportSave, () => void save()), dialogButton(ja.cancel, finish));
+  const buttons = dialogButtonRow(dialogButton(tt.exportSave, () => void save()), dialogButton(ja.cancel, finish));
   frame.body.append(main, buttons);
   handleDialogKeys(frame, finish);
   frame.register({

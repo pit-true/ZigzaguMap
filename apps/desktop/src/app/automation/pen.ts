@@ -6,7 +6,7 @@ import type { AutomationRequest, CommandTable } from "./registry";
  * 描く道具（Phase4）。
  * - `tripleChildCells`: 今のマップで、3 層の次の番号（単独では置けないブロック）が置かれているマスの一覧 `cells`（表示の設定に関係なく）と、
  *   印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンのとき）。
- * - `autopen.state`: 自動ペンの設定（`active`・`size`・`movement`・`tint`）、今の組のパーツ `parts`（`name`・`kind`・`role`・`order`）、
+ * - `autopen.state`: オートペンの設定（`active`・`size`・`movement`・`tint`）、今の組のパーツ `parts`（`name`・`kind`・`role`・`order`）、
  *   自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツ `part`、
  *   見分けたタイルセット `tilesets`（`primary`・`secondary` の識別子と位置）、読んだファイルの数 `files`、読めなかったファイル `problems`。
  * - `autopen.set {active?, size?, movement?, tint?, fraction?}`: 設定を変える（`fraction: [fx, fy]` はマスの中の位置 0〜1。偶数の筆の寄せる側。

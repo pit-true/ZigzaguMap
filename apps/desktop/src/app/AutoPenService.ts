@@ -41,12 +41,12 @@ export function tilesetInfos(map: OpenMap, game: string): { primary: AutoPenTile
 }
 
 /**
- * 自動ペンのパーツ（#303・#310）。ROM を開いたら maps\autopen\ を読み、今のマップのタイルセットの組のパーツと
+ * オートペンのパーツ（#303・#310）。ROM を開いたら maps\autopen\ を読み、今のマップのタイルセットの組のパーツと
  * 「ブロック → パーツ」の表を作っておく（描くときは待たずに引けるように）。
  * タイルセットの組が変わったとき・パーツを保存したとき・ブロックを編集したときに作り直し、`onChange` で知らせる。
  *
  * マップ作成補助の窓で編集中の一覧（下書き）もここに持つ（パーツの正本を 1 か所にする。#379）。窓は編集のたびに下書きを送り、
- * 窓の外の変更（Bochi の読み込み・マップから候補を作る）は下書きにも足す。保存すると下書きを捨てる。自動ペンは下書きを使わない。
+ * 窓の外の変更（Bochi の読み込み・マップから候補を作る）は下書きにも足す。保存すると下書きを捨てる。オートペンは下書きを使わない。
  */
 export class AutoPenService {
   private library: AutoPenLibrary | null = null;
@@ -104,7 +104,7 @@ export class AutoPenService {
       this.library = lib;
       this.refresh(true);
     } catch {
-      // 読めなければ自動ペンはふつうの鉛筆として動く
+      // 読めなければオートペンはふつうの鉛筆として動く
     }
   }
 
@@ -150,12 +150,12 @@ export class AutoPenService {
     return (set && this.drafts.get(set.key)) ?? null;
   }
 
-  /** 窓に出す今の組の一覧（編集中のものがあればそれ、無ければ自動ペンが使うもの）。 */
+  /** 窓に出す今の組の一覧（編集中のものがあればそれ、無ければオートペンが使うもの）。 */
   get editing(): readonly AutoPenPart[] {
     return this.draft ?? this.setValue?.parts ?? [];
   }
 
-  /** 窓で編集した今の組の一覧を預かる（窓が送ってくる。自動ペンには使わないので知らせない）。 */
+  /** 窓で編集した今の組の一覧を預かる（窓が送ってくる。オートペンには使わないので知らせない）。 */
   setDraft(parts: readonly AutoPenPart[]): void {
     const set = this.setValue;
     if (set) this.drafts.set(set.key, parts);
@@ -203,12 +203,12 @@ export class AutoPenService {
   }
 
   /**
-   * マップから候補を作り、今の組の窓の一覧（編集中のものか、無ければ自動ペンが使うもの）に無い名前のものを足す（保存はしない）。
+   * マップから候補を作り、今の組の窓の一覧（編集中のものか、無ければオートペンが使うもの）に無い名前のものを足す（保存はしない）。
    * 戻り値は足したパーツ。
    */
   async addCandidates(): Promise<AutoPenPart[]> {
     const key = this.setValue?.key;
-    // 候補を作る前の一覧に足す（候補を作ると、保存したパーツが無い組では自動ペンの一覧が候補に変わるため）
+    // 候補を作る前の一覧に足す（候補を作ると、保存したパーツが無い組ではオートペンの一覧が候補に変わるため）
     const before = this.editing;
     const parts = await this.analyze();
     const set = this.setValue;
@@ -227,7 +227,7 @@ export class AutoPenService {
   /**
    * マップから候補を作る（#313）。主タイルセットが同じ全マップ（ROM と maps\）の並びと挙動から作る。
    * マップを読む間はときどき待ちを入れ、画面を止めない。終わったら途中の表は捨て、候補だけを持つ
-   * （今の組に保存したパーツが無ければ、候補をそのまま自動ペンに使う。保存はマップ作成補助から）。
+   * （今の組に保存したパーツが無ければ、候補をそのままオートペンに使う。保存はマップ作成補助から）。
    */
   analyze(): Promise<AutoPenPart[]> {
     if (this.analyzing) return this.analyzing;

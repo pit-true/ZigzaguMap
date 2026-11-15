@@ -2,7 +2,7 @@ import type { MapId } from "@zigzagumap/core";
 import type { MapInfo } from "../../app/MapCatalog";
 import { ja } from "../../i18n/ja";
 import { jaNeighbors } from "../../i18n/ja.neighbors";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 
 /** 一覧の 1 行の文字列（「3.19 1ばん どうろ」）。 */
 function rowText(m: MapInfo): string {
@@ -54,9 +54,7 @@ export function pickMap(title: string, prompt: string, maps: readonly MapInfo[],
     };
     filter.addEventListener("input", refresh);
     select.addEventListener("dblclick", ok);
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    buttons.append(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => finish(null)));
+    const buttons = dialogButtonRow(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => finish(null)));
     frame.body.append(text, filter, select, buttons);
     handleDialogKeys(frame, () => finish(null), (e) => {
       if (e.key === "Enter") ok();

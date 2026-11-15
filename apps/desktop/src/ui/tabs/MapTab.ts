@@ -18,7 +18,7 @@ import { tabZoom } from "../../app/mapZoom";
 export class MapTab {
   readonly element: HTMLElement;
   readonly view: MapView;
-  /** ブロックパレット（Phase4 の自動ペンが色を重ねる）。 */
+  /** ブロックパレット（Phase4 のオートペンが色を重ねる）。 */
   readonly palette: BlockPaletteView;
   private readonly border: BorderView;
   private readonly selected: HTMLElement;

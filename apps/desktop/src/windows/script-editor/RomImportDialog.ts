@@ -1,6 +1,6 @@
 import { formatHex, isScriptLabelName } from "@zigzagumap/core";
 import { jaRomScript as t } from "../../i18n/ja.romScript";
-import { createDialog } from "../../ui/Dialog";
+import { createDialog, dialogButtonRow } from "../../ui/Dialog";
 import type { ScriptRomOpenRequest } from "./protocol";
 
 /**
@@ -37,8 +37,7 @@ export function openRomImportDialog(request: ScriptRomOpenRequest): Promise<Reco
       row.append(kind, at, input);
       table.append(row);
     });
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
+    const buttons = dialogButtonRow();
     const ok = document.createElement("button");
     ok.type = "button";
     ok.textContent = t.importOk;

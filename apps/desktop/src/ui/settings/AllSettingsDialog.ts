@@ -5,7 +5,8 @@ import type { MenuItem } from "../../app/menuDefinition";
 import { ja } from "../../i18n/ja";
 import { jaSettingsWindow as t } from "../../i18n/ja.settingsWindow";
 import "../../styles/allSettings.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, type DialogFrame, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 
 /** 窓が使う機能（App が渡す）。 */
 export interface AllSettingsHost {
@@ -31,9 +32,9 @@ export function openAllSettings(): AllSettingsDialog | null {
 }
 
 /**
- * 設定 > すべての設定...（Phase5 #404、Q14）。表示と設定のメニューの項目を、メニューの並び（サブメニューごとの見出し）で
+ * 設定 > すべての設定…（Phase5 #404、Q14）。表示と設定のメニューの項目を、メニューの並び（サブメニューごとの見出し）で
  * 1 つの窓に並べる。チェックの付く項目はチェックの欄（押すとメニューを押したのと同じ。メニューのチェックも同じになる）、
- * 窓を開く項目は「開く...」のボタン。メニューはそのまま残す。項目はメニューの定義から作るので、メニューに足した項目は
+ * 窓を開く項目は「開く…」のボタン。メニューはそのまま残す。項目はメニューの定義から作るので、メニューに足した項目は
  * ここにも出る（Phase5 の道具・グリッド・カーソル・視界・監視も）。下の欄はプロジェクトの設定（zigzagumap.json の script の節）。
  */
 export class AllSettingsDialog {
@@ -66,10 +67,7 @@ export class AllSettingsDialog {
       }
       return h;
     };
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    const close = dialogButton(t.close, () => this.close());
-    buttons.append(close);
+    const buttons = dialogButtonRow(dialogButton(t.close, () => this.close()));
     this.frame.body.append(heading(t.personal, t.personalNote), this.personal, heading(t.project), this.project, buttons);
     handleDialogKeys(this.frame, () => this.close());
     this.frame.register({
@@ -200,8 +198,7 @@ export class AllSettingsDialog {
       this.fields.set(key, input);
       rows.push(row);
     }
-    const save = dialogButton(t.save, () => void this.saveProject());
-    save.dataset["autoId"] = "allSettings.project.save";
+    const save = autoId(dialogButton(t.save, () => void this.saveProject()), "allSettings.project.save");
     rows.push(save);
     this.project.replaceChildren(...rows);
   }

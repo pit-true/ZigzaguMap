@@ -87,7 +87,7 @@ export class ViewFeatures {
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
-    // 利用者のスクリプト（Phase5 #405。設定 > スクリプトの管理...）
+    // 利用者のスクリプト（Phase5 #405。設定 > スクリプトの管理…）
     this.userScripts = new UserScriptHost({
       state,
       setGrid: (show) => {
@@ -107,7 +107,7 @@ export class ViewFeatures {
       const { UserScriptManager } = await import("../ui/userscript/UserScriptManager");
       new UserScriptManager(state, this.userScripts);
     });
-    // マップの画像の書き出し（Phase5 #403。ファイル > マップの画像を書き出す...）
+    // マップの画像の書き出し（Phase5 #403。ファイル > マップの画像を書き出す…）
     this.timelapse = new Timelapse(state, extras.composite);
     actions.register("image.export", async () => {
       if (!state.map) return;

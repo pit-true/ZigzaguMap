@@ -6,7 +6,8 @@ import type { Timelapse } from "../../app/Timelapse";
 import { jaMapExport as t } from "../../i18n/ja.mapExport";
 import { normalizeGridStyle } from "../map/gridStyle";
 import "../../styles/mapExport.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 
 /** 窓が使う機能（App が渡す）。 */
 export interface MapExportHost {
@@ -57,7 +58,7 @@ export function openMapExport(): MapExportDialog | null {
 }
 
 /**
- * ファイル > マップの画像を書き出す...（Phase5 #403）。範囲（このマップ・接続している全マップ）、含めるもの（イベントの種類・
+ * ファイル > マップの画像を書き出す…（Phase5 #403）。範囲（このマップ・接続している全マップ）、含めるもの（イベントの種類・
  * 移動許可・周りの境界ブロック・周りの隣のマップの帯）、形式（PNG・BMP）を選び、プレビューを見てファイルかクリップボードへ書く。
  * 同じ選択で、このマップのタイムラプスの GIF も書ける。前の選択は個人設定に残さない（開くたびに初めの値）。
  */
@@ -179,14 +180,10 @@ export class MapExportDialog {
     const main = document.createElement("div");
     main.className = "map-export-main";
     main.append(left, right);
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    const save = dialogButton(t.save, () => void this.save());
-    save.dataset["autoId"] = "mapExport.save";
-    const copy = dialogButton(t.copy, () => void this.copy());
-    copy.dataset["autoId"] = "mapExport.copy";
+    const save = autoId(dialogButton(t.save, () => void this.save()), "mapExport.save");
+    const copy = autoId(dialogButton(t.copy, () => void this.copy()), "mapExport.copy");
     const close = dialogButton(t.close, () => this.close());
-    buttons.append(save, copy, close);
+    const buttons = dialogButtonRow(save, copy, close);
     body.append(main, buttons);
     handleDialogKeys(this.frame, () => this.close());
     this.frame.register({

@@ -2,7 +2,8 @@ import { ja } from "../../i18n/ja";
 import { jaShortcutEdit } from "../../i18n/ja.shortcutEdit";
 import { MAX_KEYS, chordOf, chordText, conflictOf, currentKeymap, defaultKeymap, keymapOverrides, sameChord, type KeyChord, type Keymap } from "../../app/keymap";
 import { keyActionNames } from "../../app/shortcutList";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 import "../../styles/shortcutEdit.css";
 
 /**
@@ -139,12 +140,9 @@ export function openShortcutDialog(commit: (overrides: Record<string, string[]>)
     commit(keymapOverrides(draft));
     frame.remove();
   };
-  const resetButton = dialogButton(t.reset, reset);
-  resetButton.dataset["autoId"] = "shortcuts.reset";
+  const resetButton = autoId(dialogButton(t.reset, reset), "shortcuts.reset");
   resetButton.classList.add("wide");
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(resetButton, dialogButton(ja.ok, ok), dialogButton(ja.cancel, cancel));
+  const buttons = dialogButtonRow(resetButton, dialogButton(ja.ok, ok), dialogButton(ja.cancel, cancel));
   frame.body.append(note, scroll, buttons);
   handleDialogKeys(frame, cancel);
   frame.register({
@@ -173,12 +171,10 @@ function askConflict(key: string, mine: string, other: string): Promise<boolean>
     const frame = createDialog({ title: t.conflictTitle, width: 420, className: "shortcut-conflict", onClose: () => answer(false) });
     const text = document.createElement("p");
     text.textContent = t.conflict(key, other);
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
     const keepNew = dialogButton(t.keepNew(mine), () => answer(true));
     const keepOld = dialogButton(t.keepOld(other), () => answer(false));
     for (const b of [keepNew, keepOld]) b.classList.add("wide");
-    buttons.append(keepNew, keepOld);
+    const buttons = dialogButtonRow(keepNew, keepOld);
     frame.body.append(text, buttons);
     handleDialogKeys(frame, () => answer(false));
     frame.register({

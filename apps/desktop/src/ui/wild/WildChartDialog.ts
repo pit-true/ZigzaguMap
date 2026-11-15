@@ -1,6 +1,6 @@
 import { WildAreaKind, levelDistribution, speciesTotals, type WildArea } from "@zigzagumap/core";
 import { jaWildTools as wt } from "../../i18n/ja.wildTools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 
 /** グラフの窓に渡すもの。 */
 export interface WildChartInput {
@@ -91,9 +91,7 @@ export function openWildChart(input: WildChartInput): void {
   controls.className = "wild-chart-controls";
   if (fishing) controls.append(label(wt.chartRod), rod);
   controls.append(label(wt.chartSpecies), species);
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(wt.close, finish));
+  const buttons = dialogButtonRow(dialogButton(wt.close, finish));
   frame.body.append(controls, totalsHead, totalsCanvas, levelsHead, levelsCanvas, hover, buttons);
   handleDialogKeys(frame, finish);
   frame.register({

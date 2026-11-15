@@ -1,12 +1,12 @@
 import { BRUSH_SIZES, brushCells, brushRect, lineCells, type AutoPenPart, type PenSource, type PenWrite } from "@zigzagumap/core";
-import type { AutoPenService } from "../app/AutoPenService";
-import type { BlockUsageService } from "../app/BlockUsageService";
-import type { EditorState } from "../app/EditorState";
-import { jaPen } from "../i18n/ja.pen";
-import type { Cell, MapView } from "../ui/map/MapView";
-import type { FillCell } from "./paintPlans";
+import type { AutoPenService } from "../../app/AutoPenService";
+import type { BlockUsageService } from "../../app/BlockUsageService";
+import type { EditorState } from "../../app/EditorState";
+import { jaPen } from "../../i18n/ja.pen";
+import type { Cell, MapView } from "../../ui/map/MapView";
+import type { FillCell } from "../paintPlans";
 
-/** 自動ペンが描く道具に頼むこと（BlockPainter の BlockWriter が受ける）。 */
+/** オートペンが描く道具に頼むこと（BlockPainter の BlockWriter が受ける）。 */
 export interface AutoPenHost {
   /** 画面のマスの値（u16。どのマップでもなければ null）。 */
   cellValue(cell: Cell): number | null;
@@ -23,7 +23,7 @@ export interface AutoPenHost {
 export const AUTOPEN_PREVIEW_ALPHA = 0.7;
 
 /**
- * 自動ペン（#310・#311）。マップタブの右の欄の「自動ペン」（P）がオンで、選んでいるブロックが 1 つで、それがパーツに
+ * オートペン（#310・#311）。マップタブの右の欄の「オートペン」（P）がオンで、選んでいるブロックが 1 つで、それがパーツに
  * 入っていれば、左ボタンの描画をこれが受ける（入っていなければふつうの鉛筆）。
  * - 筆の大きさは 1・2・3・5 マス。偶数の筆は、カーソルがマスのどちらの半分にあるかで寄せる側を決める。
  * - 速く動かして飛んだマスは線でつなぐ。1 回のドラッグで 1 回の Ctrl+Z。部品は押した所に 1 回だけ置く。
@@ -85,7 +85,7 @@ export class AutoPenTool {
     return brushCells(brushRect(cell.x, cell.y, this.size, f.x, f.y));
   }
 
-  /** 押したとき。自動ペンで描くなら true（ふつうの鉛筆は描かない）。 */
+  /** 押したとき。オートペンで描くなら true（ふつうの鉛筆は描かない）。 */
   begin(cell: Cell): boolean {
     const target = this.partForSelection();
     if (!target) {
@@ -99,7 +99,7 @@ export class AutoPenTool {
     return true;
   }
 
-  /** ドラッグ中（マスが変わったとき）。自動ペンで描いているなら true。 */
+  /** ドラッグ中（マスが変わったとき）。オートペンで描いているなら true。 */
   drag(cell: Cell): boolean {
     const s = this.stroke;
     if (!s) return false;
@@ -167,7 +167,7 @@ export class AutoPenTool {
   }
 }
 
-/** 筆のマスのまわりで、自動ペンが縁を直すかもしれない幅（2 周目の縁と、重なって並ぶ木の 1 本分）。 */
+/** 筆のマスのまわりで、オートペンが縁を直すかもしれない幅（2 周目の縁と、重なって並ぶ木の 1 本分）。 */
 const AREA_MARGIN = 4;
 
 /** マスの一覧を囲む矩形を `margin` マス広げたもの（書く前に読み込む隣のマップを決める）。 */
