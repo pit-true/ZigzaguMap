@@ -20,9 +20,9 @@ export function describeSelection(app: App): Record<string, unknown> {
   };
 }
 
-/** ステータスバーの各欄（画面に出ている文字列）。 */
+/** ステータスバーの各欄（画面に出ているものだけ。隠している補助の欄や接続の注意は入れない。#381）。 */
 function statusPanels(): string[] {
-  return [...document.querySelectorAll<HTMLElement>(".status-bar .status-panel")].map((p) => p.textContent ?? "");
+  return [...document.querySelectorAll<HTMLElement>(".status-bar .status-panel")].filter((p) => !p.hidden && getComputedStyle(p).display !== "none").map((p) => p.textContent ?? "");
 }
 
 export const statusCommands: CommandTable = {

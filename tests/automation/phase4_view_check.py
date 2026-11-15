@@ -231,6 +231,13 @@ def check_seams(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "selectMap", "bank": 4, "map": 1})
     st = z.call({"cmd": "seams.state", "wait": True})
     check(st["status"] is None, "接続の無いマップでは注意が出ない")
+    # 自動操作の status の欄は、画面に出ているものだけ（隠した「注意: 接続 0 か所」を入れない。#381）
+    panels = z.call({"cmd": "status"})["panels"]
+    check(not any("注意: 接続" in p for p in panels), f"注意が出ていなければ、status の欄に入らない（{panels}）")
+    z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+    z.call({"cmd": "seams.state", "wait": True})
+    panels = z.call({"cmd": "status"})["panels"]
+    check(any(p.startswith("注意: 接続") and not p.endswith(" 0 か所") for p in panels), f"注意が出ていれば、status の欄に入る（{panels}）")
 
 
 def check_filter(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:

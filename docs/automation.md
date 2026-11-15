@@ -82,7 +82,7 @@ python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzag
 | `screenshot` | | ウィンドウ全体を PNG（Base64）で返す（PrintWindow で取るので前面に出さない） |
 | `cells` | | 表示中のマップの配置とボーダーの値 |
 | `state` | | 開いている ROM・プロジェクト・マップ（`map` は番号・名前・大きさと、主・副タイルセットのポインタ値 `primaryTileset`・`secondaryTileset`）、タブ、選択中のブロック、未出力のマップ、履歴の数、ステータスバー、ダイアログ、個人設定、`profile`、時間の記録、`jsHeap`（JavaScript のヒープ、MB）、`openedUrls`（ヘルプのリンクなどで開こうとした外部の URL。新しい順。自動操作のときはブラウザを開かない） |
-| `status` | | ステータスバーの各欄（`panels`: 画面に出ている文字列）と `left`・`right`・`error` |
+| `status` | | ステータスバーの各欄（`panels`: 画面に出ている欄の文字列を左から。隠している補助の欄・接続の注意は入れない）と `left`・`right`・`error` |
 | `title` | | 題名（`document`: ページの題名、`window`: ウィンドウの題名） |
 | `dialogs` | | 開いているダイアログの一覧（開いた順。最後が手前）。画面内のダイアログ（`kind: "app"`。題名・本文・ボタン・入力欄の値・モーダルか）と、ファイル・フォルダを選ぶダイアログ（`kind: "native"`。種類・題名・ボタン・入力欄（選ぶパス）・種類の絞り込み・初めのフォルダ） |
 | `dialog` | `input`、`press`（どちらも省略可）、`title`（省略時は手前のもの） | ダイアログに入力して、ボタンを押す（ボタンの文字列か `ok`・`yes`・`no`・`cancel`。`close` で ×）。ファイルのダイアログは `input` にパスを入れて `ok`（か「開く」「保存」）、`cancel` で取り消し。返事は押す前と後の一覧 |
@@ -249,7 +249,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - マップ一覧の絞り込みの欄 `tree.filter`、× のボタン `tree.filterClear`。
 
 - Ctrl を押している間（#238）: 移動エリアタブとイベントタブの `canvasPng` は重ね描きを含まない。イベントタブの `mouse` の `rightClick` に `ctrl: true` を付けると、メニューを出さずにイベントの下のブロックを拾う（`selection` の `block`）。
-- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・右の順。
+- ステータスバーの補助の欄 `status.info`（`getField` の `value`。空なら `visible` が false）: マップタブのブロックの番号・移動許可・挙動、Ctrl＋右ドラッグの間の矩形の大きさ、隣のマップの帯の上の「バンク.マップ 名前 (X, Y)」。`status` の `panels` は左・補助・接続の注意・右の順（出ている欄だけ）。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
