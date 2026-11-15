@@ -134,3 +134,63 @@ select {
   background: var(--select);
   color: var(--select-text);
 }
+
+/* ---- 打って選ぶ欄（#447） ---- */
+.suggest-input {
+  position: relative;
+  display: inline-block;
+}
+
+.suggest-input > input {
+  width: 180px;
+}
+
+.suggest-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  min-width: 100%;
+  width: 260px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.suggest-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 4px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.suggest-item:hover {
+  background: var(--face);
+}
+
+.suggest-item.current {
+  font-weight: bold;
+}
+
+.suggest-item.active {
+  background: var(--select);
+  color: var(--select-text);
+}
+
+.suggest-detail {
+  color: var(--gray-text);
+}
+
+.suggest-item.active .suggest-detail {
+  color: inherit;
+}
+
+.suggest-none {
+  padding: 2px 4px;
+  color: var(--gray-text);
+}
