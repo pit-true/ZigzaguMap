@@ -1,4 +1,5 @@
 import type { MapView } from "../ui/map/MapView";
+import { scheduleIdleGc } from "../util/idleGc";
 
 /** 下見を描く入口と、主マップの左上の位置（表示上の画素）と 1 マスの大きさ。 */
 export interface PreviewPen {
@@ -44,9 +45,17 @@ export class PreviewCanvas {
     return { c, ox: o.x, oy: o.y, size: this.view.cellSize };
   }
 
-  /** 外す。 */
+  /**
+   * 外す。Canvas の画素の領域は要素が GC されるまで残るので、先に 0×0 にしてすぐ手放し、落ち着いたら GC で空いた領域を
+   * OS へ返す（マップシフトや矩形塗りのあとに、専用ワーキングセットが 10MB ほど多く残っていた。#429）。
+   */
   end(): void {
-    this.canvas?.remove();
+    const canvas = this.canvas;
+    if (!canvas) return;
+    canvas.width = 0;
+    canvas.height = 0;
+    canvas.remove();
     this.canvas = null;
+    scheduleIdleGc(true);
   }
 }

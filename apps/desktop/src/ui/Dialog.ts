@@ -4,6 +4,8 @@
  * 開いているダイアログは `openDialogs` に積まれ、自動操作の `dialog` 命令から読んで押せる。
  */
 
+import { scheduleIdleGc } from "../util/idleGc";
+
 /** 自動操作から見えるダイアログ。 */
 export interface DialogHandle {
   readonly title: string;
@@ -90,6 +92,8 @@ export function createDialog(options: DialogOptions): DialogFrame {
     body,
     remove() {
       root.remove();
+      // 閉じた窓の部品（一覧・Canvas）の領域を、落ち着いたら GC で OS へ返す（野生の検索の窓を閉じても 6MB ほど残っていた。#429）
+      scheduleIdleGc(true);
       if (handle) {
         const i = openDialogs.indexOf(handle);
         if (i >= 0) openDialogs.splice(i, 1);
