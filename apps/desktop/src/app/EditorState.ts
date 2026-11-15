@@ -45,6 +45,7 @@ export interface StatusText {
  * - status: ステータスバー
  * - recent: 最近開いたもの
  * - opacity: 移動エリアの透明度（スライダーを動かしている間も出る）
+ * - tool: 描く道具（鉛筆・塗りつぶし・シフト）とスマートパスの切り替え（Phase5 #388）
  */
 export type StateTopic =
   | "session"
@@ -60,6 +61,7 @@ export type StateTopic =
   | "status"
   | "recent"
   | "opacity"
+  | "tool"
   /** 表示中でないマップが操作で変わった（`changedMaps` に一覧。隣の帯の描き直し用） */
   | "otherMaps"
   /** 隣のマップの帯を作り直した（NeighborService.frame） */

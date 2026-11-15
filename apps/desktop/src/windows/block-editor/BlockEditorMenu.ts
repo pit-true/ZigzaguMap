@@ -20,6 +20,7 @@ export const BLOCK_EDITOR_MENU: readonly MenuItem[] = [
       // ZigzaguMap だけの項目（#395）
       { separator: true },
       { id: "tiles.exportBlocks", label: tt.exportMenu, accel: "E" },
+      { id: "tiles.newTileset", label: tt.newTilesetMenu, accel: "N" },
     ],
   },
   {

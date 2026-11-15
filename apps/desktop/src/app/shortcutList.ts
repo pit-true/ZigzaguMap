@@ -14,6 +14,7 @@ import { jaTownMini } from "../i18n/ja.townMini";
 import { jaPointers } from "../i18n/ja.pointers";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaBlockEditor } from "../i18n/ja.blockEditor";
+import { jaTools } from "../i18n/ja.tools";
 import { blockToolShortcutRows } from "../i18n/ja.blockTools";
 import { buildMenu, type MenuItem } from "./menuDefinition";
 
@@ -30,7 +31,7 @@ export interface ShortcutRow {
 /**
  * メニューに無いキー操作（`Shortcuts.ts`、`MenuBar.ts`、`MapTree.ts`、`Dialog.ts`、`form/controls.ts`、
  * `wild/WildTab.ts`、Phase4 の欄と窓（`ui/map/RecentBlocks.ts`・`ui/view/TownMiniView.ts`・`ui/pointer/PointerDialog.ts`・
- * `ui/connection/SeamNotice.ts`）、別ウィンドウの `startBlockTool.ts`・`BlockEditPanel.ts`・`MapAssistWindow.ts` と `WorldMapWindow.ts` で受けているもの）。
+ * `ui/connection/SeamNotice.ts`）、Phase5 の道具（`app/toolExtras.ts`・`input/tools/`）、別ウィンドウの `startBlockTool.ts`・`BlockEditPanel.ts`・`MapAssistWindow.ts` と `WorldMapWindow.ts` で受けているもの）。
  * キーの処理を足したら、ここにも足す（README の「ショートカット」の節と同じ内容）。
  */
 const OTHER_KEYS: readonly ShortcutRow[] = [
@@ -78,6 +79,13 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
   // 自動ペン（Phase4 #310。app/penExtras.ts）
   { keys: "P", action: jaPen.shortcutAutoPen, where: jaPen.shortcutAutoPenWhere },
+  // 描く道具の帯（Phase5 #388〜#390。app/toolExtras.ts・input/tools/）
+  { keys: "N", action: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
+  { keys: "B", action: jaTools.shortcutFill, where: jaTools.shortcutToolWhere },
+  { keys: "S", action: jaTools.shortcutShift, where: jaTools.shortcutToolWhere },
+  { keys: jaTools.shortcutMagicKeys, action: jaTools.shortcutMagic, where: jaTools.shortcutMagicWhere },
+  { keys: jaTools.shortcutLineKeys, action: jaTools.shortcutLine, where: jaTools.shortcutToolWhere },
+  { keys: "Esc", action: jaTools.shortcutShiftCancel, where: jaTools.shortcutShiftCancelWhere },
   // 最近使ったブロック（Phase4 #308。ui/map/RecentBlocks.ts）
   { keys: jaPaletteInfo.shortcutRecentKeys, action: jaPaletteInfo.shortcutRecent, where: jaPaletteInfo.shortcutRecentWhere },
   // 接続のつまみと隣の帯（#223・#229〜#231。ui/map/ConnectionHandles.ts・EdgeHandles.ts・NeighborLayer.ts）
@@ -92,6 +100,8 @@ const OTHER_KEYS: readonly ShortcutRow[] = [
   { keys: jaSeams.shortcutKeys, action: jaSeams.shortcut, where: jaSeams.shortcutWhere },
   // タウンマップの小窓（Phase4 #306。ui/view/TownMiniView.ts）
   { keys: jaTownMini.shortcutKeys, action: jaTownMini.shortcut, where: jaTownMini.shortcutWhere },
+  { keys: jaTownMini.shortcutMenuKeys, action: jaTownMini.shortcutMenu, where: jaTownMini.shortcutWhere },
+  { keys: jaTownMini.shortcutDragKeys, action: jaTownMini.shortcutDrag, where: jaTownMini.shortcutWhere },
   // ポインタ一覧と参照元の検索（Phase4 #307。ui/pointer/PointerDialog.ts）
   { keys: jaPointers.shortcutRowKeys, action: jaPointers.shortcutRow, where: jaPointers.shortcutWhere },
   { keys: jaPointers.shortcutCopyKeys, action: jaPointers.shortcutCopy, where: jaPointers.shortcutWhere },

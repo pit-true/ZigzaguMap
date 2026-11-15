@@ -52,6 +52,32 @@
   color: var(--error-text);
 }
 
+/* ブロックエディタの「タイル:」「ブロック:」「オフセット:」と値（#383。見出しの幅で値の位置が決まる） */
+.be-field {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+  line-height: 13px;
+}
+
+.be-field-row {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.be-field-column {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.be-field-column .be-field-value {
+  padding-left: 8px;
+}
+
+.be-field-preview {
+  margin-left: 2px;
+}
+
 /* 3 層のブロックの 3 枚目（次のブロックの下層）の見出し */
 .be-third-label {
   font-size: 11px;

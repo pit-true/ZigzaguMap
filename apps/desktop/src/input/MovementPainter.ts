@@ -9,6 +9,10 @@ import { MapCells } from "./MapCells";
 import { rectOf, type CellRect } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { strokeCellRect } from "./previewDraw";
+import { currentTool, type PaintTool } from "../app/paintTool";
+import { fillArea, reportFill } from "./tools/FillTool";
+import { LineGuide } from "./tools/LineGuide";
+import { ShiftTool } from "./tools/ShiftTool";
 
 /** 移動許可の説明（[GehDaten]。無いものは ???）。 */
 export function movementName(value: number): string {
@@ -21,6 +25,8 @@ export function movementName(value: number): string {
  * - Ctrl＋左ドラッグ: 矩形に選択中の値を書く（Phase3 #233。ドラッグ中は枠で下見し、離したら 1 回で書く。Esc で取りやめ）。
  * - 右クリック・右ドラッグ: 離したマスの値を拾う。ほかの修飾キーは無視する。
  * どの操作も、隣のマップの帯の上でも動く（Phase3 #234・Q7。帯で見えていない部分には書かない）。
+ * Phase5: 道具が塗りつぶしなら左クリックで塗りつぶし（移動許可だけで「同じ」を見る。Q2）、Ctrl＋クリックでマジック塗り。
+ * シフトなら左ドラッグでマップシフト（ブロックと一緒に動く）。鉛筆で Shift を押しながら描くと直線（#389）。
  */
 export class MovementPainter {
   private rect: { anchor: Cell; last: Cell; cancelled: boolean } | null = null;
@@ -28,6 +34,12 @@ export class MovementPainter {
   readonly cells: MapCells;
   /** 矩形の下見（Ctrl を押している間は重ね描きの Canvas が隠れるため、別に置く）。 */
   private readonly preview: PreviewCanvas;
+  /** マップシフト（Phase5 #390）。 */
+  readonly shift: ShiftTool;
+  /** 直線（Phase5 #389）。 */
+  private readonly line = new LineGuide();
+  /** 左ボタンを押したときの道具。 */
+  private pressTool: PaintTool | null = null;
 
   constructor(
     view: MapView,
@@ -38,6 +50,7 @@ export class MovementPainter {
   ) {
     this.cells = new MapCells(state);
     this.preview = new PreviewCanvas(view);
+    this.shift = new ShiftTool(view, state, this.preview);
     attachCellPointer(
       view.stage,
       (e) => {
@@ -46,25 +59,40 @@ export class MovementPainter {
       },
       {
         down: (cell, g) => {
-          if (g.button === 0 && g.ctrl) {
+          const tool = g.button === 0 ? currentTool(state) : null;
+          this.pressTool = tool;
+          if (tool === "fill") {
+            this.cells.pressStart();
+            this.fillAt(cell, g.ctrl);
+          } else if (tool === "shift" && !g.ctrl) this.shift.begin(cell, g.shift);
+          else if (g.button === 0 && g.ctrl) {
             this.rect = { anchor: cell, last: cell, cancelled: false };
             this.showPreview(rectOf(cell, cell));
           } else if (g.button === 0) {
+            this.pressTool = "pencil";
             // ダブルクリックで隣のマップを開くとき、この押下で書いた分を取り消せるよう覚える
             this.cells.pressStart();
+            this.line.begin(cell, g.shift);
             this.paint(cell, false);
           }
         },
-        move: (cell, g) => {
+        move: (cell, g, live) => {
+          if (this.shift.active) return this.shift.move(cell, live.shift);
           const r = this.rect;
           if (r) {
             if (r.cancelled) return;
             r.last = cell;
             this.showPreview(rectOf(r.anchor, cell));
-          } else if (g.button === 0) this.paint(cell, true);
+          } else if (g.button === 0 && this.pressTool === "pencil") for (const c of this.line.next(cell, live.shift)) this.paint(c, true);
         },
         up: (cell, g) => {
           this.cells.pressEnd();
+          this.line.end();
+          this.pressTool = null;
+          if (this.shift.end()) {
+            this.redrawLayer();
+            return;
+          }
           const r = this.rect;
           if (r) {
             this.rect = null;
@@ -88,6 +116,14 @@ export class MovementPainter {
 
   private paint(cell: Cell, merge: boolean): void {
     this.write([{ x: cell.x, y: cell.y, movement: this.state.movement }], true, merge);
+  }
+
+  /** 塗りつぶし（`magic` ならマジック塗り）。移動許可だけで「同じ」を見て、選択中の値を書く（1 回の操作）。 */
+  fillAt(cell: Cell, magic: boolean): number {
+    const area = fillArea(this.cells, cell, "movement", magic);
+    if (area.length > 0) this.write(area.map((c) => ({ x: c.x, y: c.y, movement: this.state.movement })), false, false);
+    reportFill(this.state, area.length, magic);
+    return area.length;
   }
 
   /** 矩形に選択中の値を書く（1 回の操作）。 */

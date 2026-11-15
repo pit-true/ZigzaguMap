@@ -1,4 +1,4 @@
-import { affectedMaps, flattenCommandRecords, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
+import { ROM_BASE, affectedMaps, flattenCommandRecords, type Command, type CommandEvent, type MapId } from "@zigzagumap/core";
 import { tilesetRefsOf } from "../windows/tilesetRefs";
 import type { EditorState } from "./EditorState";
 
@@ -26,6 +26,11 @@ export class ChangeTracker {
     if (e.command && changesMapList(e.command)) void this.afterMapListChange();
     // 名前表を書き換えたら（取り消し・やり直しも）、AdvanceMap と同じく一覧の名前も変える
     else if (e.command && commandNames(e.command).includes(SET_MAP_NAME)) void this.host.refreshMapList();
+    // 加えたタイルセット（#397・移植）の位置の古い組を捨てる（取り消して同じ位置に作り直したとき）
+    for (const r of flattenCommandRecords(e.command)) {
+      const a = r.args as Record<string, unknown>;
+      if (r.name === "addTileset" && typeof a["headerAddress"] === "number") state.session?.forgetTilesets(ROM_BASE + a["headerAddress"]);
+    }
     if (this.onTilesetCommand(e)) return;
     // 変わったマップ（group の中と targets も見る。2 枚のマップにまたがる操作でも両方に印を付ける）
     const ids = affectedMaps(e.command);

@@ -9,7 +9,11 @@ import { ini } from "./ini";
 const hex = (v: number, digits: number): string => formatHex(v, digits);
 
 /** マス番号（0〜11）の場所の名前。 */
-const CELL_NAMES = ["下層 左上", "下層 右上", "下層 左下", "下層 右下", "上層 左上", "上層 右上", "上層 左下", "上層 右下", "3層目 左上", "3層目 右上", "3層目 左下", "3層目 右下"];
+const CELL_NAMES = [
+  "下のレイヤー 左上", "下のレイヤー 右上", "下のレイヤー 左下", "下のレイヤー 右下",
+  "上のレイヤー 左上", "上のレイヤー 右上", "上のレイヤー 左下", "上のレイヤー 右下",
+  "3枚目のレイヤー 左上", "3枚目のレイヤー 右上", "3枚目のレイヤー 左下", "3枚目のレイヤー 右下",
+];
 
 function flipName(h: boolean, v: boolean): string {
   if (h && v) return "左右・上下";
@@ -40,7 +44,7 @@ export const jaBlockTools = {
   pasted: (block: number) => `ブロック ${hex(block, 3)} に貼り付けました`,
   pasteTripleNoNext: "次のブロックが無いため、トリプルレイヤーのブロックは貼り付けられません。",
   pasteTripleNextIsTriple: (next: number) => `次のブロック ${hex(next, 3)} もトリプルレイヤーなので、トリプルレイヤーのブロックは貼り付けられません。`,
-  pasteTripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は 3枚目のレイヤーに使われます。属性と上のレイヤーを消します。`,
+  pasteTripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は3枚目のレイヤーに使われます。属性と上のレイヤーを消します。`,
   swapStart: "入れ替え: 1 つ目のブロックを押してください（もう一度 X で終わる）",
   swapOff: "入れ替えを終えました",
   swapSecond: (block: number) => `入れ替え: 1 つ目はブロック ${hex(block, 3)}。2 つ目のブロックを押してください`,
@@ -60,7 +64,7 @@ export const jaBlockTools = {
   swapRefused: (reason: string) =>
     ({
       same: "同じブロックは入れ替えられません。",
-      child: "トリプルレイヤーの 3枚目のレイヤーに使われているブロックは、単独では入れ替えられません。トリプルレイヤーのブロックを選んでください。",
+      child: "トリプルレイヤーの3枚目のレイヤーに使われているブロックは、単独では入れ替えられません。トリプルレイヤーのブロックを選んでください。",
       noNext: "表の最後のトリプルレイヤーのブロックは、3枚目のレイヤーが無いため入れ替えられません。",
       mixed: "トリプルレイヤーのブロック（N と N+1 の組）は、ほかのトリプルレイヤーのブロックとだけ入れ替えられます。",
       overlap: "トリプルレイヤーのブロックの組が重なるため、入れ替えられません。",
@@ -94,6 +98,22 @@ export const jaBlockTools = {
   exportFailed: "PNG を作れませんでした。",
   exported: (path: string) => `書き出しました: ${path}`,
 
+  // ---- #397 新しいタイルセット ----
+  newTilesetMenu: "新しいタイルセット…",
+  newTilesetTitle: "新しいタイルセット",
+  newTilesetKind: "種類",
+  newTilesetCount: "タイル数",
+  newTilesetBlocks: "ブロック数",
+  newTilesetContent: "初めの中身",
+  newTilesetEmpty: "空",
+  newTilesetCopy: "今のタイルセットの写し",
+  newTilesetLimit: (tiles: number, blocks: number) => `上限はタイル ${tiles}（16 の倍数に切り上げ）、ブロック ${blocks} です。`,
+  newTilesetNote: "作ると、表示中のマップの組をこのタイルセットに付け替えます（1 回の Ctrl+Z で戻ります）。出力すると maps\\tilesets に New のタイルセットとして書きます。",
+  newTilesetCreate: "作る",
+  newTilesetNumber: (field: string, text: string) => `${field}の「${text}」は数ではありません。`,
+  newTilesetDone: (pointer: number, tiles: number, blocks: number) =>
+    `新しいタイルセット ${hex(pointer >>> 0, 8)}（タイル ${tiles}、ブロック ${blocks}）を作り、表示中のマップに付け替えました`,
+
   /** ショートカット一覧（ヘルプ）。 */
   shortcutRectKeys: "ドラッグ",
   shortcutRect: "タイルを矩形で選ぶ。8 マスの押した位置を左上にして置き、はみ出た分は置かない",
@@ -102,7 +122,7 @@ export const jaBlockTools = {
   shortcutPick: "置いてあるタイルを反転とパレットごと矩形で拾う",
   shortcutPaletteKeys: "Ctrl＋左クリック",
   shortcutPalette: "タイルは変えずに、パレットだけを今のパレットにする",
-  shortcutCellsWhere: "ブロックエディタの 8 マス・3層目の 4 マス",
+  shortcutCellsWhere: "ブロックエディタの 8 マス・3枚目のレイヤーの 4 マス",
   shortcutClipboard: "選んでいるブロックのコピー・切り取り・貼り付け（編集 メニュー）",
   shortcutSwap: "ブロックの入れ替えのオン・オフ（2 つのブロックを順に押す）",
   shortcutWindowWhere: "ブロックエディタの窓",

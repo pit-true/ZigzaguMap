@@ -15,6 +15,8 @@ export class MovementTab {
   readonly palette: MovementPaletteView;
   /** マップのマウス操作（隣の帯は App が `painter.cells.neighbors` を入れる）。 */
   readonly painter: MovementPainter;
+  /** 右の欄（Phase5: 道具の帯・移動許可の数値の欄・パレット）。 */
+  private readonly side: HTMLElement;
 
   constructor(private readonly state: EditorState) {
     this.element = document.createElement("div");
@@ -31,7 +33,10 @@ export class MovementTab {
         if (value !== null) state.setStatus(ja.statusMovementPalette(value, movementName(value)));
       },
     });
-    this.element.append(this.view.element, this.palette.element);
+    this.side = document.createElement("div");
+    this.side.className = "movement-side";
+    this.side.append(this.palette.element);
+    this.element.append(this.view.element, this.side);
 
     state.on("map", () => {
       this.view.setImage(state.mapImage);
@@ -48,6 +53,11 @@ export class MovementTab {
     state.on("opacity", () => this.resetLayer());
     this.configure();
     this.palette.showSelection(state.movement, false);
+  }
+
+  /** 右の欄のパレットの上に部品を足す（道具の帯・移動許可の数値の欄。Phase5 #388・#391）。足した順に上から並ぶ。 */
+  insertSide(element: HTMLElement): void {
+    this.palette.element.before(element);
   }
 
   private configure(): void {

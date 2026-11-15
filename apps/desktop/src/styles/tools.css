@@ -1,0 +1,138 @@
+/* 道具の帯（Phase5 #388。マップタブと移動エリアタブの右の欄の上） */
+.tool-strip {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.tool-strip-buttons {
+  display: flex;
+  gap: 1px;
+}
+
+.tool-strip-movement .tool-strip-buttons {
+  flex-direction: column;
+}
+
+.tool-button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 1px;
+  font: inherit;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.tool-button.active {
+  background: var(--button-pressed);
+  border-color: var(--button-pressed-border);
+}
+
+.tool-strip-smart {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.tool-strip-smart.unavailable {
+  color: var(--note-text);
+}
+
+/* 移動エリアタブの右の欄（道具の帯・数値の欄・パレット） */
+.movement-side {
+  width: 52px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.movement-side .movement-palette {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 対話式リサイズの窓（Phase5 #390） */
+.resize-grid {
+  display: grid;
+  grid-template-columns: max-content 70px max-content 70px;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.resize-number {
+  width: 70px;
+}
+
+.resize-fill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.resize-view {
+  display: block;
+  margin: 4px auto;
+  border: 1px solid var(--shadow);
+  background: var(--window);
+  cursor: move;
+  touch-action: none;
+}
+
+.resize-info {
+  margin: 2px 0 0;
+  min-height: 15px;
+}
+
+.resize-info.error {
+  color: var(--error-text);
+}
+
+/* 表示の補助（Phase5 #391）: カーソルの枠とプレイヤーの視界の枠。ステージの上の要素だけで描く */
+.map-cursor-frame,
+.map-sight-frame {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.map-cursor-frame {
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.map-sight-frame {
+  border: 2px solid rgba(255, 210, 0, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 移動エリアタブの、移動許可の数値の欄 */
+.movement-value {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--shadow);
+}
+
+.movement-value input {
+  width: 26px;
+  font-family: Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.movement-value input.invalid {
+  color: var(--error-text);
+}
+
+.dialog-buttons button.wide {
+  width: auto;
+  padding: 0 8px;
+}
+

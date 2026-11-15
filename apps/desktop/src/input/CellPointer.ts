@@ -10,10 +10,15 @@ export interface Gesture {
   readonly alt: boolean;
 }
 
+/** 動かしたときの修飾キー（押したときの `Gesture` と違い、ドラッグの途中で変わる。Phase5 #389 の直線の Shift）。 */
+export interface LiveKeys {
+  readonly shift: boolean;
+}
+
 /** マス目の上でのマウス操作の受け手。`move` はドラッグ中にマスが変わったときだけ呼ぶ。 */
 export interface CellPointerHandlers {
   down(cell: Cell, gesture: Gesture): void;
-  move?(cell: Cell, gesture: Gesture): void;
+  move?(cell: Cell, gesture: Gesture, live: LiveKeys): void;
   /** 離したとき。マス目の外で離したら cell は null。 */
   up?(cell: Cell | null, gesture: Gesture): void;
   /** 押していないときのマウス移動（ステータスバー用）。マス目の外なら null。 */
@@ -56,7 +61,7 @@ export function attachCellPointer(
     handlers.hover?.(cell);
     if (!cell || (last && last.x === cell.x && last.y === cell.y)) return;
     last = cell;
-    handlers.move?.(cell, gesture);
+    handlers.move?.(cell, gesture, { shift: e.shiftKey });
   });
   const finish = (e: PointerEvent): void => {
     if (!gesture || e.button !== gesture.button) return;
