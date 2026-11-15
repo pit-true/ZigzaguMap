@@ -7,6 +7,9 @@
 - 「グラフ…」で、種族ごとの合計の割合とレベルの分布の窓が開き、棒にマウスを乗せると値が出る。
 - ツール > 野生ポケモンの検索… でポッポを探すと、3.19 の草むらの行が出る。列の見出しで並べ替えられ、
   行のダブルクリックでそのマップの野生タブを開く。
+- 種族の欄に打って選ぶ（#447）: 欄を押すと全部の候補、カタカナ・ひらがな・ローマ字・番号で前方一致、
+  ↑↓ と Enter・候補を押す・名前が 1 つに決まる文字と Enter で決まる。Esc で閉じる。当たらないときはその旨を出す。
+  `--shots` を付けると、候補が出ている所を fb447_hiragana.png・fb447_romaji.png に撮る。
 """
 from __future__ import annotations
 
@@ -41,6 +44,100 @@ def shot(z: Zigzagu, shots: pathlib.Path | None, name: str) -> None:
 
 def field(z: Zigzagu, id_: str):
     return z.call({"cmd": "getField", "id": id_})
+
+
+SP = "wild.search.species"
+
+
+def items(z: Zigzagu, limit: int = 500) -> list[str]:
+    """出ている候補の文字（名前と番号）。"""
+    out = []
+    for i in range(limit):
+        try:
+            f = field(z, f"{SP}.item.{i}")
+        except Exception:
+            break
+        out.append(f.get("value", ""))
+    return out
+
+
+def list_open(z: Zigzagu) -> bool:
+    return bool(field(z, f"{SP}.list").get("visible"))
+
+
+def typed(z: Zigzagu, text: str) -> list[str]:
+    z.call({"cmd": "ui.type", "id": SP, "text": text, "blur": False})
+    time.sleep(0.1)
+    return items(z)
+
+
+def wait_info(z: Zigzagu) -> str:
+    info = ""
+    for _ in range(100):
+        info = field(z, "wild.search.info").get("value", "")
+        if "枠" in info or "ありません" in info or "選んで" in info:
+            break
+        time.sleep(0.1)
+    return info
+
+
+def check_typing(z: Zigzagu, shots: pathlib.Path | None) -> None:
+    """#447: 種族の欄に打って候補から選ぶ。"""
+    z.call({"cmd": "action", "id": "tools.wildSearch"})
+    time.sleep(0.5)
+    check(field(z, SP).get("value") == "フシギダネ", f"447: 初めはフシギダネ（{field(z, SP).get('value')}）")
+    # 欄を押すと全部の候補が出る
+    z.call({"cmd": "click", "id": SP})
+    time.sleep(0.2)
+    all_items = items(z)
+    check(list_open(z) and len(all_items) == 411, f"447: 欄を押すと全部の候補が出る（{len(all_items)} 件）")
+    # Esc で閉じる（窓は閉じない）
+    z.call({"cmd": "key", "key": "Escape", "id": SP})
+    d = z.call({"cmd": "dialogs"})
+    d = d["dialogs"] if isinstance(d, dict) else d
+    check(not list_open(z) and any(x.get("title") == "野生ポケモンの検索" for x in d), "447: Esc で候補を閉じ、窓は残る")
+
+    # ひらがな → ↓ と Enter
+    hira = typed(z, "ぽっ")
+    check(len(hira) == 1 and hira[0].startswith("ポッポ"), f"447: 「ぽっ」でポッポが出る（{hira}）")
+    shot(z, shots, "fb447_hiragana.png")
+    z.call({"cmd": "key", "key": "ArrowDown", "id": SP})
+    z.call({"cmd": "key", "key": "Enter", "id": SP})
+    check(field(z, SP).get("value") == "ポッポ" and not list_open(z), f"447: ↓ と Enter で決まる（{field(z, SP).get('value')}）")
+    # 一覧を閉じているときの Enter で検索する
+    z.call({"cmd": "key", "key": "Enter", "id": SP})
+    info = wait_info(z)
+    check("枠" in info, f"447: Enter で検索する（{info}）")
+
+    # カタカナ・ローマ字（ヘボン式・訓令式）・番号で前方一致
+    for q, want in [("フシ", ["フシギダネ", "フシギソウ", "フシギバナ"]), ("fushi", ["フシギダネ", "フシギソウ", "フシギバナ"]), ("husi", ["フシギダネ", "フシギソウ", "フシギバナ"]),
+                    ("pikachu", ["ピカチュウ"]), ("rizado", ["リザード", "リザードン"]), ("ジグザ", ["ジグザグマ"]), ("No.16", ["ポッポ"]), ("0x10", ["ポッポ"])]:
+        got = [re.sub(r"No\..*$", "", s) for s in typed(z, q)]
+        check(got[: len(want)] == want if q.startswith(("No", "0x")) else got == want, f"447: 「{q}」の候補（{got[:6]}）")
+    # ローマ字で打って、候補を押して決める
+    roma = typed(z, "pijo")
+    check([re.sub(r"No\..*$", "", s) for s in roma] == ["ピジョン", "ピジョット"], f"447: 「pijo」でピジョン・ピジョット（{roma}）")
+    shot(z, shots, "fb447_romaji.png")
+    z.call({"cmd": "click", "id": f"{SP}.item.1"})
+    check(field(z, SP).get("value") == "ピジョット" and not list_open(z), f"447: 候補を押して決まる（{field(z, SP).get('value')}）")
+    # 名前が 1 つに決まる文字を打って Enter
+    typed(z, "koratta")
+    z.call({"cmd": "key", "key": "Enter", "id": SP})
+    check(field(z, SP).get("value") == "コラッタ", f"447: 「koratta」と Enter で決まる（{field(z, SP).get('value')}）")
+    z.call({"cmd": "click", "id": "wild.search.run"})
+    info = wait_info(z)
+    check("枠" in info, f"447: コラッタを探す（{info}）")
+    # 当たらないとき
+    none = typed(z, "zzz")
+    nf = field(z, f"{SP}.none")
+    check(none == [] and nf.get("visible") and "ありません" in nf.get("value", ""), f"447: 当たらないときはその旨を出す（{nf.get('value')}）")
+    # 決まらないまま離れたら元に戻る
+    z.call({"cmd": "ui.type", "id": SP, "text": "zzz", "blur": True})
+    check(field(z, SP).get("value") == "コラッタ", f"447: 決まらないまま離れたら元に戻る（{field(z, SP).get('value')}）")
+    # 今までどおり番号で setField
+    z.call({"cmd": "setField", "id": SP, "value": PIDGEY})
+    check(field(z, SP).get("value") == "ポッポ", f"447: 番号の setField も使える（{field(z, SP).get('value')}）")
+    z.call({"cmd": "dialog", "press": "close"})
 
 
 def main() -> int:
@@ -138,6 +235,8 @@ def main() -> int:
             m = st.get("map") or {}
             check((m.get("bank"), m.get("map")) == (3, 19) and st.get("tab") == "wild", f"398: ダブルクリックで 3.19 の野生タブを開く（{m.get('bank')}.{m.get('map')} {st.get('tab')}）")
         z.call({"cmd": "dialog", "press": "close"})
+
+        check_typing(z, shots)
 
     print()
     print("失敗なし" if not failures else f"失敗 {len(failures)} 件")

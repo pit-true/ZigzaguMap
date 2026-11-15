@@ -110,6 +110,8 @@ export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
 export { ITEM_ENTRY_SIZE, ITEM_NAME_BYTES, ItemNameTable } from "./name/ItemNameTable.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 export { SPECIES_COUNT, SPECIES_NAME_BYTES, SpeciesNameTable } from "./name/SpeciesNameTable.js";
+export { matchReading, normalizeReading, readingTokens, romajiReading, toHiragana, toKatakana, type ReadingMatch, type ReadingToken } from "./name/kanaReading.js";
+export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSuggest.js";
 
 // OW（人のスプライト）
 export { OverworldSprites, type OverworldGraphicsInfo } from "./sprite/OverworldSprites.js";
