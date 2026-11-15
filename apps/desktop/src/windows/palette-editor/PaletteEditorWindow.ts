@@ -1,6 +1,10 @@
-import { colorFromBgr555, colorFromChannels, formatColorHex, parseColorHex, type ColorValue } from "@zigzagumap/core";
+import { colorFromBgr555, colorFromChannels, colorFromRgb8, colorUsage, formatColorHex, parseColorHex, type ColorValue } from "@zigzagumap/core";
 import { FileDialogs } from "../../app/FileDialogs";
+import type { MenuItem } from "../../app/menuDefinition";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
+import { jaPaletteTools as pt } from "../../i18n/ja.paletteTools";
+import { MenuBar } from "../../ui/MenuBar";
+import { showError } from "../../ui/MessageBox";
 import { autoId, button, edit, label, place } from "../../ui/form/controls";
 import { showEditError } from "../../ui/form/inputErrors";
 import { installToolAutomation } from "../toolAutomation";
@@ -8,6 +12,13 @@ import type { ToolClient } from "../ToolClient";
 import { TilesetModel } from "../TilesetModel";
 import { ColorPicker } from "./ColorPicker";
 import { PaletteSwatches } from "./PaletteSwatches";
+import { openColorUsage } from "./ColorUsageDialog";
+
+/** メニュー（AdvanceMap のパレットエディタには無い。ZigzaguMap だけの項目。#396）。 */
+const PALETTE_EDITOR_MENU: readonly MenuItem[] = [
+  { label: pt.menuView, accel: "V", children: [{ id: "view.unusedColors", label: pt.viewUnusedColors, accel: "U" }] },
+  { label: pt.menuTools, accel: "T", children: [{ id: "tools.colorUsage", label: pt.colorUsage, accel: "C" }] },
+];
 
 /** 赤・緑・青の欄（スライダーと右の数字）。 */
 interface Channel {
@@ -36,6 +47,12 @@ export class PaletteEditorWindow {
   private readonly channels: [Channel, Channel, Channel];
   private readonly pickButton: HTMLButtonElement;
   private readonly picker: ColorPicker;
+  /** 16 進の RGB の欄（#RRGGBB。#396）。 */
+  private readonly rgb: HTMLInputElement;
+  /** 表示 > 未使用の色（既定オフ）。 */
+  private showUnused = false;
+  /** 色ごとの、その色を使うブロック（写しかパレットが変わったら数え直す）。 */
+  private usage: number[][] | null = null;
 
   static start(root: HTMLElement, client: ToolClient): PaletteEditorWindow {
     return new PaletteEditorWindow(root, client);
@@ -75,8 +92,38 @@ export class PaletteEditorWindow {
       this.picker.toggle();
       this.pickButton.classList.toggle("active", this.picker.active);
     });
+    this.rgb = edit("pal.rgbHex", 80, 186, 73);
+    this.rgb.maxLength = 7;
+    this.rgb.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.rgbToColor();
+    });
+    const actions: Record<string, () => unknown> = {
+      "view.unusedColors": () => {
+        this.showUnused = !this.showUnused;
+        this.render();
+      },
+      "tools.colorUsage": () =>
+        openColorUsage({
+          palette: this.palette,
+          color: this.index,
+          blocks: this.colorUsage()[this.index] ?? [],
+          select: (block) => void client.setUi({ focusBlock: block }),
+        }),
+    };
+    const menu = new MenuBar({
+      items: () => [...PALETTE_EDITOR_MENU],
+      isEnabled: () => true,
+      isChecked: (id) => id === "view.unusedColors" && this.showUnused,
+      run: (id) => {
+        const action = actions[id];
+        if (action) Promise.resolve().then(action).catch((e: unknown) => void showEditError(e));
+      },
+    });
+    const body = document.createElement("div");
+    body.className = "pal-body";
     root.classList.add("palette-editor");
-    root.append(
+    root.append(menu.element, body);
+    body.append(
       this.swatches.element,
       button("pal.apply", t.apply, 160, 8, 121, 25, () => void client.setUi({ preview: { [this.palette]: [...this.working] } })),
       this.pickButton,
@@ -85,12 +132,20 @@ export class PaletteEditorWindow {
       this.hex,
       label(t.gbcValue, 80, 160),
       button("pal.hexToRgb", t.hexToRgb, 208, 152, 73, 25, () => this.hexToRgb()),
+      // ZigzaguMap だけの行（#396）: 16 進の RGB
+      label(pt.rgbLabel, 8, 190),
+      this.rgb,
+      button("pal.rgbApply", pt.rgbApply, 160, 184, 121, 25, () => this.rgbToColor()),
     );
 
     client.onUi(() => this.load());
+    client.onSnapshot(() => {
+      this.usage = null;
+      this.load();
+    });
     void installToolAutomation(client, {
       files: new FileDialogs(),
-      actions: {},
+      actions,
       describe: () => this.describe(),
       extra: (req) => {
         if (req["cmd"] !== "pickAt") return undefined;
@@ -111,6 +166,7 @@ export class PaletteEditorWindow {
       this.palette = palette;
       this.loadedKey = key;
       this.working = colors;
+      this.usage = null;
     }
     this.render();
   }
@@ -139,8 +195,44 @@ export class PaletteEditorWindow {
     }
   }
 
+  /** 16 進の RGB（#RRGGBB、# は省いてよい）を読み、15 ビットに丸めて選んでいる色にする。 */
+  private rgbToColor(): void {
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(this.rgb.value.trim());
+    if (!m) {
+      void showError(pt.rgbInvalid(this.rgb.value));
+      return;
+    }
+    const v = parseInt(m[1]!, 16);
+    const color = colorFromRgb8((v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
+    this.setColor(color);
+    // 丸めた値に戻す（入力中でも）
+    this.rgb.value = rgbHex(color);
+  }
+
+  /** 色ごとの使用箇所（表示中のマップの組のブロックで、このパレットで描くタイルの点）。 */
+  private colorUsage(): number[][] {
+    if (!this.usage) {
+      const p = this.model.blockData(false);
+      const s = this.model.blockData(true);
+      this.usage = colorUsage({
+        primaryBlocks: p.blocks,
+        secondaryBlocks: s.blocks,
+        primaryTiles: this.model.tilesOf(false),
+        secondaryTiles: this.model.tilesOf(true),
+        palette: this.palette,
+      });
+    }
+    return this.usage;
+  }
+
+  /** 未使用の色（表示 > 未使用の色がオンのときだけ数える）。 */
+  private unusedColors(): Set<number> | null {
+    if (!this.showUnused) return null;
+    return new Set(this.colorUsage().flatMap((b, c) => (b.length === 0 ? [c] : [])));
+  }
+
   private render(): void {
-    this.swatches.show(this.palette, this.working, this.index);
+    this.swatches.show(this.palette, this.working, this.index, this.unusedColors());
     const color = colorFromBgr555(this.working[this.index] ?? 0);
     [color.red, color.green, color.blue].forEach((v, i) => {
       const c = this.channels[i]!;
@@ -149,6 +241,7 @@ export class PaletteEditorWindow {
     });
     this.box.style.background = `rgb(${color.red * 8},${color.green * 8},${color.blue * 8})`;
     this.hex.value = formatColorHex(color.value);
+    if (document.activeElement !== this.rgb) this.rgb.value = rgbHex(color);
   }
 
   private describe(): unknown {
@@ -160,6 +253,15 @@ export class PaletteEditorWindow {
       color: { red: color.red, green: color.green, blue: color.blue, hex: formatColorHex(color.value) },
       picking: this.picker.active,
       preview: Object.keys(this.client.ui.preview).map(Number),
+      rgb: this.rgb.value,
+      showUnused: this.showUnused,
+      unusedColors: this.showUnused ? [...(this.unusedColors() ?? [])] : null,
     };
   }
+}
+
+/** 色の #RRGGBB（各 5 ビットを 8 倍した値。右の数字と同じ）。 */
+function rgbHex(c: ColorValue): string {
+  const h = (v: number): string => (v * 8).toString(16).toUpperCase().padStart(2, "0");
+  return `#${h(c.red)}${h(c.green)}${h(c.blue)}`;
 }

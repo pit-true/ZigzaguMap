@@ -10,6 +10,9 @@
   出力すると 3.0 の配置の番号が付け替わっている（`--work` の下）。
 - 395: 表示 > 使用回数の数がマップタブの使用回数（`blockUsage` の `count`）と同じ。未使用のブロックの印が使用回数 0 と合う。
   未使用のタイルが、ブロックから数えた値と合い、ブロックを切り取ると数え直す。ブロック一覧の画像を、選んだ範囲と幅の PNG に書き出せる。
+- 396: パレットエディタの 16 進の RGB の欄で 15 ビットに丸めて入る。表示 > 未使用の色がタイルとブロックから数えた値と合う。
+  ツール > 色の使用箇所… の行を押すとブロックエディタでそのブロックを選ぶ。JASC-PAL・GIMP の .gpl・Adobe の .act を読み、16 色でなければエラー。
+  読み込んだ色の反映が 1 回の Ctrl+Z で戻る。
 """
 from __future__ import annotations
 
@@ -439,6 +442,136 @@ def check_395(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     check("書き出しました" in be_state(z)["status"], "395: 窓の下に書き出した場所が出る")
 
 
+PE = "palette-editor"
+
+
+def color_usage(snap_: dict, palette: int) -> list[list[int]]:
+    """写しから、色ごとにその色を使うブロック（core の colorUsage と同じ数え方）。"""
+    tiles = {False: base64.b64decode(snap_["primary"]["tiles"]), True: base64.b64decode(snap_["secondary"]["tiles"])}
+    out: list[list[int]] = [[] for _ in range(16)]
+    for side, base in (("primary", 0), ("secondary", 640)):
+        raw = base64.b64decode(snap_[side]["blocks"])
+        for b in range(len(raw) // 16):
+            mask = 0
+            for k in range(8):
+                ref = raw[b * 16 + k * 2] | (raw[b * 16 + k * 2 + 1] << 8)
+                if (ref >> 12) & 0xF != palette:
+                    continue
+                tile = ref & 0x3FF
+                data = tiles[tile >= 0x280]
+                o = (tile - 0x280 if tile >= 0x280 else tile) * 32
+                for v in data[o:o + 32] if o + 32 <= len(data) else b"":
+                    mask |= (1 << (v & 0xF)) | (1 << (v >> 4))
+            for c in range(16):
+                if mask & (1 << c):
+                    out[c].append(base + b)
+    return out
+
+
+def pe(z: Zigzagu, req: dict):
+    return z.call({**req, "window": PE})
+
+
+def check_396(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> None:
+    be(z, {"cmd": "action", "id": "palette.editor"})
+    for _ in range(80):
+        if any(w["label"] == PE and w["ready"] for w in z.call({"cmd": "windows"})):
+            break
+        time.sleep(0.2)
+    st = pe(z, {"cmd": "state"})
+    palette = st["palette"]
+
+    # 16 進の RGB の欄: 入れると 15 ビットに丸めて、スライダーと値も動く
+    pe(z, {"cmd": "click", "id": "pal.color.3"})
+    pe(z, {"cmd": "setField", "id": "pal.rgbHex", "value": "#FF8347"})
+    pe(z, {"cmd": "click", "id": "pal.rgbApply"})
+    st = pe(z, {"cmd": "state"})
+    check(st["color"]["red"] == 31 and st["color"]["green"] == 16 and st["color"]["blue"] == 8, f"396: #FF8347 を 15 ビットに丸める（{st['color']}）")
+    check(pe(z, {"cmd": "getField", "id": "pal.redValue"})["value"] == "248" and st["rgb"] == "#F88040", f"396: スライダーの値と 16 進の欄が動く（{st['rgb']}）")
+    pe(z, {"cmd": "setField", "id": "pal.rgbHex", "value": "#12"})
+    pe(z, {"cmd": "click", "id": "pal.rgbApply"})
+    d = press_if_open(z, "ok", window=PE)
+    check(bool(d) and "#RRGGBB" in d[0].get("text", ""), "396: #RRGGBB でなければエラー")
+
+    # 未使用の色（写しのタイルとブロックから数えた値と比べる）
+    s0 = snap(z)
+    usage = color_usage(s0, palette)
+    pe(z, {"cmd": "action", "id": "view.unusedColors"})
+    st = pe(z, {"cmd": "state"})
+    expect = [c for c in range(16) if not usage[c]]
+    check(st["showUnused"] and st["unusedColors"] == expect, f"396: 表示 > 未使用の色（{st['unusedColors']} / {expect}）")
+    save_shot(z, shots, "palette_unused.png", PE)
+    pe(z, {"cmd": "action", "id": "view.unusedColors"})
+
+    # 色の使用箇所: 使われている色を選び、一覧の行を押すとブロックエディタで選ぶ
+    used = next((c for c in range(1, 16) if usage[c]), None)
+    check(used is not None, "396: 使われている色がある")
+    if used is not None:
+        pe(z, {"cmd": "click", "id": f"pal.color.{used}"})
+        pe(z, {"cmd": "action", "id": "tools.colorUsage"})
+        time.sleep(0.2)
+        info = pe(z, {"cmd": "getField", "id": "pal.usage.info"})["value"]
+        check(f"{len(usage[used])} 個" in info, f"396: 色 {used} を使うブロックの数（{info}）")
+        save_shot(z, shots, "palette_usage.png", PE)
+        target = usage[used][-1]
+        pe(z, {"cmd": "click", "id": f"pal.usage.{target}"})
+        ok = False
+        for _ in range(30):
+            if be_state(z)["block"] == target:
+                ok = True
+                break
+            time.sleep(0.1)
+        check(ok, f"396: 一覧の行を押すとブロックエディタでブロック {target:#x} を選ぶ（{be_state(z)['block']}）")
+        pe(z, {"cmd": "dialog", "press": "close"})
+
+    # パレットの読み込み: JASC-PAL・GIMP・Adobe の .act
+    work.mkdir(parents=True, exist_ok=True)
+    def colors_of(n: int) -> list[tuple[int, int, int]]:
+        return [(i * 16, 255 - i * 16, (i * 40 + n * 8) % 256) for i in range(16)]
+
+    files = {
+        "jasc.pal": lambda rgb: ("JASC-PAL\r\n0100\r\n16\r\n" + "".join(f"{r} {g} {b}\r\n" for r, g, b in rgb)).encode(),
+        "gimp.gpl": lambda rgb: ("GIMP Palette\nName: t\nColumns: 4\n#\n" + "".join(f"{r:3d} {g:3d} {b:3d}\tc{i}\n" for i, (r, g, b) in enumerate(rgb))).encode(),
+        "adobe.act": lambda rgb: bytes(v for c in rgb for v in c) + bytes(768 - 48) + bytes([0, 16, 0xFF, 0xFF]),
+    }
+    rgb = colors_of(0)
+    for n, (name, make) in enumerate(files.items()):
+        rgb = colors_of(n)
+        data = make(rgb)
+        expect_hex = [f"{((r >> 3) | ((g >> 3) << 5) | ((b >> 3) << 10)):04X}" for r, g, b in rgb]
+        path = work / name
+        path.write_bytes(data)
+        z.call({"cmd": "queuePath", "path": str(path)})
+        be(z, {"cmd": "action", "id": "palette.open"})
+        got = []
+        for _ in range(30):
+            got = pe(z, {"cmd": "state"})["colors"]
+            if got == expect_hex:
+                break
+            time.sleep(0.1)
+        check(got == expect_hex, f"396: {name} を読み込む（{got[:3]}…）")
+        press_if_open(z, "ok", window=BE, tries=3)
+    bad = work / "short.gpl"
+    bad.write_bytes(("GIMP Palette\n" + "".join(f"{r} {g} {b}\n" for r, g, b in rgb[:4])).encode())
+    z.call({"cmd": "queuePath", "path": str(bad)})
+    be(z, {"cmd": "action", "id": "palette.open"})
+    d = press_if_open(z, "ok", window=BE)
+    check(bool(d) and "16 ではありません" in d[0].get("text", ""), f"396: 16 色でないとエラー（{d[0].get('text', '') if d else ''}）")
+
+    # 色の変更は今どおり 1 回で戻せる（読み込んだ色を反映して Ctrl+Z）
+    colors_before = snap(z)["primary"]["palettes"][palette * 16:palette * 16 + 16] if palette < 7 else None
+    be(z, {"cmd": "action", "id": "palette.commit"})
+    press_if_open(z, "yes", window=BE, tries=5)
+    time.sleep(0.5)
+    if colors_before is not None:
+        after = snap(z)["primary"]["palettes"][palette * 16:palette * 16 + 16]
+        check(after != colors_before, "396: 読み込んだ色を反映する")
+        be(z, {"cmd": "undo"})
+        time.sleep(0.5)
+        check(snap(z)["primary"]["palettes"][palette * 16:palette * 16 + 16] == colors_before, "396: 1 回の Ctrl+Z で戻る")
+    pe(z, {"cmd": "close"})
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--rom", required=True)
@@ -468,6 +601,9 @@ def main() -> int:
         if want("395"):
             work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-stats-"))
             check_395(z, shots, work)
+        if want("396"):
+            work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-pal-"))
+            check_396(z, shots, work)
 
     print()
     print("失敗なし" if not failures else f"失敗 {len(failures)} 件")

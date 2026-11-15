@@ -42,7 +42,7 @@ export class ToolWindowHost {
 
   private readonly opened = new Set<ToolKind>();
   private version = 0;
-  private ui: { palette: number; preview: Record<number, number[]> } = { palette: 0, preview: {} };
+  private ui: { palette: number; preview: Record<number, number[]>; focus: { block: number; seq: number } | null } = { palette: 0, preview: {}, focus: null };
   /** 写しを送ったときのタイルセットの組（変わったら一時適用を捨てる）。 */
   private tilesetKey = "";
   private unsubscribeBus: (() => void) | null = null;
@@ -133,6 +133,11 @@ export class ToolWindowHost {
       case "setUi":
         if (req.palette !== undefined) this.ui.palette = Math.max(0, Math.min(TOTAL_PALETTE_COUNT - 1, req.palette));
         if (req.preview !== undefined) this.ui.preview = { ...this.ui.preview, ...cloneColors(req.preview) };
+        if (req.focusBlock !== undefined) {
+          // パレットエディタの色の使用箇所（#396）: ブロックエディタでそのブロックを選ぶ（閉じていれば開く）
+          this.ui.focus = { block: req.focusBlock, seq: (this.ui.focus?.seq ?? 0) + 1 };
+          if (!this.opened.has("block-editor")) await this.open("block-editor");
+        }
         await this.broadcast({ type: "ui", ui: this.uiState() });
         return null;
       case "open":
@@ -184,12 +189,13 @@ export class ToolWindowHost {
     this.opened.delete(kind);
     // パレットを編集する窓が全部閉じたら、一時適用した色は捨てる（AdvanceMap でも開き直すと元の色）。
     if (!this.opened.has("block-editor") && !this.opened.has("palette-editor")) this.ui.preview = {};
+    if (kind === "block-editor") this.ui.focus = null;
   }
 
   private closeAll(): void {
     for (const kind of [...this.opened]) void closeToolWindow(kind);
     this.opened.clear();
-    this.ui = { palette: 0, preview: {} };
+    this.ui = { palette: 0, preview: {}, focus: null };
   }
 
   /** 写しをまとめて送る（同じフレームの中の変更は 1 回にまとめる）。 */
@@ -215,7 +221,7 @@ export class ToolWindowHost {
   }
 
   private uiState(): ToolUiState {
-    return { palette: this.ui.palette, preview: cloneColors(this.ui.preview) };
+    return { palette: this.ui.palette, preview: cloneColors(this.ui.preview), focus: this.ui.focus };
   }
 
   /** 表示中のマップのタイルセットの写し。 */
