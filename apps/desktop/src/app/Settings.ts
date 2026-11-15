@@ -144,6 +144,11 @@ export interface SettingsData {
   playerView: boolean;
   /** グリッドの形（表示 > グリッドの設定…。Phase5 #391。既定は今までの見た目。読むときは normalizeGridStyle で確かめる）。 */
   gridStyle: { width: number; height: number; offsetX: number; offsetY: number; color: string; line: string };
+  /**
+   * 変えたショートカットキー（設定 > ショートカットの変更…。Phase5 #392）。操作の ID → キーの表記（「Ctrl+Shift+P」など。2 つまで）。
+   * 既定と違う操作だけを残す（空の配列はキーを外した操作）。読むときは `app/keymap.ts` の resolveKeymap で確かめる。
+   */
+  shortcuts: Record<string, string[]>;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -204,6 +209,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   cursorFrame: false,
   playerView: false,
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
+  shortcuts: {},
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

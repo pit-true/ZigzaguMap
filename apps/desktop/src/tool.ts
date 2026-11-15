@@ -3,6 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { startToolWindow } from "./windows/startToolWindow";
 import { SCRIPT_EDITOR_WINDOW } from "./windows/script-editor/protocol";
 import { followMainTheme } from "./util/theme";
+import { followMainKeymap } from "./app/keymapSync";
 
 /**
  * 別ウィンドウ（ワールドマップエディター・ブロックエディタ・パレットエディタ・ブロックパレット一括変更）の入口（tool.html）。
@@ -11,7 +12,8 @@ import { followMainTheme } from "./util/theme";
 async function main(): Promise<void> {
   const label = getCurrentWebviewWindow().label;
   // 配色はメインの個人設定 `theme` に合わせる（スクリプトエディタは自分のテーマを持つので合わせない）。
-  if (label !== SCRIPT_EDITOR_WINDOW) await followMainTheme();
+  // ショートカットキーもメインの個人設定 `shortcuts` に合わせる（#392。スクリプトエディタのキーは変えない）。
+  if (label !== SCRIPT_EDITOR_WINDOW) await Promise.all([followMainTheme(), followMainKeymap()]);
   const root = document.getElementById("app");
   if (root) await startToolWindow(label, root);
 }

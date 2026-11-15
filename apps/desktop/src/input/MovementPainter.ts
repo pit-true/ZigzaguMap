@@ -1,5 +1,6 @@
 import { PaintMovementCommand } from "@zigzagumap/core";
 import type { EditorState } from "../app/EditorState";
+import { matchesKey } from "../app/keymap";
 import { MOVEMENT_COLORS } from "../app/data/movementColors";
 import { ja } from "../i18n/ja";
 import { jaPaint } from "../i18n/ja.paint";
@@ -106,7 +107,7 @@ export class MovementPainter {
       },
     );
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.rect || this.rect.cancelled) return;
+      if (!matchesKey("drag.cancel", e) || !this.rect || this.rect.cancelled) return;
       e.preventDefault();
       this.rect.cancelled = true;
       this.clearPreview();

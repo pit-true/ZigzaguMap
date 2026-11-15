@@ -1,5 +1,6 @@
 import { BLOCK_ID_MASK, ConnectionDirection, type MapId } from "@zigzagumap/core";
 import type { EditorState, TabId } from "../../app/EditorState";
+import { matchesKey, releasesKey } from "../../app/keymap";
 import { renderBand } from "../../app/neighbors/NeighborService";
 import { TilesetView } from "../../app/TilesetView";
 import { jaNeighbors } from "../../i18n/ja.neighbors";
@@ -41,14 +42,14 @@ function installKeys(): void {
     for (const h of holders) void h.update();
   };
   document.addEventListener("keydown", (e) => {
-    if (e.key !== " " || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+    if (!matchesKey("dive.hold", e) || isTyping(e.target)) return;
     if (![...holders].some((h) => h.active)) return;
     // 押している間のスクロールを止める
     e.preventDefault();
     set(true);
   });
   document.addEventListener("keyup", (e) => {
-    if (e.key === " ") set(false);
+    if (releasesKey("dive.hold", e)) set(false);
   });
   window.addEventListener("blur", () => set(false));
 }

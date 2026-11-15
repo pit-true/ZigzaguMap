@@ -5,6 +5,7 @@ import type { MapTab } from "../ui/tabs/MapTab";
 import type { MovementTab } from "../ui/tabs/MovementTab";
 import type { EditorState } from "./EditorState";
 import { PAINT_TOOLS, setPaintTool } from "./paintTool";
+import { matchesKey } from "./keymap";
 import type { EdgeResize } from "../ui/connection/EdgeResize";
 import type { ResizePlan } from "../ui/resize/ResizeDialog";
 
@@ -31,10 +32,9 @@ export class ToolExtras {
     movementTab.insertSide(this.movementStrip.element);
     // N・B・S: 道具の切り替え（マップタブと移動エリアタブ。修飾キーなし。入力欄の中と、後ろを覆うダイアログの間は反応しない）
     document.addEventListener("keydown", (e) => {
-      if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey || e.repeat) return;
+      if (e.defaultPrevented || e.metaKey || e.repeat) return;
       if ((state.tab !== "map" && state.tab !== "movement") || !state.map || modalOpen() || isTyping(e.target)) return;
-      const key = e.key.toUpperCase();
-      const tool = PAINT_TOOLS.find((t) => t.key === key);
+      const tool = PAINT_TOOLS.find((t) => matchesKey(t.keyAction, e));
       if (!tool) return;
       e.preventDefault();
       setPaintTool(this.state, tool.id);

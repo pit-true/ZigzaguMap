@@ -18,17 +18,15 @@ import { TOGGLE_EVENT_KINDS, eventKindActionId } from "../ui/event/eventVisibili
 import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaTools } from "../i18n/ja.tools";
+import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
+import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
 import { jaMapExport } from "../i18n/ja.mapExport";
 import { jaWildTools } from "../i18n/ja.wildTools";
 
-/** ショートカットキー。`key` は KeyboardEvent.key を大文字にしたもの（"O"、"F5"、"BACKSPACE" など）。 */
+/** メニューに出すショートカットキー（`app/keymap.ts` の表の今のキーから作る。#392）。 */
 export interface Shortcut {
-  readonly key: string;
-  readonly ctrl?: boolean;
-  readonly alt?: boolean;
-  readonly shift?: boolean;
-  /** メニューに出す表記。 */
+  /** メニューに出す表記（キーが 2 つなら「、」で区切る）。 */
   readonly text: string;
 }
 
@@ -52,26 +50,33 @@ export interface MenuItem {
 
 const sep: MenuItem = { separator: true };
 
-const ctrl = (key: string): Shortcut => ({ key, ctrl: true, text: `Ctrl+${key}` });
-const fkey = (key: string): Shortcut => ({ key, text: key });
+/** 表（`app/keymap.ts`）にある項目へ、今のキーの表記を付ける。 */
+function withKeys(items: readonly MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    const children = item.children ? withKeys(item.children) : undefined;
+    const text = item.id && isKeyAction(item.id) ? keyText(item.id) : "";
+    return { ...item, ...(children ? { children } : {}), ...(text ? { shortcut: { text } } : {}) };
+  });
+}
 
 /**
  * メニューの全項目（AdvanceMap 1.92 日本語版のアクセスキー・ショートカットをもとにした）。
  * ユーザーの要望で「表示」を足し、「設定」にあった見た目の項目を移した（ファイル・表示・設定・ツール・ヘルプ）。
  * 最近開いたもの（`recent.N`）は `recentItems` で差し込む。
  * 「オブジェクトの表示」の Ctrl+Z はアンドゥに使うため外した。
+ * ショートカットキーは `app/keymap.ts` の表に置き、ここでは付けない（#392。利用者が変えられる）。
  */
 export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
-  return [
+  return withKeys([
     {
       label: ja.menuFile,
       accel: "Z",
       children: [
-        { id: "file.open", label: ja.openRom, accel: "R", shortcut: ctrl("O") },
+        { id: "file.open", label: ja.openRom, accel: "R" },
         { id: "file.openProject", label: ja.openProject, accel: "P" },
-        { id: "file.reload", label: ja.reloadRom, accel: "O", shortcut: fkey("F5") },
+        { id: "file.reload", label: ja.reloadRom, accel: "O" },
         sep,
-        { id: "file.export", label: ja.exportMaps, accel: "M", shortcut: ctrl("S") },
+        { id: "file.export", label: ja.exportMaps, accel: "M" },
         { id: "file.exportTo", label: ja.exportMapsTo, accel: "W" },
         { id: "file.backup", label: ja.createBackup, accel: "X", enable: "map" },
         // マップの画像の書き出し（Phase5 #403。ZigzaguMap 独自）
@@ -99,11 +104,11 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       label: ja.menuView,
       accel: "V",
       children: [
-        { id: "view.grid", label: ja.showGrid, accel: "J", shortcut: ctrl("G"), enable: "map" },
+        { id: "view.grid", label: ja.showGrid, accel: "J", enable: "map" },
         // グリッドの形・カーソルの枠・プレイヤーの視界の枠（Phase5 #391。ZigzaguMap 独自）
         { id: "view.gridSettings", label: jaTools.gridSettingsMenu, enable: "map" },
-        { id: "view.cursorFrame", label: jaTools.cursorFrameMenu, shortcut: { key: "C", text: "C" } },
-        { id: "view.playerView", label: jaTools.playerViewMenu, shortcut: { key: "V", text: "V" } },
+        { id: "view.cursorFrame", label: jaTools.cursorFrameMenu },
+        { id: "view.playerView", label: jaTools.playerViewMenu },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
@@ -128,7 +133,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         // タウンマップの小窓（#306。ZigzaguMap 独自）
         { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         // 履歴の窓（Phase5 #402。ZigzaguMap 独自）
-        { id: "view.history", label: jaCommands.menu, shortcut: ctrl("E"), enable: "rom" },
+        { id: "view.history", label: jaCommands.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -141,11 +146,11 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
           ],
         },
         { id: "view.opacity", label: ja.movementOpacity, accel: "Q" },
-        { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P", shortcut: ctrl("P") },
+        { id: "view.paletteWidth", label: ja.blockPaletteWidth, accel: "P" },
         // パレットのタイルセット 1・2 の境目（#308。ZigzaguMap 独自）
         { id: "view.paletteBoundary", label: jaPaletteInfo.boundaryMenu },
         sep,
-        { id: "view.toolbar", label: ja.showToolbar, accel: "S", shortcut: ctrl("T") },
+        { id: "view.toolbar", label: ja.showToolbar, accel: "S" },
         { id: "view.combobox", label: ja.comboBox, accel: "N" },
         // マップ一覧のサムネイル（#315。ZigzaguMap 独自。既定オフ）
         { id: "view.treeThumbnails", label: jaThumbnails.menu },
@@ -156,7 +161,7 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
           children: [{ label: ja.headerSort, children: ja.sortModes.map((label, i) => ({ id: `sort.${i}`, label })) }],
         },
         { id: "view.hideEventPanel", label: ja.hideEventPanel, accel: "L" },
-        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", shortcut: ctrl("H"), enable: "rom" },
+        { id: "opt.advancedHeader", label: ja.advancedHeader, accel: "W", enable: "rom" },
       ],
     },
     {
@@ -190,15 +195,17 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
             { id: "theme.dark", label: ja.themeDark, accel: "D" },
           ],
         },
+        // ショートカットの変更（Phase5 #392。ZigzaguMap 独自）
+        { id: "opt.shortcuts", label: jaShortcutEdit.menu },
       ],
     },
     {
       label: ja.menuTools,
       accel: "X",
       children: [
-        { id: "tools.blockEditor", label: ja.blockEditor, accel: "R", shortcut: ctrl("B"), enable: "map" },
-        { id: "tools.connections", label: ja.connections, accel: "S", shortcut: ctrl("A"), enable: "map" },
-        { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", shortcut: ctrl("W"), enable: "rom" },
+        { id: "tools.blockEditor", label: ja.blockEditor, accel: "R", enable: "map" },
+        { id: "tools.connections", label: ja.connections, accel: "S", enable: "map" },
+        { id: "tools.worldMap", label: ja.worldMapEditor, accel: "T", enable: "rom" },
         // ZigzaguMap 独自（Phase4 #312）。自動ペンのパーツを作る・直す、範囲を塗る・整える。
         { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
@@ -208,17 +215,17 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
         // ZigzaguMap 独自（Phase5 #398）。種族を選び、全マップの野生からその種族が出る枠を探す。
         { id: "tools.wildSearch", label: jaWildTools.searchMenu, accel: "G", enable: "rom" },
         // ZigzaguMap 独自（Phase2 #198）。設定のビルドの手順を、スクリプトエディタの下の欄で動かす。
-        { id: "tools.build", label: jaBuild.menu, accel: "B", shortcut: fkey("F7"), enable: "rom" },
-        { id: "tools.previousMap", label: ja.previousMap, accel: "U", shortcut: { key: "BACKSPACE", alt: true, text: "Alt+BkSp" } },
+        { id: "tools.build", label: jaBuild.menu, accel: "B", enable: "rom" },
+        { id: "tools.previousMap", label: ja.previousMap, accel: "U" },
         // ZigzaguMap 独自（Phase3 #237）。マップの履歴を進む（以前開いたマップを開くは「戻る」になった）。
-        { id: "view.forward", label: jaMapFind.forward, shortcut: { key: "BACKSPACE", alt: true, shift: true, text: "Alt+Shift+BkSp" }, enable: "rom" },
+        { id: "view.forward", label: jaMapFind.forward, enable: "rom" },
         { id: "tools.desktopShortcut", label: ja.desktopShortcut, accel: "V" },
         sep,
-        { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", shortcut: ctrl("M"), enable: "rom" },
+        { id: "tools.openMap", label: ja.openMapByNumber, accel: "W", enable: "rom" },
         // ZigzaguMap 独自（Phase3 #237）。マップ名の一部で探して開く（HexManiacAdvance の Ctrl+G。ZigzaguMap の Ctrl+G はグリッド）。
-        { id: "map.find", label: jaMapFind.find, shortcut: ctrl("F"), enable: "rom" },
+        { id: "map.find", label: jaMapFind.find, enable: "rom" },
         // ZigzaguMap 独自（Phase4 #307）。今のマップのポインタと、ROM の参照元の検索（読むだけの調査の道具）
-        { id: "tools.pointers", label: jaPointers.menu, shortcut: { key: "P", ctrl: true, shift: true, text: "Ctrl+Shift+P" }, enable: "map" },
+        { id: "tools.pointers", label: jaPointers.menu, enable: "map" },
         {
           label: ja.dummyData,
           accel: "X",
@@ -262,11 +269,11 @@ export function buildMenu(recentItems: readonly MenuItem[]): MenuItem[] {
       children: [
         { id: "help.readme", label: ja.readMe, accel: "R" },
         { id: "help.shortcuts", label: ja.shortcutListMenu, accel: "S" },
-        { id: "help.about", label: ja.aboutApp, accel: "A", shortcut: fkey("F1") },
-        { id: "help.eula", label: ja.eula, accel: "Z", shortcut: fkey("F2") },
+        { id: "help.about", label: ja.aboutApp, accel: "A" },
+        { id: "help.eula", label: ja.eula, accel: "Z" },
       ],
     },
-  ];
+  ]);
 }
 
 /** ファイル > 最近開いたもの（登録されている分だけ。最大数を超えた分は出さない）。 */
