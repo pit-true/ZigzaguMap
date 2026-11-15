@@ -1,6 +1,7 @@
 import { ja } from "../../i18n/ja";
 import { jaTools } from "../../i18n/ja.tools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
+import { autoId } from "../form/controls";
 import { DEFAULT_GRID_STYLE, GRID_LINES, MAX_GRID_STEP, normalizeGridStyle, type GridLine, type GridStyle } from "../map/gridStyle";
 import "../../styles/tools.css";
 
@@ -95,12 +96,9 @@ export function openGridSettings(initial: GridStyle, preview: (style: GridStyle)
     commit(current());
     frame.remove();
   };
-  const resetButton = dialogButton(t.gridReset, reset);
-  resetButton.dataset["autoId"] = "grid.reset";
+  const resetButton = autoId(dialogButton(t.gridReset, reset), "grid.reset");
   resetButton.classList.add("wide");
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(resetButton, dialogButton(ja.ok, ok), dialogButton(ja.cancel, cancel));
+  const buttons = dialogButtonRow(resetButton, dialogButton(ja.ok, ok), dialogButton(ja.cancel, cancel));
   frame.body.append(grid, note, buttons);
   handleDialogKeys(frame, cancel, (e) => {
     if (e.key === "Enter") ok();

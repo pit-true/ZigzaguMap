@@ -1,12 +1,12 @@
-import type { EditorState } from "../app/EditorState";
-import { matchesKey } from "../app/keymap";
-import { jaPaint } from "../i18n/ja.paint";
-import { jaPen } from "../i18n/ja.pen";
-import type { Cell } from "../ui/map/MapView";
-import type { BlockWriter } from "./BlockWriter";
-import { rectOf, tileRect, type CellRect } from "./paintPlans";
-import type { PreviewCanvas } from "./PreviewCanvas";
-import { drawPreviewBlocks, strokeCellRect } from "./previewDraw";
+import type { EditorState } from "../../app/EditorState";
+import { matchesKey } from "../../app/keymap";
+import { jaPaint } from "../../i18n/ja.paint";
+import { jaPen } from "../../i18n/ja.pen";
+import type { Cell } from "../../ui/map/MapView";
+import type { BlockWriter } from "../BlockWriter";
+import { rectOf, tileRect, type CellRect } from "../paintPlans";
+import type { PreviewCanvas } from "../PreviewCanvas";
+import { drawPreviewBlocks, strokeCellRect } from "../previewDraw";
 
 /** ドラッグで使う道具（Phase3 #233）。 */
 export type DragToolKind = "pick" | "rect" | "swap";

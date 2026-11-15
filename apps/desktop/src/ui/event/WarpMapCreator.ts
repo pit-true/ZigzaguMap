@@ -5,7 +5,7 @@ import { jaNeighbors } from "../../i18n/ja.neighbors";
 import { jaWarpMap as t } from "../../i18n/ja.warpMap";
 import "../../styles/warpMap.css";
 import { canvasOf } from "../canvas";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { editErrorMessage, showEditError } from "../form/inputErrors";
 import { inputDialog } from "../InputDialog";
 import { showError } from "../MessageBox";
@@ -165,9 +165,7 @@ export class WarpMapCreator {
       copy.disabled = picked === null;
       copy.dataset["autoId"] = "warpMap.copyLayout";
       copyRow.append(copy, t.copyLayout);
-      const buttons = document.createElement("div");
-      buttons.className = "dialog-buttons";
-      buttons.append(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => finish(null)));
+      const buttons = dialogButtonRow(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => finish(null)));
       frame.body.append(intro, list, copyRow, buttons);
       handleDialogKeys(frame, () => finish(null), (e) => {
         if (e.key === "Enter") ok();

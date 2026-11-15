@@ -7,7 +7,7 @@ import { shadeTripleChild } from "../tripleLayerShade";
  * - `blocks`: ブロックの絵の Canvas に等倍で描く（パレットを作り直すときだけ。3 層の次の番号の印）。
  * - `grid`: グリッドの Canvas に表示の大きさで描く（パレットを作り直すときだけ。TS1 と TS2 の境目。#308）。
  *   等倍でグリッドを出さないときは、グリッドの Canvas を持たずブロックの絵の上に描く。
- * - `overlay`: 選択の枠の Canvas に、枠の下に描く（選択や設定が変わるたびに描き直す。自動ペンで描けるブロックの色。#310）。
+ * - `overlay`: 選択の枠の Canvas に、枠の下に描く（選択や設定が変わるたびに描き直す。オートペンで描けるブロックの色。#310）。
  * 選択の枠はいちばん上に BlockPaletteView が描く。
  */
 export type PaletteLayerPass = "blocks" | "grid" | "overlay";

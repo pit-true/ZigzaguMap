@@ -143,4 +143,9 @@ export const coreCommands: CommandTable = {
     app.syncTheme();
     return null;
   },
+  // 待っている個人設定の書き込みを済ませる（Rust の `exit` が終わる前に呼ぶ。待っていなければ何もしない。#406）
+  "settings.flush": async (app) => {
+    await app.state.settings.flushPending();
+    return null;
+  },
 };

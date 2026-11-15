@@ -27,6 +27,25 @@ export function currentTool(state: EditorState): PaintTool {
   return toPaintTool(state.settings.data.paintTool);
 }
 
+/**
+ * 押したときにする操作（マップタブと移動エリアタブで同じ振り分け。Phase5 の仕上げ #406 で 2 つのタブから 1 か所にまとめた）。
+ * - 左ボタン: 道具が塗りつぶしなら `fill`、シフトなら `shift`（Ctrl を押していれば矩形塗り）。Alt は入れ替えが先
+ *   （`canSwap` のときだけ。移動エリアタブには入れ替えが無いので Alt は見ない）。どれでもなければ鉛筆の `pencil`。
+ * - 右ボタン: Ctrl を押していれば矩形の選択 `pick`。そうでなければ null（離したときに拾う）。
+ */
+export type PressKind = "fill" | "shift" | "rect" | "swap" | "pencil" | "pick" | null;
+
+/** 押したボタンと修飾キー、今の道具から、する操作を決める。 */
+export function pressKind(tool: PaintTool, g: { readonly button: number; readonly ctrl: boolean; readonly alt: boolean }, canSwap: boolean): PressKind {
+  if (g.button !== 0) return g.ctrl ? "pick" : null;
+  const alt = canSwap && g.alt;
+  if (tool === "fill" && !alt) return "fill";
+  if (tool === "shift" && !g.ctrl && !alt) return "shift";
+  if (g.ctrl) return "rect";
+  if (alt) return "swap";
+  return "pencil";
+}
+
 /** 道具を変えて個人設定に覚える（同じなら何もしない）。 */
 export function setPaintTool(state: EditorState, tool: PaintTool): void {
   if (currentTool(state) === tool) return;

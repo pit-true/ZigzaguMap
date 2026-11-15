@@ -17,7 +17,7 @@ import { jaBlockEditor } from "../i18n/ja.blockEditor";
 import { jaTools } from "../i18n/ja.tools";
 import { blockToolShortcutRows } from "../i18n/ja.blockTools";
 import { buildMenu, type MenuItem } from "./menuDefinition";
-import { KEY_ACTIONS, keyText } from "./keymap";
+import { KEY_ACTIONS, keyAction, keyText } from "./keymap";
 
 /** ショートカットの一覧の 1 行。 */
 export interface ShortcutRow {
@@ -34,12 +34,13 @@ export interface ShortcutRow {
  * `wild/WildTab.ts`、Phase4 の欄と窓（`ui/map/RecentBlocks.ts`・`ui/view/TownMiniView.ts`・`ui/pointer/PointerDialog.ts`・
  * `ui/connection/SeamNotice.ts`）、Phase5 の道具（`app/toolExtras.ts`・`input/tools/`）、別ウィンドウの `startBlockTool.ts`・`BlockEditPanel.ts`・`MapAssistWindow.ts` と `WorldMapWindow.ts` で受けているもの）。
  * キーの処理を足したら、ここにも足す（README の「ショートカット」の節と同じ内容）。
- * 変えられるキー（`app/keymap.ts` の表にあるもの。#392）は、今のキーを表から引く。
+ * 変えられるキー（`app/keymap.ts` の表にあるもの。#392）は、今のキーと名前と場所を表から引く（`tableRow`）。
+ * ドラッグの取りやめ（Esc）だけは、矩形塗りとマップシフトの 2 つの行に分けて出すので、名前をここに書く。
  */
 function otherKeys(): ShortcutRow[] {
   return [
-    { keys: keyText("edit.undo"), action: ja.shortcuts.undo, where: ja.shortcuts.anywhere },
-    { keys: keyText("edit.redo"), action: ja.shortcuts.redo, where: ja.shortcuts.anywhere },
+    tableRow("edit.undo"),
+    tableRow("edit.redo"),
     { keys: "Alt", action: ja.shortcuts.menuFocus, where: ja.shortcuts.mainWindow },
     { keys: "Alt+アクセスキー", action: ja.shortcuts.menuOpen, where: ja.shortcuts.mainWindow },
     { keys: "←→↑↓、Enter、Esc", action: ja.shortcuts.menuMove, where: ja.shortcuts.inMenu },
@@ -50,12 +51,12 @@ function otherKeys(): ShortcutRow[] {
     { keys: "↑↓", action: ja.shortcuts.spin, where: ja.shortcuts.inSpin },
     { keys: "←→、PageUp、PageDown、Home、End", action: ja.shortcuts.trackbar, where: ja.shortcuts.inTrackbar },
     { keys: "Esc", action: ja.shortcuts.stopPicker, where: ja.shortcuts.inPaletteEditor },
-    { keys: keyText("event.delete"), action: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
+    tableRow("event.delete"),
     // イベントの複数選択・まとめての移動・複製（Phase5 #399。ui/event/EventTab.ts・app/Shortcuts.ts）
     { keys: "Shift＋クリック", action: jaEventMulti.shortcutToggle, where: jaEventMulti.shortcutWhere },
     { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
     { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
-    { keys: keyText("event.duplicate"), action: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
+    tableRow("event.duplicate"),
     // ルーラー（Phase5 #400。ui/event/RulerLayer.ts）
     { keys: "Shift＋右ドラッグ", action: jaEventLimit.shortcutRuler, where: jaEventLimit.shortcutWhere },
     { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
@@ -63,14 +64,14 @@ function otherKeys(): ShortcutRow[] {
     { keys: "Esc", action: jaMapFind.filterClear, where: jaMapFind.filterWhere },
     { keys: "↓、Enter", action: jaMapFind.filterToTree, where: jaMapFind.filterWhere },
     // マップタブのコピーと貼り付け（Phase3 #225。input/StampClipboard.ts）
-    { keys: keyText("stamp.copy"), action: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },
-    { keys: keyText("stamp.paste"), action: jaPaint.shortcutPaste, where: jaPaint.shortcutWhere },
-    // 矩形塗りと入れ替え（Phase3 #233。input/BlockDragTools.ts・MovementPainter.ts）
+    tableRow("stamp.copy"),
+    tableRow("stamp.paste"),
+    // 矩形塗りと入れ替え（Phase3 #233。input/tools/BlockDragTools.ts・input/tools/MovementRectTool.ts）
     { keys: "Ctrl＋左ドラッグ", action: jaPaint.shortcutRectFill, where: jaPaint.shortcutDragWhere },
     { keys: "Alt＋左ドラッグ", action: jaPaint.shortcutSwap, where: jaPaint.shortcutWhere },
     { keys: keyText("drag.cancel"), action: jaPaint.shortcutCancel, where: jaPaint.shortcutDragWhere },
     // ダイブ先・浮上先の重ね表示（Phase3 #232。ui/map/DiveOverlay.ts）
-    { keys: held(keyText("dive.hold")), action: jaNeighbors.shortcutDive, where: jaNeighbors.shortcutDiveWhere },
+    tableRow("dive.hold", held),
     // ミキシングバッグ（Phase3 #236。ui/map/BlockPaletteView.ts・MixingBagView.ts）
     { keys: "Ctrl＋左クリック", action: jaPaint.shortcutBag, where: jaPaint.shortcutBagWhere },
     { keys: "Ctrl＋クリック", action: jaPaint.shortcutBagClear, where: jaPaint.shortcutBagClearWhere },
@@ -81,11 +82,11 @@ function otherKeys(): ShortcutRow[] {
     { keys: "Ctrl（押している間）", action: jaPaint.shortcutPeek, where: jaPaint.shortcutPeekWhere },
     { keys: "Ctrl＋右クリック", action: jaPaint.shortcutPeekPick, where: jaPaint.shortcutPeekPickWhere },
     // オートペン（Phase4 #310。app/penExtras.ts）
-    { keys: keyText("pen.autoPen"), action: jaPen.shortcutAutoPen, where: jaPen.shortcutAutoPenWhere },
+    tableRow("pen.autoPen"),
     // 描く道具の帯（Phase5 #388〜#390。app/toolExtras.ts・input/tools/）
-    { keys: keyText("tool.pencil"), action: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
-    { keys: keyText("tool.fill"), action: jaTools.shortcutFill, where: jaTools.shortcutToolWhere },
-    { keys: keyText("tool.shift"), action: jaTools.shortcutShift, where: jaTools.shortcutToolWhere },
+    tableRow("tool.pencil"),
+    tableRow("tool.fill"),
+    tableRow("tool.shift"),
     { keys: jaTools.shortcutMagicKeys, action: jaTools.shortcutMagic, where: jaTools.shortcutMagicWhere },
     { keys: jaTools.shortcutLineKeys, action: jaTools.shortcutLine, where: jaTools.shortcutToolWhere },
     { keys: keyText("drag.cancel"), action: jaTools.shortcutShiftCancel, where: jaTools.shortcutShiftCancelWhere },
@@ -119,6 +120,12 @@ function otherKeys(): ShortcutRow[] {
     { keys: jaAssist.shortcutPickKeys, action: jaAssist.shortcutPick, where: jaAssist.shortcutPickWhere },
     ...scriptEditorKeys(),
   ];
+}
+
+/** 表（`app/keymap.ts`）にある操作の行。名前と使える場所は表の `label`・`where` から引く。 */
+function tableRow(id: string, keys: (text: string) => string = (text) => text): ShortcutRow {
+  const a = keyAction(id);
+  return { keys: keys(keyText(id)), action: a.label ?? id, where: a.where ?? "" };
 }
 
 /** 押している間だけの操作の表記。 */

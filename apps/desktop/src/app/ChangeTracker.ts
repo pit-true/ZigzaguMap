@@ -73,6 +73,11 @@ export class ChangeTracker {
     return true;
   }
 
+  /** 未出力の印を確かめる予約があれば、すぐに確かめる（マップを切り替える前。予約が無ければ何もしない）。 */
+  flushDirty(): void {
+    if (this.dirtyTimer) this.checkDirty();
+  }
+
   /** 未出力の印を付け直す。 */
   checkDirty(all = false): void {
     const state = this.host.state;

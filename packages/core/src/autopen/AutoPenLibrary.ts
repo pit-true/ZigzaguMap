@@ -47,7 +47,7 @@ export function mergeParts(base: readonly AutoPenPart[], incoming: readonly Auto
 }
 
 /**
- * 自動ペンのパーツの定義（#303）。`maps\autopen\*.json` を初めて使うときに読み、保存はすぐファイルに書く
+ * オートペンのパーツの定義（#303）。`maps\autopen\*.json` を初めて使うときに読み、保存はすぐファイルに書く
  * （マップの出力とは別で、元に戻すの対象にもしない。スタンプと同じ）。
  * 出力先のフォルダが無いとき（素の ROM だけで開いたとき）はメモリだけに持ち、`attach` でフォルダが決まったときに書く。
  *

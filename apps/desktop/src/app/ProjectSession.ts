@@ -64,7 +64,7 @@ export class ProjectSession {
   private regionMapValue: RegionMapProject | null = null;
   /** スタンプの一覧（#239。初めて使うときに maps\stamps\ を読む）。 */
   private stampsValue: Promise<StampLibrary> | null = null;
-  /** 自動ペンのパーツ（Phase4 #303。初めて使うときに maps\autopen\ を読む）。 */
+  /** オートペンのパーツ（Phase4 #303。初めて使うときに maps\autopen\ を読む）。 */
   private autopenValue: Promise<AutoPenLibrary> | null = null;
 
   private constructor(
@@ -354,7 +354,7 @@ export class ProjectSession {
     parts.push(await this.trainers.save(this.fs));
     // スタンプ（#239）: 出力先を選んだとき（素の ROM だけで開いていた・別のフォルダへ出力した）は、今のスタンプをその先へ書く
     if (dir !== undefined && this.stampsValue) parts.push({ written: await (await this.stampsValue).relocate(this.fs), removed: [] });
-    // 自動ペンのパーツ（#303）も同じ
+    // オートペンのパーツ（#303）も同じ
     if (dir !== undefined && this.autopenValue) parts.push({ written: await (await this.autopenValue).relocate(this.fs), removed: [] });
     return { written: parts.flatMap((p) => p.written), removed: parts.flatMap((p) => p.removed) };
   }
@@ -375,7 +375,7 @@ export class ProjectSession {
   }
 
   /**
-   * 自動ペンのパーツ（#303）。初めて使うときに maps\autopen\ を読む。保存はすぐファイルに書く（スタンプと同じ）。
+   * オートペンのパーツ（#303）。初めて使うときに maps\autopen\ を読む。保存はすぐファイルに書く（スタンプと同じ）。
    * 素の ROM だけで開いているときはメモリに持ち、出力先を選んだときに書く。
    */
   autopen(): Promise<AutoPenLibrary> {

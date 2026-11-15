@@ -5,7 +5,7 @@ import { jaPen } from "../../i18n/ja.pen";
 import "../../styles/autopen.css";
 
 /**
- * マップタブの右の欄の自動ペン（#310）: 「自動ペン (P)」「筆」（1・2・3・5）「移動許可も付ける」と、選んでいるブロックで描くパーツ。
+ * マップタブの右の欄のオートペン（#310）: 「オートペン (P)」「筆」（1・2・3・5）「移動許可も付ける」と、選んでいるブロックで描くパーツ。
  * どれも個人設定（`autoPen`・`autoPenSize`・`autoPenMovement`）に入る。
  */
 export class AutoPenPanel {

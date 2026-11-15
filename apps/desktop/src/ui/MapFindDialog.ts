@@ -3,7 +3,7 @@ import { findMaps, type FindableMap, type FindCandidate } from "../app/mapFind";
 import { ja } from "../i18n/ja";
 import { jaMapFind as t } from "../i18n/ja.mapFind";
 import "../styles/mapFind.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "./Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "./Dialog";
 
 /**
  * マップ名で探して開く（#237。ツール > マップ名で探して開く、Ctrl+F）。入力するたびに候補を出し、↑↓で選んで Enter か
@@ -31,9 +31,7 @@ export function mapFindDialog(maps: readonly FindableMap[], initial = ""): Promi
     const none = document.createElement("div");
     none.className = "map-find-none";
     none.textContent = t.none;
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    buttons.append(dialogButton(ja.ok, pick), dialogButton(ja.cancel, () => finish(null)));
+    const buttons = dialogButtonRow(dialogButton(ja.ok, pick), dialogButton(ja.cancel, () => finish(null)));
     frame.body.append(text, input, list, none, buttons);
 
     const render = (): void => {

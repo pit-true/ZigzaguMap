@@ -123,7 +123,8 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `romErase.state` | | `maps\rom_erase.json` の範囲（`ranges`: `address`・`length`・`type`・`bank`・`map`・`event`・`index`）、未出力の変更 `modified`、読めなかった理由 `loadError` |
 | `commands` | | 登録されている命令の名前 |
 | `windows` | | 開いているウィンドウの一覧（`label`、`title`、`visible`、`ready`） |
-| `exit` | | 確認なしで終了する |
+| `exit` | | 確認なしで終了する。待っている個人設定の書き込み（変えてから 300ms まとめて書く）は、終わる前に済ませる（× やファイル > 終了で閉じたときと同じ。#406） |
+| `settings.flush` | | 待っている個人設定の書き込みをすぐ済ませる（`exit` が先に呼ぶ。`setting` で変えただけの値は書かない） |
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
 | `process.copy` | `from`、`to`、`cwd` | ファイルを写す（ビルドの手順の `copy` と同じ。`from`・`to` は `cwd` からの相対パス）。返事の `bytes` は写した大きさ |
@@ -203,8 +204,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 |---|---|---|
 | `state` / `editor.state` | | タブ（`path`・`kind`（`asm` / `string`）・`dirty`・`missing`・`lineEnding`・`bom`・`lines`）、表示中のファイル `active`、`dirty`、カーソル `cursor`（`line`・`column`・`offset`）、選択 `selection`（範囲ごとの `anchor`・`head`・`text`）、下の帯のお知らせ `message`、題名 `title`、開いているダイアログ `dialogs` |
 | `editor.open` | `path`、`line`（省略可） | ファイルを開く（開いていればそのタブへ）。開けないパスならエラーのダイアログを出したまま返す（返事の `opened` が false） |
-| `editor.text` | `path`（省略で表示中のもの） | 本文（改行は `
-`） |
+| `editor.text` | `path`（省略で表示中のもの） | 本文（改行は `\n`） |
 | `editor.setText` | `text` | 表示中のファイルの本文を全部置き換える（履歴に入る） |
 | `editor.select` | `line`・`column` か `offset`（始まり）、`toLine`・`toColumn` か `toOffset`（終わり。省略でカーソルだけ） | 選択を変える |
 | `editor.type` | `text`、`line`・`column` か `offset`（省略で今のカーソル） | 文字を入力する（選択と置き換える。キーで入力したときと同じ取引で、IME は通さない） |
@@ -228,8 +228,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `editor.perf` | `line`・`column`、`count`（既定 30） | その位置で 1 字ずつ打ち、画面の更新（次のフレーム）までの時間を測る（`averageMs`・`maxMs`・`lines`）。打った字は消し、履歴にも残さない |
 | `editor.diagnostics` | | 波線を調べ直して、表示中のファイルの波線（`line`・`column`・`severity`・`source`（`unknownCommand` などの種類か、外から足したものの出どころ）・`message`・`text`）を返す |
 | `editor.widthCheck` | `wait`（true で、動いている検査が終わるまで待つ） | 保存時の幅検査の結果。`busy`、動かした回数 `runs`、最後の結果 `last`（`path`・終了コード `exit`・拾った誤り `errors`（`path`・`line`・`label`・`message`）・登録ファイルへの書き足し `registry`（`path`・`added`・`unresolved`・`removed`・登録の無いファイルなら `notChecked`）・`failed`）、出力の最後の 200 行 `log` |
-| `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`text` の改行は `
-` などの制御記号のすぐ後ろにだけ書け、そこで `.string` の行を分ける。#221）（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`・`dialogs`（`.string` を開けないときはダイアログを出したまま返す）。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
+| `editor.stringEdit` | `label`・`text`、または `line`・`column`・`label`・`open`（true で入力欄を出す） | 文字列のラベルの本文を差し替える（`text` の改行は `\n` などの制御記号のすぐ後ろにだけ書け、そこで `.string` の行を分ける。#221）（`.string` のタブを未保存にする。開いていなければ裏で開く）。返事は `path`・`dirty`・`tabs`・`dialogs`（`.string` を開けないときはダイアログを出したまま返す）。`open` なら、ホバーの「本文を編集」と同じ入力欄を出す |
 
 | `build.run` | `wait`（true で終わるまで待つ）、`confirm`（false で保存・出力の確認を飛ばす） | ビルドの欄でビルドする（ツール > ビルドと同じ。#198）。返事は `build.state` と開いているダイアログ。保存・出力の確認のダイアログが出たら、`wait` でも答えを待たずにそこで返す。設定（scripts.json の `build`）を読めないときはダイアログを出さずにエラーで返す（#380） |
 | `build.state` | | `running`・`step`（今の手順、0 から）・`steps`（手順の列）・`result`（`ok`・`code`・`killed`・`failedStep`・`ms`）・`problems`（拾ったエラー。`kind`・`severity`・`message`・`path`・`line`・`symbol`・`logLine`）・`lines`（ログの行数）・`outputRom` |
@@ -406,8 +405,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ステータスバーの注意は `status.seams`（`click` で一覧のダイアログ「接続の境目の注意」を出す。`dialog` の `press: "ok"` で閉じる）。
 - マップ一覧の絞り込み（#305）: `tree.filter` の `text` に `場所:58,7E`（地名の番号、16 進）・`地形:9`（配置の番号、16 進）を書ける。名前の語と並べて使える。
 - タウンマップの小窓（#306）: `action` か `menu.run` の `view.townMap`（個人設定 `showTownMap`）。窓の ID は `town`（`ui.shot` で撮れる）、絵は `town.canvas`（`canvasPng` の `id`、`mouse` の `id` と `px`。マスの左上は `px` で (32 + x×8, 32 + y×8)）、面のコンボ `town.page`、下の欄 `town.label`。
-- タウンマップの紐づけ（#386）: 右クリックのメニューは `mouse` の `id: "town.canvas"` に `action: "rightClick"`（1 マス）か `action: "drag"`・`button: "right"`（`px` から `toPx` までの範囲）で出す。項目は `contextMenu.state` で読み、`contextMenu.press` の `id` で押す（`town.linkSection` = 今の地名をここに紐づける、`town.linkMap` = 今のマップだけをここに紐づける、`town.unlinkMap`・`town.unlinkSection` = 紐づけを外す。外す項目は紐づけがあるときだけ出る）。押したあとの保存は少し後に終わるので、`town.state` の `links` で確かめる。保存先はプロジェクトフォルダを開いていれば `zigzagumap.json` の `"townMap"`、ROM だけなら個人設定の `townLinks`（ROM の小文字のパスが鍵。`--profile` のフォルダの settings.json）。`maps
-egionmap.json` と ROM には書かない。
+- タウンマップの紐づけ（#386）: 右クリックのメニューは `mouse` の `id: "town.canvas"` に `action: "rightClick"`（1 マス）か `action: "drag"`・`button: "right"`（`px` から `toPx` までの範囲）で出す。項目は `contextMenu.state` で読み、`contextMenu.press` の `id` で押す（`town.linkSection` = 今の地名をここに紐づける、`town.linkMap` = 今のマップだけをここに紐づける、`town.unlinkMap`・`town.unlinkSection` = 紐づけを外す。外す項目は紐づけがあるときだけ出る）。押したあとの保存は少し後に終わるので、`town.state` の `links` で確かめる。保存先はプロジェクトフォルダを開いていれば `zigzagumap.json` の `"townMap"`、ROM だけなら個人設定の `townLinks`（ROM の小文字のパスが鍵。`--profile` のフォルダの settings.json）。`maps\regionmap.json` と ROM には書かない。
 - ポインタ一覧（#307）: `action` か `menu.run` の `tools.pointers`（Ctrl+Shift+P）。窓の ID は `pointers`（`ui.shot` で撮れる）、一覧 `pointers.list`・行 `pointers.row.<番号>`（`mouse` の `rightClick` で右クリックのメニュー。項目 `copyValue`・`copyBytes`・`copyLocation`）、アドレス `pointers.address`、ROM の選び方 `pointers.rom`（`base` / `other`。`other` はファイルのダイアログを出す）、「探す」`pointers.search`、結果の文 `pointers.status`・一覧 `pointers.results`（行 `pointers.result.<番号>`）、「閉じる」`pointers.close`。
 - パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。トリプルレイヤーは 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
 - マップ一覧のサムネイル（#315）: `action` か `menu.run` の `view.treeThumbnails`（個人設定 `treeThumbnails`。既定 false）。行の縮小は `canvas.tree-thumb`。

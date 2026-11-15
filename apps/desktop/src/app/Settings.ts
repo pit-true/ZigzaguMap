@@ -100,11 +100,11 @@ export interface SettingsData {
   usageMarks: boolean;
   /** 3 層の次の番号（単独では置けないブロック）が置かれているマスに印を付ける（表示メニュー。Phase4 #301。既定オン）。 */
   tripleChildMarks: boolean;
-  /** 自動ペン（マップタブの右の欄。P で切り替え。Phase4 #310）。 */
+  /** オートペン（マップタブの右の欄。P で切り替え。Phase4 #310）。 */
   autoPen: boolean;
-  /** 自動ペンの筆の大きさ（1・2・3・5）。 */
+  /** オートペンの筆の大きさ（1・2・3・5）。 */
   autoPenSize: number;
-  /** 自動ペンで移動許可も付ける（パーツのマスの値、無ければ使用回数でいちばん多い値）。 */
+  /** オートペンで移動許可も付ける（パーツのマスの値、無ければ使用回数でいちばん多い値）。 */
   autoPenMovement: boolean;
   /** 自動で描けるブロックに、ブロックパレットで薄い色を重ねる（表示メニュー。既定オン）。 */
   autoPenTint: boolean;
@@ -261,6 +261,11 @@ export class Settings {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     await invoke("save_settings", { text: JSON.stringify(this.data, null, 2) }).catch(() => undefined);
+  }
+
+  /** 書き込みを待っていれば、すぐに書く（`setting` の命令のように保存を頼んでいない変更は書かない）。 */
+  async flushPending(): Promise<void> {
+    if (this.timer) await this.flush();
   }
 
   private scheduleSave(): void {

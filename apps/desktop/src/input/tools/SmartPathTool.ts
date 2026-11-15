@@ -2,7 +2,7 @@ import { SmartPath, lineCells, type PenWrite } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { currentTool } from "../../app/paintTool";
 import type { Cell } from "../../ui/map/MapView";
-import type { AutoPenHost } from "../AutoPenTool";
+import type { AutoPenHost } from "./AutoPenTool";
 import type { FillCell } from "../paintPlans";
 
 /** 描いたマスのまわりで、縁を選び直すかもしれない幅（読み込む隣のマップを決める）。 */

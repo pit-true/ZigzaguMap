@@ -1,4 +1,4 @@
-/** SHA-1（同期。依存なし）。自動ペンのタイルセットの見分け（Bochi の mapassist と同じ識別子）に使う。 */
+/** SHA-1（同期。依存なし）。オートペンのタイルセットの見分け（Bochi の mapassist と同じ識別子）に使う。 */
 
 function rotl(x: number, n: number): number {
   return ((x << n) | (x >>> (32 - n))) >>> 0;

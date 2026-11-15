@@ -1,4 +1,4 @@
-"""Phase4 の描く道具（3 層のブロックの選び方と置けない規則、自動ペン、マップ作成補助）を、素の ROM と写しで確かめる。
+"""Phase4 の描く道具（3 層のブロックの選び方と置けない規則、オートペン、マップ作成補助）を、素の ROM と写しで確かめる。
 
   python tests/automation/pen_check.py --rom <素の BPRJ の写し> [--exe <zigzagumap.exe>] [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
       [--bochi <Bochi の mapassist の txt>]
@@ -10,19 +10,19 @@
     書かないマスになる。0x011 は鉛筆・矩形塗り・境界ブロックに置けず、ステータスバーに理由が出る。置かれている 0x011 には印が付く。
     マップから 0x011 を拾ったときもステータスバーに「トリプルレイヤー」が出る（#339）。マップ作成補助の窓のブロック一覧で 0x011 を押すと
     0x010 を選び、矩形に入った 0x011 は空きになる（#338）。
-  - autopen: 自動ペン（#310・#311）。
-  - autopenBand: 隣のマップの帯の上での自動ペン（マサラタウンの上の 1 番道路。#335）。帯の上だけ・境界をまたぐドラッグのどちらも、
+  - autopen: オートペン（#310・#311）。
+  - autopenBand: 隣のマップの帯の上でのオートペン（マサラタウンの上の 1 番道路。#335）。帯の上だけ・境界をまたぐドラッグのどちらも、
     隣のマップに書かれ、1 回の操作・1 回の取り消しで戻る。
   - tripleTools: 0x011 をスタンプの貼り付け・ミキシングバッグ・Ctrl+V・Alt の入れ替え・隣のマップの帯の上でも書かない（#301）。
     帯の上は帯のマップのタイルセットで見る（トキワシティ 3.1 と 1 番道路 3.19。#337）。
   - assist: マップ作成補助の窓（#312・#313）。「範囲を整える」で「移動エリアを付ける」を外すと移動許可は変わらず、付けると入る（#336）。
   - assistReopen: 保存したパーツが、ROM とプロジェクトを開き直しても残る（maps\\autopen\\ から読む）。
-  - assistEdge: 窓で縁つきのパーツを作って保存し、自動ペンで描く（#312）。
+  - assistEdge: 窓で縁つきのパーツを作って保存し、オートペンで描く（#312）。
   - assistOutside: 窓に保存していない変更があるときに窓の外（自動操作の autopen.save）で保存しても、窓の一覧に足され、
     窓で保存しても消えない。閉じると未保存の編集は捨てる（#379）。
   - assistBochi: 「Bochi の定義を読み込む…」で読み込んだパーツが、窓を開いた直後でも編集中でも窓の一覧に足され、
     窓で保存しても消えない（#379）。`--bochi` に Bochi の mapassist の txt を渡したときだけ（読むだけ。同梱しない）。
-  - candidates: パーツの定義が無い主タイルセット（家の中 4.1）で、自動ペンを入れると候補を作り、それで描く（#313）。
+  - candidates: パーツの定義が無い主タイルセット（家の中 4.1）で、オートペンを入れると候補を作り、それで描く（#313）。
 """
 from __future__ import annotations
 
@@ -160,7 +160,7 @@ def check_autopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check("池（岩の岸）" in names and "木" in names, f"素の BPRJ の主タイルセットに既定のパーツ（{names}）")
     z.call({"cmd": "key", "key": "p"})
     st = z.call({"cmd": "autopen.state"})
-    check(st["active"] is True, "P で自動ペンがオンになる")
+    check(st["active"] is True, "P でオートペンがオンになる")
     check(0x12B in st["tinted"], "自動で描けるブロックにパレットで色を重ねる")
     canvas(z, shots, "pen_autopen_palette.png", "palette")
     z.call({"cmd": "autopen.set", "size": 3})
@@ -231,7 +231,7 @@ def map_cells(z: Zigzagu, bank: int, map_: int) -> tuple[int, list[int]]:
 
 
 def check_autopen_band(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
-    """隣のマップの帯の上での自動ペン（マサラタウン 3.0 の上の帯が 1 番道路 3.19）。"""
+    """隣のマップの帯の上でのオートペン（マサラタウン 3.0 の上の帯が 1 番道路 3.19）。"""
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
     z.call({"cmd": "tab", "name": "map"})
     z.call({"cmd": "neighbors.state", "wait": True})
@@ -263,14 +263,14 @@ def check_autopen_band(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
     _, p1 = map_cells(z, 3, 0)
     _, r1 = map_cells(z, 3, 19)
     got = [block_at(r1, rw, x, y) for y in range(rh - 5, rh - 2) for x in range(9, 12)]
-    check(0x12B in want and got == want, f"帯の上の自動ペンで、主マップと同じ池を 1 番道路に描く（{[hex(b) for b in got]}、主マップ {[hex(b) for b in want]}）")
+    check(0x12B in want and got == want, f"帯の上のオートペンで、主マップと同じ池を 1 番道路に描く（{[hex(b) for b in got]}、主マップ {[hex(b) for b in want]}）")
     check(p1 == p0, "帯の上だけで描いたときは主マップは変わらない")
     st = z.call({"cmd": "state"})
     check(st["history"] == hist + 1 and "3.19" in st["dirty"], f"1 回の操作で 1 番道路に未出力の印（{st['history'] - hist}、{st['dirty']}）")
     if shots:
         (shots / "pen_autopen_band.png").write_bytes(base64.b64decode(z.call({"cmd": "canvasPng", "target": "map", "neighbors": True})["png"]))
     z.call({"cmd": "undo"})
-    check(map_cells(z, 3, 19)[1] == r0 and map_cells(z, 3, 0)[1] == p0, "1 回の取り消しで帯の上の自動ペンが戻る")
+    check(map_cells(z, 3, 19)[1] == r0 and map_cells(z, 3, 0)[1] == p0, "1 回の取り消しで帯の上のオートペンが戻る")
     z.call({"cmd": "key", "key": "P"})
 
 
@@ -356,7 +356,7 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     win(z, {"cmd": "click", "id": "assist.save"})
     path = pathlib.Path(work) / "maps" / "autopen" / "primary_298B44.json"
     check(path.exists() and "テストの面" in path.read_text(encoding="utf-8"), "保存すると maps/autopen に書く")
-    check("テストの面" in [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]], "保存したパーツを自動ペンで使える")
+    check("テストの面" in [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]], "保存したパーツをオートペンで使える")
     # マップから候補を作る（#313）
     win(z, {"cmd": "click", "id": "assist.analyze"})
     auto: list = []
@@ -414,7 +414,7 @@ def check_assist_outside(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> N
         saved = saved_names(pathlib.Path(work))
         check("外の面" in saved and "窓の面" in saved, f"窓で保存しても、窓の外で保存したパーツが消えない（{saved}）")
         main = [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]]
-        check(main == saved, f"メインの自動ペンのパーツもファイルと同じ（{len(main)} 個）")
+        check(main == saved, f"メインのオートペンのパーツもファイルと同じ（{len(main)} 個）")
         # 窓を閉じて開き直すと、保存したものが出る（未保存の編集は閉じると捨てる）
         add_window_part(z, "捨てる面")
         win(z, {"cmd": "close"})
@@ -571,7 +571,7 @@ def check_triple_tools(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
 
 
 def check_assist_edge(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
-    """マップ作成補助で縁つきのパーツを作って保存し、自動ペンで使う（#312）。"""
+    """マップ作成補助で縁つきのパーツを作って保存し、オートペンで使う（#312）。"""
     with tempfile.TemporaryDirectory(prefix="zzm-pene-", ignore_cleanup_errors=True) as work:
         z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
         z.call({"cmd": "selectMap", "bank": 3, "map": 0})
@@ -598,8 +598,8 @@ def check_assist_edge(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None
         win(z, {"cmd": "click", "id": "assist.save"})
         win(z, {"cmd": "close"})
         st = z.call({"cmd": "autopen.state"})
-        check("テストの縁" in [p["name"] for p in st["parts"]], "保存した縁つきのパーツが自動ペンの一覧に入る")
-        # 自動ペンで真ん中（C）を 3 マスの筆で押すと、筆の範囲の外周に縁が付く
+        check("テストの縁" in [p["name"] for p in st["parts"]], "保存した縁つきのパーツがオートペンの一覧に入る")
+        # オートペンで真ん中（C）を 3 マスの筆で押すと、筆の範囲の外周に縁が付く
         z.call({"cmd": "autopen.set", "active": True, "size": 3})
         z.call({"cmd": "selectBlock", "block": free[4]})
         check(z.call({"cmd": "autopen.state"})["part"] == "テストの縁", "真ん中のブロックを選ぶと作ったパーツで描く")
@@ -613,7 +613,7 @@ def check_assist_edge(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None
 
 
 def check_candidates(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
-    """パーツの定義が無い主タイルセットのマップで、候補を作って自動ペンで描く（#313）。
+    """パーツの定義が無い主タイルセットのマップで、候補を作ってオートペンで描く（#313）。
 
     素の BPRJ で既定のパーツがあるのは主タイルセット 0x298B44 だけなので、家の中（4.1。主タイルセットが違う）で確かめる。
     """
@@ -623,8 +623,8 @@ def check_candidates(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
         z.call({"cmd": "tab", "name": "map"})
         m = z.call({"cmd": "state"})["map"]
         check(m["primaryTileset"] != PRIMARY, f"主タイルセットが既定のパーツのものと違う（{m['primaryTileset']:#x}）")
-        check(z.call({"cmd": "autopen.state"})["parts"] == [], "定義が無いので、自動ペンを入れる前はパーツが無い")
-        # 自動ペンを入れる（P キー）と、マップから候補を作って使う（保存はしない）
+        check(z.call({"cmd": "autopen.state"})["parts"] == [], "定義が無いので、オートペンを入れる前はパーツが無い")
+        # オートペンを入れる（P キー）と、マップから候補を作って使う（保存はしない）
         z.call({"cmd": "autopen.set", "size": 1})
         z.call({"cmd": "key", "key": "p"})
         st: dict = {}
@@ -634,7 +634,7 @@ def check_candidates(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
                 break
             time.sleep(0.2)
         names = [p["name"] for p in st["parts"]]
-        check(bool(names) and all(n.startswith("自動: ") for n in names), f"自動ペンを入れると候補を作る（{len(names)} 個）")
+        check(bool(names) and all(n.startswith("自動: ") for n in names), f"オートペンを入れると候補を作る（{len(names)} 個）")
         saved = pathlib.Path(work) / "maps" / "autopen"
         check(not saved.exists() or not any(saved.iterdir()), "候補は保存しない")
         # 候補のパーツのブロックを選んで描く（面があれば面、無ければ最初に見つかったもの）

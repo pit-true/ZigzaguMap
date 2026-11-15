@@ -132,7 +132,7 @@ export class App implements ActionTarget {
   profileDir: string | null = null;
   /** Phase3 でマップの表示に足したもの（隣の帯・つまみ・使用の印・画像のコピーなど）。 */
   readonly extras: MapExtras;
-  /** Phase4 の描く道具の追加分（3 層の印・自動ペン・マップ作成補助）。 */
+  /** Phase4 の描く道具の追加分（3 層の印・オートペン・マップ作成補助）。 */
   readonly pen: PenExtras;
   /** Phase5 の描く道具と表示の追加分（道具の帯など）。 */
   readonly tools: ToolExtras;
@@ -418,6 +418,8 @@ export class App implements ActionTarget {
     if (!session) return false;
     const start = performance.now();
     timings.lastMapSwitchStart = start;
+    // 描いた直後に切り替えたときも、前のマップの未出力の印をすぐ付ける（待っている確かめを先に済ませる。#406）
+    this.changes.flushDirty();
     try {
       const map = await session.openMap(id);
       if (this.loadFailures.delete(`${id.bank}.${id.map}`)) this.tree.refreshMarks();

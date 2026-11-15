@@ -1,7 +1,7 @@
 import type { EditorState } from "../app/EditorState";
 import { jaPen } from "../i18n/ja.pen";
 import type { Cell } from "../ui/map/MapView";
-import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost } from "./AutoPenTool";
+import { AUTOPEN_PREVIEW_ALPHA, type AutoPenHost } from "./tools/AutoPenTool";
 import type { MapCells } from "./MapCells";
 import { alwaysInside, cellsCommand } from "./paintCommands";
 import type { FillCell } from "./paintPlans";
@@ -10,7 +10,7 @@ import { drawPreviewBlocks } from "./previewDraw";
 import { dropTripleChildren } from "./tripleRules";
 
 /**
- * マップタブの道具が共通で使う、ブロックの書き込み（鉛筆・矩形塗り・入れ替え・自動ペン・マップ作成補助・貼り付け）。
+ * マップタブの道具が共通で使う、ブロックの書き込み（鉛筆・矩形塗り・入れ替え・オートペン・マップ作成補助・貼り付け）。
  * 画面のマスの一覧を、マップごとのコマンドにして 1 回の操作で実行する。隣のマップが読み込まれていなければ、
  * 読み込んでから実行する（その間の操作は順に待たせる）。
  * 3 層の次の番号（#301）は、描き方ごとでなくここ 1 か所で落とす。1 つも書けなかったときはステータスバーに理由を出す。
@@ -21,7 +21,7 @@ export class BlockWriter implements AutoPenHost {
     /** 画面のマスとマップのマスの対応。 */
     readonly cells: MapCells,
     private readonly preview: PreviewCanvas,
-    /** ドラッグの道具を使っている間か（自動ペンの下見を出さない）。 */
+    /** ドラッグの道具を使っている間か（オートペンの下見を出さない）。 */
     private readonly dragging: () => boolean,
   ) {}
 
@@ -56,7 +56,7 @@ export class BlockWriter implements AutoPenHost {
   }
 
   /**
-   * 書くマスを実行の直前に決めて書く（自動ペン。#335）。`area` は読むか書くかもしれない画面のマスで、そこにかかる隣のマップを
+   * 書くマスを実行の直前に決めて書く（オートペン。#335）。`area` は読むか書くかもしれない画面のマスで、そこにかかる隣のマップを
    * 先に読み込む。読み込みを待つ間に並んだ前の書き込みを済ませてから `plan` を呼ぶので、前の書き込みを見て中身を決められる。
    */
   writePlanned(area: readonly Cell[], plan: () => readonly FillCell[], merge: boolean, ownMovements: boolean): void {
@@ -92,7 +92,7 @@ export class BlockWriter implements AutoPenHost {
     return ref && grid ? grid.getCell(ref.x, ref.y) : null;
   }
 
-  /** カーソルに置く物を薄く重ねる（自動ペン。空なら消す）。 */
+  /** カーソルに置く物を薄く重ねる（オートペン。空なら消す）。 */
   showPreview(cells: readonly FillCell[]): void {
     if (this.dragging()) return;
     if (cells.length === 0) return this.preview.end();

@@ -2,7 +2,7 @@ import { edgeSlotOf } from "./EdgeSolver.js";
 import { EDGE_INNER_SLOTS, EDGE_OUTER_SLOTS, gridOf, singleGrid, type AutoPenPart, type PartGrid } from "./types.js";
 
 /**
- * マップから自動ペンのパーツの候補を作る（#313）。主タイルセットが同じ全マップの並びと挙動から作り、名前は「自動: 」で始める。
+ * マップからオートペンのパーツの候補を作る（#313）。主タイルセットが同じ全マップの並びと挙動から作り、名前は「自動: 」で始める。
  * - 草むら・水・段差は挙動（属性の下位 9 ビット）で決める。
  * - 水の縁は、水のブロック（C）に 8 方向で隣り合うブロックごとに、周りが水のまとまりかどうかを数え、
  *   多数決で縁つきの枠（NW〜SE・内角）に当てはめる。

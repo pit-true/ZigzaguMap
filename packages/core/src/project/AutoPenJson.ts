@@ -20,7 +20,7 @@ import { ProjectFormatError } from "./ProjectFormatError.js";
 import { AUTOPEN_DIR, tilesetFileBase } from "./paths.js";
 
 /**
- * 自動ペンのパーツの定義のファイル `maps\autopen\<識別子>.json`（#303。タイルセット 1 つが 1 ファイル。ビルドは読まない）。
+ * オートペンのパーツの定義のファイル `maps\autopen\<識別子>.json`（#303。タイルセット 1 つが 1 ファイル。ビルドは読まない）。
  *
  * 形:
  * ```json

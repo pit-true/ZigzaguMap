@@ -14,7 +14,7 @@ import type { App } from "../../app/App";
 import { jaTemplate as t } from "../../i18n/ja.template";
 import { jaTrainer } from "../../i18n/ja.trainer";
 import "../../styles/template.css";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { autoId } from "../form/controls";
 import { showError } from "../MessageBox";
 import { hex, parseNumber, parseParty, partyText } from "../trainer/trainerText";
@@ -327,9 +327,7 @@ export function openTemplatePicker(app: App, x: number, y: number, source: Templ
         void showError(e instanceof Error ? e.message : String(e));
       }
     };
-    const buttons = document.createElement("div");
-    buttons.className = "dialog-buttons";
-    buttons.append(autoId(dialogButton(t.place, ok), "template.place"), autoId(dialogButton(t.cancel, () => finish(null)), "template.cancel"));
+    const buttons = dialogButtonRow(autoId(dialogButton(t.place, ok), "template.place"), autoId(dialogButton(t.cancel, () => finish(null)), "template.cancel"));
     frame.body.append(intro, kindRow, form, buttons);
     handleDialogKeys(frame, () => finish(null));
     frame.register({

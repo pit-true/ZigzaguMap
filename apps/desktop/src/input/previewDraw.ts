@@ -13,7 +13,7 @@ export function strokeCellRect(p: PreviewPen, r: CellRect, color: string): void 
   p.c.strokeRect(p.ox + r.x * p.size + 0.5, p.oy + r.y * p.size + 0.5, r.width * p.size - 1, r.height * p.size - 1);
 }
 
-/** ブロックを下見の Canvas に半透明で描く（矩形塗り・自動ペンの下見。`tiles` は主マップのタイルセット）。 */
+/** ブロックを下見の Canvas に半透明で描く（矩形塗り・オートペンの下見。`tiles` は主マップのタイルセット）。 */
 export function drawPreviewBlocks(p: PreviewPen, tiles: TilesetView, cells: readonly FillCell[], alpha = PREVIEW_ALPHA): void {
   if (cells.length === 0) return;
   const minX = Math.min(...cells.map((c) => c.x));

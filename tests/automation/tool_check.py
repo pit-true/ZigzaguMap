@@ -460,6 +460,13 @@ def check_view(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "selection"})["movement"] == 0x1A, "00〜3F の外は選択を変えない")
     z.call({"cmd": "mouse", "target": "movementPalette", "action": "click", "cell": [0, 5]})
     check(z.call({"cmd": "view.aids"})["movementValue"] == "05", "パレットで選ぶと欄の値も変わる")
+    # 打っている途中の 1 桁では選ばない（「4F」の「4」で 04 にならない。#406）。Enter か欄を離れると 1 桁のまま選ぶ
+    z.call({"cmd": "ui.type", "id": "movement.value", "text": "2", "blur": False})
+    check(z.call({"cmd": "selection"})["movement"] == 0x05, "1 桁の途中では選択を変えない")
+    z.call({"cmd": "key", "id": "movement.value", "key": "Enter"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x02, "1 桁のまま Enter で選ぶ（02）")
+    z.call({"cmd": "setField", "id": "movement.value", "value": "3"})
+    check(z.call({"cmd": "selection"})["movement"] == 0x03, "1 桁のまま欄を離れると選ぶ（03）")
     screenshot(z, shots, "tool_view_movement.png")
     # グリッドの設定
     z.call({"cmd": "tab", "name": "map"})
@@ -541,8 +548,6 @@ def check_shortcuts(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     check(z.call({"cmd": "view.aids"})["grid"] is True, "Ctrl+Shift+G でグリッドを出す")
     menu = z.call({"cmd": "menu.list"})
     check("Ctrl+Shift+G" in json.dumps(menu, ensure_ascii=False), "メニューの表記も変わる")
-    # 個人設定の書き込みは少し待ってまとめる（自動操作の exit は待たずに終わるので、書き込まれるまで待つ）
-    time.sleep(1)
 
 
 def check_shortcuts_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:

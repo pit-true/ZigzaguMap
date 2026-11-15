@@ -2,7 +2,7 @@ import { MIN_EDGE_RESIZE, maxMapHeight, type BoxResize, type EdgeFill } from "@z
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaTools } from "../../i18n/ja.tools";
-import { createDialog, dialogButton, handleDialogKeys, pressable } from "../Dialog";
+import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import "../../styles/tools.css";
 
 /** 広げた所の埋め方（Q6 の推奨: 既定は今と同じ端の写し）。 */
@@ -194,9 +194,7 @@ export function openResizeDialog(state: EditorState, apply: (plan: ResizePlan) =
       if (done) frame.remove();
     });
   };
-  const buttons = document.createElement("div");
-  buttons.className = "dialog-buttons";
-  buttons.append(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => frame.remove()));
+  const buttons = dialogButtonRow(dialogButton(ja.ok, ok), dialogButton(ja.cancel, () => frame.remove()));
   frame.body.append(now, grid, fillRow, note, view, info, buttons);
   handleDialogKeys(
     frame,
