@@ -115,6 +115,22 @@ export function mapLabel(m: MapInfo, sortMode: number): string {
   return ja.mapItem(m.name ?? ja.noName, sortMode === SORT_BY_NAME_AND_TILESET ? suffixOf(m) : "", m.id.bank, m.id.map);
 }
 
+/** マップの状態の印（Phase5 #401）。開いている・未出力・読み込めなかった。無ければ null。 */
+export type TreeMark = "open" | "dirty" | "error" | null;
+
+/** 名前の前の印（#401）。読み込めなかった > 未出力 > 開いている の順に 1 つ。 */
+export function treeMark(state: { readonly failed: boolean; readonly dirty: boolean; readonly opened: boolean }): TreeMark {
+  if (state.failed) return "error";
+  if (state.dirty) return "dirty";
+  if (state.opened) return "open";
+  return null;
+}
+
+/** 右クリックの「名前をコピー」で写す名前（一覧と同じ書き方。並び替えの補足と番号は付けない。#401）。 */
+export function copyNameOf(m: MapInfo | null | undefined): string {
+  return m?.name == null ? ja.noName : listText(m.name);
+}
+
 /** 「マップとタイルセットで並び替え」の補足（建物/施設、ジム など。通常のマップは無し）。 */
 function suffixOf(m: MapInfo): string {
   return tilesetSuffixOf(m.secondaryNumber);

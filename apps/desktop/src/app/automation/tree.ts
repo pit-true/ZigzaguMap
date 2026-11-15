@@ -90,8 +90,23 @@ async function open(app: App, req: AutomationRequest): Promise<unknown> {
   return { item: app.tree.items().find((i) => i.key === key) ?? null, status: app.state.status };
 }
 
+/** 項目を右クリックする（Phase5 #401。メニューは `contextMenu.state` / `contextMenu.press` で読んで押す）。 */
+async function rightClick(app: App, req: AutomationRequest): Promise<unknown> {
+  const key = find(app, req);
+  const el = row(app, key);
+  const init = { ...mouseInit(el, 1), button: 2, buttons: 2 };
+  el.dispatchEvent(new MouseEvent("mousedown", init));
+  el.dispatchEvent(new MouseEvent("mouseup", { ...init, buttons: 0 }));
+  el.dispatchEvent(new MouseEvent("contextmenu", { ...init, buttons: 0 }));
+  await settle();
+  return app.tree.items().find((i) => i.key === key) ?? null;
+}
+
 export const treeCommands: CommandTable = {
   "tree.list": list,
   "tree.select": select,
   "tree.open": open,
+  "tree.rightClick": rightClick,
+  // 最後にコピーした文字（自動操作ではクリップボードへ書かず、ここに残す）
+  "clipboard.last": (app) => app.views.lastCopied,
 };
