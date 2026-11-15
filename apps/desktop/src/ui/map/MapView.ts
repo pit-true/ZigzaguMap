@@ -1,5 +1,6 @@
 import { BLOCK_PIXELS, type Margins } from "@zigzagumap/core";
 import type { MapImage } from "./MapImage";
+import { DEFAULT_GRID_STYLE, dashPattern, gridLinePositions, isDefaultGridStyle, sameGridStyle, type GridStyle } from "./gridStyle";
 
 /** マス目の位置。 */
 export interface Cell {
@@ -34,6 +35,8 @@ export class MapView {
   private drawnVersion = -1;
   private zoomValue = 1;
   private gridOn = false;
+  /** グリッドの形（Phase5 #391。既定は今までの見た目）。 */
+  private gridStyle: GridStyle = DEFAULT_GRID_STYLE;
   /** 主マップのまわりの余白（マス。隣のマップの帯の分）。 */
   private marginsValue: Margins = NO_MARGINS;
   /** 主マップの枠（隣のマップがあるときだけ出す）。 */
@@ -136,6 +139,13 @@ export class MapView {
     if (z === this.zoomValue && grid === this.gridOn) return;
     this.zoomValue = z;
     this.gridOn = grid;
+    this.layout();
+  }
+
+  /** グリッドの形を変える（表示 > グリッドの設定…。Phase5 #391）。 */
+  setGridStyle(style: GridStyle): void {
+    if (sameGridStyle(style, this.gridStyle)) return;
+    this.gridStyle = style;
     this.layout();
   }
 
@@ -320,7 +330,7 @@ export class MapView {
     }
     this.gridCanvas.width = dw;
     this.gridCanvas.height = dh;
-    if (this.gridOn && dw > 0) drawGrid(this.gridCanvas, this.cellSize);
+    if (this.gridOn && dw > 0) drawGrid(this.gridCanvas, this.cellSize, this.gridStyle);
     this.sync();
   }
 }
@@ -343,12 +353,24 @@ function canvas(className: string): HTMLCanvasElement {
 /**
  * 16px（拡大時 32px）ごとに、AdvanceMap と同じくマスの左端・上端へ黒い線を引く。
  * 線の太さは等倍で 1px、拡大時は 2px（等倍の線を拡大したのと同じ）。
+ * `style`（Phase5 #391）で線の間・ずらし・色・線の形を変えられる。既定なら今までと同じ描き方。
  */
-export function drawGrid(target: HTMLCanvasElement, step: number): void {
+export function drawGrid(target: HTMLCanvasElement, step: number, style: GridStyle = DEFAULT_GRID_STYLE): void {
   const c = target.getContext("2d")!;
   c.clearRect(0, 0, target.width, target.height);
-  c.fillStyle = "#000";
   const line = Math.max(1, Math.round(step / 16));
-  for (let x = 0; x < target.width; x += step) c.fillRect(x, 0, line, target.height);
-  for (let y = 0; y < target.height; y += step) c.fillRect(0, y, target.width, line);
+  if (isDefaultGridStyle(style)) {
+    c.fillStyle = "#000";
+    for (let x = 0; x < target.width; x += step) c.fillRect(x, 0, line, target.height);
+    for (let y = 0; y < target.height; y += step) c.fillRect(0, y, target.width, line);
+    return;
+  }
+  c.fillStyle = style.color;
+  const { on, off } = dashPattern(style.line, line);
+  const run = (length: number, draw: (from: number, len: number) => void): void => {
+    if (!Number.isFinite(on)) return draw(0, length);
+    for (let p = 0; p < length; p += on + off) draw(p, Math.min(on, length - p));
+  };
+  for (const x of gridLinePositions(target.width, step, style.width, style.offsetX)) run(target.height, (from, len) => c.fillRect(x, from, line, len));
+  for (const y of gridLinePositions(target.height, step, style.height, style.offsetY)) run(target.width, (from, len) => c.fillRect(from, y, len, line));
 }
