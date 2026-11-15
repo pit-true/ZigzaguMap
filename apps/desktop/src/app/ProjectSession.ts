@@ -281,6 +281,16 @@ export class ProjectSession {
   }
 
   /**
+   * 加えたタイルセット（addTileset）の位置を使う組をキャッシュから捨てる。取り消したあとに同じ位置へ別の中身を加えると、
+   * 前の中身の組が残って古い絵で描くため（新しいタイルセット #397・移植）。表示中の組は、組の付け替えで開き直す。
+   */
+  forgetTilesets(pointer: number): void {
+    for (const key of [...this.tilesets.keys()]) {
+      if (key.split(":").map(Number).includes(pointer >>> 0)) this.tilesets.delete(key);
+    }
+  }
+
+  /**
    * タイルセットを編集したあと、それを使う組（キャッシュにあるもの）を作り直す。作り直した組を返す。
    * 組のキーは「主のポインタ値:副のポインタ値」。
    */

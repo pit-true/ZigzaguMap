@@ -13,12 +13,15 @@
 - 396: パレットエディタの 16 進の RGB の欄で 15 ビットに丸めて入る。表示 > 未使用の色がタイルとブロックから数えた値と合う。
   ツール > 色の使用箇所… の行を押すとブロックエディタでそのブロックを選ぶ。JASC-PAL・GIMP の .gpl・Adobe の .act を読み、16 色でなければエラー。
   読み込んだ色の反映が 1 回の Ctrl+Z で戻る。
+- 397: 画像 > 新しいタイルセット… で空の副タイルセットを作ると組が付け替わり、1 回の Ctrl+Z で戻る。
+  写しで作るとマップの見た目は同じで、出力すると New の tileset.json になる。
 """
 from __future__ import annotations
 
 import argparse
 import base64
 import pathlib
+import re
 import struct
 import sys
 import tempfile
@@ -577,6 +580,57 @@ def check_396(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     pe(z, {"cmd": "close"})
 
 
+def check_397(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> None:
+    s0 = snap(z)
+    old = s0["secondary"]["pointer"]
+    map_before = z.call({"cmd": "canvasPng", "target": "map"})["png"]
+
+    def create(tiles: str, blocks: str, content: int) -> dict:
+        be(z, {"cmd": "action", "id": "tiles.newTileset"})
+        time.sleep(0.3)
+        be(z, {"cmd": "setField", "id": "be.nt.kind", "value": 1})
+        be(z, {"cmd": "setField", "id": "be.nt.tiles", "value": tiles})
+        be(z, {"cmd": "setField", "id": "be.nt.blocks", "value": blocks})
+        be(z, {"cmd": "setField", "id": "be.nt.content", "value": content})
+        save_shot(z, shots, f"new_tileset_{content}.png", BE)
+        be(z, {"cmd": "dialog", "press": "create"})
+        s = s0
+        for _ in range(50):
+            s = snap(z)
+            if s["secondary"]["pointer"] != old:
+                break
+            time.sleep(0.1)
+        return s
+
+    # 空（タイル 20 → 32 に切り上げ、ブロック 16）
+    s1 = create("20", "16", 0)
+    sec = s1["secondary"]
+    check(sec["pointer"] != old, f"397: 空の副タイルセットを作ると組が付け替わる（{old:#x} → {sec['pointer']:#x}）")
+    check(len(sec["attributes"]) == 16 and len(base64.b64decode(sec["tiles"])) == 32 * 32, f"397: タイル 32（16 の倍数）とブロック 16 で作る（{len(sec['attributes'])}）")
+    check("新しいタイルセット" in be_state(z)["status"], "397: 窓の下に作ったことが出る")
+    check(z.call({"cmd": "canvasPng", "target": "map"})["png"] != map_before, "397: 空のタイルセットではマップの見た目が変わる")
+    be(z, {"cmd": "undo"})
+    time.sleep(0.5)
+    check(snap(z)["secondary"]["pointer"] == old and z.call({"cmd": "canvasPng", "target": "map"})["png"] == map_before, "397: 1 回の Ctrl+Z で元の組に戻る")
+
+    # 今のタイルセットの写し（見た目は同じ）。描いて出力すると New のタイルセットになる
+    count = len(s0["secondary"]["attributes"])
+    s2 = create(str(len(base64.b64decode(s0["secondary"]["tiles"])) // 32), str(count), 1)
+    check(s2["secondary"]["pointer"] != old and s2["secondary"]["blocks"] == s0["secondary"]["blocks"], "397: 写しで作ると中身が同じ")
+    check(z.call({"cmd": "canvasPng", "target": "map"})["png"] == map_before, "397: 写しで作るとマップの見た目は同じ")
+    work.mkdir(parents=True, exist_ok=True)
+    res = z.call({"cmd": "export", "dir": str(work)})
+    written = res.get("written", []) if isinstance(res, dict) else []
+    # 新しいタイルセットは ROM の外の位置（1F00000 など）の名前で出る（前の確かめで変えた元の副タイルセットも出ることがある）
+    tj = [w for w in written if re.search(r"tilesets/secondary_[0-9A-F]{7}/tileset\.json$", w.replace("\\", "/"))]
+    check(len(tj) == 1, f"397: maps/tilesets に新しい副タイルセットを出力する（{tj}）")
+    if tj:
+        import json as _json
+        p_ = pathlib.Path(tj[0]) if pathlib.Path(tj[0]).is_absolute() else work / tj[0]
+        data = _json.loads(p_.read_text(encoding="utf-8"))
+        check(data.get("New") is True and data.get("BlockCount") == count, f"397: tileset.json は New で、ブロック数が同じ（{data.get('New')}, {data.get('BlockCount')}）")
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--rom", required=True)
@@ -609,6 +663,9 @@ def main() -> int:
         if want("396"):
             work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-pal-"))
             check_396(z, shots, work)
+        if want("397"):
+            work = pathlib.Path(a.work) if a.work else pathlib.Path(tempfile.mkdtemp(prefix="zzm-newts-"))
+            check_397(z, shots, work)
 
     print()
     print("失敗なし" if not failures else f"失敗 {len(failures)} 件")

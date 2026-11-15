@@ -94,6 +94,22 @@ export const jaBlockTools = {
   exportFailed: "PNG を作れませんでした。",
   exported: (path: string) => `書き出しました: ${path}`,
 
+  // ---- #397 新しいタイルセット ----
+  newTilesetMenu: "新しいタイルセット…",
+  newTilesetTitle: "新しいタイルセット",
+  newTilesetKind: "種類",
+  newTilesetCount: "タイル数",
+  newTilesetBlocks: "ブロック数",
+  newTilesetContent: "初めの中身",
+  newTilesetEmpty: "空",
+  newTilesetCopy: "今のタイルセットの写し",
+  newTilesetLimit: (tiles: number, blocks: number) => `上限はタイル ${tiles}（16 の倍数に切り上げ）、ブロック ${blocks} です。`,
+  newTilesetNote: "作ると、表示中のマップの組をこのタイルセットに付け替えます（1 回の Ctrl+Z で戻ります）。出力すると maps\\tilesets に New のタイルセットとして書きます。",
+  newTilesetCreate: "作る",
+  newTilesetNumber: (field: string, text: string) => `${field}の「${text}」は数ではありません。`,
+  newTilesetDone: (pointer: number, tiles: number, blocks: number) =>
+    `新しいタイルセット ${hex(pointer >>> 0, 8)}（タイル ${tiles}、ブロック ${blocks}）を作り、表示中のマップに付け替えました`,
+
   /** ショートカット一覧（ヘルプ）。 */
   shortcutRectKeys: "ドラッグ",
   shortcutRect: "タイルを矩形で選ぶ。8 マスの押した位置を左上にして置き、はみ出た分は置かない",

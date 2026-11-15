@@ -235,6 +235,7 @@ export {
 } from "./tileset/TileSelection.js";
 export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
 export { colorUsage, unusedColors, type ColorUsageInput } from "./tileset/ColorUsage.js";
+export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTilesetContent, type NewTilesetOptions, type NewTilesetPlan, type NewTilesetSource } from "./tileset/NewTileset.js";
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";

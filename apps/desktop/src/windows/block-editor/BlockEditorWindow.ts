@@ -25,6 +25,7 @@ import { createBlockEditorMenu, menuShortcut } from "./BlockEditorMenu";
 import { BlockEditActions } from "./BlockEditActions";
 import { BlockStatsView } from "./BlockStatsView";
 import { openBlockSheetExport } from "./BlockSheetExportDialog";
+import { openNewTileset } from "./NewTilesetDialog";
 import { BlockListView } from "./BlockListView";
 import { BlockEditorStatus } from "./BlockEditorStatus";
 import { TilesetIo } from "./TilesetIo";
@@ -137,6 +138,14 @@ export class BlockEditorWindow {
       "view.usage": () => this.toggleStats("usage"),
       "view.unusedBlocks": () => this.toggleStats("unusedBlocks"),
       "view.unusedTiles": () => this.toggleStats("unusedTiles"),
+      "tiles.newTileset": () =>
+        openNewTileset({
+          get model() {
+            return self.model;
+          },
+          client,
+          created: (text) => this.status.show(text),
+        }),
       "tiles.exportBlocks": () =>
         openBlockSheetExport({
           get model() {
