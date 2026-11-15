@@ -26,6 +26,9 @@ export function openWildSearch(host: WildSearchHost): void {
   if (!session) return;
   const finish = (): void => frame.remove();
   const frame = createDialog({ title: wt.searchTitle, width: 520, className: "wild-search", modal: false, onClose: finish });
+  // 浮いた窓は位置を決める（マップを開き直しても検索の結果を見続けられるように、後ろを覆わない）
+  frame.box.style.left = `${Math.max(0, Math.round((window.innerWidth - 520) / 2))}px`;
+  frame.box.style.top = `${Math.max(0, Math.round((window.innerHeight - 420) / 2))}px`;
   const species = new SpeciesOptions(() => host.state.session).options(FR_SPECIES_COUNT).cloneNode(true) as HTMLSelectElement;
   species.dataset["autoId"] = "wild.search.species";
   species.selectedIndex = 1;
