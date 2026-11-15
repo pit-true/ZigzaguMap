@@ -98,6 +98,7 @@ export * from "./wild/layout.js";
 export type { WildArea, WildEncounters, WildHeader, WildInfo, WildSlot } from "./wild/types.js";
 export { WildHeaderCodec, WildInfoCodec, WildSlotCodec, wildHeaderCodec, wildInfoCodec, wildSlotCodec } from "./wild/WildCodec.js";
 export { WildTable, type WildTableEntry } from "./wild/WildTable.js";
+export { FISHING_SLOT_RATES, FISHING_SLOT_RODS, LAND_SLOT_RATES, WATER_SLOT_RATES, levelDistribution, rateGroup, searchSpecies, slotRate, speciesTotals, type WildSearchRow } from "./wild/WildRates.js";
 
 // マップ名
 export { JP_CHARSET, JP_SPACE, JP_TERMINATOR } from "./name/charsetJapanese.js";
