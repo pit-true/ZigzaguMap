@@ -1,0 +1,46 @@
+/* 履歴の窓（Phase5 #402）。 */
+.history-panel .dialog-body {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-hint {
+  color: var(--gray-text);
+  font-size: 11px;
+}
+
+.history-list {
+  width: 260px;
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--field-border);
+  background: var(--window);
+}
+
+.history-row {
+  padding: 1px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.history-row.current {
+  background: var(--select);
+  color: var(--select-text);
+}
+
+.history-row.redo {
+  opacity: 0.45;
+}
+
+.history-row.initial {
+  font-style: italic;
+}
+
+.history-empty {
+  padding: 2px 4px;
+  color: var(--gray-text);
+}
