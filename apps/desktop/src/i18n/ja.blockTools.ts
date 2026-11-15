@@ -1,4 +1,5 @@
 import { formatHex } from "@zigzagumap/core";
+import { ini } from "./ini";
 
 /**
  * ブロックエディタに Phase5 で足した操作の文言（ZigzaguMap 独自。#393〜#397）。
@@ -32,6 +33,71 @@ export const jaBlockTools = {
   selectionSize: (w: number, h: number) => `${w}×${h} のタイルを選んでいます`,
   pickedSize: (w: number, h: number) => `${w}×${h} のタイルを拾いました（反転とパレットもそのまま置きます）`,
 
+  // ---- #394 コピー・貼り付け・入れ替え ----
+  menuEdit: "編集",
+  copy: "ブロックのコピー",
+  cut: "ブロックの切り取り",
+  paste: "ブロックの貼り付け",
+  swap: "ブロックの入れ替え",
+  copied: (block: number) => `ブロック ${hex(block, 3)} をコピーしました`,
+  cutDone: (block: number) => `ブロック ${hex(block, 3)} を切り取りました（空のブロックにしました）`,
+  pasted: (block: number) => `ブロック ${hex(block, 3)} に貼り付けました`,
+  pasteTripleNoNext: "次のブロックが無いため、トリプルレイヤーのブロックは貼り付けられません。",
+  pasteTripleNextIsTriple: (next: number) => `次のブロック ${hex(next, 3)} もトリプルレイヤーなので、トリプルレイヤーのブロックは貼り付けられません。`,
+  pasteTripleCleanup: (next: number) => `ブロック ${hex(next, 3)} は3枚目のレイヤーに使われます。属性と上のレイヤーを消します。`,
+  swapStart: "入れ替え: 1 つ目のブロックを押してください（もう一度 X で終わる）",
+  swapOff: "入れ替えを終えました",
+  swapSecond: (block: number) => `入れ替え: 1 つ目はブロック ${hex(block, 3)}。2 つ目のブロックを押してください`,
+  swapOtherTileset: "入れ替えられるのは、同じタイルセットの中のブロックどうしです。",
+  swapTitle: "ブロックの入れ替え",
+  swapConfirm: (a: number, b: number, maps: number, primary: boolean) =>
+    [
+      `ブロック ${hex(a, 3)} と ${hex(b, 3)} を入れ替えます。`,
+      "",
+      `このタイルセットを使うマップは ${maps} 枚です。マップに置いた番号も付け替えますか？（付け替えると、マップの見た目は変わりません）`,
+      ...(primary ? ["主のタイルセットなので、付け替えたマップはどれも次の出力で maps\\ に書かれます。"] : []),
+      "",
+      "はい: 番号も付け替える　いいえ: タイルセットの中だけ入れ替える　キャンセル: やめる",
+    ].join("\n"),
+  swapped: (a: number, b: number, maps: number) => `ブロック ${hex(a, 3)} と ${hex(b, 3)} を入れ替えました（付け替えたマップ ${maps} 枚）`,
+  /** 入れ替えられない理由（EditError の blockSwapRefused）。 */
+  swapRefused: (reason: string) =>
+    ({
+      same: "同じブロックは入れ替えられません。",
+      child: "トリプルレイヤーの3枚目のレイヤーに使われているブロックは、単独では入れ替えられません。トリプルレイヤーのブロックを選んでください。",
+      noNext: "表の最後のトリプルレイヤーのブロックは、3枚目のレイヤーが無いため入れ替えられません。",
+      mixed: "トリプルレイヤーのブロック（N と N+1 の組）は、ほかのトリプルレイヤーのブロックとだけ入れ替えられます。",
+      overlap: "トリプルレイヤーのブロックの組が重なるため、入れ替えられません。",
+    })[reason] ?? "このブロックは入れ替えられません。",
+
+  // ---- #395 使用回数・未使用・画像の書き出し ----
+  menuView: "表示",
+  viewUsage: "使用回数",
+  viewUnusedBlocks: "未使用のブロック",
+  viewUnusedTiles: "未使用のタイル",
+  counting: "使用回数を数えています…",
+  counted: (unusedBlocks: number, unusedTiles: number | null, ms: number) =>
+    `使用回数を数えました（未使用のブロック ${unusedBlocks} 個${unusedTiles === null ? "" : `、未使用のタイル ${unusedTiles} 枚`}、${ms}ms）`,
+  exportMenu: "ブロック一覧の画像の書き出し…",
+  exportTitle: "ブロック一覧の画像の書き出し",
+  exportTileset: "タイルセット",
+  exportTileset1: ini.BlockEditorForm["131"],
+  exportTileset2: ini.BlockEditorForm["132"],
+  exportRange: "範囲（16 進）",
+  exportLayers: "レイヤー",
+  exportLower: "下",
+  exportUpper: "上",
+  exportThird: "3枚目",
+  exportColumns: "幅（ブロック数）",
+  exportBackground: "透明の扱い",
+  exportBgTransparent: "そのまま（透明）",
+  exportBgBlack: "黒",
+  exportBgPalette0: "パレット0の色0",
+  exportInfo: (blocks: number, w: number, h: number) => `${blocks} 個のブロック、${w}×${h} 画素`,
+  exportSave: "書き出す…",
+  exportFailed: "PNG を作れませんでした。",
+  exported: (path: string) => `書き出しました: ${path}`,
+
   /** ショートカット一覧（ヘルプ）。 */
   shortcutRectKeys: "ドラッグ",
   shortcutRect: "タイルを矩形で選ぶ。8 マスの押した位置を左上にして置き、はみ出た分は置かない",
@@ -41,6 +107,9 @@ export const jaBlockTools = {
   shortcutPaletteKeys: "Ctrl＋左クリック",
   shortcutPalette: "タイルは変えずに、パレットだけを今のパレットにする",
   shortcutCellsWhere: "ブロックエディタの 8 マス・3枚目のレイヤーの 4 マス",
+  shortcutClipboard: "選んでいるブロックのコピー・切り取り・貼り付け（編集 メニュー）",
+  shortcutSwap: "ブロックの入れ替えのオン・オフ（2 つのブロックを順に押す）",
+  shortcutWindowWhere: "ブロックエディタの窓",
 } as const;
 
 /** ヘルプのショートカットの一覧に足す行（app/shortcutList.ts が並べる）。 */
@@ -50,5 +119,7 @@ export function blockToolShortcutRows(): { keys: string; action: string; where: 
     { keys: t.shortcutRectKeys, action: t.shortcutRect, where: t.shortcutRectWhere },
     { keys: t.shortcutPickKeys, action: t.shortcutPick, where: t.shortcutCellsWhere },
     { keys: t.shortcutPaletteKeys, action: t.shortcutPalette, where: t.shortcutCellsWhere },
+    { keys: "Ctrl+C、Ctrl+X、Ctrl+V", action: t.shortcutClipboard, where: t.shortcutWindowWhere },
+    { keys: "X", action: t.shortcutSwap, where: t.shortcutWindowWhere },
   ];
 }
