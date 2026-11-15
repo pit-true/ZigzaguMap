@@ -10,11 +10,11 @@ import type { EditorState } from "./EditorState";
  */
 export type PaintTool = "pencil" | "fill" | "shift";
 
-/** 帯の並びと、切り替えのキー。 */
-export const PAINT_TOOLS: readonly { readonly id: PaintTool; readonly key: string }[] = [
-  { id: "pencil", key: "N" },
-  { id: "fill", key: "B" },
-  { id: "shift", key: "S" },
+/** 帯の並びと、切り替えのキーの操作（キーは `app/keymap.ts` の表。既定は N・B・S。#392）。 */
+export const PAINT_TOOLS: readonly { readonly id: PaintTool; readonly keyAction: string }[] = [
+  { id: "pencil", keyAction: "tool.pencil" },
+  { id: "fill", keyAction: "tool.fill" },
+  { id: "shift", keyAction: "tool.shift" },
 ];
 
 /** 個人設定の値を道具にする（知らない値は鉛筆）。 */

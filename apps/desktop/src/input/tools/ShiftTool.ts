@@ -1,5 +1,6 @@
 import { LineLock, ShiftMapCommand } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
+import { matchesKey } from "../../app/keymap";
 import { jaPaint } from "../../i18n/ja.paint";
 import { jaTools } from "../../i18n/ja.tools";
 import type { Cell, MapView } from "../../ui/map/MapView";
@@ -21,7 +22,7 @@ export class ShiftTool {
     private readonly preview: PreviewCanvas,
   ) {
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.drag || this.drag.cancelled) return;
+      if (!matchesKey("drag.cancel", e) || !this.drag || this.drag.cancelled) return;
       e.preventDefault();
       this.drag.cancelled = true;
       this.preview.end();

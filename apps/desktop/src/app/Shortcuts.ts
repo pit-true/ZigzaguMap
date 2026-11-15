@@ -1,37 +1,42 @@
 import { buildMenu, flattenMenu, type MenuItem } from "./menuDefinition";
 import { openDialogs } from "../ui/Dialog";
+import { KEY_ACTIONS, matchesKey } from "./keymap";
 import type { App } from "./App";
 
 /**
  * キーボードのショートカット。メニューにあるもの（Ctrl+O、F5、Ctrl+S など）と、
- * アンドゥ（Ctrl+Z）・リドゥ（Ctrl+Y、Ctrl+Shift+Z）を受け付ける。入力欄の中では反応しない。
+ * アンドゥ（Ctrl+Z）・リドゥ（Ctrl+Y、Ctrl+Shift+Z）、イベントの削除（Delete）と複製（Ctrl+D）を受け付ける。入力欄の中では反応しない。
+ * キーは `app/keymap.ts` の表から引く（設定 > ショートカットの変更… で変えたものも、すぐ使える。#392）。
  */
 export function installShortcuts(app: App): void {
-  const items = flattenMenu(buildMenu([])).filter((i): i is MenuItem & { id: string } => !!i.shortcut && !!i.id);
+  const items = new Map(
+    flattenMenu(buildMenu([]))
+      .filter((i): i is MenuItem & { id: string } => !!i.id)
+      .map((i) => [i.id, i] as const),
+  );
+  const menuIds = KEY_ACTIONS.filter((a) => a.menu).map((a) => a.id);
   document.addEventListener("keydown", (e) => {
     if (e.defaultPrevented || isTyping(e.target)) return;
-    const key = e.key.toUpperCase();
-    if (e.ctrlKey && !e.altKey && (key === "Z" || key === "Y")) {
+    if (matchesKey("edit.undo", e) || matchesKey("edit.redo", e)) {
       e.preventDefault();
-      if (key === "Z" && !e.shiftKey) app.undo();
+      if (matchesKey("edit.undo", e)) app.undo();
       else app.redo();
       return;
     }
     // Delete: イベントタブで選んでいるイベントを削除する（#220。確認のダイアログを出す）
-    if (key === "DELETE" && !e.ctrlKey && !e.altKey && !e.shiftKey && app.state.tab === "event" && openDialogs.length === 0) {
+    if (matchesKey("event.delete", e) && app.state.tab === "event" && openDialogs.length === 0) {
       e.preventDefault();
       app.deleteSelectedEvent();
       return;
     }
     // Ctrl+D: イベントタブで選んでいるイベントを複製する（Phase5 #399）
-    if (key === "D" && e.ctrlKey && !e.altKey && !e.shiftKey && app.state.tab === "event" && openDialogs.length === 0) {
+    if (matchesKey("event.duplicate", e) && app.state.tab === "event" && openDialogs.length === 0) {
       e.preventDefault();
       app.duplicateSelectedEvents();
       return;
     }
-    const item = items.find(
-      (i) => i.shortcut!.key === key && !!i.shortcut!.ctrl === e.ctrlKey && !!i.shortcut!.alt === e.altKey && !!i.shortcut!.shift === e.shiftKey,
-    );
+    const id = menuIds.find((m) => matchesKey(m, e));
+    const item = id ? items.get(id) : undefined;
     if (!item) return;
     e.preventDefault();
     if (app.actions.isEnabled(item)) app.actions.run(item.id, item.label);

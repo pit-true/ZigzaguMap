@@ -77,7 +77,10 @@ const DOCS = {
   "docs/automation.md": automationDoc,
   "docs/compare-test.md": compareDoc,
   LICENSE: license,
-  [SHORTCUTS_DOC]: shortcutMarkdown(),
+  // 開くたびに今のキーで作る（設定 > ショートカットの変更… で変えたキーを出す。#392）
+  get [SHORTCUTS_DOC](): string {
+    return shortcutMarkdown();
+  },
 };
 
 /** 文書の窓（1 つを使い回す）。 */

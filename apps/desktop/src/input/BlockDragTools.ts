@@ -1,4 +1,5 @@
 import type { EditorState } from "../app/EditorState";
+import { matchesKey } from "../app/keymap";
 import { jaPaint } from "../i18n/ja.paint";
 import { jaPen } from "../i18n/ja.pen";
 import type { Cell } from "../ui/map/MapView";
@@ -47,7 +48,7 @@ export class BlockDragTools {
     private readonly onPicked: () => void,
   ) {
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.drag || this.drag.cancelled) return;
+      if (!matchesKey("drag.cancel", e) || !this.drag || this.drag.cancelled) return;
       e.preventDefault();
       this.drag.cancelled = true;
       this.preview.end();
