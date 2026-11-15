@@ -15,12 +15,14 @@ import {
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
 import { jaBlockTools as tt } from "../../i18n/ja.blockTools";
 import { askYesNo, showError } from "../../ui/MessageBox";
+import { openDialogs } from "../../ui/Dialog";
 import { installToolAutomation } from "../toolAutomation";
 import type { ToolClient } from "../ToolClient";
 import { TilesetModel } from "../TilesetModel";
 import { AttributePanel, type AttributeBytes } from "./AttributePanel";
 import { BlockEditPanel } from "./BlockEditPanel";
-import { createBlockEditorMenu } from "./BlockEditorMenu";
+import { createBlockEditorMenu, menuShortcut } from "./BlockEditorMenu";
+import { BlockEditActions } from "./BlockEditActions";
 import { BlockListView } from "./BlockListView";
 import { BlockEditorStatus } from "./BlockEditorStatus";
 import { TilesetIo } from "./TilesetIo";
@@ -54,6 +56,7 @@ export class BlockEditorWindow {
   private readonly attributes: AttributePanel;
   private readonly io: TilesetIo;
   private readonly status = new BlockEditorStatus();
+  private readonly edits: BlockEditActions;
 
   static start(root: HTMLElement, client: ToolClient): BlockEditorWindow {
     return new BlockEditorWindow(root, client);
@@ -64,7 +67,7 @@ export class BlockEditorWindow {
     private readonly client: ToolClient,
   ) {
     this.model = new TilesetModel(client.snapshot, client.ui);
-    this.list = new BlockListView((block) => this.selectBlock(block));
+    this.list = new BlockListView((block) => this.onListClick(block));
     this.sheet = new TileSheetView({ select: (selection) => this.selectTiles(selection), hover: (tile) => this.hoverSheet(tile) });
     this.panel = new BlockEditPanel(
       {
@@ -82,6 +85,17 @@ export class BlockEditorWindow {
       changed: () => this.renderPanel(),
     });
     const self = this;
+    this.edits = new BlockEditActions({
+      client,
+      get model() {
+        return self.model;
+      },
+      get block() {
+        return self.block;
+      },
+      current: () => this.currentBlock(),
+      status: (message) => this.status.show(message),
+    });
     this.io = new TilesetIo({
       client,
       get model() {
@@ -108,8 +122,23 @@ export class BlockEditorWindow {
       "palette.save": () => this.io.savePalette(),
       "palette.open": () => this.io.openPalette(),
       "palette.remap": () => client.request({ op: "open", kind: "block-adjust" }),
+      "edit.copy": () => this.edits.copy(),
+      "edit.cut": () => this.edits.cut(),
+      "edit.paste": () => this.edits.paste(),
+      "edit.swap": () => this.edits.toggleSwap(),
     };
-    const menu = createBlockEditorMenu(actions, (e) => void showError(errorText(e)));
+    const menu = createBlockEditorMenu(actions, (e) => void showError(errorText(e)), (id) => id === "edit.swap" && this.edits.swapActive);
+    document.addEventListener("keydown", (e) => {
+      if (e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (openDialogs.length > 0) return;
+      const id = menuShortcut(e);
+      const run = id ? actions[id] : undefined;
+      if (!run) return;
+      e.preventDefault();
+      Promise.resolve().then(run).catch((err: unknown) => void showError(errorText(err)));
+    });
     const body = document.createElement("div");
     body.className = "be-body";
     body.append(this.list.element, this.panel.element, this.attributes.element);
@@ -126,6 +155,19 @@ export class BlockEditorWindow {
   }
 
   // ---- 操作 ----
+
+  /** ブロック一覧を押した（入れ替えがオンなら入れ替えの 1 つ目・2 つ目にもする）。 */
+  private onListClick(picked: number): void {
+    this.selectBlock(picked);
+    if (this.edits.swapActive && this.block !== null) void this.edits.pick(this.block);
+  }
+
+  /** 選んでいるブロックの、手元で編集中の中身（コピー用）。 */
+  private currentBlock(): { tiles: number[]; attribute: number; third: number[] | null } | null {
+    if (this.block === null || !this.tiles) return null;
+    const attribute = attributeFromBytes(this.attributes.bytes());
+    return { tiles: [...this.tiles], attribute, third: isTripleLayer(attribute) && this.third ? [...this.third] : null };
+  }
 
   /** ブロックを選ぶ（8 タイルと属性を読み込む。編集中の値は捨てる）。3 層の次の番号なら 1 つ前の 3 層のブロックを選ぶ。 */
   private selectBlock(picked: number): void {
@@ -337,6 +379,8 @@ export class BlockEditorWindow {
       preview: Object.keys(this.client.ui.preview).map(Number),
       xflip: this.panel.xflip.checked,
       yflip: this.panel.yflip.checked,
+      edit: this.edits.describe(),
+      status: this.status.text,
       title: document.title,
     };
   }

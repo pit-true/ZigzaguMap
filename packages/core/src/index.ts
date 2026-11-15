@@ -353,6 +353,7 @@ export { AddTilesetCommand, addTilesetArgs, type AddTilesetArgs } from "./comman
 export { SetLayoutCommand, type SetLayoutArgs } from "./command/commands/layout/SetLayoutCommand.js";
 export * from "./transplant/index.js";
 export { SetTripleLayerCommand, THIRD_LAYER_TILE_COUNT, type SetTripleLayerArgs } from "./command/commands/tileset/SetTripleLayerCommand.js";
+export { SwapBlocksCommand, swapUnits, type SwapBlocksArgs, type SwapRefusal } from "./command/commands/tileset/SwapBlocksCommand.js";
 
 // タウンマップ（ワールドマップエディター）
 export * from "./regionmap/index.js";
