@@ -20,6 +20,7 @@ import type { HeaderContext } from "./HeaderContext";
 import { LayoutSharedNote } from "./LayoutSharedNote";
 import { MapScriptPanel } from "../script/MapScriptPanel";
 import type { ScriptLink } from "../script/ScriptLink";
+import { jaTools } from "../../i18n/ja.tools";
 
 /** かんたん表示が App に頼むこと。 */
 export interface SimpleHeaderHost {
@@ -29,6 +30,8 @@ export interface SimpleHeaderHost {
   openMap(id: MapId): void;
   /** スクリプト連携（マップスクリプトのパネルが使う）。 */
   readonly scripts: ScriptLink;
+  /** 大きさと位置を変える窓を開く（Phase5 #390。無ければボタンを出さない）。 */
+  openResize?(): void;
 }
 
 /**
@@ -150,12 +153,17 @@ export class SimpleHeaderView {
     for (const el of [this.width, this.height, this.borderWidth, this.borderHeight]) el.classList.add("header-simple-short");
     const resize = button("easy.resize", t.resize, () => this.resize());
     const resizeBorder = button("easy.resizeBorder", t.resizeBorder, () => this.resizeBorder());
-    this.element.append(
-      section(t.sizeSection, [
-        row(t.mapSize, inline(this.width, document.createTextNode("×"), this.height, resize), t.mapSizeNote),
-        row(t.borderSize, inline(this.borderWidth, document.createTextNode("×"), this.borderHeight, resizeBorder)),
-      ]),
-    );
+    const sizeRows = [
+      row(t.mapSize, inline(this.width, document.createTextNode("×"), this.height, resize), t.mapSizeNote),
+      row(t.borderSize, inline(this.borderWidth, document.createTextNode("×"), this.borderHeight, resizeBorder)),
+    ];
+    // 対話式リサイズ（Phase5 #390）: 位置と広げた所の埋め方も決める窓
+    if (host.openResize) {
+      const open = button("easy.resizeDialog", jaTools.resizeOpen, () => host.openResize?.());
+      open.title = jaTools.resizeOpenHint;
+      sizeRows.splice(1, 0, row("", open));
+    }
+    this.element.append(section(t.sizeSection, sizeRows));
     this.layoutShared = new LayoutSharedNote("easy", (id) => host.openMap(id), true);
     this.element.append(this.layoutShared.element);
 

@@ -54,11 +54,13 @@ python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し>
     # 自動操作の命令がダイアログの答えを待って止まらないこと（#380）。open（無いフォルダ・知らない種類の ROM・未出力の変更）、
     # scripts.table の open、warp.createMap、--project でスクリプトエディタの editor.rename・build.run・未保存のままの open。
     # 名前ごとに起動し直し、15 秒で返らない命令は失敗に数える
+python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+    # Phase5 の描く道具（#388〜#390）。名前は fill・line・smartPath・shift・resize。出力は --work（既定は一時フォルダ）に書く。ROM には書かない
 ```
 
 本文は JSON 1 件で、返事は `{"ok":true,"result":...}` か `{"ok":false,"error":"..."}` です。
 
-命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`hover`・`history`・`stamps`・`warpMap`・`blockUsage`・`view`・`process`・`script`・`scripts`・`link`・`usage`・`templates`・`trainers`・`neighbors`・`bag`・`composite`、Phase4 の `viewTools`・`tileset`・`pen`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
+命令は分野ごとのファイル（`apps/desktop/src/app/automation/` の `core`・`fields`・`mouse`・`dialogs`・`menu`・`tree`・`images`・`status`・`events`・`hover`・`history`・`stamps`・`warpMap`・`blockUsage`・`view`・`process`・`script`・`scripts`・`link`・`usage`・`templates`・`trainers`・`neighbors`・`bag`・`composite`、Phase4 の `viewTools`・`tileset`・`pen`、Phase5 の `tools`）に分け、`index.ts` の 1 つの登録表にまとめています。`{"cmd":"commands"}` で登録されている命令の名前が出ます。自動操作の入口のコードは、自動操作で起動したときだけ読み込みます。
 
 | cmd | 引数 | 動作 |
 |---|---|---|
@@ -401,3 +403,21 @@ egionmap.json` と ROM には書かない。
 - パレットの情報（#308）: ブロックパレット（`mouse` の `target: "palette"` の `hover`）と移動許可のパレット（`target: "movementPalette"`）に乗せたときの情報は、ステータスバーの補助の欄 `status.info`（`getField`）。移動許可は選んだときも出る。最近使ったブロックの欄は `map.recent`（`ui.shot`）、絵は `map.recent.canvas`（`mouse` の `id` と `px`。1 件 16px、間 2px。トリプルレイヤーは 32px）。境目の線は `action` の `view.paletteBoundary`（個人設定 `paletteBoundary`）。比較テストは `setting` で `paletteBoundary` を false にしてから比べる。
 - マップ一覧のサムネイル（#315）: `action` か `menu.run` の `view.treeThumbnails`（個人設定 `treeThumbnails`。既定 false）。行の縮小は `canvas.tree-thumb`。
 - マップの拡大（#316）: `mouse` のマップのタブの `cell` は、拡大していても画面の上のマスの大きさで押す。中ボタンのドラッグはスクロールの枠 `map-tab-view`・`movement-tab-view`・`event-tab-view`（`mouse` の `id`）に `"button": "middle"` の `drag` で送る（ステージに送ると、スクロールで部品が動いて量が合わない）。メニューの `zoom.map` などは 1 倍・2 倍の切り替えで、個人設定 `mapZoom` のそのタブの値を 0 に戻す。
+
+## Phase5 の部品と命令（描く道具と表示。列 1）
+
+命令は `apps/desktop/src/app/automation/tools.ts` にまとめています。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`） |
+| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）。どちらも省略可 | 道具とスマートパスを変える（帯のボタンと N・B・S と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
+| `tool.fill` | `cell`（`[x, y]`。主マップの左上が原点。隣の帯の上も指せる）、`magic`（true でマジック塗り）、`tab`（`map` / `movement`。省略で表示中のタブ） | 塗りつぶしを 1 回行う（道具の設定は変えない）。返事の `count` は塗ったマスの数と、`selection` と同じもの |
+| `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
+| `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズの窓の OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
+| `tool.resizeDialog` | | 対話式リサイズの窓「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |
+
+- 道具の帯（マップタブと移動エリアタブの右の欄の上）: ボタン `tools.map.pencil`・`tools.map.fill`・`tools.map.shift`（移動エリアタブは `tools.movement.*`）、スマートパスのチェック `tools.smartPath`（`setField` に true / false）。N・B・S は `{"cmd":"key","key":"b"}` のように送る（マップタブか移動エリアタブを見ているとき）。
+- 道具を選んでから `mouse` で使う: 塗りつぶしは `click`（`ctrl: true` でマジック塗り）、マップシフトは `drag`（`shift: true` で横か縦だけ。途中で `{"cmd":"key","key":"Escape"}` を送るとやめる）、直線は鉛筆の `drag` に `shift: true`。
+- 対話式リサイズの窓の部品: 幅 `resize.width`・高さ `resize.height`・左に足す `resize.left`・上に足す `resize.top`（どれも `setField` に数の文字）、埋め方 `resize.fill`（`setField` に 0 端の写し / 1 境界ブロック / 2 選んでいるブロック）、図 `resize.view`（`ui.shot`。マップをドラッグして位置を決める）、変わる量か入力の問題 `resize.info`（`getField`）。`dialog` の `press: "ok"` で実行、`"cancel"` で閉じる。入口は場所の設定タブのかんたん表示の `easy.resizeDialog` と、辺のつまみの右クリックのメニューの `resize`（`contextMenu.press`）。
+- コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端の写しでなくこの柄で埋める）。

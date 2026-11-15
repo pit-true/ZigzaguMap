@@ -134,6 +134,10 @@ export interface SettingsData {
   treeThumbnails: boolean;
   /** Ctrl＋ホイールで決めたタブごとの表示倍率（1〜8。0 なら「拡大表示」のチェックに従う。#316）。 */
   mapZoom: { map: number; movement: number; event: number };
+  /** 描く道具（マップタブと移動エリアタブの帯。`pencil`・`fill`・`shift`。Phase5 #388）。 */
+  paintTool: string;
+  /** スマートパス（マップタブの道具の帯。選択がちょうど 3×3 のとき周りに合わせて描く。Phase5 #389。既定オフ）。 */
+  smartPath: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -189,6 +193,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   paletteBoundary: true,
   treeThumbnails: false,
   mapZoom: { map: 0, movement: 0, event: 0 },
+  paintTool: "pencil",
+  smartPath: false,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */
