@@ -36,4 +36,6 @@
 
 .map-export-dialog button {
   white-space: nowrap;
+  width: auto;
+  padding: 0 10px;
 }
