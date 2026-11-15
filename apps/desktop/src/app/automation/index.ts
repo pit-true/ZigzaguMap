@@ -30,6 +30,7 @@ import { trainerCommands } from "./trainers";
 import { viewToolCommands } from "./viewTools";
 import { tilesetCommands } from "./tileset";
 import { penCommands } from "./pen";
+import { toolCommands } from "./tools";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -68,6 +69,7 @@ const registry: CommandRegistry = new CommandRegistry([
   viewToolCommands,
   tilesetCommands,
   penCommands,
+  toolCommands,
   { commands: () => registry.names() },
 ]);
 
