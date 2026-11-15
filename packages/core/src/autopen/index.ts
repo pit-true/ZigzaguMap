@@ -2,7 +2,7 @@ export * from "./types.js";
 export { PartIndex, type PartPlace } from "./PartIndex.js";
 export { parseBochiAssistText } from "./BochiAssistText.js";
 export { blockFingerprint, matchScore, primaryRefMatches, primaryRefOf, sameContent, samePlace, tilesetInfoOf } from "./tilesetMatch.js";
-export { AutoPenLibrary, type AutoPenLibraryOptions, type AutoPenProblem, type BochiImportResult } from "./AutoPenLibrary.js";
+export { AutoPenLibrary, mergeParts, type AutoPenLibraryOptions, type AutoPenProblem, type BochiImportResult } from "./AutoPenLibrary.js";
 export { PenOverlay, cellKey, dilate, mod, type PenSource, type PenWrite } from "./PenGrid.js";
 export { EdgeSolver, edgeSlotOf, hasRing2, slotCellAt, type EdgeChange } from "./EdgeSolver.js";
 export { RepeatSolver, TIDY_MIN_GAIN } from "./RepeatSolver.js";

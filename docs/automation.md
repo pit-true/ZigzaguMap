@@ -336,7 +336,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `tripleChildCells` | | 今のマップで、3 層の次の番号（単独では置けないブロック。#301）が置かれているマスの一覧 `cells`（`x`・`y`。表示の設定に関係なく）と、印を描いたマス `marked`（表示 > 3層の3枚目のブロックに印を付ける がオンで、マップタブを見ているとき） |
 | `autopen.state` | | 自動ペン（#310）の設定 `active`・`size`・`movement`・`tint`、今のタイルセットの組のパーツ `parts`（`name`・`kind`・`role`・`order`）、自動で描けるブロックの数 `blocks`、パレットで色を重ねているブロック `tinted`、選んでいるブロックで描くパーツの名前 `part`、見分けたタイルセット `tilesets`（`primary`・`secondary` の `fingerprint`・`headerAddress`）、読んだファイルの数 `files`、読めなかったファイル `problems` |
 | `autopen.set` | `active`・`size`・`movement`・`tint`（どれも省略可）、`fraction`（`[fx, fy]` でマスの中の位置 0〜1。null で実際のマウスの位置） | 自動ペンの設定を変える（個人設定にも入る）。`fraction` は偶数の筆の寄せる側を決める（テスト用）。返事は `autopen.state` と同じ |
-| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。返事は書いたパス `written` と `autopen.state` |
+| `autopen.save` | `parts`（`maps\autopen\*.json` の `parts` と同じ形） | 今の組のパーツを置き換えて保存する。マップ作成補助の窓に保存していない変更があれば、窓の一覧にも足す（同じ名前は置き換える。#379）。返事は書いたパス `written` と `autopen.state` |
 | （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`（`x`・`y`・`width`・`height`・選んだブロックの並び `blocks`。空きは null。#338）・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 | `transplant.select`（移植の窓宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事は窓の `state` と同じ |
 

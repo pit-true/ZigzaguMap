@@ -5,6 +5,7 @@ import {
   ROM_BASE,
   analyzeParts,
   collectLayouts,
+  mergeParts,
   tilesetInfoOf,
   type AutoPenLibrary,
   type AutoPenPart,
@@ -43,6 +44,9 @@ export function tilesetInfos(map: OpenMap, game: string): { primary: AutoPenTile
  * 自動ペンのパーツ（#303・#310）。ROM を開いたら maps\autopen\ を読み、今のマップのタイルセットの組のパーツと
  * 「ブロック → パーツ」の表を作っておく（描くときは待たずに引けるように）。
  * タイルセットの組が変わったとき・パーツを保存したとき・ブロックを編集したときに作り直し、`onChange` で知らせる。
+ *
+ * マップ作成補助の窓で編集中の一覧（下書き）もここに持つ（パーツの正本を 1 か所にする。#379）。窓は編集のたびに下書きを送り、
+ * 窓の外の変更（Bochi の読み込み・マップから候補を作る）は下書きにも足す。保存すると下書きを捨てる。自動ペンは下書きを使わない。
  */
 export class AutoPenService {
   private library: AutoPenLibrary | null = null;
@@ -52,6 +56,8 @@ export class AutoPenService {
   private generation = 0;
   /** マップから作った候補（タイルセットの組の鍵 → パーツ。保存するまでメモリだけ）。 */
   private readonly candidates = new Map<string, AutoPenPart[]>();
+  /** マップ作成補助の窓で編集中の一覧（タイルセットの組の鍵 → パーツ。保存するまでメモリだけ。#379）。 */
+  private readonly drafts = new Map<string, readonly AutoPenPart[]>();
   /** 解析している組の鍵。 */
   private analyzing: Promise<AutoPenPart[]> | null = null;
 
@@ -87,6 +93,7 @@ export class AutoPenService {
     this.library = null;
     this.setValue = null;
     this.candidates.clear();
+    this.drafts.clear();
     this.builtFor = "";
     this.notify();
     const session = this.state.session;
@@ -137,14 +144,84 @@ export class AutoPenService {
     this.notify();
   }
 
-  /** 今の組のパーツを保存する（すぐファイルに書く）。戻り値は書いたパス。 */
+  /** 今の組の、マップ作成補助の窓で編集中の一覧（無ければ null）。 */
+  get draft(): readonly AutoPenPart[] | null {
+    const set = this.setValue;
+    return (set && this.drafts.get(set.key)) ?? null;
+  }
+
+  /** 窓に出す今の組の一覧（編集中のものがあればそれ、無ければ自動ペンが使うもの）。 */
+  get editing(): readonly AutoPenPart[] {
+    return this.draft ?? this.setValue?.parts ?? [];
+  }
+
+  /** 窓で編集した今の組の一覧を預かる（窓が送ってくる。自動ペンには使わないので知らせない）。 */
+  setDraft(parts: readonly AutoPenPart[]): void {
+    const set = this.setValue;
+    if (set) this.drafts.set(set.key, parts);
+  }
+
+  /** 編集中の一覧を全部捨てる（窓を閉じたとき）。 */
+  discardDrafts(): void {
+    this.drafts.clear();
+  }
+
+  /** 今の組の編集中の一覧に `parts` を足して知らせる（編集中のものが無ければ何もしない）。 */
+  private mergeIntoDraft(parts: readonly AutoPenPart[]): void {
+    const set = this.setValue;
+    const draft = set ? this.drafts.get(set.key) : undefined;
+    if (!set || !draft || parts.length === 0) return;
+    this.drafts.set(set.key, mergeParts(draft, parts));
+    this.notify();
+  }
+
+  /**
+   * 今の組のパーツを置き換えて保存する（すぐファイルに書く。自動操作の `autopen.save`）。窓で編集中なら、その一覧にも足す
+   * （窓の外で保存したものを、窓の保存で消さないように。#379）。戻り値は書いたパス。
+   */
   async save(parts: readonly AutoPenPart[]): Promise<string[]> {
+    const written = await this.write(parts);
+    this.refresh(true);
+    this.mergeIntoDraft(parts);
+    return written;
+  }
+
+  /** 窓の一覧を保存する（すぐファイルに書き、その組の編集中の一覧は捨てる）。戻り値は書いたパス。 */
+  async saveDraft(parts: readonly AutoPenPart[]): Promise<string[]> {
+    const key = this.setValue?.key;
+    const written = await this.write(parts);
+    if (key !== undefined) this.drafts.delete(key);
+    this.refresh(true);
+    return written;
+  }
+
+  private async write(parts: readonly AutoPenPart[]): Promise<string[]> {
     const lib = await this.ready();
     const set = this.setValue;
     if (!lib || !set) throw new Error(jaAssist.noMap);
-    const written = await lib.save(set.primary, set.secondary, parts);
-    this.refresh(true);
-    return written;
+    return lib.save(set.primary, set.secondary, parts);
+  }
+
+  /**
+   * マップから候補を作り、今の組の窓の一覧（編集中のものか、無ければ自動ペンが使うもの）に無い名前のものを足す（保存はしない）。
+   * 戻り値は足したパーツ。
+   */
+  async addCandidates(): Promise<AutoPenPart[]> {
+    const key = this.setValue?.key;
+    // 候補を作る前の一覧に足す（候補を作ると、保存したパーツが無い組では自動ペンの一覧が候補に変わるため）
+    const before = this.editing;
+    const parts = await this.analyze();
+    const set = this.setValue;
+    if (!set || set.key !== key) return [];
+    // 作っている間に窓で編集したものは残す
+    const base = this.drafts.get(set.key) ?? before;
+    const names = new Set(base.map((p) => p.name));
+    const add = parts.filter((p) => !names.has(p.name));
+    if (add.length > 0) {
+      this.drafts.set(set.key, [...base, ...add]);
+      this.notify();
+    }
+    return add;
   }
 
   /**
@@ -180,13 +257,15 @@ export class AutoPenService {
     return run;
   }
 
-  /** Bochi の mapassist\*.txt の中身を取り込む。 */
+  /** Bochi の mapassist\*.txt の中身を取り込む（ファイルに書き、窓で編集中の一覧にも足す）。 */
   async importBochi(texts: readonly string[]): Promise<BochiImportResult> {
     const lib = await this.ready();
     const set = this.setValue;
     if (!lib || !set) throw new Error(jaAssist.noMap);
     const r = await lib.importBochi(texts, set.primary, set.secondary);
     this.refresh(true);
+    // 窓で編集中なら、その一覧にも足す（保存しても消えないように。#379）
+    this.mergeIntoDraft(r.incoming);
     return r;
   }
 }

@@ -1,6 +1,7 @@
 """Phase4 の描く道具（3 層のブロックの選び方と置けない規則、自動ペン、マップ作成補助）を、素の ROM と写しで確かめる。
 
   python tests/automation/pen_check.py --rom <素の BPRJ の写し> [--exe <zigzagumap.exe>] [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+      [--bochi <Bochi の mapassist の txt>]
 
 - 起動は --automation・--profile（一時フォルダ）・画面外。ROM には書き込まない。タイルセットの編集はメモリの上だけ
   （出力しない）。マップ作成補助のパーツは --work（既定は一時フォルダ）の maps\\autopen\\ に書く。
@@ -17,6 +18,10 @@
   - assist: マップ作成補助の窓（#312・#313）。「範囲を整える」で「移動エリアを付ける」を外すと移動許可は変わらず、付けると入る（#336）。
   - assistReopen: 保存したパーツが、ROM とプロジェクトを開き直しても残る（maps\\autopen\\ から読む）。
   - assistEdge: 窓で縁つきのパーツを作って保存し、自動ペンで描く（#312）。
+  - assistOutside: 窓に保存していない変更があるときに窓の外（自動操作の autopen.save）で保存しても、窓の一覧に足され、
+    窓で保存しても消えない。閉じると未保存の編集は捨てる（#379）。
+  - assistBochi: 「Bochi の定義を読み込む…」で読み込んだパーツが、窓を開いた直後でも編集中でも窓の一覧に足され、
+    窓で保存しても消えない（#379）。`--bochi` に Bochi の mapassist の txt を渡したときだけ（読むだけ。同梱しない）。
   - candidates: パーツの定義が無い主タイルセット（家の中 4.1）で、自動ペンを入れると候補を作り、それで描く（#313）。
 """
 from __future__ import annotations
@@ -365,6 +370,110 @@ def check_assist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     ctx["saved_path"] = path
 
 
+def saved_names(work: pathlib.Path) -> list[str]:
+    import json
+
+    f = pathlib.Path(work) / "maps" / "autopen" / "primary_298B44.json"
+    return [p["name"] for p in json.loads(f.read_text(encoding="utf-8"))["parts"]] if f.exists() else []
+
+
+def wait_window_parts(z: Zigzagu, want: set[str], timeout: float = 5) -> list[str]:
+    """窓の一覧に `want` の名前が全部出るまで待つ（出なければ最後の一覧）。"""
+    names: list[str] = []
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        names = [p["name"] for p in win(z, {"cmd": "state"})["parts"]]
+        if want <= set(names):
+            break
+        time.sleep(0.2)
+    return names
+
+
+def add_window_part(z: Zigzagu, name: str) -> None:
+    """窓で面のパーツを足して名前を付ける（保存はしない）。"""
+    win(z, {"cmd": "click", "id": "assist.add.fill"})
+    win(z, {"cmd": "setField", "id": "assist.name", "value": name})
+
+
+def check_assist_outside(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """窓に保存していない変更があるときに窓の外でパーツを保存しても、窓の一覧に入り、窓の保存で消えない（#379）。"""
+    with tempfile.TemporaryDirectory(prefix="zzm-peno-", ignore_cleanup_errors=True) as work:
+        z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        st = open_assist(z)
+        defaults = [p["name"] for p in st["parts"]]
+        check(st["dirty"], f"開いた直後（既定のパーツ）は未保存（{st['status']!r}）")
+        add_window_part(z, "窓の面")
+        outside = {"name": "外の面", "kind": "fill", "role": "ground", "order": 0, "slots": {"Blocks": {"width": 1, "height": 1, "cells": [[1, None]]}}}
+        z.call({"cmd": "autopen.save", "parts": [outside]})
+        names = wait_window_parts(z, {"外の面", "窓の面"})
+        check("外の面" in names and "窓の面" in names and set(defaults) <= set(names), f"窓の外で保存したパーツが窓の一覧に足され、窓の変更も残る（{names}）")
+        win(z, {"cmd": "click", "id": "assist.save"})
+        time.sleep(0.5)
+        saved = saved_names(pathlib.Path(work))
+        check("外の面" in saved and "窓の面" in saved, f"窓で保存しても、窓の外で保存したパーツが消えない（{saved}）")
+        main = [p["name"] for p in z.call({"cmd": "autopen.state"})["parts"]]
+        check(main == saved, f"メインの自動ペンのパーツもファイルと同じ（{len(main)} 個）")
+        # 窓を閉じて開き直すと、保存したものが出る（未保存の編集は閉じると捨てる）
+        add_window_part(z, "捨てる面")
+        win(z, {"cmd": "close"})
+        time.sleep(1.5)  # close は返事のあと 300ms で閉じる
+        st = open_assist(z)
+        names = [p["name"] for p in st["parts"]]
+        check(names == saved and not st["dirty"], f"閉じると保存していない編集は捨て、開き直すと保存したものが出る（{names}）")
+        win(z, {"cmd": "close"})
+
+
+def check_assist_bochi(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    """Bochi の定義を読み込むと、窓の一覧に足され（窓の変更も残る）、窓で保存しても消えない（#379）。`--bochi` が要る。"""
+    bochi = ctx.get("bochi")
+    if not bochi:
+        print("飛ばす: --bochi（BochiBochiEditor の mapassist の BPRJ 主タイルセット 0x298B44 の txt。読むだけ）が無い")
+        return
+    # 1. 窓を開いた直後（既定のパーツのまま）に読み込む
+    with tempfile.TemporaryDirectory(prefix="zzm-penb-", ignore_cleanup_errors=True) as work:
+        z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        open_assist(z)
+        z.call({"cmd": "queuePath", "path": bochi})
+        win(z, {"cmd": "click", "id": "assist.importBochi"})
+        saved = []
+        t0 = time.time()
+        while time.time() - t0 < 10 and not saved:
+            saved = saved_names(pathlib.Path(work))
+            time.sleep(0.2)
+        names = wait_window_parts(z, set(saved))
+        st = win(z, {"cmd": "state"})
+        check(bool(saved) and names == saved, f"開いた直後に読み込むと、窓の一覧がファイルと同じになる（窓 {len(names)} 個、ファイル {len(saved)} 個）")
+        check("読み込んで" in (st["status"] or ""), f"下の帯に読み込んだと出る（{st['status']!r}）")
+        win(z, {"cmd": "click", "id": "assist.save"})
+        time.sleep(0.5)
+        after = saved_names(pathlib.Path(work))
+        check(after == saved, f"そのまま窓で保存しても、読み込んだパーツが消えない（{len(saved)} → {len(after)} 個）")
+        win(z, {"cmd": "close"})
+    # 2. 窓で編集したあとに読み込む
+    with tempfile.TemporaryDirectory(prefix="zzm-penb-", ignore_cleanup_errors=True) as work:
+        z.call({"cmd": "open", "rom": ctx["rom"], "project": work})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        open_assist(z)
+        add_window_part(z, "窓の面")
+        z.call({"cmd": "queuePath", "path": bochi})
+        win(z, {"cmd": "click", "id": "assist.importBochi"})
+        saved = []
+        t0 = time.time()
+        while time.time() - t0 < 10 and not saved:
+            saved = saved_names(pathlib.Path(work))
+            time.sleep(0.2)
+        names = wait_window_parts(z, set(saved) | {"窓の面"})
+        st = win(z, {"cmd": "state"})
+        check(bool(saved) and set(saved) <= set(names) and "窓の面" in names and st["dirty"], f"編集中に読み込むと、窓の一覧に足され、窓の変更も残る（窓 {len(names)} 個、ファイル {len(saved)} 個）")
+        win(z, {"cmd": "click", "id": "assist.save"})
+        time.sleep(0.5)
+        after = saved_names(pathlib.Path(work))
+        check(set(saved) <= set(after) and "窓の面" in after, f"窓で保存すると、読み込んだパーツと窓の変更の両方が残る（{len(after)} 個）")
+        win(z, {"cmd": "close"})
+
+
 def check_assist_reopen(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "open", "rom": ctx["rom"], "project": str(ctx["work"])})
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
@@ -561,6 +670,8 @@ CHECKS = {
     "assist": check_assist,
     "assistReopen": check_assist_reopen,
     "assistEdge": check_assist_edge,
+    "assistOutside": check_assist_outside,
+    "assistBochi": check_assist_bochi,
     "candidates": check_candidates,
 }
 
@@ -572,6 +683,7 @@ def main() -> None:
     ap.add_argument("--shots")
     ap.add_argument("--work")
     ap.add_argument("--only", nargs="*")
+    ap.add_argument("--bochi", help="BochiBochiEditor の mapassist の txt（BPRJ の主タイルセット 0x298B44 のもの。読むだけ。assistBochi で使う）")
     a = ap.parse_args()
     shots = pathlib.Path(a.shots) if a.shots else None
     if shots:
@@ -579,7 +691,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="zzm-penw-", ignore_cleanup_errors=True) as tmpwork:
         work = pathlib.Path(a.work) if a.work else pathlib.Path(tmpwork)
         work.mkdir(parents=True, exist_ok=True)  # 無いフォルダを開くとダイアログが出て open が返らない（#372）
-        ctx = {"rom": a.rom, "work": work}
+        ctx = {"rom": a.rom, "work": work, "bochi": a.bochi}
         for name, fn in CHECKS.items():
             if a.only and name not in a.only:
                 continue

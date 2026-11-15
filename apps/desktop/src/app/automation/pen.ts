@@ -12,6 +12,7 @@ import type { AutomationRequest, CommandTable } from "./registry";
  * - `autopen.set {active?, size?, movement?, tint?, fraction?}`: 設定を変える（`fraction: [fx, fy]` はマスの中の位置 0〜1。偶数の筆の寄せる側。
  *   null で実際のマウスの位置に戻す）。
  * - `autopen.save {parts}`: 今の組のパーツを置き換えて保存する（`parts` は maps\autopen\*.json の `parts` と同じ形）。返事は書いたパス `written`。
+ *   マップ作成補助の窓に保存していない変更があれば、窓の一覧にも足す（#379）。
  */
 
 async function state(app: App): Promise<unknown> {
