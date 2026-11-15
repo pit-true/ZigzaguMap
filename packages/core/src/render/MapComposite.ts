@@ -66,3 +66,22 @@ export function compositeScale(bounds: CellRect, blockPixels: number, maxSide = 
   while ((Math.max(bounds.width, bounds.height) * blockPixels) / scale > maxSide) scale *= 2;
   return scale;
 }
+
+/** 書き出しの「境界」「隣のマップの帯」で、マップの周りに足すマス（ゲームの画面で主人公の周りに見える分。Phase5 #403）。 */
+export const EXPORT_PAD = { x: 7, y: 5 } as const;
+
+/**
+ * マップの画像の書き出し（#403）で描く範囲（マス。最初のマップの左上が原点）。
+ * `whole` なら並べた全マップを囲む矩形、そうでなければ最初のマップ。`pad` を付けると周りに広げる。
+ */
+export function exportCrop(layout: CompositeLayout, whole: boolean, pad: { readonly x: number; readonly y: number } | null): CellRect {
+  const first = layout.maps[0];
+  const base = whole || !first ? layout.bounds : { x: first.x, y: first.y, width: first.width, height: first.height };
+  if (!pad) return base;
+  return { x: base.x - pad.x, y: base.y - pad.y, width: base.width + pad.x * 2, height: base.height + pad.y * 2 };
+}
+
+/** 2 つの矩形が重なるか。 */
+export function rectsOverlap(a: CellRect, b: CellRect): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}

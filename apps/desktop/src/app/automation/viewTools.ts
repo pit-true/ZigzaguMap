@@ -271,9 +271,36 @@ async function projectWatchState(app: App, req: AutomationRequest = {}): Promise
   return { watched: app.watcher.watchedCount, result: watchResult };
 }
 
+/** `mapExport.state`: マップの画像の書き出しの窓（Phase5 #403）。開いているか `open`、選択 `choice`、プレビューの大きさ `last`（プレビューを作り終えるまで待つ）。 */
+async function mapExportState(): Promise<unknown> {
+  const { openMapExport } = await import("../../ui/export/MapExportDialog");
+  const d = openMapExport();
+  if (!d) return { open: false };
+  await d.settle();
+  return { open: true, choice: d.choice, last: d.last };
+}
+
+/**
+ * `mapExport.run {action}`: 窓のボタンを押して終わるまで待つ（`save` / `copy` / `timelapse`）。保存先は先に `queuePath` で渡す。
+ * 返事は `save` が保存したパス、`copy` が大きさ、`timelapse` がパス・コマの数・大きさ（取りやめたら null）。
+ */
+async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown> {
+  const { openMapExport } = await import("../../ui/export/MapExportDialog");
+  const d = openMapExport();
+  if (!d) throw new Error("マップの画像の書き出しの窓が開いていません");
+  await d.settle();
+  const action = req["action"];
+  if (action === "save") return d.save();
+  if (action === "copy") return d.copy();
+  if (action === "timelapse") return d.saveTimelapse();
+  throw new Error(`action が不正です: ${String(action)}`);
+}
+
 export const viewToolCommands: CommandTable = {
   "projectWatch.check": projectWatchCheck,
   "projectWatch.state": projectWatchState,
+  "mapExport.state": mapExportState,
+  "mapExport.run": mapExportRun,
   "editHistory.state": editHistoryState,
   "editHistory.goTo": editHistoryGoTo,
   "zoom.state": zoomState,
