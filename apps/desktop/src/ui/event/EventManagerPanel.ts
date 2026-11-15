@@ -1,5 +1,7 @@
 import { ja } from "../../i18n/ja";
 import { SpinEdit, formRow, pushButton } from "../form/valueControls";
+import { jaEventLimit } from "../../i18n/ja.eventLimit";
+import { personsOverLimit } from "./EventLimits";
 
 /** 人・看板・ワープ・スクリプトの個数。 */
 export interface EventCounts {
@@ -19,6 +21,8 @@ export class EventManagerPanel {
   readonly element: HTMLElement;
   private readonly spins: Record<(typeof KEYS)[number], SpinEdit>;
   private readonly apply: HTMLButtonElement;
+  /** 人が 64 を超えたときの赤い文（Phase5 #400）。 */
+  private readonly limit: HTMLParagraphElement;
   private current: EventCounts = { persons: 0, signs: 0, warps: 0, traps: 0 };
   private wanted: Record<(typeof KEYS)[number], number> = { persons: 0, signs: 0, warps: 0, traps: 0 };
 
@@ -45,6 +49,11 @@ export class EventManagerPanel {
     for (const key of KEYS) this.element.append(formRow(labels[key], 112, this.spins[key]));
     this.apply = pushButton("event.manager.apply", m.apply, () => onApply({ ...this.wanted }), "manager-apply");
     this.element.append(this.apply);
+    this.limit = document.createElement("p");
+    this.limit.className = "event-limit-warn";
+    this.limit.dataset["autoId"] = "event.manager.limit";
+    this.limit.hidden = true;
+    this.element.append(this.limit);
   }
 
   /** 今の個数を表示する。個数が変わったときか `reset` のときだけ、入力中の値を捨てる。 */
@@ -53,6 +62,8 @@ export class EventManagerPanel {
     this.current = counts;
     this.wanted = { ...counts };
     for (const key of KEYS) this.spins[key].set(counts[key]);
+    this.limit.hidden = !personsOverLimit(counts.persons);
+    this.limit.textContent = this.limit.hidden ? "" : jaEventLimit.manager(counts.persons);
     this.updateButton();
   }
 
