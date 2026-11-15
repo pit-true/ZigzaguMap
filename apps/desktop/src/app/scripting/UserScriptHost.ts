@@ -8,6 +8,9 @@ import {
   USER_SCRIPT_DIR,
   USER_SCRIPT_WRITES,
   affectedMaps,
+  floodRegion,
+  matchingCells,
+  type FillSource,
   flattenCommandRecords,
   isUserScriptMethod,
   loadUserScriptListing,
@@ -61,6 +64,7 @@ const DIALOG_LIMIT = 4000;
 /** ブロックの変化を知らせるコマンド（`cells` の引数があるもの）。 */
 const CELL_COMMANDS = new Set(["paintBlocks", "placeBlock", "paintCells", "paintMovement", "placeMovement"]);
 const RESIZE_COMMANDS = new Set(["resizeMap", "resizeMapEdge"]);
+const SHIFT_COMMAND = "shiftMap";
 
 /**
  * 利用者の JavaScript のスクリプト（Phase5 #405、Q17）の画面の側。プロジェクトフォルダの `zigzagumap-scripts\*.js` のうち、
@@ -145,6 +149,16 @@ export class UserScriptHost {
     this.changed();
   }
 
+  /** マップの上のマウスのマス（タブの絵の上。マスが変わったときだけ知らせる）。 */
+  private lastHover = "";
+  hover(tab: string, cell: { x: number; y: number } | null): void {
+    if (!this.worker) return;
+    const key = cell ? `${tab}:${cell.x},${cell.y}` : "";
+    if (key === this.lastHover) return;
+    this.lastHover = key;
+    this.emit("hoverChanged", cell ? { tab, x: cell.x, y: cell.y } : { tab, x: null, y: null });
+  }
+
   /** 登録した操作を動かす。 */
   runAction(id: string): void {
     if (!this.actionList.some((a) => a.id === id)) return;
@@ -152,6 +166,12 @@ export class UserScriptHost {
   }
 
   private async load(): Promise<void> {
+    // 前のプロジェクトのスクリプトに閉じたことを知らせ、少しだけ（1 秒まで）待ってから止める
+    if (this.worker) {
+      this.emit("projectClosed", {});
+      await new Promise((r) => setTimeout(r, 50));
+      await Promise.race([this.idle(), new Promise((r) => setTimeout(r, 1000))]);
+    }
     this.stop();
     this.loadErrors.clear();
     const session = this.parts.state.session;
@@ -217,6 +237,9 @@ export class UserScriptHost {
         const cells = Array.isArray(r.args["cells"]) ? (r.args["cells"] as { x: number; y: number }[]).map((c) => ({ x: c.x, y: c.y })) : [];
         if (r.name === "placeBlock" || r.name === "placeMovement") cells.push({ x: Number(r.args["x"]), y: Number(r.args["y"]) });
         this.emit("blocksChanged", { bank: map.bank, map: map.map, cells, kind: e.type });
+      } else if (r.name === SHIFT_COMMAND) {
+        const sign = e.type === "undo" ? -1 : 1;
+        this.emit("mapShifted", { bank: map.bank, map: map.map, dx: sign * Number(r.args["dx"]), dy: sign * Number(r.args["dy"]), kind: e.type });
       } else if (RESIZE_COMMANDS.has(r.name)) {
         const doc = this.parts.state.session?.project.loaded(map);
         this.emit("mapResized", { bank: map.bank, map: map.map, width: doc?.width ?? null, height: doc?.height ?? null, kind: e.type });
@@ -378,6 +401,52 @@ export class UserScriptHost {
       case "map.getTilesets": {
         const d = mapOf().doc;
         return { primary: d.primaryTileset >>> 0, secondary: d.secondaryTileset >>> 0 };
+      }
+      case "map.fill": {
+        const { m, x, y } = cell();
+        const b = needBatch();
+        const value = int(2, "value");
+        const o = (typeof args[3] === "object" && args[3] !== null ? args[3] : {}) as { magic?: unknown; movement?: unknown };
+        const movement = o.movement === true;
+        if (value < 0 || value > (movement ? 0x3f : 0x3ff)) throw new Error(t.badArg(method, "value"));
+        const g = m.doc.grid;
+        const source: FillSource = {
+          width: g.width,
+          height: g.height,
+          getBlock: (cx, cy) => b.blocks.get(`${cx},${cy}`) ?? g.getBlock(cx, cy),
+          getMovement: (cx, cy) => b.movements.get(`${cx},${cy}`) ?? g.getMovement(cx, cy),
+        };
+        const match = movement ? "movement" : "block";
+        const cells = o.magic === true ? matchingCells(source, x, y, match) : floodRegion(source, x, y, match);
+        const target = movement ? b.movements : b.blocks;
+        for (const c of cells) target.set(`${c.x},${c.y}`, value);
+        return cells.length;
+      }
+      case "map.shift": {
+        const m = mapOf();
+        const b = needBatch();
+        const dx = int(0, "dx");
+        const dy = int(1, "dy");
+        const g = m.doc.grid;
+        const w = g.width;
+        const h = g.height;
+        const blocks: number[] = [];
+        const movements: number[] = [];
+        for (let cy = 0; cy < h; cy++)
+          for (let cx = 0; cx < w; cx++) {
+            const k = `${cx},${cy}`;
+            blocks.push(b.blocks.get(k) ?? g.getBlock(cx, cy));
+            movements.push(b.movements.get(k) ?? g.getMovement(cx, cy));
+          }
+        const sx = ((dx % w) + w) % w;
+        const sy = ((dy % h) + h) % h;
+        for (let cy = 0; cy < h; cy++)
+          for (let cx = 0; cx < w; cx++) {
+            const k = `${(cx + sx) % w},${(cy + sy) % h}`;
+            b.blocks.set(k, blocks[cy * w + cx]!);
+            b.movements.set(k, movements[cy * w + cx]!);
+          }
+        return null;
       }
       case "maps.list":
         return (session?.catalog.maps ?? []).map((m) => ({ bank: m.id.bank, map: m.id.map, name: m.name }));

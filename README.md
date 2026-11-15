@@ -1521,12 +1521,12 @@ AdvanceMap の 3 つのメニューと「編集」の後ろに「表示(V)」を
 プロジェクトフォルダの `zigzagumap-scripts\` に置いた `.js` を、設定 > スクリプトの管理... でチェックすると動きます。チェックしたものは `zigzagumap.json` の `userScripts.enabled` に書きます（プロジェクトで共有できます）。例は `docs/userscripts/` にあります（`grass.js`: 草むらを置くと移動許可を 0C にする、`count.js`: 全マップのブロックを数える）。
 
 - スクリプトは 1 つの Web Worker で動きます。使えるのは `zz`（下の API）と `console` だけで、fetch・XMLHttpRequest・WebSocket・importScripts・IndexedDB などは読み込む前に消しています。Tauri の命令も届かないので、ファイルや外部コマンドは使えません。有効なスクリプトが無ければ Worker を作りません。
-- API（どれも Promise を返す）: `zz.map.current()`・`getBlock(x, y)`・`setBlock(x, y, block)`・`getMovement`・`setMovement`・`getCells()`・`getBorder`・`setBorder`・`getHeader()`・`getTilesets()`、`zz.maps.list()`・`zz.maps.getCells(bank, map)`（ほかのマップは読むだけ）、`zz.names.list("maps" | "species")`、`zz.ui.message(text)`・`zz.ui.input(prompt, initial)`・`zz.ui.status(text)`、`zz.view.setGrid(show)`、`zz.registerAction(id, label, run)`、`zz.log(...)`。
-- コールバック（`zz.on(名前, 関数)`）: `projectOpened`・`mapOpened`・`blocksChanged`（`bank`・`map`・`cells`・`kind`（`execute` / `undo` / `redo`））・`mapResized`・`tabChanged`。スクリプトが書いた変更では `blocksChanged` を呼びません。
+- API（どれも Promise を返す）: `zz.map.current()`・`getBlock(x, y)`・`setBlock(x, y, block)`・`getMovement`・`setMovement`・`getCells()`・`getBorder`・`setBorder`・`getHeader()`・`getTilesets()`・`fill(x, y, value, { magic, movement })`（塗りつぶし。`magic: true` でマジック塗り、`movement: true` で移動許可を塗る。塗ったマスの数を返す）・`shift(dx, dy)`（マップシフト。はみ出た分は反対側へ回る）、`zz.maps.list()`・`zz.maps.getCells(bank, map)`（ほかのマップは読むだけ）、`zz.names.list("maps" | "species")`、`zz.ui.message(text)`・`zz.ui.input(prompt, initial)`・`zz.ui.status(text)`、`zz.view.setGrid(show)`、`zz.registerAction(id, label, run)`、`zz.log(...)`。
+- コールバック（`zz.on(名前, 関数)`）: `projectOpened`・`projectClosed`・`mapOpened`・`blocksChanged`（`bank`・`map`・`cells`・`kind`（`execute` / `undo` / `redo`））・`mapResized`・`mapShifted`（`dx`・`dy`。戻すときは逆向き）・`hoverChanged`（`tab`・`x`・`y`。マスが変わったときだけ。外へ出たら `x` が null）・`tabChanged`。スクリプトが書いた変更では `blocksChanged` を呼びません。
 - 書き込みは、1 回のコールバック・登録した操作の分を 1 つの操作にまとめます（Ctrl+Z 1 回で全部戻る）。書き込みはコールバックか登録した操作の中だけで使えます。
 - 登録した操作は、スクリプトの管理の窓の「実行」で動かします。窓には読み込めなかった理由とログも出ます。「止める」で Worker を終わらせます（長く止まったスクリプトも止まります）。「読み直し」でファイルを読み直します。
-- 起動の時間とメモリ: スクリプトが無いときは Worker を作らないので変わりません（素の ROM での起動からマップ表示まで、同じときに測って中央値 1106 ms と、入れる前の 1173 ms。ほかの作業でぶれがあります）。例の 3 つを有効にしたときの JavaScript のヒープは 39.6 MB から 40.2 MB でした。
-- まだ無いもの: 塗りつぶし・マジック塗り（#388）とシフト（#390）の API、ホバーのマスとシフトのコールバック、ツール > スクリプトのメニューへの登録とキー（#392 のショートカットの表がそろってから）。
+- 起動の時間とメモリ: スクリプトが無いときは Worker を作らないので変わりません（素の ROM での起動からマップ表示まで、同じときに測って中央値 1106 ms と、入れる前の 1173 ms。ほかの作業でぶれがあります）。確認用を含めた 4 つを有効にしたときの JavaScript のヒープは 40.4 MB から 42.0 MB でした。
+- まだ無いもの: 登録した操作のツール > スクリプトのメニューへの登録とキー（#392 のショートカットの表がそろってから）。
 
 自動操作の命令は `userScripts.state`・`userScripts.run`・`userScripts.reload`・`userScripts.stop`（docs/automation.md）。
 

@@ -8,6 +8,7 @@ docs/userscripts の例（grass.js・count.js・sandbox_probe.js）を写しの�
 - grass.js: 草むら（0x00D）を置くと、そのマスの移動許可が 0C になる。スクリプトの変更は Ctrl+Z 1 回で戻る。
 - count.js: 登録した操作が入力の窓で聞き、全マップのブロックを数えてログに出す。
 - sandbox_probe.js: fetch・XMLHttpRequest・importScripts などと Tauri の入口が使えない。
+- tools_probe.js: 塗りつぶし・マジック塗り・シフトが 1 回の「元に戻す」で戻り、ホバーとシフトのコールバックが届く。
 - 止めると Worker が無くなる。
 """
 from __future__ import annotations
@@ -24,7 +25,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from zz import Zigzagu  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-EXAMPLES = ["grass.js", "count.js", "sandbox_probe.js"]
+EXAMPLES = ["grass.js", "count.js", "sandbox_probe.js", "tools_probe.js"]
 failures: list[str] = []
 
 
@@ -110,6 +111,36 @@ def main() -> int:
             z.call({"cmd": "dialog", "input": "00D", "press": "ok"})
             line = wait_for(lambda: next((l["text"] for l in z.call({"cmd": "userScripts.state"})["logs"] if "ブロック 00D は" in l["text"]), None), 120)
             check(bool(line), f"全マップのブロックを数える（{line}）")
+
+            # tools_probe.js（塗りつぶし・マジック塗り・シフト・コールバック）
+            base = z.call({"cmd": "cells"})
+            w = base["width"]
+            pos = z.call({"cmd": "editHistory.state"})["position"]
+            st = z.call({"cmd": "userScripts.run", "action": "fill"})
+            line = next((l["text"] for l in reversed(st["logs"]) if "fill:" in l["text"]), "")
+            after = z.call({"cmd": "cells"})["cells"]
+            # 塗りつぶしで (0, 0) につながったマスを 0x001 にし、マジック塗りで 0x001 のマスを全部 0x002 にする
+            flood = int(line.split("flood=")[1].split(" ")[0]) if "flood=" in line else -1
+            ones = sum(1 for v in base["cells"] if v & 0x3FF == 1) if base["cells"][0] & 0x3FF != 1 else 0
+            twos = sum(1 for v in after if v & 0x3FF == 2) - sum(1 for v in base["cells"] if v & 0x3FF == 2)
+            check(flood >= 1 and f"magic={ones + flood}" in line and twos == ones + flood and (after[0] & 0x3FF) == 2, f"塗りつぶしとマジック塗り（{line}、元の 0x001 は {ones} マス）")
+            check(z.call({"cmd": "editHistory.state"})["position"] == pos + 1, "塗りつぶしとマジック塗りで 1 つの操作")
+            z.call({"cmd": "undo"})
+            check(z.call({"cmd": "cells"})["cells"] == base["cells"], "1 回の「元に戻す」で戻る")
+            z.call({"cmd": "userScripts.run", "action": "shift"})
+            after = z.call({"cmd": "cells"})["cells"]
+            ok = all(after[y * w + (x + 1) % w] == base["cells"][y * w + x] for y in range(base["height"]) for x in range(w))
+            check(ok, "シフトで右へ 1 マスずれ、はみ出た列は左に回る")
+            z.call({"cmd": "undo"})
+            z.call({"cmd": "command", "name": "shiftMap", "args": {"bank": 3, "map": 0, "dx": 2, "dy": -1}})
+            for c in ([3, 3], [4, 4], [5, 4]):
+                z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": c})
+            st = z.call({"cmd": "userScripts.run", "action": "report"})
+            line = next((l["text"] for l in reversed(st["logs"]) if "report:" in l["text"]), "")
+            check('"dx":2' in line and '"dy":-1' in line, f"マップシフトのコールバック（{line}）")
+            hovers = int(line.split("hovers=")[1].split(" ")[0]) if "hovers=" in line else 0
+            check(hovers >= 3, f"ホバーのマスのコールバック（{hovers} 回）")
+            z.call({"cmd": "undo"})
 
             st = z.call({"cmd": "userScripts.stop"})
             check(not st["active"], "止めると Worker が無くなる")

@@ -21,6 +21,10 @@ export interface UserScriptApi {
     setBorder(x: number, y: number, block: number): Promise<void>;
     getHeader(): Promise<unknown>;
     getTilesets(): Promise<unknown>;
+    /** 塗りつぶし（`magic` でマジック塗り、`movement` で移動許可を塗る）。塗ったマスの数を返す。 */
+    fill(x: number, y: number, value: number, options?: { magic?: boolean; movement?: boolean }): Promise<number>;
+    /** マップシフト（はみ出た分は反対側へ回る）。 */
+    shift(dx: number, dy: number): Promise<void>;
   };
   readonly maps: { list(): Promise<unknown>; getCells(bank: number, map: number): Promise<unknown> };
   readonly names: { list(kind: string): Promise<unknown> };
@@ -84,6 +88,8 @@ export class UserScriptRuntime {
         setBorder: call("map.setBorder"),
         getHeader: call("map.getHeader"),
         getTilesets: call("map.getTilesets"),
+        fill: call("map.fill"),
+        shift: call("map.shift"),
       },
       maps: { list: call("maps.list"), getCells: call("maps.getCells") },
       names: { list: call("names.list") },

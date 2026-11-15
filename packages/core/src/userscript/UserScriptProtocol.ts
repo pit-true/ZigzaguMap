@@ -16,6 +16,8 @@ export const USER_SCRIPT_METHODS = [
   "map.setBorder",
   "map.getHeader",
   "map.getTilesets",
+  "map.fill",
+  "map.shift",
   // ほかのマップ（読むだけ）
   "maps.list",
   "maps.getCells",
@@ -32,10 +34,10 @@ export const USER_SCRIPT_METHODS = [
 export type UserScriptMethod = (typeof USER_SCRIPT_METHODS)[number];
 
 /** 書き込む API（1 回の呼び出し（コールバック・登録した操作）の分を、1 回の「元に戻す」にまとめる）。 */
-export const USER_SCRIPT_WRITES: ReadonlySet<UserScriptMethod> = new Set(["map.setBlock", "map.setMovement", "map.setBorder"]);
+export const USER_SCRIPT_WRITES: ReadonlySet<UserScriptMethod> = new Set(["map.setBlock", "map.setMovement", "map.setBorder", "map.fill", "map.shift"]);
 
 /** コールバックの名前。 */
-export const USER_SCRIPT_EVENTS = ["projectOpened", "projectClosed", "mapOpened", "blocksChanged", "mapResized", "tabChanged"] as const;
+export const USER_SCRIPT_EVENTS = ["projectOpened", "projectClosed", "mapOpened", "blocksChanged", "mapResized", "mapShifted", "hoverChanged", "tabChanged"] as const;
 
 export type UserScriptEvent = (typeof USER_SCRIPT_EVENTS)[number];
 

@@ -93,6 +93,11 @@ export class ViewFeatures {
       },
       createWorker: () => new Worker(new URL("./scripting/userScriptWorker.ts", import.meta.url), { type: "module" }),
     });
+    // ホバーのマス（スクリプトの hoverChanged。Worker を作っているときだけ知らせる）
+    for (const [view, tab] of [[parts.mapTab.view, "map"], [parts.movementTab.view, "movement"], [parts.eventTab.view, "event"]] as const) {
+      view.stage.addEventListener("pointermove", (e) => this.userScripts.hover(tab, view.cellAt(e)));
+      view.stage.addEventListener("pointerleave", () => this.userScripts.hover(tab, null));
+    }
     actions.register("scripts.manage", async () => {
       const { UserScriptManager } = await import("../ui/userscript/UserScriptManager");
       new UserScriptManager(state, this.userScripts);
