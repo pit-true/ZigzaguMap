@@ -1,2 +1,7 @@
 // script/playback の公開する名前（Phase6 のスクリプトの再生。#450〜#453）。
 export * from "./ScriptWalker.js";
+export * from "./PlaybackState.js";
+export * from "./Timeline.js";
+export * from "./PlaybackSimulator.js";
+export * from "./StartState.js";
+export * from "./handlers/PlaybackHandlers.js";
