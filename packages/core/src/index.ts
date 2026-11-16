@@ -115,7 +115,12 @@ export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSugg
 
 // OW（人のスプライト）
 export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame } from "./sprite/OverworldSprites.js";
+export { OverworldEffects } from "./sprite/OverworldEffects.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
+export { renderGameScene, type SceneActor, type SceneView } from "./render/GameScene.js";
+export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
+export { hasTripleLayerBlocks } from "./game/features.js";
+export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

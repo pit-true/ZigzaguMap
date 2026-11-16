@@ -15,6 +15,7 @@ const MAX_PALETTES = 0x100;
 export interface OverworldGraphicsInfo {
   readonly paletteTag: number;
   readonly paletteSlot: number;
+  readonly shadowSize: number;
   readonly width: number;
   readonly height: number;
   /** 1 コマ目（下向きの立ち姿）の画像データの位置。 */
@@ -71,7 +72,7 @@ export class OverworldSprites {
         const valid =
           rom.u16(at) === 0xffff && width > 0 && height > 0 && width <= 128 && height <= 128 && width % 8 === 0 && height % 8 === 0;
         if (valid && rom.inRange(imageOffset, (width * height) / 2)) out = {
-          paletteTag: rom.u16(at + 2), paletteSlot: rom.u8(at + 12) & 15, width, height, imageOffset,
+          paletteTag: rom.u16(at + 2), paletteSlot: rom.u8(at + 12) & 15, shadowSize: (rom.u8(at + 12) >> 4) & 3, width, height, imageOffset,
           framesOffset: frames,
           animationsOffset: rom.isPointer(rom.u32(at + 0x18)) ? rom.pointer(at + 0x18) : null,
         };
@@ -192,24 +193,29 @@ export class OverworldSprites {
   }
 
   private decode(info: OverworldGraphicsInfo, paletteAt: number, tint: PaletteTint | null = null): RgbaImage {
-    const { width, height } = info;
-    const image = createImage(width, height);
-    const bytes = this.rom.bytes;
     const raw = this.rom.u16Array(paletteAt, 16);
     const colors = tint ? tint(raw, info.paletteSlot) : raw;
-    const tilesX = width / 8;
-    for (let ty = 0; ty < height / 8; ty++) {
-      for (let tx = 0; tx < tilesX; tx++) {
-        const tile = info.imageOffset + (ty * tilesX + tx) * 32;
-        for (let py = 0; py < 8; py++) {
-          for (let px = 0; px < 8; px++) {
-            const b = bytes[tile + py * 4 + (px >> 1)]!;
-            const index = px & 1 ? b >> 4 : b & 0xf;
-            if (index !== 0) writeBgr555(image.data, (ty * 8 + py) * width + tx * 8 + px, colors[index]!);
-          }
+    return decodeObjectImage(this.rom, info.width, info.height, info.imageOffset, colors);
+  }
+}
+
+/** OBJの無圧縮4bpp画像。OWとフィールドエフェクトで同じ並びを使う。 */
+export function decodeObjectImage(rom: Rom, width: number, height: number, imageOffset: number, colors: ArrayLike<number>): RgbaImage {
+  rom.check(imageOffset, width * height / 2);
+  const image = createImage(width, height);
+  const bytes = rom.bytes;
+  const tilesX = width / 8;
+  for (let ty = 0; ty < height / 8; ty++) {
+    for (let tx = 0; tx < tilesX; tx++) {
+      const tile = imageOffset + (ty * tilesX + tx) * 32;
+      for (let py = 0; py < 8; py++) {
+        for (let px = 0; px < 8; px++) {
+          const b = bytes[tile + py * 4 + (px >> 1)]!;
+          const index = px & 1 ? b >> 4 : b & 0xf;
+          if (index !== 0) writeBgr555(image.data, (ty * 8 + py) * width + tx * 8 + px, colors[index]!);
         }
       }
     }
-    return image;
   }
+  return image;
 }

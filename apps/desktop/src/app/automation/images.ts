@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import { resolveActorFrame, type PlaybackActorState } from "@zigzagumap/core";
+import { resolveActorFrame, type PlaybackActorState, type PlaybackState } from "@zigzagumap/core";
+import { renderActorScene } from "../ActorScene";
+import type { PlayerPlacement } from "../PreviewPlayer";
+import { canvasOf } from "../../ui/canvas";
+import { sceneNeighborBlocks } from "../SceneNeighbors";
 import { drawPlaybackActors } from "../../ui/map/PlaybackActors";
 import { actorSpriteSourceFor } from "../../ui/map/spriteCanvases";
 import type { App } from "../App";
@@ -98,6 +102,29 @@ async function uiShot(_app: App, req: AutomationRequest): Promise<unknown> {
 }
 
 export const imageCommands: CommandTable = {
+  "preview.player": async (app, req) => {
+    if (req["enabled"] === true) app.previewPlayer.start();
+    if (req["enabled"] === false) app.previewPlayer.stop();
+    if (req["player"] && typeof req["player"] === "object") app.previewPlayer.setPlayer(req["player"] as Partial<PlayerPlacement>);
+    await app.previewPlayer.ready();
+    return { enabled: app.previewPlayer.enabled, player: app.previewPlayer.player, frame: app.previewPlayer.frame };
+  },
+  "preview.playback": (app, req) => {
+    app.previewPlayer.setPlayback((req["state"] ?? null) as PlaybackState | null);
+    return { frame: app.previewPlayer.frame };
+  },
+  "actors.scene": async (app, req) => {
+    const session = app.state.session, map = app.state.map;
+    if (!session || !map) throw new Error("マップが開かれていません");
+    const actors = req["actors"] as PlaybackActorState[];
+    if (!Array.isArray(actors) || actors.length > 64) throw new Error("actors は64件までの配列です");
+    const number = (key: string, fallback: number): number => typeof req[key] === "number" ? req[key] : fallback;
+    const outside = await sceneNeighborBlocks(session, map);
+    const result = renderActorScene(session, map, { x: number("x", 0), y: number("y", 0), width: number("width", 240), height: number("height", 160) }, actors, undefined, outside);
+    const canvas = canvasOf(result.image);
+    const png = canvas.toDataURL("image/png").split(",")[1]; canvas.width = 0; canvas.height = 0;
+    return { png, missing: result.missing, unknownBlocks: result.unknownBlocks };
+  },
   "actors.render": (app, req) => {
     const session = app.state.session;
     if (!session?.overworldSprites) throw new Error("ROM が開かれていません");

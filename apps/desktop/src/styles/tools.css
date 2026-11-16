@@ -109,7 +109,7 @@
 
 .map-sight-frame {
   border: 2px solid rgba(255, 210, 0, 0.95);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.5);
 }
 
 /* 移動エリアタブの、移動許可の数値の欄 */

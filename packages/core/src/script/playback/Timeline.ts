@@ -1,4 +1,5 @@
 import { MOVEMENT_DELTA, oppositeDirection, type MovementAction, type MovementDirection } from "../movement/MovementActionTable.js";
+import { actorSubpriority } from "../../render/ActorPriority.js";
 import type {
   PlaybackActorState,
   PlaybackCamera,
@@ -29,15 +30,24 @@ export interface ActorBase {
   readonly lockFacing: boolean;
   readonly animHold: boolean;
   readonly fixedPriority: boolean;
+  readonly subpriority?: number | undefined;
   /** 命令の後も残る高さ（ワープで上へ消えた後など）。ふつうは 0。 */
   readonly height: number;
   readonly elevation: number;
 }
 
+export interface StepContext {
+  readonly playerFacing: MovementDirection;
+  readonly toPlayer: MovementDirection | null;
+  readonly defaultFacing: MovementDirection;
+  readonly elevationAt?: (x: number, y: number) => number | null;
+  readonly priorityViewY?: number;
+}
+
 /** 人物の変化 1 つ。 */
 export type ActorChange =
   /** 移動コマンド。start のフレームから frames フレーム。offset は途中から計算し直したときの、始まりのずれ。 */
-  | { readonly type: "step"; readonly frame: number; readonly base: ActorBase; readonly action: MovementAction; readonly offset: number; readonly playerFacing: MovementDirection; readonly toPlayer: MovementDirection | null; readonly defaultFacing: MovementDirection }
+  | ({ readonly type: "step"; readonly frame: number; readonly base: ActorBase; readonly action: MovementAction; readonly offset: number } & StepContext)
   /** 命令ですぐ変えた状態（そのフレームから）。 */
   | { readonly type: "set"; readonly frame: number; readonly base: ActorBase };
 
@@ -86,16 +96,20 @@ export function applyStepFrame(
   base: ActorBase,
   action: MovementAction,
   k: number,
-  ctx: { readonly playerFacing: MovementDirection; readonly toPlayer: MovementDirection | null; readonly defaultFacing: MovementDirection },
+  ctx: StepContext,
 ): StepFrame {
-  let { tileX, tileY, pixelX, pixelY, facing, visible, lockFacing, animHold, fixedPriority } = base;
+  let { tileX, tileY, pixelX, pixelY, facing, visible, lockFacing, animHold, fixedPriority, elevation, subpriority } = base;
   const dir = action.direction;
   const e = action.effect;
   if (e) {
     if (e.type === "lockFacing") lockFacing = e.on;
     else if (e.type === "animHold") animHold = e.on;
     else if (e.type === "visible") visible = e.on;
-    else if (e.type === "fixedPriority") fixedPriority = e.on;
+    else if (e.type === "fixedPriority") {
+      if (e.on && !fixedPriority) subpriority = actorSubpriority(elevation, pixelY, ctx.priorityViewY ?? 0);
+      if (!e.on) subpriority = undefined;
+      fixedPriority = e.on;
+    }
     else if (e.type === "facePlayer" && ctx.toPlayer) facing = ctx.toPlayer;
     else if (e.type === "faceAwayPlayer" && ctx.toPlayer) facing = oppositeDirection(ctx.toPlayer);
     else if (e.type === "faceDefault") facing = ctx.defaultFacing;
@@ -117,6 +131,11 @@ export function applyStepFrame(
     }
   }
   const height = action.heights ? (action.heights[Math.min(k, action.heights.length - 1)] ?? 0) : base.height;
+  if (!fixedPriority && ctx.elevationAt) {
+    const from = ctx.elevationAt(base.tileX, base.tileY);
+    const to = ctx.elevationAt(tileX, tileY);
+    if (from !== 15 && to !== null && Number.isInteger(to) && to > 0 && to < 15) elevation = to;
+  }
   const last = k >= action.frames - 1;
   const after: ActorBase = {
     ...base,
@@ -129,6 +148,8 @@ export function applyStepFrame(
     lockFacing,
     animHold,
     fixedPriority,
+    elevation,
+    ...(subpriority === undefined && base.subpriority === undefined ? {} : { subpriority }),
     height: last ? (action.keepHeight ? height : action.heights ? 0 : base.height) : base.height,
   };
   return { base: after, height, facing };
@@ -214,6 +235,7 @@ export class Timeline {
         mark: mark ? { mark: mark.mark, frame: f - mark.frame } : null,
         elevation: r.base.elevation,
         fixedPriority: r.base.fixedPriority,
+        ...(r.base.fixedPriority && r.base.subpriority !== undefined ? { subpriority: r.base.subpriority } : {}),
         animHold: r.base.animHold,
       });
     }

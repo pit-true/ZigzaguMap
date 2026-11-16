@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { actorFrame, actorImagePosition, OverworldSprites, Rom, type PlaybackActorState } from "../src/index.js";
+import { actorFrame, actorImagePosition, OverworldEffects, OverworldSprites, Rom, type PlaybackActorState } from "../src/index.js";
 
 function fixture(commands: readonly (readonly [number, number])[]) {
   const bytes = new Uint8Array(4096);
@@ -70,4 +70,25 @@ it("再生状態の向き・途中の座標・高さ・非表示を共通の描�
   expect(actorFrame(sprites, { ...actor, visible: false })).toBeNull();
   expect(actorFrame(sprites, { ...actor, present: false })).toBeNull();
   expect(actorFrame(sprites, { ...actor, graphicsId: -1 })).toBeNull();
+});
+
+it("影の画像・大きさ・色をROMから読み、OBJ0の色を使う", () => {
+  const { bytes, sprites } = fixture([[0, 1], [0xffff, 0]]);
+  const view = new DataView(bytes.buffer);
+  const ptr = (at: number, to: number) => view.setUint32(at, 0x08000000 + to, true);
+  ptr(0x10, 0x500); ptr(0x500, 0x520);
+  view.setUint16(0x520, 0xffff, true); ptr(0x524, 0x550); ptr(0x52c, 0x560);
+  ptr(0x560, 0x600); view.setUint16(0x564, 32, true); bytes[0x600] = 1;
+  const effects = OverworldEffects.read(new Rom(bytes), 0x10, sprites);
+  const before = bytes.slice();
+  const image = effects.shadow(0)!;
+  expect([image.width, image.height]).toEqual([8, 8]);
+  expect([...image.data.slice(0, 8)]).toEqual([255, 0, 0, 255, 0, 0, 0, 0]);
+  expect(effects.shadow(0, 0, (colors, slot) => {
+    expect(slot).toBe(0);
+    const out = Uint16Array.from(colors); out[1] = 31 << 10; return out;
+  })!.data[2]).toBe(255);
+  expect(bytes).toEqual(before);
+  view.setUint32(0x560, 0x02000000, true);
+  expect(effects.shadow(0)).toBeNull();
 });

@@ -15,6 +15,10 @@ export interface GameOffsets {
   readonly overworldGraphicsTablePointer: number;
   /** OW のパレット表（sObjectEventSpritePalettes）へのポインタが置かれている位置。 */
   readonly overworldPaletteTablePointer: number;
+  /** フィールドエフェクトのSpriteTemplate表（FeShadeSet内のリテラル）。 */
+  readonly fieldEffectTemplateTablePointer: number;
+  /** CFRUのDrawBlockHookが差し込まれる位置。 */
+  readonly drawBlockHook: number;
   /** タイルセットヘッダー（24 バイト）が番号順に並ぶ表の位置（AdvanceMap のタイルセット番号はこの並び）。 */
   readonly tilesetHeaderTable: number;
   /** 表のタイルセットの数。 */
@@ -37,6 +41,8 @@ export const BPRJ_OFFSETS: GameOffsets = {
   speciesNameTablePointer: 0x144,
   overworldGraphicsTablePointer: 0x5ebb4,
   overworldPaletteTablePointer: 0x5ed98,
+  fieldEffectTemplateTablePointer: 0xdc258,
+  drawBlockHook: 0x5a274,
   tilesetHeaderTable: 0x298b44,
   tilesetCount: 68,
   flyTablePointer: 0xc0e44,

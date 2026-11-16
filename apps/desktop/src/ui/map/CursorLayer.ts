@@ -1,13 +1,13 @@
 import type { Cell, MapView } from "./MapView";
+import { PLAYER_SCREEN_ORIGIN } from "@zigzagumap/core";
 
 /** プレイヤーの視界（ゲームの画面 240×160 画素 = 15×10 マス）。 */
 export const PLAYER_VIEW = { width: 15, height: 10 } as const;
 
 /**
- * 主人公のマスが視界の左上から何マス目か（0 から。Q7 の推奨で仮の値: 左に 7 マス・上に 4 マス）。
- * Phase6（#13）で ROM のカメラ処理に合わせて置き換える。
+ * 主人公のマスが視界の左上から何マス目か。実機の縦8pxの補正も含む。
  */
-export const PLAYER_VIEW_ORIGIN = { x: 7, y: 4 } as const;
+export const PLAYER_VIEW_ORIGIN = { x: PLAYER_SCREEN_ORIGIN.x / 16, y: PLAYER_SCREEN_ORIGIN.y / 16 } as const;
 
 /** カーソルの枠の大きさを決めるもの（タブが渡す。無ければ 1×1）。 */
 export type CursorSize = () => { width: number; height: number };
@@ -24,6 +24,13 @@ export class CursorLayer {
   private cell: Cell | null = null;
   private cursorOn = false;
   private sightOn = false;
+  private externalSight = false;
+
+  /** 仮の主人公・再生が実機の枠を描く間は、マウスについてくる仮の枠を隠す。 */
+  setExternalSight(on: boolean): void {
+    this.externalSight = on;
+    this.redraw();
+  }
 
   constructor(
     private readonly view: MapView,
@@ -62,7 +69,7 @@ export class CursorLayer {
   }
 
   private sightRect(): Rect | null {
-    if (!this.sightOn || !this.cell) return null;
+    if (!this.sightOn || !this.cell || this.externalSight) return null;
     return { x: this.cell.x - PLAYER_VIEW_ORIGIN.x, y: this.cell.y - PLAYER_VIEW_ORIGIN.y, width: PLAYER_VIEW.width, height: PLAYER_VIEW.height };
   }
 
