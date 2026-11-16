@@ -13,6 +13,13 @@ export interface SceneActor {
   /** 影と頭上の印もROMから読んだ画像を渡す。影はジャンプで上へ動かさない。 */
   readonly shadow?: RgbaImage | null;
   readonly mark?: RgbaImage | null;
+  readonly markOffsetY?: number;
+}
+
+/** マップのブロックの代わりに描くマス（ドアの仮のブロック。#474）。`entries` は 8 個のタイル指定、`mode` は重ね方。 */
+export interface SceneCell {
+  readonly entries: ArrayLike<number>;
+  readonly mode: number;
 }
 
 /** `overlay`: 背景色と人物より下のBGを描かず、透明な画像に人物と、人物の上に来るBGだけを描く（マップ画像に重ねる用）。 */
@@ -34,6 +41,7 @@ export function renderGameScene(
   blockAt: (x: number, y: number) => number | null,
   actors: readonly SceneActor[],
   cfru: boolean,
+  cellAt?: (x: number, y: number) => SceneCell | null,
   options: SceneOptions = {},
 ): { readonly image: RgbaImage; readonly unknownBlocks: readonly number[] } {
   if (!Number.isInteger(view.width) || !Number.isInteger(view.height) || view.width < 1 || view.height < 1 || view.width > 4096 || view.height > 4096 || !Number.isFinite(view.x) || !Number.isFinite(view.y)) {
@@ -53,11 +61,21 @@ export function renderGameScene(
     }))
     .sort((a, b) => b.subpriority - a.subpriority || b.actor.state.id - a.actor.state.id);
   const top = Math.max(-1, ...visible.map(v => v.priority));
+  const objects = visible.flatMap(entry => [
+    { ...entry, effect: false, order: entry.actor.state.id },
+    ...(entry.actor.mark && entry.actor.state.mark ? [{ ...entry, priority: 1, subpriority: 0x53, effect: true, order: 0x100 + entry.actor.state.id }] : []),
+  ]).sort((a, b) => b.subpriority - a.subpriority || b.order - a.order);
   for (const plane of [3, 2, 1, 0] as const) {
     // 重ね描きでは、人物より上に来るBGだけを描く（下のBGは呼び出し側のマップ画像にある）。
     if (plane && (!options.overlay || plane < top)) {
       for (let y = Math.floor(view.y / 16); y < Math.ceil((view.y + view.height) / 16); y++) {
         for (let x = Math.floor(view.x / 16); x < Math.ceil((view.x + view.width) / 16); x++) {
+          const cell = cellAt?.(x, y);
+          if (cell) {
+            const pixels = renderer.renderGameCell(cell.entries, cell.mode, plane, cfru);
+            if (pixels) blit(image, { width: 16, height: 16, data: pixels }, x * 16 - view.x, y * 16 - view.y);
+            continue;
+          }
           const block = blockAt(x, y);
           if (block === null) continue;
           const pixels = renderer.renderGamePlane(block, plane, cfru);
@@ -75,12 +93,12 @@ export function renderGameScene(
         blit(image, actor.shadow, at.x - view.x, at.y - view.y);
       }
     }
-    for (const { actor, priority } of visible) {
+    for (const { actor, priority, effect } of objects) {
       if (priority !== plane) continue;
       const state = actor.state;
       const at = actorImagePosition(state, actor.image.width, actor.image.height);
-      blit(image, actor.image, at.x - view.x, at.y - view.y);
-      if (actor.mark && state.mark) blit(image, actor.mark, state.pixelX + (16 - actor.mark.width) / 2 - view.x, at.y - actor.mark.height - view.y);
+      if (effect && actor.mark) blit(image, actor.mark, state.pixelX + (16 - actor.mark.width) / 2 - view.x, at.y + actor.image.height / 2 - 16 - actor.mark.height / 2 + (actor.markOffsetY ?? 0) - view.y);
+      else blit(image, actor.image, at.x - view.x, at.y - view.y);
     }
   }
   return { image, unknownBlocks: [...unknown] };

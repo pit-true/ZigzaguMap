@@ -3,7 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { EditorSelection, EditorState, type Extension, type TransactionSpec } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
-import { planStringBodyEdit } from "@zigzagumap/core";
+import { indexAsmFile, planStringBodyEdit } from "@zigzagumap/core";
+import { showContextMenu } from "../../ui/ContextMenu";
+import { jaPlayback } from "../../i18n/ja.playback";
 import { ja } from "../../i18n/ja";
 import { jaScriptEditor as t } from "../../i18n/ja.scriptEditor";
 import { jaScriptEditorAssist as ta } from "../../i18n/ja.scriptEditorAssist";
@@ -17,6 +19,7 @@ import { ExternalChanges } from "./ExternalChanges";
 import { buildExtensions, type EditorFileContext } from "./extensions";
 import type { EditorHost } from "./extensions/context";
 import { projectChangedEffect } from "./extensions/highlight";
+import { playbackHighlightEffect, playbackHighlightField } from "./extensions/playbackHighlight";
 import type { EditorThemeId } from "./extensions/themes";
 import { WidthCheck } from "./extensions/widthCheck";
 import { decodeScriptText, encodeScriptText, isEditableScriptPath, normalizeScriptPath, scriptFileKind, type DecodedText } from "./fileText";
@@ -95,6 +98,10 @@ export class ScriptEditorWindow {
   };
   /** メインからの問い合わせの答え方（種類ごとに 1 つ）。 */
   private readonly queryHandlers: MessageHandlers<ScriptEditorQueryMap> = {
+    playbackHighlight: q => {
+      for (const tab of this.tabs) this.dispatchTo(tab, { effects: playbackHighlightEffect.of(q.spans.filter(span => normalizeScriptPath(span.path) === tab.path)) });
+      return q.spans.filter(span => this.tabs.some(tab => tab.path === normalizeScriptPath(span.path))).length;
+    },
     dirty: () => this.tabs.filter((x) => x.dirty).map((x) => x.path),
     saveAll: () => this.saveAll(),
     // 閉じ始めたら本文を渡さない（確認のあとはディスクが正しい。メインはディスクを読み書きする）
@@ -119,6 +126,17 @@ export class ScriptEditorWindow {
     this.roms = new RomTabs(this);
     this.view = new EditorView({ parent: body });
     this.view.dom.dataset["autoId"] = "se.editor";
+    this.view.dom.addEventListener("contextmenu", event => {
+      const tab = this.activeTab;
+      if (!tab || tab.kind !== "asm" || tab.rom) return;
+      const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos === null) return;
+      const line = this.view.state.doc.lineAt(pos), column = pos - line.from;
+      const label = indexAsmFile(tab.path, this.view.state.doc.toString()).labels.find(label => label.line === line.number && column >= label.column && column <= label.column + label.name.length);
+      if (!label) return;
+      event.preventDefault();
+      showContextMenu(event.clientX, event.clientY, [{ id: "playScript", label: jaPlayback.menu, run: () => { void this.client.request({ type: "playback", label: label.name }).catch(error => this.setMessage(errorText(error))); } }]);
+    });
     body.append(this.empty);
     const bar = document.createElement("div");
     bar.className = "se-statusbar";
@@ -381,7 +399,7 @@ export class ScriptEditorWindow {
 
   /** ファイル 1 つ分の EditorState を作る（機能の拡張と、変更の見張り）。 */
   createState(tab: EditorTab, text: string): EditorState {
-    const extensions: Extension[] = [buildExtensions(this.fileContext(tab)), EditorView.updateListener.of((u) => this.onUpdate(tab, u))];
+    const extensions: Extension[] = [buildExtensions(this.fileContext(tab)), playbackHighlightField, EditorView.updateListener.of((u) => this.onUpdate(tab, u))];
     if (tab.rom) extensions.push(EditorState.readOnly.of(true));
     return EditorState.create({ doc: text, extensions });
   }

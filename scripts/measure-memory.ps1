@@ -29,6 +29,7 @@
 #     userscripts … -Project のフォルダの zigzagumap-scripts\ に docs/userscripts の例（grass.js・count.js）を置いて有効にし、
 #                   count.js の操作で全マップを数えた後（-Project が要る。写しを渡す。最後に置いたファイルと zigzagumap.json を元に戻す）
 #   `all` は Phase4 の 6 つと Phase5 の tools・export（userscripts は -Project があるときだけ足す）。
+#   Phase6（#454）: playback … -PlaybackLabel のラベルを 3.0 で 4 倍で最後まで再生した後（再生中）と、再生を終えた後（-Project が要る。all には入らない）。
 # - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
 # - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
@@ -47,6 +48,8 @@ param(
   [string]$Stages = "",
   [switch]$BlockStats,
   [switch]$WildSearch,
+  # -Stages playback で再生するラベル（-Project のスクリプト）
+  [string]$PlaybackLabel = "TwoOpponentBattleShowMessage",
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -259,6 +262,26 @@ try {
             Call @{ cmd = "dialog"; press = "close" } | Out-Null
             Call @{ cmd = "editHistory.goTo"; position = $h0 } | Out-Null
             $results += Get-Snapshot "画像とタイムラプスを書き出した後" $proc.Id
+          }
+          "playback" {
+            if (-not $Project) { throw "playback には -Project が要ります" }
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            Call @{ cmd = "tab"; name = "event" } | Out-Null
+            Call @{ cmd = "playback.start"; label = $PlaybackLabel } | Out-Null
+            Call @{ cmd = "playback.speed"; value = 4 } | Out-Null
+            Call @{ cmd = "playback.play" } | Out-Null
+            for ($i = 0; $i -lt 300; $i++) {
+              $st = Call @{ cmd = "playback.state" }
+              if (-not $st.playing) {
+                if ($st.frame -ge $st.lastFrame) { break }
+                Call @{ cmd = "playback.play" } | Out-Null  # 文で止まったら続きへ
+              }
+              Start-Sleep -Milliseconds 100
+            }
+            $results += Get-Snapshot "スクリプトを最後まで再生した後（再生中）" $proc.Id
+            Call @{ cmd = "playback.stop" } | Out-Null
+            Call @{ cmd = "tab"; name = "map" } | Out-Null
+            $results += Get-Snapshot "再生を終えた後" $proc.Id
           }
           "userscripts" {
             if (-not $Project) { throw "userscripts には -Project が要ります" }

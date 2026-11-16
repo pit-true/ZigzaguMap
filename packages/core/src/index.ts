@@ -116,14 +116,48 @@ export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSugg
 // OW（人のスプライト）
 export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame, type OverworldAnimationCommand, type WalkingOffsets } from "./sprite/OverworldSprites.js";
 export { OverworldEffects } from "./sprite/OverworldEffects.js";
+export { EmotionSprites, emotionRise } from "./sprite/EmotionSprites.js";
+export { ProjectEmotes } from "./sprite/ProjectEmotes.js";
 export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.js";
 export { ActorAnimator } from "./sprite/ActorAnimator.js";
 export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
-export { renderGameScene, type SceneActor, type SceneOptions, type SceneView } from "./render/GameScene.js";
+export { renderGameScene, type SceneActor, type SceneCell, type SceneOptions, type SceneView } from "./render/GameScene.js";
+export {
+  AnimatedTiles,
+  BPRJ_TILE_ANIMATIONS,
+  readTileAnimation,
+  tileAnimationBytes,
+  tileAnimationFrame,
+  type KnownTileAnimation,
+  type KnownTileAnimationTrack,
+  type TileAnimationReason,
+  type TileAnimationSet,
+  type TileAnimationTrack,
+} from "./render/TileAnimations.js";
+export {
+  DOOR_BEHAVIOR,
+  DOOR_CELL_LAYER,
+  DOOR_TEMP_BYTES,
+  DOOR_TEMP_TILE,
+  doorAt,
+  doorCell,
+  doorStateAt,
+  doorStepFrames,
+  doorWaitResume,
+  readDoorTable,
+  type DoorCellLookup,
+  type DoorEvent,
+  type DoorGraphic,
+  type DoorReason,
+  type DoorSceneState,
+  type DoorStep,
+  type DoorTable,
+} from "./render/DoorAnimations.js";
 export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
+export { readMessageFrame, type MessageFrameStyle } from "./render/MessageFrame.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

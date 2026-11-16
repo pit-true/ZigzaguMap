@@ -77,6 +77,24 @@ export class BlockRenderer {
     return out;
   }
 
+  /**
+   * マップのブロックの代わりに、8 個のタイル指定と重ね方を直接渡して BG1/2/3 の 1 枚を描く（ドアの仮のブロック。#474）。
+   * 3 枚目を使う重ね方は描けない（null）。覚えないので、呼ぶ側が必要なら持つ。
+   */
+  renderGameCell(entries: ArrayLike<number>, mode: number, plane: 1 | 2 | 3, cfru: boolean): Uint8ClampedArray | null {
+    const plan = gameLayerPlan(mode, cfru);
+    if (!plan || plan.planes.length > 2 || entries.length < 8) return null;
+    const out = new Uint8ClampedArray(BLOCK_RGBA_BYTES);
+    if (plan.fallback && plane === 3) {
+      for (let part = 0; part < 4; part++) this.drawTile(out, 0x3014, (part & 1) * 8, (part >> 1) * 8, false, false);
+    }
+    for (let layer = 0; layer < plan.planes.length; layer++) {
+      if (plan.planes[layer] !== plane) continue;
+      for (let part = 0; part < 4; part++) this.drawTile(out, entries[layer * 4 + part]!, (part & 1) * 8, (part >> 1) * 8, false, false);
+    }
+    return out;
+  }
+
   /** BGの色番号0が透けた先の色。時間帯の色も反映する。 */
   backdropColor(): readonly [number, number, number, number] {
     return [this.drawRgba[0]!, this.drawRgba[1]!, this.drawRgba[2]!, 255];

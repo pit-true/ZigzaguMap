@@ -116,7 +116,7 @@ export class PreviewPlayer {
   /** 人物を動かす（#471）から呼ぶ。null でイベントの位置の止め絵へ戻る。 */
   setNpcActors(source: (() => readonly PlaybackActorState[]) | null): void { this.npcActors = source; this.draw(); }
 
-  /** 人物が動いたときに描き直す。 */
+  /** 外から絵だけを描き直す（人物が動いたとき #471、タイルアニメ・ドアのフレームが変わったとき #473・#474）。 */
   refresh(): void { this.draw(); }
 
   /** 再生画面から呼ぶ。nullで、再生前の仮の主人公の配置へ戻る。 */

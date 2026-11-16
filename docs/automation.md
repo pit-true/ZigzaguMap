@@ -1,5 +1,26 @@
 # 自動操作の入口（テスト用）
 
+## スクリプトの再生（実装中）
+
+プロジェクトとマップを開いて使います。再生は編集中のスクリプトを読み取り、ROMやマップを書き換えません。
+
+| 命令 | 引数 | 結果・操作 |
+|---|---|---|
+| `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す |
+| `playback.stop` | なし | 再生を終了し、イベント表示とスクロールを戻す |
+| `playback.state` | なし | `active`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
+| `playback.timeline` | なし | 区間 `segments`、印 `markers`、送り先 `keyFrames` |
+| `playback.seek` | `frame` | 任意のフレームへ移動して一時停止 |
+| `playback.step` | `direction: previous/next`、`singleFrame`（任意） | 動きの前・中・後へ移動。`singleFrame: true` なら1フレーム |
+| `playback.speed` | `value: 0.25/0.5/1/2/4` | 再生速度の変更 |
+| `playback.play` | なし | 再生・一時停止の切り替え。文で止まっていれば続きへ |
+| `playback.answer` | `key`、`taken`（真偽値） | 不明な条件分岐の答えを替え、最初から計算し直す |
+| `playback.layout` | なし | タイムラインの倍率 `scale`、横のスクロール、箱 `segments`（`left`・`width`・`top`・`active`）、印 `markers`、縦線 `cursor` の位置（画素） |
+| `playback.wheel` | `delta`（負で拡大）、`x`（部品の左端からの画素） | タイムラインの上で Ctrl＋ホイールを回したのと同じ |
+| `playback.choose` | `key`（印の `choice.key`）、`value` | 選択肢の答え（LASTRESULT の値）を替えて計算し直す。今のフレームは保つ |
+
+再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
+
 開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
 
 - リリースの exe に付けたときは、操作を奪わないよう、メインも別ウィンドウも作った時点から画面外に置き、アクティブにせず、タスクバーにも出しません（見えない状態で作ってから画面外へ動かして表示する）。音も出しません（WebView2 に `--mute-audio` を付け、Windows 標準のメッセージボックスは出さない。画面内のダイアログは音を鳴らさない）。
@@ -497,6 +518,19 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 `actors.scene {actors, x?, y?, width?, height?}` は表示中のマップの前景・人物・影を合成します。座標はマップ画素、既定の範囲は(0,0)から240×160です。`png`、読めなかった人物の `missing`、対応していない重ね方の `unknownBlocks` を返します。画面と保存で同じ合成を使います。
 
 `actors.render {actors, mapType?}` は `PlaybackActorState` の配列（64件まで）を共通描画部品で240×160の透明なCanvasに描き、`png`（base64）と各人物の `frames` を返します。座標はマップ画素です。`frames` の `reason` は非表示なら `hidden`、画像情報が無ければ `graphics`、アニメーションを読めなければ `animation` です。マップ・ROM・履歴を変えません。
+
+### タイルアニメとドア（#473・#474）
+
+どれもマップ・ROM・履歴を変えません。フレームの数え方は、MapBGanimeMain を呼んだ回数（マップに入った直後が0）です。ドアの命令も同じ数え方で、同じフレームでは命令がタスクより先に動きます。マップやROMを切り替えると止まり、命令も消えます。
+
+- `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用の写しのバイト数。
+- `tileAnim.frame {frame: number | null}`: フレームを渡します。null で止めて元の絵へ戻します。返事の `shown` は各アニメの表示中のコマ（まだ差し替えていなければ null）。
+- `tileAnim.scene {frame?, x?, y?, width?, height?, actors?}`: そのフレームの合成画像（既定は(0,0)から240×160）を `png` で返します。`frame` を渡すとそのフレームに合わせます。
+- `door.list`: 表示中のマップのドアのマス（`x`・`y`・`blockId`・`tall`）。`door.info {x, y}` は1マスの結果で、`reason` は挙動が0x69でなければ `behavior`、表に無いブロックなら `unknownDoor`。
+- `door.run {kind, x, y, frame?}`: `kind` は `open`・`close`（アニメあり。opendoor・closedoor）、`setOpen`・`setClosed`（アニメ無し。opendoor2・closedoor2）。返事の `lastFrame` はタスクが消えるフレーム。動いている間の `open`・`close` は `reason: "busy"` で何もしません。
+- `door.state {frame?}`: そのフレームの描き替えたマス（`at` と8個のタイル指定）、`task`、命令ごとの結果。`door.wait {frame}` は、そのフレームで waitdooranim を実行したときに続けるフレーム。`door.clear` は命令を消します。
+
+`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます。
 
 ### DPE の種族名（#439）
 

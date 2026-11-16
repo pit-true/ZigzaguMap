@@ -17,10 +17,21 @@ export interface GameOffsets {
   readonly overworldPaletteTablePointer: number;
   /** 歩きと停止のコマを対応させる表（EvActBootsAnimeNoStのリテラル）。 */
   readonly overworldWalkingTablePointer: number;
+  readonly messageFrameTilesPointer: number;
+  readonly signFrameTilesPointer: number;
+  readonly textWindowPalettesPointer: number;
+  readonly messageFrameWriter: number;
+  readonly emotionTemplatePointer: number;
   /** フィールドエフェクトのSpriteTemplate表（FeShadeSet内のリテラル）。 */
   readonly fieldEffectTemplateTablePointer: number;
   /** CFRUのDrawBlockHookが差し込まれる位置。 */
   readonly drawBlockHook: number;
+  /** ドアの表（total_door_anime_table）を指すリテラルの位置（OpenDoorCellSet の中）。 */
+  readonly doorAnimationTablePointer: number;
+  /** ドアを開ける手順の表（1 マス・縦 2 マス）を指すリテラルの位置。 */
+  readonly doorOpenSequencePointers: readonly [number, number];
+  /** ドアを閉める手順の表（1 マス・縦 2 マス）を指すリテラルの位置。 */
+  readonly doorCloseSequencePointers: readonly [number, number];
   /** タイルセットヘッダー（24 バイト）が番号順に並ぶ表の位置（AdvanceMap のタイルセット番号はこの並び）。 */
   readonly tilesetHeaderTable: number;
   /** 表のタイルセットの数。 */
@@ -44,8 +55,16 @@ export const BPRJ_OFFSETS: GameOffsets = {
   overworldGraphicsTablePointer: 0x5ebb4,
   overworldPaletteTablePointer: 0x5ed98,
   overworldWalkingTablePointer: 0x62df8,
+  messageFrameTilesPointer: 0x152e2c,
+  signFrameTilesPointer: 0x152df8,
+  textWindowPalettesPointer: 0x153514,
+  messageFrameWriter: 0xf8184,
+  emotionTemplatePointer: 0x82160,
   fieldEffectTemplateTablePointer: 0xdc258,
   drawBlockHook: 0x5a274,
+  doorAnimationTablePointer: 0x5ab54,
+  doorOpenSequencePointers: [0x5aac8, 0x5aaac],
+  doorCloseSequencePointers: [0x5ab20, 0x5ab04],
   tilesetHeaderTable: 0x298b44,
   tilesetCount: 68,
   flyTablePointer: 0xc0e44,

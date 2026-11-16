@@ -8,6 +8,7 @@ import { jaTools } from "../i18n/ja.tools";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { jaBlockTools } from "../i18n/ja.blockTools";
 import { jaUserScript } from "../i18n/ja.userScript";
+import { jaPlayback } from "../i18n/ja.playback";
 
 /**
  * ショートカットキーの表（Phase5 #392）。メニューのショートカットと、各所で受けている道具のキーをここにまとめる。
@@ -27,7 +28,7 @@ export interface KeyChord {
 }
 
 /** キーを受ける場所。重なりを調べるのに使う（場所が重ならなければ同じキーでもよい）。 */
-export type KeyArea = "map" | "movement" | "event" | "otherTabs" | "toolWindows" | "blockEditor";
+export type KeyArea = "map" | "movement" | "event" | "otherTabs" | "toolWindows" | "blockEditor" | "playback";
 
 const MAIN: readonly KeyArea[] = ["map", "movement", "event", "otherTabs"];
 const ANYWHERE: readonly KeyArea[] = [...MAIN, "toolWindows", "blockEditor"];
@@ -84,6 +85,15 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   menu("help.eula", k("F2")),
   { id: "edit.undo", defaults: [c("Z")], areas: ANYWHERE, label: ja.shortcuts.undo, where: ja.shortcuts.anywhere },
   { id: "edit.redo", defaults: [c("Y"), { key: "Z", ctrl: true, shift: true }], areas: ANYWHERE, label: ja.shortcuts.redo, where: ja.shortcuts.anywhere },
+  ...[
+    ["playback.toggle", k("SPACE"), jaPlayback.toggle],
+    ["playback.previous", k("ARROWLEFT"), jaPlayback.previous],
+    ["playback.next", k("ARROWRIGHT"), jaPlayback.next],
+    ["playback.previousFrame", { key: "ARROWLEFT", shift: true }, jaPlayback.previousFrame],
+    ["playback.nextFrame", { key: "ARROWRIGHT", shift: true }, jaPlayback.nextFrame],
+    ["playback.first", k("HOME"), jaPlayback.first],
+    ["playback.last", k("END"), jaPlayback.last],
+  ].map(([id, chord, label]) => ({ id, defaults: [chord], areas: ["playback"], label, where: jaPlayback.shortcutWhere }) as KeyAction),
   { id: "event.delete", defaults: [k("DELETE")], areas: ["event"], label: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
   { id: "event.duplicate", defaults: [c("D")], areas: ["event"], label: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
   { id: "stamp.copy", defaults: [c("C")], areas: ["map"], label: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },

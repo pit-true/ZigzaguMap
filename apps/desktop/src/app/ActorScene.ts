@@ -1,13 +1,28 @@
-import { hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneOptions, type SceneView } from "@zigzagumap/core";
+import { EmotionSprites, ProjectEmotes, emotionRise, hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneOptions, type SceneView } from "@zigzagumap/core";
 import type { OpenMap, ProjectSession } from "./ProjectSession";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
+import { sceneAnimation } from "./animation/sceneAnimation";
 
 interface Assets {
   generation: number;
   images: Map<string, RgbaImage | null>;
   effects: OverworldEffects | null | undefined;
+  emotions: EmotionSprites | null | undefined;
+  emotes: ProjectEmotes | null;
+  loading?: Promise<void>;
 }
 const sessions = new WeakMap<ProjectSession, Assets>();
+function assets(session: ProjectSession): Assets {
+  let value = sessions.get(session);
+  if (!value) { value = { generation: 0, images: new Map(), effects: undefined, emotions: undefined, emotes: null }; sessions.set(session, value); }
+  return value;
+}
+/** PNGの読み込みは再生・NPCを始める時だけ行う。描画の関数は同期のままにする。 */
+export async function prepareActorScene(session: ProjectSession): Promise<void> {
+  const value = assets(session);
+  value.loading ??= (async () => { value.emotes = session.projectDir ? await ProjectEmotes.read(session.files) : null; value.images.clear(); })();
+  await value.loading;
+}
 
 /** NPC・再生・仮の主人公の画面と書き出しが共用する、ROMの人物と前景の合成。 */
 export function renderActorScene(
@@ -21,11 +36,7 @@ export function renderActorScene(
 ) {
   const sprites = session.overworldSprites;
   const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
-  let cache = sessions.get(session);
-  if (!cache) {
-    cache = { generation: 0, images: new Map(), effects: undefined };
-    sessions.set(session, cache);
-  }
+  const cache = assets(session);
   if (cache.generation !== (useTint?.generation ?? 0)) {
     cache.images.clear();
     cache.generation = useTint?.generation ?? 0;
@@ -60,7 +71,17 @@ export function renderActorScene(
       shadow = load(`shadow:${actor.graphicsId}:${player}`, () => cache.effects?.shadow(actor.graphicsId, player, useTint?.sprite ?? null) ?? null);
       if (!shadow) missing.push({ actor: actor.id, reason: "shadow" });
     }
-    drawn.push({ state: actor, image, shadow });
+    let mark: RgbaImage | null = null;
+    if (actor.mark) {
+      if (cache.emotions === undefined) {
+        try { cache.emotions = EmotionSprites.read(session.project.rom, session.project.game.offsets.emotionTemplatePointer, sprites); }
+        catch { cache.emotions = null; }
+      }
+      const effect = actor.mark;
+      mark = load(`mark:${effect.mark}:${effect.frame}:${player}`, () => effect.mark.startsWith("emote_") ? cache.emotes?.frame(effect.mark, effect.frame, useTint?.sprite ?? null) ?? null : cache.emotions?.frame(effect.mark, effect.frame, player, useTint?.sprite ?? null) ?? null);
+      if (!mark) missing.push({ actor: actor.id, reason: "mark" });
+    }
+    drawn.push({ state: actor, image, shadow, mark, markOffsetY: actor.mark ? emotionRise(actor.mark.frame) : 0 });
   }
   const doc = map.doc;
   const blockAt = (x: number, y: number): number | null => {
@@ -72,6 +93,8 @@ export function renderActorScene(
     return b.getBlock(((x % b.width) + b.width) % b.width, ((y % b.height) + b.height) % b.height);
   };
   const cfru = session.projectDir !== null || hasTripleLayerBlocks(session.project.rom, session.project.game.offsets);
-  const scene = renderGameScene(map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, options);
+  // タイルアニメとドア（#473・#474）。動かしていなければ null で、今までと同じ描き手を使う。
+  const animation = sceneAnimation()?.forScene(session, map, tint) ?? null;
+  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, animation?.cellAt, options);
   return { ...scene, missing };
 }

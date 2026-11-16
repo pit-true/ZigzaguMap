@@ -69,6 +69,22 @@ it("未知の重ね方は報告し、影を地面に残して人物だけを持�
   expect(pixel(image, 4, 14)).toEqual([255, 255, 255, 255]);
 });
 
+it("頭上の印は人物の中心から16px上で、独立したBG優先度1を使う", () => {
+  const { renderer, state } = fixture(0);
+  const body = createImage(16, 32), mark = createImage(4, 4);
+  for (let i = 0; i < body.data.length; i += 4) body.data.set([0, 255, 0, 255], i);
+  for (let i = 0; i < mark.data.length; i += 4) mark.data.set([255, 0, 0, 255], i);
+  const actor = { state: { ...state, pixelY: 32, mark: { mark: "exclaim", frame: 10 } }, image: body, mark };
+  const image = renderGameScene(renderer, { ...view, height: 48 }, () => 0, [actor], false).image;
+  // 体はBG1の後ろ。印はBG1より手前で、top=14。
+  expect(pixel(image, 6, 16)).toEqual([255, 0, 0, 255]);
+  expect(pixel(image, 6, 13)).toEqual([0, 0, 255, 255]);
+  expect(pixel(image, 6, 24)).toEqual([0, 0, 255, 255]);
+  const risen = renderGameScene(renderer, { ...view, height: 48 }, () => 0, [{ ...actor, markOffsetY: -5 }], false).image;
+  expect(pixel(risen, 6, 10)).toEqual([255, 0, 0, 255]);
+  expect(pixel(risen, 6, 16)).toEqual([0, 0, 255, 255]);
+});
+
 it("対応した描画フックだけを検出し、別の関数や範囲外を同じ改造として扱わない", () => {
   const bytes = new Uint8Array(64);
   const data = new DataView(bytes.buffer);
@@ -108,7 +124,7 @@ it("同じBG優先度では足元のYで重なり、固定したOBJの順は動�
 
 it("重ね描きは背景を透明にし、人物の上に来るBGだけを描く", () => {
   const { renderer, state, actorImage } = fixture(0);
-  const scene = (actors: Parameters<typeof renderGameScene>[3]) => renderGameScene(renderer, view, () => 0, actors, false, { overlay: true }).image;
+  const scene = (actors: Parameters<typeof renderGameScene>[3]) => renderGameScene(renderer, view, () => 0, actors, false, undefined, { overlay: true }).image;
   // 人物が無ければ全部透明。
   expect(scene([]).data.every(v => v === 0)).toBe(true);
   // 通常のブロックのBG1は人物（priority 2）の上に来るので、人物の場所に描く。人物の外もBG1は描くが、BG2・BG3は描かない。
@@ -120,5 +136,5 @@ it("重ね描きは背景を透明にし、人物の上に来るBGだけを描�
   }
   // 人物に覆われる重ね方なら人物が見える。
   const { renderer: r2, state: s2, actorImage: a2 } = fixture(0x20000000);
-  expect(pixel(renderGameScene(r2, view, () => 0, [{ state: s2, image: a2 }], false, { overlay: true }).image)).toEqual([0, 255, 0, 255]);
+  expect(pixel(renderGameScene(r2, view, () => 0, [{ state: s2, image: a2 }], false, undefined, { overlay: true }).image)).toEqual([0, 255, 0, 255]);
 });
