@@ -27,6 +27,7 @@
 .playback-time-mark { max-width: 120px; opacity: 0.8; bottom: auto; height: 20px; }
 .playback-time-mark.answer { opacity: 1; font-weight: bold; }
 .playback-time-tick { position: absolute; top: 3px; white-space: nowrap; border-left: 1px solid var(--shadow); padding-left: 2px; }
+.playback-time-wait { position: absolute; bottom: 0; height: 4px; background: var(--shadow); pointer-events: none; }
 .playback-time-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: #e53935; pointer-events: none; z-index: 4; }
 .playback-message-pages { display: flex; flex-wrap: wrap; gap: 4px; }
 .playback-game-message { position: relative; width: 480px; height: 96px; }

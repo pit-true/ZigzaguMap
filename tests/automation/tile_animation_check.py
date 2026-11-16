@@ -147,6 +147,10 @@ def main():
             z.call(dict(cmd="tileAnim.frame", frame=None))
             assert z.call(dict(cmd="door.state"))["cells"] == []
             assert frame() == preview_still
+            check_clock(z, frame, preview_still)
+            if args.project:
+                check_playback_doors(z, x, y, scene, shots, args.project)
+
             z.call(dict(cmd="click", id="preview.stop"))
             assert z.call(dict(cmd="canvasPng", target="event"))["png"] == original_map
 
@@ -203,6 +207,89 @@ def main():
         assert hashlib.sha256(rom.read_bytes()).digest() == rom_hash
         assert project_json() == original_json
         print("OK 履歴・ROM・プロジェクトの JSON ファイルが操作前後で同じ")
+
+
+def check_clock(z, frame, still):
+    """表示 > タイルアニメを動かす: 共通の時計で進み、画面が無い間と止めた後は時計を使わない。"""
+    import time
+    on = z.call(dict(cmd="tileAnim.clock", on=True))
+    assert on["on"] and on["subscribed"] and on["holders"] == [], on
+    time.sleep(0.6)
+    moving = z.call(dict(cmd="tileAnim.clock"))
+    assert moving["clockFrame"] >= 10 and moving["frame"] == moving["clockFrame"] and moving["clock"]["running"], moving
+    assert any(s["name"] == "tileAnim" for s in moving["clock"]["subscriptions"])
+    shots = set()
+    for _ in range(6):
+        shots.add(hashlib.sha256(repr(frame()).encode()).hexdigest())
+        time.sleep(0.15)
+    assert len(shots) > 1, "時計で絵が変わらない"
+    z.call(dict(cmd="action", id="view.tileAnimation"))
+    off = z.call(dict(cmd="tileAnim.clock"))
+    assert not off["on"] and not off["subscribed"] and off["frame"] is None, off
+    assert not any(s["name"] == "tileAnim" for s in off["clock"]["subscriptions"]), off
+    assert not off["clock"]["running"], off
+    assert frame() == still
+    # 仮の主人公の画面が無い間は購読を止める（hidden）。
+    z.call(dict(cmd="preview.player", enabled=False))
+    hidden = z.call(dict(cmd="tileAnim.clock", on=True))
+    assert hidden["holders"] == ["hidden"] and not hidden["clock"]["running"], hidden
+    z.call(dict(cmd="preview.player", enabled=True))
+    assert z.call(dict(cmd="tileAnim.clock"))["holders"] == []
+    z.call(dict(cmd="tileAnim.clock", on=False))
+    z.call(dict(cmd="preview.player", player=dict(x=10, y=14)))
+    print("OK 表示 > タイルアニメを動かす は共通の時計で進み、画面が無い間と止めた後は時計を予約しない")
+
+
+def check_playback_doors(z, x, y, scene, shots, project):
+    """再生の opendoor・waitdoor（0xAE）・closedoor: 20 フレームの待ちとタイムラインの帯、再生のフレームのドアの絵。"""
+    # 本文を足すのはプロジェクトのスクリプトのファイル（エディタの未保存の本文だけを変え、ファイルには書かない）。
+    folder = pathlib.Path(project) / "assembly" / "overworld_scripts"
+    path = sorted(p.relative_to(project).as_posix() for p in folder.glob("*.s"))[0]
+    assert z.call(dict(cmd="script.open", path=path))["opened"], path
+    import time
+    for _ in range(60):
+        try:
+            z.call(dict(cmd="editor.activate", path=path, window="script-editor"))
+            break
+        except Exception:
+            time.sleep(0.5)
+    text = z.call(dict(cmd="editor.text", path=path, window="script-editor"))["text"]
+    added = "".join(line + "\n" for line in [
+        "", "ZzmDoorPlayback:", f"\topendoor {x} {y}", "\twaitdoor", "\tfaceplayer", f"\tclosedoor {x} {y}", "\twaitdoor", "\tend",
+    ])
+    z.call(dict(cmd="editor.setText", text=text + added, window="script-editor"))
+    try:
+        z.call(dict(cmd="playback.start", label="ZzmDoorPlayback"))
+        timeline = z.call(dict(cmd="playback.timeline"))
+        doors = [m for m in timeline["markers"] if m["kind"] == "door"]
+        opened = next(m for m in doors if m.get("door") and m["door"]["kind"] == "open")
+        start = opened["frame"]
+        waits = [m for m in doors if not m.get("door")]
+        assert [w["until"] for w in waits] == [start + 20, start + 40], doors
+        closed = next(m for m in doors if m.get("door") and m["door"]["kind"] == "close")
+        assert closed["frame"] == start + 20, closed
+        assert timeline["lastFrame"] >= start + 40, timeline["lastFrame"]
+        layout = z.call(dict(cmd="playback.layout"))
+        assert [(w["start"], w["until"]) for w in layout["waits"]] == [(start, start + 20), (start + 20, start + 40)], layout["waits"]
+        assert all(w["width"] > 0 for w in layout["waits"])
+        cell = dict(x=x * 16, y=y * 16, w=16, h=16)
+        images = []
+        for f in (start, start + 10, start + 19, start + 30, start + 40):
+            z.call(dict(cmd="playback.seek", frame=f))
+            state = z.call(dict(cmd="door.state", frame=f))
+            images.append((f, scene(None, **cell)[0], state["cells"]))
+        assert images[0][2] == [] and images[1][2] and images[2][2] and images[4][2] == [], [(f, c) for f, _, c in images]
+        assert images[1][1] != images[0][1] and images[4][1] == images[0][1]
+        # 戻っても同じ絵（命令から計算し直す）。
+        z.call(dict(cmd="playback.seek", frame=start + 10))
+        assert scene(None, **cell)[0] == images[1][1]
+        if shots:
+            (shots / "door_playback.png").write_bytes(__import__("base64").b64decode(z.call(dict(cmd="canvasPng", id="preview.event.frame"))["png"]))
+        z.call(dict(cmd="playback.stop"))
+        assert z.call(dict(cmd="tileAnim.info"))["frame"] is None
+    finally:
+        z.call(dict(cmd="editor.setText", text=text, window="script-editor"))
+    print(f"OK 再生のドア: waitdoor（0xAE）が 20 フレーム待ち、タイムラインに帯、シークした所のドアの絵（{x},{y}）")
 
 
 if __name__ == "__main__":

@@ -529,9 +529,13 @@ class Simulator {
         return true;
       }
       case 0xae: {
-        this.marker("door", src, cmd.macro);
-        if (!this.options.doorWait) return true;
-        this.wait = { type: "frames", resume: Math.max(f, this.options.doorWait(this.doors, f)) };
+        if (!this.options.doorWait) {
+          this.marker("door", src, cmd.macro);
+          return true;
+        }
+        const resume = Math.max(f, this.options.doorWait(this.doors, f));
+        this.markers.push({ frame: f, kind: "door", source: src, detail: cmd.macro, branch: null, until: resume });
+        this.wait = { type: "frames", resume };
         return false;
       }
       case 0x97:
