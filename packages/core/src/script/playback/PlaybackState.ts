@@ -1,6 +1,7 @@
 import type { MovementDirection, MovementSprite } from "../movement/MovementActionTable.js";
 import type { MovementStep } from "../movement/MovementBlock.js";
 import type { WalkCommand } from "./ScriptWalker.js";
+import type { OverworldFrame } from "../../sprite/OverworldSprites.js";
 
 /**
  * 再生の状態の型（#451）。`Timeline.stateAt(frame)` が返す形で、B の組の人物の絵の部品（#13・#15）と 240×160 の枠の部品に渡す。
@@ -67,6 +68,8 @@ export interface PlaybackActorState {
   readonly subpriority?: number | undefined;
   /** 歩きの絵の切り替えを止めているか（`disable_anim`）。 */
   readonly animHold: boolean;
+  /** アニメーションの状態を計算済みなら、そのコマ。nullは読めなかった状態。 */
+  readonly animationFrame?: OverworldFrame | null;
 }
 
 /** 画面の位置。 */
