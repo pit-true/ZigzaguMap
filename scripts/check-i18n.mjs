@@ -117,10 +117,8 @@ const INTENTIONAL = new Map([
 const ALLOWED_ENGLISH = new Map([
   ["OK", "ボタン（旧版も OK）"],
   ["Read me", "ヘルプのメニュー（旧版も Read me）"],
-  ["Tileset", "タイルセット番号で並べたときの一覧の見出し（AdvanceMap 1.92 も「Tileset 0」）"],
   ["BGM:", "場所の設定タブの見出し（BGM は日本語の用語として定着）"],
   ["No.:", "BGM の番号の欄（「ワープNo.:」などと同じ書き方）"],
-  ["15bit to RGB", "パレットエディタのボタン（旧版も英語）"],
   ["Most recently used ROM", "最後に開いたROMのショートカットのファイル名（旧版も英語）"],
 ]);
 

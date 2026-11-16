@@ -12,6 +12,7 @@ ZigzaguMap が書くファイルを CFRU-JP のビルドで使うための、ビ
 | `patches/map_project-trainers-nd.patch` | ND の `scripts/map_project.py`（rom-erase のパッチを当てたあと） | `maps/trainers.json` のトレーナーを ROM のトレーナーの表へ書く（#245） |
 | `patches/map_project-trainers-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（改行は CRLF のまま） |
 | `patches/map_project-pillow-nd.patch`、`patches/map_project-pillow-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py` | `maps/tilesets/*/tiles.png` を読むときに、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow の読み込みが失敗するのを避ける（#314・#317。改行は CRLF のまま） |
+| `patches/map_project-regionmap-nd.patch`、`patches/map_project-regionmap-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py`（trainers のパッチのあと） | `maps/regionmap.json` のタウンマップの表を ROM の表へ上書きする（#119。Chronos の版は改行が CRLF のまま） |
 | `tests/check_cfru_tree.py` | | パッチを当てたフォルダを確かめる（読むだけ。一時フォルダで動かす） |
 
 Chronos の幅検査（`tools/check_text_width.py`）にも同じ複数行の規則を入れています。これは Chronos だけの道具なので、Chronos のリポジトリに直接入れました（パッチは置いていません）。
@@ -69,7 +70,7 @@ ZigzaguMap でイベントを消したとき、そのスクリプトが素の RO
 
 ## maps/trainers.json（トレーナーの表に書く。#245）
 
-ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の README の「maps\trainers.json の形式」にあります（Bochi の maps\ の JSON と同じ整形）。ユーザーの返事（Q1）の前なので、ND にも Chronos にもまだ入れていません。
+ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の README の「maps\trainers.json の形式」にあります（Bochi の maps\ の JSON と同じ整形）。ND と Chronos には入れてあります。
 
 - ファイルが無いか `Trainers` が空なら何もしません。このときの ROM は、パッチを当てる前とバイト単位で同じです。
 - 書く時点は `_place_day_wild` のあと（マップのデータを置いたあと、`rom_erase.json` の確かめの前）です。`maps/project.json` が無くても、`trainers.json` があれば書きます（そのときは `allocation_start` から空き領域を使い、使い終わりを返します）。
@@ -77,6 +78,35 @@ ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の
 - `Id` が 743 以上なら、表（743 件）と足りない分の行（0 番の行の写し）を空き領域へ写し、ROM の先頭から元の表の前までの 4 バイト境界の語のうち、元の表の先頭の 1 件（0x20 バイト）の中を指すものを、新しい表の同じ位置へ付け替えます（素の FR の JP 版で 24 か所。`0xF5C0` のポインタ、`gTrainers`・`gTrainers + 4`・`gTrainers + 0xA` のリテラル）。表より後ろの、たまたま同じ値に見えるデータは触りません。付け替えた数をビルドのログに出します。
 - 次のときはビルドを止めます（`ValueError`）: 形が違う（`Format` が 1 でない、`Trainers` が配列でない）、`Id` が 1〜767 でないか重なる、`Party` が 1〜6 匹でない、名前が `charmap.tbl` で変えられないか 5 バイトを超える。
 - 768 から先の番号は使えません。戦ったかどうかのフラグ（`0x500 + 番号`）が、0x800 からのシステムのフラグと重なるためです。
+
+## maps/regionmap.json（タウンマップの表に書く。#119）
+
+ワールドマップエディターで変えたタウンマップの表です。形は docs/guide.md の「maps\regionmap.json」にあります。ND と Chronos には入れてあります（2026-11-17）。
+
+- ファイルが無ければ何もしません。このときの ROM は、パッチを当てる前とバイト単位で同じです。
+- 書くのはファイルにある表だけです。どの表も大きさが変わらないので、ROM の表をその場で上書きします。ポインタは書き換えません。
+- 表の位置は、コードの中のポインタから読みます。CFRU が表を別の場所へ移していれば、移した先に書きます（ND と Chronos の `repoints`・`bytereplacement`・`hooks`・`src` には、今はこの表を動かすものも書くものもありません。ビルドした ROM でも、ポインタと表の中身はベース ROM のままでした）。
+- 書く時点は `trainers.json` のあと（マップのデータを置いたあと、`rom_erase.json` の確かめの前）です。`maps/project.json` が無くても、`regionmap.json` があれば書きます。書いた表の名前をビルドのログに出します（`Wrote the town map tables from maps/regionmap.json: ...`）。
+
+| キー | 書く先（ポインタの位置。BPRJ の素の ROM での表の位置） | 書き方 |
+|---|---|---|
+| `Layouts` | `0xC5378`・`0xC5380`・`0xC5388`・`0xC53B0`（GetMapNo。カントー・1〜3のしま・4〜5のしま・6〜7のしまの順。0x3B9018・0x3B92AC・0x3B9540・0x3B97D4） | 書かれた面の、`Layer` が `map` なら先頭の 330 バイト、`dungeon` なら後ろの 330 バイトに、`Rows` の 15 行 × 22 個の 16 進を並べて書く |
+| `Positions` | `0xC4F20`（SetMapNo_and_Pos。0x3B89E8） | 地名 0x58〜0xC5 の 110 件を s16 の X・Y で書く |
+| `Sizes` | `0xC4F1C`（0x3B8D00） | 110 件を u16 の幅・高さで書く |
+| `FlyDestinations` | `0xC648C`（FlyDestination。0x3B9A68） | 地名 0x58〜0xC3 の 108 件を、バンク・マップ・飛び先の番号の 3 バイトで書く |
+| `HealLocations` | `0xC0E74`・`0xC0E94`（GetWarpPosByMapID・GetWarpPosByNo。値は表の 8 バイト手前）と `0xC0E44`（表の先頭）。0x3B5944 | 20 件を、バンク・マップ（u8）、X・Y（s16）、`Unknown`（u16）で書く。`Unknown` の無い古いファイルは、末尾の 2 バイトを ROM のまま残す |
+| `MapVisitFlags`・`DungeonVisitFlags` | 書かない | 訪問フラグ（人ID）は表ではなく、GetMapState・GetCaveState の switch 文なので、取り込みは #499 で判断待ち。キーがあれば「注意: maps/regionmap.json の MapVisitFlags は未対応のキーです。訪問フラグ（人ID）は ROM へ取り込みません（ZigzaguMap #499）」をログに出し、ほかの表は書いてビルドを続ける |
+
+次のときはビルドを止めます（`ValueError`。どのキーの何番目のどの値が悪いかを日本語で出す）。
+
+- JSON として読めない（行と文字の位置を出す）、`Format` が 1 でない、知らないキーがある。
+- 件数が違う（`Positions`・`Sizes` は 110 件、`FlyDestinations` は 108 件、`HealLocations` は 20 件）、`Id`（`"0x58"` から順）や `Index`（1 から順）が違う。
+- 値が範囲の外（X・Y は -32768 から 32767、幅・高さと `Unknown` は 0 から 65535、バンク・マップ・飛び先の番号は 0 から 255）。整数でない値も止める。
+- `Layouts` の `Page`・`Layer` が違う、同じ面とレイヤーが 2 回ある、`Rows` が 15 行でない、行が 16 進 2 桁 22 個でない。
+- 表を指すポインタが ROM の外を指す。`HealLocations` の 3 つのポインタが同じ表を指していない。
+- 書く範囲が、このフォルダのパッチの一覧（`bytereplacement` など。`rom_erase.json` と同じ調べ方）が書く位置と重なる。`rom_erase.json` で埋めた範囲に書いたときも、今までどおり止まる。
+
+地名の名前は `regionmap.json` には無く、今までどおりマップの JSON のマップ名で書かれます。
 
 ## 当て方
 
@@ -105,6 +135,13 @@ git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-
 git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-trainers-chronos.patch   # Chronos の cfru
 ```
 
+regionmap.json（#119）のパッチは、trainers のパッチを当てたあとの `map_project.py` に当てます。
+
+```sh
+git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-regionmap-nd.patch        # ND
+git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-regionmap-chronos.patch   # Chronos の cfru
+```
+
 ND の差分ビルドは、`.string` より新しい `.o` を作り直しません。パッチを当てたあと、すでに複数行で書いた `.string` があるなら、その `.string` を保存し直すか `build` を消してからビルドしてください（Chronos のビルドは `scripts/string.py` の中身もキャッシュの鍵に入れているので、自動で作り直します）。
 
 当てたあとは次で確かめます（フォルダは読むだけです）。
@@ -121,6 +158,15 @@ ND と Chronos のフォルダの写しで行いました（実フォルダで�
 - すべての `.string` の本文を `\n`・`\p`・`\l`・`\m` のあとで改行した形に書き換えてビルドすると（ND 16 ファイル 1899 行、Chronos 34 ファイル 2183 行）、ROM 全体が 1 行のときと同じ。Chronos の幅検査の出力も同じ。パッチ無しの string.py と幅検査では、同じ書き換えで ROM が変わる・検査が止まる。
 - `rom_erase.json` を置いてビルドすると、その範囲だけが 0xFF になり、ほかのバイトは変わらない（Chronos は `maps/project.json` が無い形、ND はある形で確かめた）。ベース ROM の外、`bytereplacement`、`special_inserts.asm` との重なりではビルドが止まる。`hooks`・`repoints`・`routinepointers`・`functionrewrites`・`generatedrepoints` との重なりと `#ifdef` の扱いは `tests/check_cfru_tree.py` で確かめている。
 - 置いたマップのデータが埋めた範囲に書かれたときに止める検査は、実際のマップでは起きる場面を作っていない（確かめていない）。
+
+## 確かめたこと（regionmap.json。2026-11-17）
+
+ND と Chronos のフォルダの写しで行いました。
+
+- `regionmap.json` が無いとき、変更の前と後でビルドした ROM がバイト単位で同じ（Chronos は `build/Chronos.gba` をビルドし直して、ND は CFRU の全体のビルドと `scripts/insert.py` だけの作り直しの両方で比べた）。
+- ワールドマップエディターでマサラタウンの座標・幅/高さ・空を飛ぶの行き先・飛び先、人ID、カントーの基本レイヤーと 1〜3のしまのトップレイヤーのマスを変えて出力し（`python tests/realcopy/run.py --regionmap`）、ビルドすると、ROM の表が JSON のとおりになり、ファイルが無いときの ROM との違いは表の中の 8 バイトだけ。ポインタと人ID の switch 文は変わらない。できた ROM だけを開き直すと、ワールドマップエディターに同じ値が出る（人ID は元のまま）。ND は DPE まで通し、DPE の `test.gba` でも表が同じ。
+- 人ID があると、ビルドのログに「未対応のキー」の注意が出て、ビルドは続く。
+- 壊れた JSON、範囲外の値、16 進でない `Rows`、知らないキーで、`scripts/insert.py` が止まる（ND の写し）。ポインタの不一致、表を移した ROM、`bytereplacement` との重なりは `tests/check_cfru_tree.py` で確かめている。
 
 ## maps/tilesets の tiles.png と Pillow（map_project-pillow）
 

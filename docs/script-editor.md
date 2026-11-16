@@ -413,11 +413,13 @@ ZigzaguMap が書くファイルのうち、CFRU-JP のビルドを直さない�
 | `map_project-rom-erase-nd.patch`、`map_project-rom-erase-chronos.patch` | `scripts/map_project.py` | `maps\rom_erase.json`（素の ROM の範囲の一覧）の範囲を、マップのデータを置く前に 0xFF で埋める。範囲がベース ROM の外にかかるときと、`bytereplacement`・`hooks`・`repoints` などが書く位置と重なるときはビルドを止める |
 | `map_project-pillow-nd.patch`、`map_project-pillow-chronos.patch`（#314・#317） | `scripts/map_project.py` | `maps\tilesets` の `tiles.png` を読むとき、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow が読めず止まるのを避ける。ブロックエディタで変えたタイルセットや取り込んだタイルセットを出力したときに要る |
 | `map_project-trainers-nd.patch`、`map_project-trainers-chronos.patch`（#245） | `scripts/map_project.py`（rom-erase のパッチのあと） | `maps\trainers.json` のトレーナーを ROM のトレーナーの表（`*(0x0800F5C0)`）へ書く。手持ちは空き領域に置く。743 以上の番号があれば表を空き領域へ写して広げ、表の前にある表の先頭の 1 件を指す語（コードの参照）を付け替える |
+| `map_project-regionmap-nd.patch`、`map_project-regionmap-chronos.patch`（#119） | `scripts/map_project.py`（trainers のパッチのあと） | `maps\regionmap.json` のタウンマップの表（地名の配置・位置・大きさ・空を飛ぶの行き先・飛び先）を、コードのポインタが指す ROM の表へその場で上書きする。人ID（訪問フラグ）は取り込まず、ログに注意を出す（#499）。壊れた JSON や範囲外の値ではビルドを止める |
 
 - Chronos には入れてあります（幅検査の `tools/check_text_width.py` も同じ複数行の規則で読む）。ND には入れていません。当てるときは build-support/README.md の手順で `git -c core.autocrlf=false apply` します。
 - どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（写しで確かめた）。
 - `python build-support/tests/check_cfru_tree.py --cfru <CFRU-JP のフォルダ>` で、当てたフォルダの動きを確かめられます（フォルダは読むだけ）。
 - trainers のパッチ（#245）は、書き先を `maps\trainers.json` にする案でユーザーが確定しました（2026-11-14）。ND と Chronos の本体へは別の作業で当てます（ZigzaguMap のリポジトリからは書き込みません）。
+- regionmap のパッチ（#119）は、ユーザーの依頼で ND と Chronos の `map_project.py` に入れました（2026-11-17）。パッチは同じ変更の記録です。
 
 ## スクリプトの再生とタイムライン（Phase6）
 
