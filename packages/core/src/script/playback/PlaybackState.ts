@@ -2,6 +2,7 @@ import type { MovementDirection, MovementSprite } from "../movement/MovementActi
 import type { MovementStep } from "../movement/MovementBlock.js";
 import type { WalkCommand } from "./ScriptWalker.js";
 import type { OverworldFrame } from "../../sprite/OverworldSprites.js";
+import type { DoorEvent } from "../../render/DoorAnimations.js";
 
 /**
  * 再生の状態の型（#451）。`Timeline.stateAt(frame)` が返す形で、B の組の人物の絵の部品（#13・#15）と 240×160 の枠の部品に渡す。
@@ -154,7 +155,9 @@ export type PlaybackMarkerKind =
   /** スクリプトの終わり、止まったところ。 */
   | "stop"
   /** 60 秒・命令 10,000 個で打ち切った。 */
-  | "limit";
+  | "limit"
+  /** ドアの開け閉め（opendoor・closedoor・opendoor2・closedoor2）と waitdooranim。絵はタイルアニメの側（#474）が描く。 */
+  | "door";
 
 /** 全体の印。 */
 export interface PlaybackMarker {
@@ -168,6 +171,8 @@ export interface PlaybackMarker {
   readonly branch: PlaybackBranchMark | null;
   /** 選択肢（yesnobox・multichoice・msgbox の MSG_YESNO・customchoice）なら、その答え。 */
   readonly choice?: PlaybackChoiceMark;
+  /** ドアの命令なら、そのフレーム・種類・マス（waitdooranim には無い）。描く側は印から DoorEvent の並びを作る。 */
+  readonly door?: DoorEvent;
 }
 
 /** 選択肢の 1 つ。`name` は yes・no、customchoice の文のラベルなど。 */

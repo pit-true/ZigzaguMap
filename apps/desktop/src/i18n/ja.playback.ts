@@ -53,7 +53,7 @@ export const jaPlayback = {
   arrows: { down: "↓", up: "↑", left: "←", right: "→" },
   timeAxis: "フレーム / 秒",
   toggle: "再生・一時停止", previousFrame: "1フレーム戻る", nextFrame: "1フレーム進む", last: "最後へ", shortcutWhere: "再生バー",
-  markerNames: { message: "文", choice: "選択", branch: "分岐", camera: "カメラ", shake: "揺れ", fade: "明暗", timeOfDay: "時間帯", unhandled: "未対応", ignored: "未実行", warning: "注意", stop: "終わり", limit: "上限" },
+  markerNames: { message: "文", choice: "選択", branch: "分岐", camera: "カメラ", shake: "揺れ", fade: "明暗", timeOfDay: "時間帯", unhandled: "未対応", ignored: "未実行", warning: "注意", stop: "終わり", limit: "上限", door: "ドア" },
   play: "再生", pause: "一時停止", stop: "再生を終了", first: "最初へ",
   previous: "前の動き", next: "次の動き", male: "男の子", female: "女の子",
   down: "下", up: "上", left: "左", right: "右",

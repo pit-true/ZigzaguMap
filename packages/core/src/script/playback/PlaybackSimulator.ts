@@ -1,4 +1,5 @@
 import type { ScriptCommandTable } from "../commands/ScriptCommandTable.js";
+import type { DoorEvent } from "../../render/DoorAnimations.js";
 import { PLAYER_SCREEN_ORIGIN } from "../../render/ViewportFrame.js";
 import type { ScriptIndex } from "../index/ScriptIndex.js";
 import { MOVEMENT_DIRECTIONS, MOVEMENT_END, movementAction, oppositeDirection, type MovementAction, type MovementDirection } from "../movement/MovementActionTable.js";
@@ -96,6 +97,11 @@ export interface PlaybackOptions {
   readonly romMovement?: (pointer: number) => MovementBlock | null;
   /** マップの高さ（移動許可の値 >> 2）。0は自由、15は前の優先順位を保持。 */
   readonly elevationAt?: (x: number, y: number) => number | null;
+  /**
+   * `waitdooranim` の次の命令を実行するフレーム（#474 がドアの表から `doorWaitResume` で返す）。
+   * 渡すのはそのフレームまでのドアの命令。無ければ待たずに進め、印だけ出す。
+   */
+  readonly doorWait?: (doors: readonly DoorEvent[], frame: number) => number;
 }
 
 /** フレームの上限の既定（60 秒）。 */
@@ -507,6 +513,27 @@ class Simulator {
           this.choice(src, this.lastText || cmd.written, "custom", [{ value: 0, name: top }, { value: 1, name: bottom }], 0);
         }
         return true;
+      case 0xac:
+      case 0xad:
+      case 0xaf:
+      case 0xb0: {
+        const x = this.valueOf(arg(0)), y = this.valueOf(arg(1));
+        const kind = ({ 0xac: "open", 0xad: "close", 0xaf: "setOpen", 0xb0: "setClosed" } as const)[cmd.opcode as 0xac | 0xad | 0xaf | 0xb0];
+        if (x === null || y === null) {
+          this.marker("door", src, `${cmd.macro} ?`);
+          return true;
+        }
+        const door: DoorEvent = { frame: f, kind, x, y };
+        this.doors.push(door);
+        this.markers.push({ frame: f, kind: "door", source: src, detail: `${cmd.macro} ${x} ${y}`, branch: null, door });
+        return true;
+      }
+      case 0xae: {
+        this.marker("door", src, cmd.macro);
+        if (!this.options.doorWait) return true;
+        this.wait = { type: "frames", resume: Math.max(f, this.options.doorWait(this.doors, f)) };
+        return false;
+      }
       case 0x97:
       case 0x98:
         this.marker("fade", src, String(arg(0) ?? ""));
@@ -753,6 +780,7 @@ class Simulator {
   }
 
   private readonly choiceVisits = new Map<string, number>();
+  private readonly doors: DoorEvent[] = [];
 
   /** 選択肢。答えの表か既定の値を LASTRESULT に入れる。 */
   private choice(source: PlaybackSource, detail: string, kind: PlaybackChoiceMark["kind"], options: readonly PlaybackChoiceOption[] | null, initial: number): void {

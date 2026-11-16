@@ -117,6 +117,19 @@ const XSE = `
 .byte 0x67
 .word \\pointer
 .endm
+.macro opendoor x:req, y:req
+.byte 0xac
+.2byte \\x
+.2byte \\y
+.endm
+.macro closedoor2 x:req, y:req
+.byte 0xb0
+.2byte \\x
+.2byte \\y
+.endm
+.macro waitdooranim
+.byte 0xae
+.endm
 .macro yesnobox x:req, y:req
 .byte 0x6e
 .byte \\x
@@ -276,6 +289,20 @@ describe("再生の計算（#451）", () => {
     expect(marks[2]!.options).toEqual([{ value: 0, name: "Top" }, { value: 1, name: "Bottom" }]);
     expect(new Set(marks.map((m) => m.key)).size).toBe(4);
     expect(marks[3]!.key.replace(/#1$/, "#0")).toBe(marks[2]!.key);
+  });
+
+  it("ドア: 命令の印とマス、waitdooranim は描く側の長さだけ待つ", () => {
+    const script = "Main:\n\topendoor 5 4\n\twaitdooranim\n\tchangeface 1 4\n\tsetvar 0x4001 6\n\tclosedoor2 0x4001 4\n\tend\n";
+    const free = run(script);
+    expect(free.markers.filter((m) => m.door).map((m) => m.door)).toEqual([
+      { frame: 0, kind: "open", x: 5, y: 4 },
+      { frame: 0, kind: "setClosed", x: 6, y: 4 },
+    ]);
+    const seen: number[] = [];
+    const waited = run(script, { doorWait: (doors, frame) => { seen.push(doors.length, frame); return frame + 30; } });
+    expect(seen).toEqual([1, 0]);
+    expect(frameOf(waited, "changeface")).toBe(30);
+    expect(waited.markers.filter((m) => m.door).map((m) => m.door!.frame)).toEqual([0, 30]);
   });
 
   it("文は長さ 0 の印、打ち切り（60 秒）", () => {
