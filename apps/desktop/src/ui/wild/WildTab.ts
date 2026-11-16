@@ -63,6 +63,7 @@ export class WildTab {
   private readonly rows: SlotRow[] = [];
   private readonly speciesOptions: SpeciesOptions;
   private stale = true;
+  private namesSession: unknown = null;
   private shownMap = "";
   /** 時間帯のタブ（Phase6 #436。プロジェクトフォルダを開いているときだけ出す）。 */
   private readonly times: HTMLElement;
@@ -235,6 +236,15 @@ export class WildTab {
   }
 
   private render(): void {
+    if (this.state.tab === "wild" && this.state.session && this.namesSession !== this.state.session) {
+      const session = this.state.session;
+      this.namesSession = session;
+      void session.openSpeciesNames().then(() => {
+        if (this.state.session !== session) return;
+        this.stale = true;
+        this.render();
+      });
+    }
     if (!this.stale || this.state.tab !== "wild") return;
     this.stale = false;
     const map = this.state.map;
@@ -267,7 +277,7 @@ export class WildTab {
       this.rate.value = "";
       this.percent.textContent = "";
     } else this.showRate(area.rate, true);
-    const maxSpecies = Math.max(FR_SPECIES_COUNT - 1, ...(area?.slots.map((s) => s.species) ?? []));
+    const maxSpecies = Math.max(FR_SPECIES_COUNT - 1, (this.state.session?.speciesCount ?? 412) - 1, ...(area?.slots.map((s) => s.species) ?? []));
     const template = area ? this.speciesOptions.options(maxSpecies + 1) : null;
     this.rows.forEach((row, i) => {
       const slot = area?.slots[i];

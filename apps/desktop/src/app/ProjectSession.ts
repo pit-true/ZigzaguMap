@@ -20,6 +20,7 @@ import {
   withEventLabels,
   withScriptsTable,
   withTrainers,
+  type DpeSpecies,
   type CommandRegistry,
   type EventLabelSavePlan,
   type EventLabelTrackHooks,
@@ -59,6 +60,8 @@ export class ProjectSession {
   private readonly tilesets = new Map<string, TilesetView>();
   private readonly opened = new Map<string, MapId>();
   private species: SpeciesNameTable | null | undefined;
+  private dpeSpecies: DpeSpecies | null = null;
+  private speciesLoading: Promise<void> | null = null;
   private sprites: OverworldSprites | null | undefined;
   /** タウンマップ（ワールドマップエディターを開いたときに読む）。 */
   private regionMapValue: RegionMapProject | null = null;
@@ -194,7 +197,8 @@ export class ProjectSession {
   }
 
   /** 種族名表（初めて使うときに読む。読めなければ null）。 */
-  get speciesNames(): SpeciesNameTable | null {
+  get speciesNames(): SpeciesNameTable | DpeSpecies | null {
+    if (this.dpeSpecies) return this.dpeSpecies;
     if (this.species === undefined) {
       try {
         this.species = SpeciesNameTable.read(this.project.rom, this.project.game.offsets.speciesNameTablePointer);
@@ -203,6 +207,17 @@ export class ProjectSession {
       }
     }
     return this.species;
+  }
+
+  get speciesCount(): number { return this.dpeSpecies?.count ?? 412; }
+
+  async openSpeciesNames(): Promise<void> {
+    this.speciesLoading ??= (async () => {
+      if (!this.projectDir) return;
+      const { loadDpeSpecies } = await import("./DpeSpeciesLoader");
+      this.dpeSpecies = await loadDpeSpecies(this.fs);
+    })();
+    await this.speciesLoading;
   }
 
   /** OW の画像（初めて使うときに読む。読めなければ null）。 */

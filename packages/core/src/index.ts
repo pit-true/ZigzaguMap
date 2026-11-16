@@ -509,3 +509,5 @@ export {
 export { evaluateCExpression, preprocessC, readCArray, readCEnum, stripCComments, type CInit, type CInitItem, type CInitList, type CSource } from "./dns/cTable.js";
 
 export * from "./script/movement/MovementEdit.js";
+
+export { DpeSpecies } from "./name/DpeSpecies.js";

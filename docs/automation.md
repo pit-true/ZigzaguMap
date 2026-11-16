@@ -486,3 +486,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 `command {name: "setWildTable", args: {bank: 3, map: 19, time: 3, from: 1, remove: false}}` で昼から夜へ複製できます。`remove: true` は指定の時間帯の表を削除します。履歴に1件として入り、`undo` で戻ります。
 
 `wild.search.time` は0が全時間帯、1〜4が朝・昼・夕・夜の絞り込みです。検索結果の6列目が時間帯です。`mouse {id: "wild.search.row.0", action: "dblclick", px: [4, 4]}` で、そのマップの該当する時間帯へ移動します（#437）。
+
+
+### DPE の種族名（#439）
+
+野生タブやトレーナー編集の初回に名前表を読みます。`getField {id: "wild.species.1"}` の `options` が種族数です（ND 970件、Chronos 1573件）。`setField` は従来どおり種族番号を指定します。`tests/realcopy/run.py --species --reuse` で追加種族の選択、JSON出力、開き直し、トレーナーの名前の表示を確認できます。
