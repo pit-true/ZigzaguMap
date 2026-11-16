@@ -142,9 +142,13 @@
 }
 
 /* 仮の主人公と実機の240×160の枠。画面は1枚だけ持ち、マップ全体のCanvasを増やさない。 */
-.actor-preview-image { position: absolute; z-index: 25; pointer-events: none; image-rendering: pixelated; }
-.actor-preview-image.framed { outline: 1px solid #ffe000; box-shadow: 0 0 0 10000px #0008; }
+.actor-preview-image { position: absolute; z-index: 25; pointer-events: none; image-rendering: pixelated; will-change: transform; }
+.actor-preview-shade { position: absolute; z-index: 24; pointer-events: none; outline: 1px solid #ffe000; box-shadow: 0 0 0 10000px #0008; }
 .actor-preview-handle { position: absolute; z-index: 26; cursor: grab; touch-action: none; }
 .actor-preview-handle:focus-visible, .actor-preview-handle:hover { outline: 1px dashed #ffe000; }
 .actor-preview-handle:active { cursor: grabbing; }
 .actor-preview-controls { position: sticky; top: 0; left: 0; z-index: 40; display: flex; gap: 4px; align-items: center; padding: 3px; width: max-content; background: var(--face); }
+
+/* 表示 > 人物を動かす（#471）。マップの画像の上・重ね描きの下に、人物ごとの等倍の Canvas を置く */
+.npc-layer { position: absolute; transform-origin: 0 0; pointer-events: none; will-change: transform; }
+.map-stage .npc-layer canvas.npc-actor { pointer-events: none; image-rendering: pixelated; }

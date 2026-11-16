@@ -122,7 +122,7 @@ export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.
 export { ActorAnimator } from "./sprite/ActorAnimator.js";
 export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
-export { renderGameScene, type SceneActor, type SceneCell, type SceneView } from "./render/GameScene.js";
+export { renderGameScene, type SceneActor, type SceneCell, type SceneOptions, type SceneView } from "./render/GameScene.js";
 export {
   AnimatedTiles,
   BPRJ_TILE_ANIMATIONS,
@@ -494,6 +494,7 @@ export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
 export * from "./script/movement/index.js";
 export * from "./script/playback/index.js";
+export * from "./npc/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,

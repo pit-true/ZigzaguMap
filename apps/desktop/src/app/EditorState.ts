@@ -89,6 +89,8 @@ export class EditorState {
   readonly history = new MapHistory();
   /** 未出力のマップ（"バンク.マップ"）。 */
   dirty = new Set<string>();
+  /** 表示 > 人物を動かす（#471）の間 true。イベントタブは人物を止め絵でなく箱（元の位置の印）で描く。 */
+  movingPersons = false;
   /** 直前の操作で変わった、表示中でないマップ（"otherMaps" の知らせのとき）。 */
   changedMaps: readonly MapId[] = [];
   private readonly listeners = new Map<StateTopic, Set<Listener>>();

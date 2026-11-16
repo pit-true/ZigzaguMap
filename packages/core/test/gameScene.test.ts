@@ -121,3 +121,20 @@ it("同じBG優先度では足元のYで重なり、固定したOBJの順は動�
   const fixed = { ...b, state: { ...b.state, fixedPriority: true, subpriority: 200 } };
   expect(pixel(renderGameScene(renderer, view, () => null, [a, fixed], false).image)).toEqual([0, 255, 0, 255]);
 });
+
+it("重ね描きは背景を透明にし、人物の上に来るBGだけを描く", () => {
+  const { renderer, state, actorImage } = fixture(0);
+  const scene = (actors: Parameters<typeof renderGameScene>[3]) => renderGameScene(renderer, view, () => 0, actors, false, undefined, { overlay: true }).image;
+  // 人物が無ければ全部透明。
+  expect(scene([]).data.every(v => v === 0)).toBe(true);
+  // 通常のブロックのBG1は人物（priority 2）の上に来るので、人物の場所に描く。人物の外もBG1は描くが、BG2・BG3は描かない。
+  const covered = scene([{ state, image: actorImage }]);
+  expect(pixel(covered)).toEqual([0, 0, 255, 255]);
+  const full = renderGameScene(renderer, view, () => 0, [{ state, image: actorImage }], false).image;
+  for (let i = 0; i < full.data.length; i += 4) {
+    if (covered.data[i + 3]) expect([...covered.data.slice(i, i + 4)]).toEqual([...full.data.slice(i, i + 4)]);
+  }
+  // 人物に覆われる重ね方なら人物が見える。
+  const { renderer: r2, state: s2, actorImage: a2 } = fixture(0x20000000);
+  expect(pixel(renderGameScene(r2, view, () => 0, [{ state: s2, image: a2 }], false, undefined, { overlay: true }).image)).toEqual([0, 255, 0, 255]);
+});
