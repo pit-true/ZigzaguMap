@@ -27,7 +27,7 @@ export const jaHeaderSimple = {
   run: "走れる（ランニングシューズ）",
   escape: "あなぬけのひも・テレポートで外へ出られる",
 
-  tilesetSection: "タイルセット",
+  tilesetSection: ini.Allgemein["14"],
   tileset1: "主（タイルセット1）",
   tileset2: "副（タイルセット2）",
   tilesetItem: (n: number, group: string | null) => (group && group !== "NormaleMaps" ? `${n}（${group}）` : String(n)),
