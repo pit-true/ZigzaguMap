@@ -29,6 +29,10 @@ SOURCE = """.text
 .thumb
 .align 2
 
+.include "../xse_commands.s"
+.include "../xse_defines.s"
+.include "../asm_defines.s"
+
 .global ZzP6Main
 ZzP6Main:
 \tapplymovement 0xFF ZzP6_Walk
