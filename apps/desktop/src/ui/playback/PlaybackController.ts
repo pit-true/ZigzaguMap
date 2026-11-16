@@ -18,6 +18,7 @@ import { messageSkin, messageView, type MessageSkin } from "./MessageView";
 import { PlaybackTime } from "./PlaybackTime";
 import { matchesKey } from "../../app/keymap";
 import "../../styles/playback.css";
+import { scheduleIdleGc } from "../../util/idleGc";
 
 export interface PlaybackRequest {
   readonly label?: string;
@@ -134,6 +135,8 @@ export class PlaybackController {
     // ラベルで始めるときはプロジェクトが要る。イベントは、ラベルが無くてスクリプトが ROM のアドレスのままなら ROM から再生する（#459）。
     const location = request.target && session.projectDir ? await new ScriptLocator(this.app, session.files).resolve(request.target) : null;
     const romPointer = request.target && !location?.label ? eventRomPointer(map, request.target) : null;
+    // イベントにラベルも ROM のスクリプトも無い（アドレスが 0 など）ときは、その相手にスクリプトが無いと知らせる（#495）
+    if (request.target && !location?.label && romPointer === null) throw new Error(t.noScript(request.target.kind));
     if (!session.projectDir && romPointer === null) throw new Error(t.projectRequired);
     await this.cleanup;
     if (token !== this.generation) return;
@@ -176,6 +179,8 @@ export class PlaybackController {
     this.bar.element.remove(); this.consumed.clear();
     this.timelineView.clear(); this.bar.clear(); this.answers.clear(); this.choices.clear();
     this.npcRelease?.(); this.npcRelease = null;
+    // 再生の計算・タイムライン・画像を手放したので、落ち着いたら GC して空いた領域を OS へ返す（#496）
+    if (hadState) scheduleIdleGc(true);
     if (hadState) {
       this.app.previewPlayer.setPlayback(null);
       if (this.hadPreview) this.app.previewPlayer.setPlayer({ gender: this.gender });
@@ -251,7 +256,11 @@ export class PlaybackController {
     this.clock = new PlaybackClock(this.timeline.lastFrame, this.timeline.keyFrames());
     this.clock.seek(keep);
     this.consumed.clear();
-    this.bar.configure(this.timeline.lastFrame, this.gender, start.player.facing, events.persons.map(person => person.localId), this.absent);
+    // 再生の画面の人物は、イベントの欄の「人No.」で呼ぶ（スクリプトの番号 localId も添える）
+    const numbers = new Map(events.persons.map((person, index) => [person.localId, index + 1] as const));
+    const personName = (localId: number): string => t.personName(numbers.get(localId) ?? null, localId);
+    this.timelineView.personName = personName;
+    this.bar.configure(this.timeline.lastFrame, this.gender, start.player.facing, events.persons.map(person => person.localId), this.absent, personName);
     const timeline = this.timeline;
     this.timelineView.setTimeline(timeline, sprites, marker => this.answerText(marker), {
       locks: this.editor.locks(timeline),

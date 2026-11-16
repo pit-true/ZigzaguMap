@@ -23,6 +23,7 @@ import { jaTileAnimation as t } from "../../i18n/ja.tileAnimation";
 import type { OpenMap, ProjectSession } from "../ProjectSession";
 import type { ActiveTint } from "../timeOfDay/activeTint";
 import { setSceneAnimation, type SceneAnimationFrame, type SceneAnimationSource } from "./sceneAnimation";
+import { scheduleIdleGc } from "../../util/idleGc";
 
 interface TilesCache {
   readonly key: string;
@@ -55,10 +56,11 @@ export class MapAnimations implements SceneAnimationSource {
   private subscription: ClockSubscription | null = null;
   private release: (() => void) | null = null;
   private playback: { frame: number; doors: readonly DoorEvent[] } | null = null;
+  private lastShownKey: string | null = null;
 
   constructor(private readonly state: EditorState, private readonly clock?: GameClock, actions?: Actions, private readonly shown: () => boolean = () => true) {
     for (const topic of ["session", "map"] as const) state.on(topic, () => this.stop());
-    state.on("tiles", () => { this.tiles = null; this.renderer = null; });
+    state.on("tiles", () => { this.tiles = null; this.renderer = null; this.lastShownKey = null; });
     state.on("view", () => this.updateHold());
     actions?.register("view.tileAnimation", () => this.setTileAnimation(!this.tilesOn));
     actions?.registerCheck("view.tileAnimation", () => this.tilesOn);
@@ -125,7 +127,7 @@ export class MapAnimations implements SceneAnimationSource {
   doorWaitFor(doors: readonly DoorEvent[], frame: number): number {
     const session = this.state.session, map = this.state.map;
     const table = session ? this.table(session) : null;
-    if (!table || !map) return frame + 1;
+    if (!table || !map) return frame + 2;
     return doorWaitResume(table, this.lookup(map), doors, frame);
   }
 
@@ -146,9 +148,23 @@ export class MapAnimations implements SceneAnimationSource {
   setFrame(frame: number | null): void {
     if (frame === null) { this.reset(); return; }
     if (!Number.isFinite(frame) || frame < 0) throw new RangeError("frame は 0 以上の数です");
+    const previous = this.frameValue;
     this.frameValue = Math.floor(frame);
     setSceneAnimation(this);
+    // タイルのコマの組が変わらないフレーム（多くのアニメは 8〜16 フレームに 1 回しか変わらない）は描き直さない（#493）
+    const key = this.shownKey();
+    if (previous !== null && key !== null && key === this.lastShownKey) return;
+    this.lastShownKey = key;
     this.onChange?.();
+  }
+
+  /** ドアも再生も無いとき、時計のフレームで出すタイルのコマの組（変わったら描き直す）。それ以外は null（毎回描く）。 */
+  private shownKey(): string | null {
+    const session = this.state.session, map = this.state.map;
+    if (this.playback || this.events.length || !session || !map || this.frameValue === null) return null;
+    const tiles = this.animatedTiles(session, map);
+    tiles.setOverlay(DOOR_TEMP_TILE, null);
+    return `${map.tiles.key}:${tiles.at(this.frameValue).key}`;
   }
 
   /** ドアの命令を足す（`frame` を省くと今のフレーム）。結果はその命令の受け付けと理由。 */
@@ -170,7 +186,7 @@ export class MapAnimations implements SceneAnimationSource {
   doorWait(frame: number): number {
     const session = this.state.session, map = this.state.map;
     const table = session ? this.table(session) : null;
-    if (!table || !map) return frame + 1;
+    if (!table || !map) return frame + 2;
     return doorWaitResume(table, this.lookup(map), this.events, frame);
   }
 
@@ -223,6 +239,7 @@ export class MapAnimations implements SceneAnimationSource {
   private reset(): void {
     const was = this.frameValue !== null || this.events.length > 0;
     this.frameValue = null;
+    this.lastShownKey = null;
     this.events = [];
     this.tiles = null;
     this.renderer = null;
@@ -231,6 +248,7 @@ export class MapAnimations implements SceneAnimationSource {
     this.session = null;
     setSceneAnimation(null);
     if (was) this.onChange?.();
+    if (was) scheduleIdleGc(true); // アニメの絵の写しを手放したので、落ち着いたら GC して空いた領域を OS へ返す（#496）
   }
 
   /** 表示中のマップのアニメの読み取り結果。 */

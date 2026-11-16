@@ -5,6 +5,7 @@ import type { EditorState } from "../EditorState";
 import type { ProjectSession } from "../ProjectSession";
 import { activeTint, setActiveTint } from "./activeTint";
 import type { DnsActiveTint } from "./dnsTint";
+import { scheduleIdleGc } from "../../util/idleGc";
 
 /** 区分の並び（朝・昼・夕・夜）。core の TIMES_OF_DAY と同じ（起動のときに dns の部品を読まないよう、ここにも持つ）。 */
 export const TIME_IDS: readonly TimeOfDay[] = ["morning", "day", "evening", "night"];
@@ -121,6 +122,7 @@ export class TimeOfDayView {
     const t0 = performance.now();
     setActiveTint(tint);
     this.current = time;
+    scheduleIdleGc(true); // 前の時間帯の色で描いた絵を手放したので、落ち着いたら GC して空いた領域を OS へ返す（#496）
     const state = this.state;
     state.mapImage?.redrawAll();
     state.emit("cells");
