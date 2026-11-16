@@ -103,6 +103,11 @@ export class ProcessRunner {
     return new Uint8Array(await invoke<ArrayBuffer>("process_read_bytes", { path, cwd }));
   }
 
+  /** 作業フォルダの下のバイナリファイルの一部（1MB まで）を読む（再生のメッセージのフォント。#497）。読むだけ。 */
+  static async readRange(path: string, cwd: string | null, offset: number, length: number): Promise<Uint8Array> {
+    return new Uint8Array(await invoke<ArrayBuffer>("process_read_range", { path, cwd, offset, length }));
+  }
+
   /** 作業フォルダの下のフォルダの中の名前（名前順。無ければ空）。 */
   static list(path: string, cwd: string | null): Promise<string[]> {
     return invoke<string[]>("process_list", { path, cwd });

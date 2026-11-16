@@ -14,7 +14,7 @@ import { TimelineView } from "./TimelineView";
 import { TimelineEditor } from "./TimelineEditor";
 import { isScriptSourcePath } from "@zigzagumap/core";
 import type { PlaybackHighlightSpan } from "../../windows/script-editor/protocol";
-import { messageSkin, messageView, type MessageSkin } from "./MessageView";
+import { MessageRenderer, messageSkin } from "./MessageView";
 import { PlaybackTime } from "./PlaybackTime";
 import { matchesKey } from "../../app/keymap";
 import "../../styles/playback.css";
@@ -52,7 +52,8 @@ export class PlaybackController {
   private romPointer: number | null = null;
   private readonly consumed = new Set<number>();
   private highlightKey = "";
-  private skin: MessageSkin | null = null;
+  /** メッセージの窓（ROM のフォント。#497）。再生の間だけ持つ。 */
+  private messages: MessageRenderer | null = null;
   private time: PlaybackTime | null = null;
   private cleanup: Promise<void> = Promise.resolve();
   private scrolls: { view: MapView; left: number; top: number; hidden: HTMLElement["hidden"] }[] = [];
@@ -145,7 +146,8 @@ export class PlaybackController {
     const skin = await messageSkin(session, request.target?.kind === "sign");
     await prepareActorScene(session);
     if (token !== this.generation || map !== this.app.state.map) return;
-    this.skin = skin;
+    const talked = request.target, speaker = talked?.kind === "person" && talked.index !== undefined ? map.doc.events?.persons[talked.index]?.graphicsId ?? null : null;
+    this.messages = new MessageRenderer(session, skin, speaker);
     this.request = request; this.sourceMap = map; this.data = data; this.entry = entry;
     const target = request.target;
     this.trigger = target?.kind === "person" ? { kind: "person", localId: map.doc.events?.persons[target.index ?? 0]?.localId ?? -1 } : target?.kind === "sign" || target?.kind === "trap" ? { kind: target.kind, index: target.index ?? 0 } : { kind: "map" };
@@ -187,7 +189,7 @@ export class PlaybackController {
       this.scrolls = [];
     }
     this.sourceMap = null;
-    this.skin = null;
+    this.messages?.dispose(); this.messages = null;
     if (this.time) this.cleanup = this.time.stop().catch(() => undefined);
     this.time = null;
     this.highlightKey = "";
@@ -195,6 +197,8 @@ export class PlaybackController {
   }
 
   seek(frame: number): void { this.pause(); this.clock?.seek(frame); this.consumed.clear(); this.draw(); }
+  /** メッセージの窓（自動操作）。 */
+  get messageWindow(): MessageRenderer | null { return this.messages; }
   async ready(): Promise<void> { await this.cleanup; await this.time?.ready(); await this.app.previewPlayer.ready(); }
   step(direction: -1 | 1, singleFrame = false): void { this.pause(); this.clock?.step(direction, singleFrame); this.consumed.clear(); this.draw(); }
   setSpeed(value: number): void { this.clock?.setSpeed(value); this.draw(); }
@@ -217,6 +221,8 @@ export class PlaybackController {
     if (clock.playing) { this.pause(); this.draw(); return; }
     const at = this.nextMessage();
     if (at !== null && this.timeline!.markers[at]!.frame === clock.frame) {
+      // 文の続きのページ（\p・\l・ボタン待ち）があれば、そこへ進めるだけ（#497）
+      if (this.messages?.advance(at)) { this.draw(); return; }
       this.consumed.add(at);
       const next = this.nextMessage();
       if (next !== null && this.timeline!.markers[next]!.frame === clock.frame) { this.draw(); return; }
@@ -300,7 +306,7 @@ export class PlaybackController {
     for (const [index, marker] of this.timeline.markers.entries()) {
       if (marker.frame !== this.clock.frame || (this.consumed.has(index) && !marker.choice)) continue;
       if (marker.kind === "message" || marker.kind === "choice") {
-        if (index === this.nextMessage()) element.append(messageView(this.messageText(marker.detail), this.skin));
+        if (index === this.nextMessage()) element.append(this.messages!.view(index, this.messageText(marker.detail)));
         if (marker.choice) element.append(this.choicePicker(marker.choice, index));
       } else if (marker.branch && !marker.branch.known) {
         const select = document.createElement("select"); select.title = marker.detail;

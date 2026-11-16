@@ -38,3 +38,8 @@
 .playback-time-segment.locked { opacity: 0.6; font-style: italic; }
 .playback-time-segment.dragging { opacity: 0.7; }
 .playback-time-segment.drop-target { box-shadow: inset 3px 0 0 var(--select); }
+.playback-message-window { display: inline-flex; flex-direction: column; gap: 2px; }
+.playback-message-canvas { image-rendering: pixelated; }
+.playback-message-footer { display: flex; gap: 8px; font-size: 90%; opacity: 0.85; }
+.playback-message-warning { color: #c0306a; }
+.playback-message-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

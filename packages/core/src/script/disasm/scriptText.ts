@@ -23,6 +23,34 @@ const SPECIAL_BUFFERS: ReadonlyMap<string, readonly number[]> = new Map([
   ["BUFFER3", [0xfd, 0x04]],
   ["RIVAL", [0xfd, 0x06]],
 ]);
+/**
+ * string.py の SpecialBuffers の残り（書くときだけ使う。戻すときは使わない）。色・待ち・ボタンの絵など。
+ * `[BUFFER]` `[MAIN_COLOUR]` などは続きのバイトを `[XX]` で書く形。
+ */
+const ENCODE_ONLY_BUFFERS: ReadonlyMap<string, readonly number[]> = new Map([
+  [".", [0xb0]], ["BUFFER", [0xfd]],
+  ["ATTACKER", [0xfd, 0x0f]], ["TARGET", [0xfd, 0x10]], ["EFFECT_BANK", [0xfd, 0x11]], ["SCRIPTING_BANK", [0xfd, 0x13]],
+  ["CURRENT_MOVE", [0xfd, 0x14]], ["LAST_ITEM", [0xfd, 0x16]], ["LAST_ABILITY", [0xfd, 0x17]], ["ATTACKER_ABILITY", [0xfd, 0x18]],
+  ["TARGET_ABILITY", [0xfd, 0x19]], ["SCRIPTING_BANK_ABILITY", [0xfd, 0x1a]], ["TRAINER1_CLASS", [0xfd, 0x1c]], ["TRAINER1_NAME", [0xfd, 0x1d]],
+  ["PLAYER_NAME", [0xfd, 0x23]], ["TARGET_NAME", [0xfd, 0x3b]], ["TARGET_PARTNER_NAME", [0xfd, 0x3c]], ["DEF_PREFIX_5", [0xfd, 0x3d]],
+  ["WHITE", [0xfc, 0x01, 0x01]], ["BLACK", [0xfc, 0x01, 0x02]], ["GRAY", [0xfc, 0x01, 0x03]], ["RED", [0xfc, 0x01, 0x04]],
+  ["ORANGE", [0xfc, 0x01, 0x05]], ["GREEN", [0xfc, 0x01, 0x06]], ["LIGHT_GREEN", [0xfc, 0x01, 0x07]], ["BLUE", [0xfc, 0x01, 0x08]],
+  ["LIGHT_BLUE", [0xfc, 0x01, 0x09]], ["MAIN_COLOUR", [0xfc, 0x01]], ["SHADOW_COLOUR", [0xfc, 0x03]],
+  ["ARROW_UP", [0x79]], ["ARROW_DOWN", [0x7a]], ["ARROW_LEFT", [0x7b]], ["ARROW_RIGHT", [0x7c]],
+  ["SHRINK", [0xfc, 0x06, 0x00]], ["PAUSE", [0xfc, 0x08]], ["PAUSE_UNTIL_PRESS", [0xfc, 0x09]], ["PLAY_BGM", [0xfc, 0x0b]],
+  ["ESCAPE", [0xfc, 0x0c]], ["SHIFT_TEXT", [0xfc, 0x0d]], ["PLAY_SE", [0xfc, 0x10]], ["CLEAR", [0xfc, 0x11]], ["SKIP", [0xfc, 0x12]],
+  ["ALIGN", [0xfc, 0x13]], ["MIN_LETTER_SPACING", [0xfc, 0x14]], ["PAUSE_MUSIC", [0xfc, 0x17]], ["RESUME_MUSIC", [0xfc, 0x18]],
+  ["A_BUTTON", [0xf8, 0x00]], ["B_BUTTON", [0xf8, 0x01]], ["L_BUTTON", [0xf8, 0x02]], ["R_BUTTON", [0xf8, 0x03]],
+  ["START_BUTTON", [0xf8, 0x04]], ["SELECT_BUTTON", [0xf8, 0x05]], ["DPAD_UP", [0xf8, 0x06]], ["DPAD_DOWN", [0xf8, 0x07]],
+  ["DPAD_LEFT", [0xf8, 0x08]], ["DPAD_RIGHT", [0xf8, 0x09]], ["DPAD_UP_DOWN", [0xf8, 0x0a]], ["DPAD_LEFT_RIGHT", [0xf8, 0x0b]], ["DPAD", [0xf8, 0x0c]],
+]);
+
+/** 本文の一部と、そのバイト列（{@link ScriptTextCodec.encodeParts}）。`bytes` が null の字は書けない字。 */
+export interface ScriptTextPart {
+  readonly text: string;
+  readonly bytes: readonly number[] | null;
+}
+
 /** string.py が辞書を引く長さ（字）の上限。 */
 const LOOKUP_CHARS = 3;
 const TERMINATOR = 0xff;
@@ -125,25 +153,46 @@ export class ScriptTextCodec {
   /** `.string` の本文をバイト列にする（終端は付けない）。string.py と同じ読み方で、読めない書き方は DataError。 */
   encode(text: string): Uint8Array {
     const out: number[] = [];
+    for (const part of this.parts(text, false)) out.push(...part.bytes!);
+    return Uint8Array.from(out);
+  }
+
+  /**
+   * `.string` の本文を、字（か `[名前]` などのまとまり）ごとのバイト列にする。書けない字は `bytes` を null にして続ける
+   * （再生のメッセージで、読めない字を確認用のフォントで補うため）。`[RED]` などの色・待ちの名前も string.py と同じく書く。
+   */
+  encodeParts(text: string): ScriptTextPart[] {
+    return this.parts(text, true);
+  }
+
+  private parts(text: string, lenient: boolean): ScriptTextPart[] {
+    const out: ScriptTextPart[] = [];
     let i = 0;
+    const fail = (message: string, length: number): void => {
+      if (!lenient) throw new DataError(message);
+      const end = Math.min(text.length, i + Math.max(1, length));
+      out.push({ text: text.slice(i, end), bytes: null });
+      i = end;
+    };
     while (i < text.length) {
       const c = text[i]!;
       if (c === "{") {
         const close = text.indexOf("}", i);
-        if (close < 0) throw new DataError("{ が閉じていません");
+        if (close < 0) { fail("{ が閉じていません", 1); continue; }
         const bytes = this.dictionary.get(text.slice(i, close + 1));
-        if (!bytes) throw new DataError(`知らない名前です: ${text.slice(i, close + 1)}`);
-        out.push(...bytes);
+        if (!bytes) { fail(`知らない名前です: ${text.slice(i, close + 1)}`, close + 1 - i); continue; }
+        out.push({ text: text.slice(i, close + 1), bytes });
         i = close + 1;
         continue;
       }
       if (c === "<") {
         const close = text.indexOf(">", i);
-        if (close < 0) throw new DataError("< が閉じていません");
-        for (const h of text.slice(i + 1, close).trim().split(/\s+/)) {
-          if (!/^[0-9A-Fa-f]+$/.test(h)) throw new DataError(`16 進ではありません: ${h}`);
-          out.push(parseInt(h, 16) & 0xff);
-        }
+        if (close < 0) { fail("< が閉じていません", 1); continue; }
+        const bytes: number[] = [];
+        const bad = text.slice(i + 1, close).trim().split(/\s+/).find((h) => !/^[0-9A-Fa-f]+$/.test(h));
+        if (bad !== undefined) { fail(`16 進ではありません: ${bad}`, close + 1 - i); continue; }
+        for (const h of text.slice(i + 1, close).trim().split(/\s+/)) bytes.push(parseInt(h, 16) & 0xff);
+        out.push({ text: text.slice(i, close + 1), bytes });
         i = close + 1;
         continue;
       }
@@ -151,7 +200,7 @@ export class ScriptTextCodec {
       for (let len = LOOKUP_CHARS; len >= 1; len--) {
         const bytes = this.dictionary.get(text.slice(i, i + len));
         if (bytes && i + len <= text.length) {
-          out.push(...bytes);
+          out.push({ text: text.slice(i, i + len), bytes });
           i += len;
           matched = true;
           break;
@@ -160,25 +209,25 @@ export class ScriptTextCodec {
       if (matched) continue;
       if (c === "[") {
         const close = text.indexOf("]", i);
-        if (close < 0) throw new DataError("[ が閉じていません");
+        if (close < 0) { fail("[ が閉じていません", 1); continue; }
         const inner = text.slice(i + 1, close);
-        const special = SPECIAL_BUFFERS.get(inner);
-        if (special) out.push(...special);
-        else if (/^[0-9A-Fa-f]{1,2}$/.test(inner)) out.push(parseInt(inner, 16));
-        else throw new DataError(`知らない [ ] の名前です: ${inner}`);
+        const special = SPECIAL_BUFFERS.get(inner) ?? ENCODE_ONLY_BUFFERS.get(inner);
+        if (special) out.push({ text: text.slice(i, close + 1), bytes: special });
+        else if (/^[0-9A-Fa-f]{1,2}$/.test(inner)) out.push({ text: text.slice(i, close + 1), bytes: [parseInt(inner, 16)] });
+        else { fail(`知らない [ ] の名前です: ${inner}`, close + 1 - i); continue; }
         i = close + 1;
         continue;
       }
       if (c === "\\") {
         const bytes = this.dictionary.get(text.slice(i, i + 2));
-        if (!bytes) throw new DataError(`知らない \\ の書き方です: ${text.slice(i, i + 2)}`);
-        out.push(...bytes);
+        if (!bytes) { fail(`知らない \\ の書き方です: ${text.slice(i, i + 2)}`, 2); continue; }
+        out.push({ text: text.slice(i, i + 2), bytes });
         i += 2;
         continue;
       }
-      throw new DataError(`使えない文字です: ${JSON.stringify(c)}`);
+      fail(`使えない文字です: ${JSON.stringify(c)}`, (text.codePointAt(i) ?? 0) > 0xffff ? 2 : 1);
     }
-    return Uint8Array.from(out);
+    return out;
   }
 
   private tryEncode(text: string): Uint8Array | null {
