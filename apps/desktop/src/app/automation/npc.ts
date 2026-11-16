@@ -12,6 +12,7 @@ let probe: { dispose(): void } | null = null;
  * - `npc.advance {frames}`: 時計を使わずに frames だけ進めて描く（止めていても進む。テスト用）。
  * - `npc.hold {owner, on}`: owner の名前で止める・解除する（再生 A-5 の止めと同じ口）。
  * - `npc.state`: `enabled`・`frame`・`seed`・`holders`・`clock`（`running`・`frames`・`subscriptions`）・`actors`・`missing`・`cost`。
+ * - `npc.ranges {enabled?}`: 表示 > 人物の移動範囲と視界（#472）。返事は `enabled`・`rules`・`persons`（`localId`・`range`・`spotter`・`rays`）。
  * - `npc.image`: 動く人物の層を 1 枚にした PNG（マップと同じ等倍）。
  * - `clock.probe {on}`: 何もしない購読で時計だけを回す（時計そのものの CPU を測る）。返事は時計の状態。
  */
@@ -35,6 +36,11 @@ export const npcCommands: CommandTable = {
     return app.npcMotion.snapshot;
   },
   "npc.state": (app: App) => app.npcMotion.snapshot,
+  "npc.ranges": async (app: App, req) => {
+    if (req["enabled"] === true) await app.npcMotion.startRanges();
+    if (req["enabled"] === false) app.npcMotion.stopRanges();
+    return app.npcMotion.rangesSnapshot;
+  },
   "npc.image": (app: App) => {
     const canvas = app.npcMotion.image();
     if (!canvas) throw new Error("人物を動かしていません");

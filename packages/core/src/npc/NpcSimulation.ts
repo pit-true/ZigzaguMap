@@ -73,6 +73,16 @@ const HOLD = 15;
 
 /** 通れないときの種類（`EVOBJHIT_*`）。 */
 export type NpcHit = "limit" | "attribute" | "height" | "object";
+const HIT_LIMIT = 1, HIT_ATTRIBUTE = 2, HIT_HEIGHT = 4, HIT_OBJECT = 8;
+
+/** 視界の 1 方向（`NpcSimulation.sight`）。 */
+export interface NpcSightRay {
+  readonly direction: MovementDirection;
+  /** 主人公が立つと見つかるマス（近い順）。 */
+  readonly tiles: readonly { readonly x: number; readonly y: number }[];
+  /** 視界の距離の中で遮ったマスと理由。遮るものが無ければ null。 */
+  readonly blocked: { readonly x: number; readonly y: number; readonly hit: NpcHit } | null;
+}
 
 /** 一方通行の属性（`map_attr.c` の `ATR_IsBadMove*Check`。0x30〜0x37）。その向きへ動けない。 */
 const BAD_MOVE: Readonly<Record<MovementDirection, readonly number[]>> = {
@@ -435,26 +445,76 @@ export class NpcSimulation {
     return this.moveCheck(npc, npc.x + d.x, npc.y + d.y, site);
   }
 
-  /** EvObjMoveChk（`evobjmv.c:4930`）。 */
+  /** EvObjMoveChk（`evobjmv.c:4930`）。ビットの順が判定の順なので、いちばん下のビットが理由。 */
   private moveCheck(npc: Npc, x: number, y: number, site: MovementDirection): NpcHit | null {
+    const bits = this.checkAll(npc, x, y, site, true);
+    return bits & HIT_LIMIT ? "limit" : bits & HIT_ATTRIBUTE ? "attribute" : bits & HIT_HEIGHT ? "height" : bits & HIT_OBJECT ? "object" : null;
+  }
+
+  /** EvObjMoveChkAll（`evobjmv.c:4979`）。`limit` が false なら移動範囲を見ない。 */
+  private checkAll(npc: Npc, x: number, y: number, site: MovementDirection, limit: boolean): number {
+    let bits = 0;
     const src = npc.source;
-    if (npc.limitX && (x < src.x - npc.limitX || x > src.x + npc.limitX)) return "limit";
-    if (npc.limitY && (y < src.y - npc.limitY || y > src.y + npc.limitY)) return "limit";
+    if (limit && npc.limitX && (x < src.x - npc.limitX || x > src.x + npc.limitX)) bits |= HIT_LIMIT;
+    if (limit && npc.limitY && (y < src.y - npc.limitY || y > src.y + npc.limitY)) bits |= HIT_LIMIT;
     const movement = this.world.movement(x, y);
-    if (movement === null || (movement & 3) !== 0) return "attribute";
-    if (BAD_MOVE[site].includes(this.world.behavior(npc.x, npc.y))) return "attribute";
-    if (BAD_MOVE[oppositeDirection(site)].includes(this.world.behavior(x, y))) return "attribute";
-    if (npc.height !== FREE) {
+    if (movement === null || (movement & 3) !== 0
+      || BAD_MOVE[site].includes(this.world.behavior(npc.x, npc.y))
+      || BAD_MOVE[oppositeDirection(site)].includes(this.world.behavior(x, y))) bits |= HIT_ATTRIBUTE;
+    if (npc.height !== FREE && movement !== null) {
       const next = movement >> 2;
-      if (next !== FREE && next !== HOLD && next !== npc.height) return "height";
+      if (next !== FREE && next !== HOLD && next !== npc.height) bits |= HIT_HEIGHT;
     }
     const hits = (h: number): boolean => npc.height === FREE || h === FREE || npc.height === h;
     for (const other of this.npcs) {
       if (other === npc) continue;
-      if (((other.x === x && other.y === y) || (other.oldX === x && other.oldY === y)) && hits(other.height)) return "object";
+      if (((other.x === x && other.y === y) || (other.oldX === x && other.oldY === y)) && hits(other.height)) bits |= HIT_OBJECT;
     }
-    for (const o of this.obstacles) if (o.x === x && o.y === y && hits(o.elevation)) return "object";
-    return null;
+    for (const o of this.obstacles) if (o.x === x && o.y === y && hits(o.elevation)) bits |= HIT_OBJECT;
+    return bits;
+  }
+
+  /**
+   * トレーナーの視界（`ev_trai.c:179` `TrainerEyeChk` と、有効な版の `trai_move_range_attr_chk`（326 行））。
+   * 主人公が立つと見つかるマスを、向きごとに近い順で返す。自分のマスから主人公の手前のマスまでに、移動範囲以外の
+   * 当たり（衝突・マップの外・一方通行・高さ・ほかの人物）があると見えない。主人公のマス自身も、衝突・高さで入れなければ
+   * 見つからない。主人公（`step` の obstacles）は見る相手なので、遮るものに数えない。
+   */
+  sight(localId: number, range: number, allDirections: boolean): NpcSightRay[] {
+    const npc = this.npcs.find(n => n.source.localId === localId);
+    if (!npc || range <= 0) return [];
+    const saved = this.obstacles;
+    this.obstacles = [];
+    try {
+      const directions: readonly MovementDirection[] = allDirections ? ["down", "up", "left", "right"] : [npc.facing];
+      return directions.map(direction => {
+        const d = MOVEMENT_DELTA[direction];
+        const tiles: { x: number; y: number }[] = [];
+        let blocked: NpcSightRay["blocked"] = null;
+        if (this.checkAll(npc, npc.x, npc.y, direction, false)) blocked = { x: npc.x, y: npc.y, hit: this.firstHit(this.checkAll(npc, npc.x, npc.y, direction, false)) };
+        for (let i = 1; !blocked && i <= range; i++) {
+          const x = npc.x + d.x * i, y = npc.y + d.y * i;
+          const bits = this.checkAll(npc, x, y, direction, false);
+          if (bits) blocked = { x, y, hit: this.firstHit(bits) };
+          else tiles.push({ x, y });
+        }
+        return { direction, tiles, blocked };
+      });
+    } finally {
+      this.obstacles = saved;
+    }
+  }
+
+  private firstHit(bits: number): NpcHit {
+    return bits & HIT_LIMIT ? "limit" : bits & HIT_ATTRIBUTE ? "attribute" : bits & HIT_HEIGHT ? "height" : "object";
+  }
+
+  /** 移動範囲（元の位置を中心に、0 を 1 に直した後の値）。範囲の無い人物は null。 */
+  rangeOf(localId: number): { x0: number; y0: number; x1: number; y1: number } | null {
+    const npc = this.npcs.find(n => n.source.localId === localId);
+    if (!npc || (!npc.limitX && !npc.limitY)) return null;
+    const s = npc.source;
+    return { x0: npc.limitX ? s.x - npc.limitX : -Infinity, y0: npc.limitY ? s.y - npc.limitY : -Infinity, x1: npc.limitX ? s.x + npc.limitX : Infinity, y1: npc.limitY ? s.y + npc.limitY : Infinity };
   }
 
   /** pp_rand。 */

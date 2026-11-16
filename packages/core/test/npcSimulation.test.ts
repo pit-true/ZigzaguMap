@@ -174,3 +174,50 @@ describe("止めて見せる型", () => {
     }
   });
 });
+
+describe("トレーナーの視界", () => {
+  const tiles = (sim: NpcSimulation, id = 1, range = 5, all = false) => sim.sight(id, range, all).map(r => ({ d: r.direction, t: r.tiles.map(t => `${t.x},${t.y}`), b: r.blocked && `${r.blocked.x},${r.blocked.y}:${r.blocked.hit}` }));
+
+  it("今の向きの直線で、距離はイベントの値。0 は見えない", () => {
+    const sim = new NpcSimulation(world(11, 11), [person(0x08, 5, 2)], 0);
+    expect(tiles(sim, 1, 3)).toEqual([{ d: "down", t: ["5,3", "5,4", "5,5"], b: null }]);
+    expect(sim.sight(1, 0, false)).toEqual([]);
+    // 最大（15）でもマップの外で止まる
+    expect(tiles(sim, 1, 15)[0]!.t).toHaveLength(8);
+    expect(tiles(sim, 1, 15)[0]!.b).toBe("5,11:attribute");
+  });
+
+  it("全方向は下・上・左・右の 4 本", () => {
+    const sim = new NpcSimulation(world(11, 11), [person(0x08, 5, 5)], 0);
+    expect(tiles(sim, 1, 2, true).map(r => [r.d, r.t])).toEqual([
+      ["down", ["5,6", "5,7"]], ["up", ["5,4", "5,3"]], ["left", ["4,5", "3,5"]], ["right", ["6,5", "7,5"]],
+    ]);
+  });
+
+  it("壁・一方通行・高さ・ほかの人物で遮られ、移動範囲は見ない", () => {
+    const wall = new NpcSimulation(world(11, 11, { walls: [[5, 5]] }), [person(0x08, 5, 2, { movementRangeX: 1, movementRangeY: 1 })], 0);
+    expect(tiles(wall)).toEqual([{ d: "down", t: ["5,3", "5,4"], b: "5,5:attribute" }]);
+    // 下向きに入れない一方通行（0x33 は「下へ移動不可」なので、自分のマスに置くと最初から見えない）
+    const ledge = new NpcSimulation(world(11, 11, { behaviors: { "5,4": 0x32 } }), [person(0x08, 5, 2)], 0);
+    expect(tiles(ledge)).toEqual([{ d: "down", t: ["5,3"], b: "5,4:attribute" }]);
+    const high = new NpcSimulation(world(11, 11, { cells: { "5,4": 6 << 2, "5,5": 0 } }), [person(0x08, 5, 2)], 0);
+    expect(tiles(high)).toEqual([{ d: "down", t: ["5,3"], b: "5,4:height" }]);
+    const other = new NpcSimulation(world(11, 11), [person(0x08, 5, 2), { ...person(0x00, 5, 4), localId: 2 }], 0);
+    expect(tiles(other)).toEqual([{ d: "down", t: ["5,3"], b: "5,4:object" }]);
+    // 主人公は見る相手なので遮らない
+    other.step([{ x: 5, y: 3, elevation: 3 }]);
+    expect(tiles(other)[0]!.t).toEqual(["5,3"]);
+  });
+
+  it("自分のマスが衝突なら見えない（元の版は自分のマスから調べる）", () => {
+    const sim = new NpcSimulation(world(11, 11, { walls: [[5, 2]] }), [person(0x08, 5, 2)], 0);
+    expect(tiles(sim)).toEqual([{ d: "down", t: [], b: "5,2:attribute" }]);
+  });
+
+  it("移動範囲は元の位置が中心で、0 を 1 に直すタイプだけ 1", () => {
+    const sim = new NpcSimulation(world(11, 11), [person(0x02, 5, 5), { ...person(0x08, 2, 2), localId: 2 }, { ...person(0x1b, 7, 7, { movementRangeX: 3 }), localId: 3 }], 0);
+    expect(sim.rangeOf(1)).toEqual({ x0: 4, y0: 4, x1: 6, y1: 6 });
+    expect(sim.rangeOf(2)).toBeNull();
+    expect(sim.rangeOf(3)).toEqual({ x0: 4, y0: 6, x1: 10, y1: 8 });
+  });
+});

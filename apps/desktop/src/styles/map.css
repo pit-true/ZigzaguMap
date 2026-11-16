@@ -152,3 +152,5 @@
 /* 表示 > 人物を動かす（#471）。マップの画像の上・重ね描きの下に、人物ごとの等倍の Canvas を置く */
 .npc-layer { position: absolute; transform-origin: 0 0; pointer-events: none; will-change: transform; }
 .map-stage .npc-layer canvas.npc-actor { pointer-events: none; image-rendering: pixelated; }
+/* 表示 > 人物の移動範囲と視界（#472）。人物の層の上・重ね描きの下 */
+.map-stage canvas.npc-ranges { pointer-events: none; image-rendering: auto; }
