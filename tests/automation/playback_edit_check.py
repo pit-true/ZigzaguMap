@@ -124,17 +124,11 @@ def main():
             print("OK 開いていないファイル: 移動データの値だけ書き換え、コメントと書き方を保ち、フレームを保つ")
 
             # 3. メインの元に戻す・やり直すで .s とタイムラインが戻る
-            z.call(dict(cmd="undo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, SOURCE)
+            history_step(z, "undo", disk, SOURCE)
             back = z.call(dict(cmd="playback.timeline"))
             assert back["segments"][seg(back, "ZzEdit_Walk", 0)]["movementId"] == 0x11
-            z.call(dict(cmd="redo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, first)
-            z.call(dict(cmd="undo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, SOURCE)
+            history_step(z, "redo", disk, first)
+            history_step(z, "undo", disk, SOURCE)
             print("OK メインの元に戻す・やり直すで .s とタイムラインが戻る")
 
             # 4. 共用のラベル: 写す（このスクリプトだけ付け替える）と、そのまま書き換える（1 行 1 命令の形を保つ）
@@ -145,17 +139,13 @@ def main():
             text = disk()
             assert "\tapplymovement 0xFF ZzEdit_Shared_2\n" in text and "ZzEditOther:\n\tapplymovement 0xFF ZzEdit_Shared\n" in text, text
             assert "\t.byte end_m\nZzEdit_Shared_2: .byte 0x13, end_m\n" in text or "\t.byte end_m\nZzEdit_Shared_2: .byte walk_right, end_m\n" in text, text
-            z.call(dict(cmd="undo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, SOURCE)
+            history_step(z, "undo", disk, SOURCE)
             timeline = z.call(dict(cmd="playback.timeline"))
             rewrite = edit(seg(timeline, "ZzEdit_Shared", 1), dict(type="repeat", index=1, count=2), shared="rewrite")
             assert rewrite["result"]["newLabel"] is None
             text = disk()
             assert "ZzEdit_Shared:\n\t.byte walk_down\n\t.byte 0x13\n\t.byte 0x13\n\t.byte end_m\n" in text or "ZzEdit_Shared:\n\t.byte walk_down\n\t.byte 0x13\n\t.byte walk_right\n\t.byte end_m\n" in text, text
-            z.call(dict(cmd="undo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, SOURCE)
+            history_step(z, "undo", disk, SOURCE)
             print("OK 共用のラベルを、新しいラベルに写して付け替える・そのまま書き換える（1 行 1 命令の形）")
 
             # 5. エディタで開いている（未保存の変更なし）: エディタの本文に入り、保存される
@@ -175,9 +165,7 @@ def main():
             z.call(dict(cmd="editor.key", key="y", ctrl=True, **W))
             wait_editor_text(z, want)
             z.call(dict(cmd="playback.settled"))
-            z.call(dict(cmd="undo"))
-            z.call(dict(cmd="playback.settled"))
-            wait_disk(disk, SOURCE)
+            history_step(z, "undo", disk, SOURCE)
             wait_editor_text(z, SOURCE)
             print("OK エディタで開いているファイル: エディタの本文に入って保存され、メインの元に戻すで戻る")
 
@@ -247,6 +235,7 @@ def main():
             assert history() == h2 + 4
             for _ in range(4):
                 z.call(dict(cmd="undo"))
+                time.sleep(0.3)
                 z.call(dict(cmd="playback.settled"))
             wait_disk(disk, outside)
             print("OK 右クリックのメニュー、Alt＋矢印、Delete、ドラッグの並べ替えで書き換え、4 回の元に戻すで戻る")
@@ -260,6 +249,14 @@ def wait_disk(disk, want, timeout=10):
         if time.monotonic() > end:
             raise AssertionError(f"ファイルが期待どおりにならない:\n{disk()}")
         time.sleep(0.1)
+
+
+def history_step(z, cmd, disk, want):
+    """メインの元に戻す・やり直すをして、ファイルが変わり、タイムラインを計算し直すまで待つ。"""
+    z.call(dict(cmd=cmd))
+    wait_disk(disk, want)
+    time.sleep(0.2)
+    z.call(dict(cmd="playback.settled"))
 
 
 def wait_line(read, want, timeout=10):
