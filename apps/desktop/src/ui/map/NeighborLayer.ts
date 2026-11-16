@@ -118,7 +118,7 @@ export class NeighborLayer {
     const session = this.state.session;
     const clones = this.options.clones && this.state.settings.data.showClones && doc ? outsideClones(doc) : [];
     const graphics: PersonGraphics = (p) => personGraphicsId(session, p, this.onCloneOrigin);
-    const sprites = clones.length > 0 && this.state.settings.data.showObjects ? spriteSourceFor(session) : null;
+    const sprites = clones.length > 0 && this.state.settings.data.showObjects ? spriteSourceFor(session, doc?.header.mapType) : null;
     bands.forEach((band, i) => {
       const canvas = this.canvases[i]!;
       const at = band.placement.bandAt;

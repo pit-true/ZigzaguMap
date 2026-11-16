@@ -1,3 +1,7 @@
+import type { TimeOfDay } from "@zigzagumap/core";
+import { activeTint } from "../../app/timeOfDay/activeTint";
+import { jaTimeOfDay } from "../../i18n/ja.timeOfDay";
+import { errorText } from "../../util/errors";
 import type { EditorState } from "../../app/EditorState";
 import { canvasPng, release, writeClipboard, type CompositeImage, type CompositeOptions } from "../../app/CompositeImage";
 import { encodeDib } from "../../app/ImageExport";
@@ -19,6 +23,7 @@ export interface MapExportHost {
 
 /** 窓の選択（自動操作の `mapExport.state` にも出す）。 */
 export interface MapExportChoice {
+  time?: TimeOfDay;
   whole: boolean;
   persons: boolean;
   warps: boolean;
@@ -36,6 +41,7 @@ export interface MapExportChoice {
 /** 窓の選択から画像の作り方を作る。 */
 export function compositeOptionsOf(c: MapExportChoice, gridStyle: unknown = null): Omit<CompositeOptions, "ask" | "scale"> {
   return {
+    ...(c.time === undefined ? {} : { time: c.time }),
     whole: c.whole,
     events: "none",
     eventKinds: { persons: c.persons, warps: c.warps, traps: c.traps, signs: c.signs },
@@ -64,6 +70,7 @@ export function openMapExport(): MapExportDialog | null {
  */
 export class MapExportDialog {
   readonly choice: MapExportChoice = {
+    time: activeTint()?.time ?? "day",
     whole: false,
     persons: true,
     warps: true,
@@ -153,7 +160,14 @@ export class MapExportDialog {
     this.sizeLabel.dataset["autoId"] = "mapExport.size";
     const left = document.createElement("div");
     left.className = "map-export-options";
+    const time = autoId(document.createElement("select"), "mapExport.time");
+    const times: readonly TimeOfDay[] = ["morning", "day", "evening", "night"];
+    for (const id of times) time.append(new Option(jaTimeOfDay.names[id], id));
+    time.value = this.choice.time ?? "day";
+    time.disabled = !host.state.session?.projectDir;
+    time.addEventListener("change", () => { this.choice.time = time.value as TimeOfDay; this.changed(); });
     left.append(
+      group(t.time, time),
       group(t.range, radio("whole", false, t.rangeMap, "rangeMap"), radio("whole", true, t.rangeWhole, "rangeWhole")),
       group(
         t.include,
@@ -290,7 +304,7 @@ export class MapExportDialog {
   private changed(): void {
     const neighbors = this.fields.get("neighbors");
     if (neighbors) neighbors.disabled = this.choice.whole;
-    this.rendering = this.rendering.then(() => this.renderPreview());
+    this.rendering = this.rendering.then(() => this.renderPreview()).catch((e: unknown) => { this.sizeLabel.textContent = errorText(e); });
   }
 
   private async renderPreview(): Promise<void> {

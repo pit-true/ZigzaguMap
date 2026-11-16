@@ -1,3 +1,4 @@
+import type { PaletteTint } from "../dns/DnsTint.js";
 import { ROM_BASE, type Rom } from "../rom/Rom.js";
 import { createImage, writeBgr555, type RgbaImage } from "../render/color.js";
 
@@ -13,6 +14,7 @@ const MAX_PALETTES = 0x100;
 /** OW 1 種類の情報。 */
 export interface OverworldGraphicsInfo {
   readonly paletteTag: number;
+  readonly paletteSlot: number;
   readonly width: number;
   readonly height: number;
   /** 1 コマ目（下向きの立ち姿）の画像データの位置。 */
@@ -60,7 +62,7 @@ export class OverworldSprites {
         const imageOffset = rom.pointer(frames);
         const valid =
           rom.u16(at) === 0xffff && width > 0 && height > 0 && width <= 128 && height <= 128 && width % 8 === 0 && height % 8 === 0;
-        if (valid && rom.inRange(imageOffset, (width * height) / 2)) out = { paletteTag: rom.u16(at + 2), width, height, imageOffset };
+        if (valid && rom.inRange(imageOffset, (width * height) / 2)) out = { paletteTag: rom.u16(at + 2), paletteSlot: rom.u8(at + 12) & 15, width, height, imageOffset };
       }
     } catch {
       out = null;
@@ -70,7 +72,12 @@ export class OverworldSprites {
   }
 
   /** 1 コマ目（下向き）の画像（RGBA、パレット 0 番は透明）。読めなければ null。 */
-  image(graphicsId: number): RgbaImage | null {
+  image(graphicsId: number, tint: PaletteTint | null = null): RgbaImage | null {
+    if (tint) {
+      const info = this.info(graphicsId);
+      const palette = info ? this.paletteOffset(info.paletteTag) : null;
+      return info && palette !== null ? this.decode(info, palette, tint) : null;
+    }
     const cached = this.images.get(graphicsId);
     if (cached !== undefined) return cached;
     const info = this.info(graphicsId);
@@ -98,11 +105,12 @@ export class OverworldSprites {
     return at !== undefined && this.rom.inRange(at, 32) ? at : null;
   }
 
-  private decode(info: OverworldGraphicsInfo, paletteAt: number): RgbaImage {
+  private decode(info: OverworldGraphicsInfo, paletteAt: number, tint: PaletteTint | null = null): RgbaImage {
     const { width, height } = info;
     const image = createImage(width, height);
     const bytes = this.rom.bytes;
-    const colors = this.rom.u16Array(paletteAt, 16);
+    const raw = this.rom.u16Array(paletteAt, 16);
+    const colors = tint ? tint(raw, info.paletteSlot) : raw;
     const tilesX = width / 8;
     for (let ty = 0; ty < height / 8; ty++) {
       for (let tx = 0; tx < tilesX; tx++) {

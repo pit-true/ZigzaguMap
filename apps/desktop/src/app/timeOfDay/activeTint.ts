@@ -1,4 +1,4 @@
-import type { Tileset } from "@zigzagumap/core";
+import type { PaletteTint, TimeOfDay, Tileset } from "@zigzagumap/core";
 
 /**
  * 今の時間帯の色（Phase6 #434）。昼のときは null で、描画は今までと同じ道を通る。
@@ -6,6 +6,8 @@ import type { Tileset } from "@zigzagumap/core";
  * ここは型と入れ物だけで、dns の部品を読み込まない（起動の時間を変えないため）。
  */
 export interface ActiveTint {
+  readonly sprite?: PaletteTint;
+  readonly time?: TimeOfDay;
   /** 切り替えるたびに増える番号（描いた絵のキャッシュの鍵に入れる）。 */
   readonly generation: number;
   /** そのマップの種類（ヘッダーの 0x17）で色を変えるか（屋内・地下・秘密基地などは変えない）。 */

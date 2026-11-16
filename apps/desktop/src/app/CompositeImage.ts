@@ -1,3 +1,4 @@
+import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
 import { invoke } from "@tauri-apps/api/core";
 import {
   BLOCK_PIXELS,
@@ -8,6 +9,7 @@ import {
   exportCrop,
   layoutComposite,
   rectsOverlap,
+  type TimeOfDay,
   type CompositeLayout,
   type MapDocument,
   type MapId,
@@ -53,6 +55,7 @@ export interface CompositeResult {
 
 /** 作り方。 */
 export interface CompositeOptions {
+  readonly time?: TimeOfDay;
   /** 接続している全マップ（false なら今のマップ 1 枚）。 */
   readonly whole: boolean;
   readonly events: CompositeEvents;
@@ -95,6 +98,16 @@ export class CompositeImage {
     const session = this.state.session;
     const main = this.state.map;
     if (!session || !main) return null;
+    let tint = activeTint();
+    if (options.time !== undefined) {
+      if (!["morning", "day", "evening", "night"].includes(options.time)) throw new Error("時間帯の指定が不正です");
+      if (options.time === "day") tint = null;
+      else {
+        const fs = session.projectFs();
+        if (!fs) throw new Error("時間帯の色を使うにはプロジェクトを開いてください");
+        tint = await (await import("./timeOfDay/dnsTint")).exportTint(fs, options.time);
+      }
+    }
     const docs = new Map<string, MapDocument>();
     const read = async (id: MapId): Promise<MapDocument | null> => {
       const k = `${id.bank}.${id.map}`;
@@ -126,10 +139,10 @@ export class CompositeImage {
     canvas.height = Math.ceil((b.height * BLOCK_PIXELS) / scale);
     const out = canvas.getContext("2d")!;
     out.imageSmoothingEnabled = scale > 1;
-    if (options.border) await this.fillBorder(out, main.doc, main.tiles, b, scale);
+    if (options.border) await this.fillBorder(out, main.doc, main.tiles, b, scale, tint);
     const kinds = options.eventKinds ?? eventKindsOf(options.events);
     const opacity = this.state.settings.data.movementOpacity;
-    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(session) : null;
+    const objects = this.state.settings.data.showObjects;
     // クローンは元の人の見た目で描く（元のマップは並べたマップから先に引く。#298）
     const graphics: PersonGraphics = (p) => {
       const target = cloneTargetOf(p);
@@ -142,9 +155,9 @@ export class CompositeImage {
       if (!rectsOverlap(b, m)) continue;
       // 隣の帯だけのとき（全マップでない）は、今のマップを最後に描く（帯が今のマップにかからないように）
       if (!options.whole && i === 0 && layout.maps.length > 1) continue;
-      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites, options.grid ?? null);
+      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint);
     }
-    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, sprites, options.grid ?? null);
+    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint);
     tilesets.clear();
     return { canvas, layout, scale, drawn };
   }
@@ -161,8 +174,9 @@ export class CompositeImage {
     opacity: number,
     movement: boolean,
     graphics: PersonGraphics,
-    sprites: ReturnType<typeof spriteSourceFor> | null,
+    objects: boolean,
     grid: GridStyle | null,
+    tint: ActiveTint | null,
   ): Promise<void> {
     const session = this.state.session!;
     const main = this.state.map!;
@@ -176,7 +190,7 @@ export class CompositeImage {
         tiles = new TilesetView(tilesKey, ts.primary, ts.secondary);
         tilesets.set(tilesKey, tiles);
       }
-      const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tiles);
+      const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tiles, doc.header.mapType, tint);
       const one = document.createElement("canvas");
       one.width = bitmap.width;
       one.height = bitmap.height;
@@ -193,6 +207,7 @@ export class CompositeImage {
         lines.width = 0;
         lines.height = 0;
       }
+      const sprites = objects ? spriteSourceFor(session, doc.header.mapType, tint) : null;
       drawEventsOn(c, placedEvents(doc, kinds, graphics), BLOCK_PIXELS, null, sprites);
       out.drawImage(one, ((m.x - b.x) * BLOCK_PIXELS) / scale, ((m.y - b.y) * BLOCK_PIXELS) / scale, one.width / scale, one.height / scale);
       one.width = 0;
@@ -201,10 +216,10 @@ export class CompositeImage {
   }
 
   /** 描く範囲を、今のマップの境界ブロックの並び（マップの左上にそろえる）で埋める。 */
-  private async fillBorder(out: CanvasRenderingContext2D, doc: MapDocument, tiles: TilesetView, b: { x: number; y: number }, scale: number): Promise<void> {
+  private async fillBorder(out: CanvasRenderingContext2D, doc: MapDocument, tiles: TilesetView, b: { x: number; y: number }, scale: number, tint: ActiveTint | null): Promise<void> {
     const border = doc.border;
     if (border.width === 0 || border.height === 0) return;
-    const bitmap = await renderBand(border, { x: 0, y: 0, width: border.width, height: border.height }, tiles);
+    const bitmap = await renderBand(border, { x: 0, y: 0, width: border.width, height: border.height }, tiles, doc.header.mapType, tint);
     const pattern = out.createPattern(bitmap, "repeat");
     if (pattern) {
       pattern.setTransform(new DOMMatrix().scale(1 / scale).translate(-b.x * BLOCK_PIXELS, -b.y * BLOCK_PIXELS));

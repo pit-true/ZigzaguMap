@@ -1,3 +1,4 @@
+import type { TimeOfDay } from "@zigzagumap/core";
 import type { App } from "../App";
 import { canvasPng, release, writeClipboard, type CompositeEvents } from "../CompositeImage";
 import { jsHeapBytes } from "../../util/jsHeap";
@@ -13,7 +14,8 @@ async function composite(app: App, req: AutomationRequest): Promise<unknown> {
   const events = (typeof req["events"] === "string" ? req["events"] : "none") as CompositeEvents;
   if (!["none", "persons", "all"].includes(events)) throw new Error(`events は none / persons / all のどれかです: ${events}`);
   const scale = typeof req["scale"] === "number" ? req["scale"] : undefined;
-  const r = await app.extras.composite.render({ whole: req["whole"] !== false, events, ask: false, ...(scale !== undefined ? { scale } : {}) });
+  const time = typeof req["time"] === "string" ? req["time"] as TimeOfDay : undefined;
+  const r = await app.extras.composite.render({ ...(time === undefined ? {} : { time }), whole: req["whole"] !== false, events, ask: false, ...(scale !== undefined ? { scale } : {}) });
   if (!r) throw new Error("マップが開かれていません");
   const heap = jsHeapBytes();
   try {

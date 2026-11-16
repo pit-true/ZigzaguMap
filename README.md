@@ -2329,3 +2329,5 @@ MIT（[LICENSE](LICENSE)）
 プロジェクトで野生タブやトレーナー編集を初めて開くと、DPE の `include/species.h` と `strings/Pokemon_Name_Table.string` から種族番号と名前を読みます。ND は隣の `NeoDark-DPE-main`、Chronos は隣の `dpe` を探します。場所を変える場合は、CFRU の `zigzagumap.json` の最上位に `"dpeDirectory": "../自分のDPE"` を指定します。読み込めない場合はROMの名前表を使います。
 
 野生の種族のコンボ、全マップ検索、トレーナーの手持ちの名前に同じ表を使います。追加種族も番号で出力し、開き直すと同じ番号と名前になります。ND の970件、Chronos の1573件（最後は0x624）を確認できます。`python tests/realcopy/run.py --species --reuse` が表示とJSON往復のテストです。
+
+時間帯の色は人物にも使います（#435）。人物の画像情報のOBJパレット番号と `OW_SPRITE_PAL_n` を使い、黒と透明はそのままにします。屋内などの対象外のマップは、人物も背景も色を変えません。マップ画像の書き出しの窓では時間帯を選べます。最初は表示中の時間帯です。PNG・BMP・つなぎ合わせ・GIFに同じ指定を使い、表示中の時間帯は変えません。従来の画像保存は表示中の色のままです。

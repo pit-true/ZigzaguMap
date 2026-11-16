@@ -1,3 +1,4 @@
+import type { ActiveTint } from "../timeOfDay/activeTint";
 import {
   BLOCK_ID_MASK,
   BLOCK_PIXELS,
@@ -285,9 +286,10 @@ export async function renderBand(
   band: { x: number; y: number; width: number; height: number },
   tiles: TilesetView,
   mapType?: number,
+  tint?: ActiveTint | null,
 ): Promise<ImageBitmap> {
   const image = createImage(band.width * BLOCK_PIXELS, band.height * BLOCK_PIXELS);
-  const renderer = tiles.mapRenderer(mapType);
+  const renderer = tiles.mapRenderer(mapType, tint);
   for (let y = 0; y < band.height; y++) {
     for (let x = 0; x < band.width; x++) {
       const block = grid.cells[(band.y + y) * grid.width + band.x + x]! & BLOCK_ID_MASK;
