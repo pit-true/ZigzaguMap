@@ -65,8 +65,17 @@ const SETORCOPYVAR_CALLERS = ["copyvarifnotzero", "giveitem", "finditem", "obtai
 /** フォルダの xse_commands.s に setorcopyvar のマクロがあるか。 */
 const hasSetorcopyvar = (dir: string) => /^\s*\.macro\s+setorcopyvar\s/m.test(readFileSync(join(dir, "xse_commands.s"), "utf8"));
 
+/**
+ * 定義の無いマクロを呼ぶ別名を直した後の xse_commands.s か（2026-11-16 に ND と Chronos の本体で直した。
+ * `setobjectxy` が `moveobject` を呼ぶ形）。直した後は、呼び先の欠けたマクロも自分を呼ぶマクロも無い。
+ */
+const isFixed = (dir: string) => /\.macro\s+setobjectxy\b[^\n]*\n\s*moveobject\b/.test(readFileSync(join(dir, "xse_commands.s"), "utf8"));
+
 /** 呼び先が欠けて組めない命令（setorcopyvar が無ければ、その系統も）。 */
-const missingCallees = (dir: string) => [...MISSING_CALLEES, ...(hasSetorcopyvar(dir) ? [] : SETORCOPYVAR_CALLERS)];
+const missingCallees = (dir: string) => (isFixed(dir) ? [] : [...MISSING_CALLEES, ...(hasSetorcopyvar(dir) ? [] : SETORCOPYVAR_CALLERS)]);
+
+/** 読めない命令の名前（直す前は、呼び先の欠けたものと自分を呼ぶ setobjectxyperm）。 */
+const problemNames = (dir: string) => (isFixed(dir) ? [] : [...missingCallees(dir), "setobjectxyperm"].sort());
 
 /** マクロの数と読めた数（setorcopyvar があれば、そのマクロ 1 つと、組めるようになった系統の分だけ増える）。 */
 const counts = (dir: string, commands: number, parsed: number) =>
@@ -75,10 +84,14 @@ const counts = (dir: string, commands: number, parsed: number) =>
 describe.skipIf(!ndDir)("ND の xse_commands.s（ZIGZAGU_ND_DIR）", () => {
   it("全マクロを読み、読めないものは理由つきで一覧に出る", () => {
     const t = load(ndDir!);
+    expect(t.problems.map((p) => p.name).sort()).toEqual(problemNames(ndDir!));
+    if (isFixed(ndDir!)) {
+      expect(t.parsedCount).toBe(t.commands.length);
+      return;
+    }
     const n = counts(ndDir!, 312, 276);
     expect(t.commands).toHaveLength(n.commands);
     expect(t.parsedCount).toBe(n.parsed);
-    expect(t.problems.map((p) => p.name).sort()).toEqual([...missingCallees(ndDir!), "setobjectxyperm"].sort());
     expect(t.problems.find((p) => p.name === "setobjectxyperm")!.reason).toContain("自分を呼び出しています");
     expect(t.problems.find((p) => p.name === "setescape")!.reason).toContain("マクロ map が見つかりません");
   });
@@ -129,10 +142,14 @@ describe.skipIf(!ndDir)("ND の xse_commands.s（ZIGZAGU_ND_DIR）", () => {
 describe.skipIf(!chronosDir)("Chronos の xse_commands.s（ZIGZAGU_CHRONOS_DIR）", () => {
   it("全マクロを読み、読めないものは理由つきで一覧に出る", () => {
     const t = load(chronosDir!);
+    expect(t.problems.map((p) => p.name).sort()).toEqual(problemNames(chronosDir!));
+    if (isFixed(chronosDir!)) {
+      expect(t.parsedCount).toBe(t.commands.length);
+      return;
+    }
     const n = counts(chronosDir!, 314, 278);
     expect(t.commands).toHaveLength(n.commands);
     expect(t.parsedCount).toBe(n.parsed);
-    expect(t.problems.map((p) => p.name).sort()).toEqual([...missingCallees(chronosDir!), "setobjectxyperm"].sort());
   });
 
   it("loadpointer は 6 バイトの 1 ポインタ、msgbox・customchoice の文字列の引数は 1 つと 2 つ", () => {
