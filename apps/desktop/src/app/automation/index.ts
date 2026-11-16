@@ -32,6 +32,7 @@ import { tilesetCommands } from "./tileset";
 import { penCommands } from "./pen";
 import { toolCommands } from "./tools";
 import { shortcutCommands } from "./shortcuts";
+import { timeOfDayCommands } from "./timeOfDay";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -72,6 +73,7 @@ const registry: CommandRegistry = new CommandRegistry([
   penCommands,
   toolCommands,
   shortcutCommands,
+  timeOfDayCommands,
   { commands: () => registry.names() },
 ]);
 

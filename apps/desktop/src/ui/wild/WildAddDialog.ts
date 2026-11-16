@@ -1,4 +1,4 @@
-import { SetWildAreasCommand, toOffset, type MapId } from "@zigzagumap/core";
+import { SetWildAreasCommand, WildTime, toOffset, wildOfTime, type MapId } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import type { ProjectSession } from "../../app/ProjectSession";
 import { ja } from "../../i18n/ja";
@@ -7,7 +7,6 @@ import { messageBox } from "../MessageBox";
 import { commit } from "../form/commit";
 import { button, check, label, panel } from "../form/controls";
 import { offsetText } from "../form/inputErrors";
-import { shownWild } from "./WildTab";
 
 /** ベース ROM の野生のエリア情報の位置（ROM 上に無ければ 0）。 */
 function areaOffsets(session: ProjectSession, id: MapId): number[] {
@@ -22,8 +21,9 @@ function areaOffsets(session: ProjectSession, id: MapId): number[] {
  * 既にデータのあるタイプは最初からチェックが入る。オフセットはベース ROM 上のエリア情報の位置（無ければ $000000）。
  * 何もチェックせずに OK を押すと「…中止しました！」を出し、ダイアログは開いたまま。
  * OK で反映したら、最初にチェックしたタイプの番号を返す。キャンセルなら null。
+ * `time` は作る・変える時間帯の表（Phase6 #436。省けば昼）。オフセットはベース ROM の昼の表のものだけ出す。
  */
-export function openWildAddDialog(state: EditorState, session: ProjectSession, id: MapId): Promise<number | null> {
+export function openWildAddDialog(state: EditorState, session: ProjectSession, id: MapId, time: number = WildTime.Day): Promise<number | null> {
   return new Promise((resolve) => {
     const w = ja.wild;
     const finish = (value: number | null): void => {
@@ -35,8 +35,8 @@ export function openWildAddDialog(state: EditorState, session: ProjectSession, i
     const head = label(w.dialogHead, 8, 8);
     head.style.fontWeight = "bold";
     const doc = session.project.loaded(id);
-    const areas = shownWild(doc?.wild ?? [])?.areas ?? [];
-    const offsets = areaOffsets(session, id);
+    const areas = wildOfTime(doc?.wild ?? [], time)?.areas ?? [];
+    const offsets = time === WildTime.Day ? areaOffsets(session, id) : [0, 0, 0, 0];
     const checks = w.areas.map((name, i) => {
       const c = check(`wildAdd.${i}`, name, 8, 56 + i * 24, 120);
       c.input.checked = (areas[i]?.slots.length ?? 0) > 0;
@@ -48,7 +48,7 @@ export function openWildAddDialog(state: EditorState, session: ProjectSession, i
         await messageBox(ja.information, w.canceled, "info");
         return;
       }
-      if (commit(state, [new SetWildAreasCommand({ bank: id.bank, map: id.map, areas: selected })])) finish(selected.indexOf(true));
+      if (commit(state, [new SetWildAreasCommand({ bank: id.bank, map: id.map, time, areas: selected })])) finish(selected.indexOf(true));
     };
     body.append(
       head,

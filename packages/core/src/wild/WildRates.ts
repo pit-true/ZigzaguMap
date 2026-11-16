@@ -58,6 +58,7 @@ export function levelDistribution(kind: number, area: WildArea, species: number 
 /** 検索の 1 行。 */
 export interface WildSearchRow {
   readonly map: MapId;
+  readonly time: number;
   /** エリア（0 陸・1 水・2 岩砕き・3 釣り）。 */
   readonly kind: number;
   /** 枠（0 から）。 */
@@ -69,15 +70,19 @@ export interface WildSearchRow {
 }
 
 /** 種族 `species` が出る枠を、渡したマップの野生（表示している時間帯の表）から集める。 */
-export function searchSpecies(maps: Iterable<{ id: MapId; wild: WildEncounters | null }>, species: number): WildSearchRow[] {
+export function searchSpecies(maps: Iterable<{ id: MapId; wild: WildEncounters | readonly WildEncounters[] | null }>, species: number, time: number | null = null): WildSearchRow[] {
   const rows: WildSearchRow[] = [];
   for (const m of maps) {
     if (!m.wild) continue;
-    m.wild.areas.forEach((area, kind) => {
+    const tables: readonly WildEncounters[] = Array.isArray(m.wild) ? m.wild : [m.wild as WildEncounters];
+    for (const table of tables) {
+      if (time !== null && table.time !== time) continue;
+      table.areas.forEach((area, kind) => {
       area.slots.forEach((s, slot) => {
-        if (s.species === species) rows.push({ map: m.id, kind, slot, minLevel: s.minLevel, maxLevel: s.maxLevel, rate: slotRate(kind, slot) });
+        if (s.species === species) rows.push({ map: m.id, time: table.time, kind, slot, minLevel: s.minLevel, maxLevel: s.maxLevel, rate: slotRate(kind, slot) });
       });
-    });
+      });
+    }
   }
   return rows;
 }

@@ -49,6 +49,7 @@ from lib.swap import swap_one  # noqa: E402
 from lib.newtileset import newtileset_one  # noqa: E402
 from lib.phase5 import phase5_one  # noqa: E402
 from lib.tileimport import tileimport_one  # noqa: E402
+from lib.wildtime import wildtime_one  # noqa: E402
 from lib.delete import delete_one  # noqa: E402
 from lib.link import link_one  # noqa: E402
 
@@ -222,6 +223,8 @@ def phase4_fixture(cfg, name: str, args, log_dir: pathlib.Path, kind: str) -> tu
             newtileset_one(fx, z, check, log, args.timeout, log_dir / f"newtileset-{name}")
         elif kind == "tileimport":
             tileimport_one(fx, z, check, log, args.timeout, log_dir / f"tileimport-{name}")
+        elif kind == "wildtime":
+            wildtime_one(fx, z, check, log, args.timeout, log_dir / f"wildtime-{name}")
         elif kind == "phase5":
             phase5_one(fx, z, check, log, args.timeout, log_dir / f"phase5-{name}")
         else:
@@ -247,6 +250,7 @@ def main() -> int:
     ap.add_argument("--swap", action="store_true", help="ブロックの入れ替え（Phase5）を出力してビルドし、ROM の中身と開き直しを確かめる")
     ap.add_argument("--newtileset", action="store_true", help="新しいタイルセット（Phase5）を出力してビルドし、ROM の中身と開き直しを確かめる")
     ap.add_argument("--tileimport", action="store_true", help="画像からタイルとブロックを作る（Phase6）を出力してビルドし、開き直しを確かめる")
+    ap.add_argument("--wildtime", action="store_true", help="時間帯別の野生の出力・ビルド・開き直しの確認")
     ap.add_argument("--phase5", action="store_true", help="Phase5 の全体の往復テスト（塗りつぶし・シフト・リサイズ・入れ替え・イベント・新しいタイルセットを出力して開き直し、ビルドする）")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
     ap.add_argument("--reuse", action="store_true")
@@ -257,8 +261,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.all:
         args.smoke = args.link = args.delete = True
-    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.phase5]):
-        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --swap か --maplist か --newtileset か --tileimport か --phase5 か --all を付けてください")
+    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.phase5]):
+        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --swap か --maplist か --newtileset か --tileimport か --wildtime か --phase5 か --all を付けてください")
     if args.transplant and not args.source_rom:
         ap.error("--transplant には --source-rom（取り込む元の ROM）が要ります")
     cfg = config.load(args.config, args.exe)
@@ -288,12 +292,13 @@ def main() -> int:
     runs += [(n, "maplist") for n in names if args.maplist]
     runs += [(n, "newtileset") for n in names if args.newtileset]
     runs += [(n, "tileimport") for n in names if args.tileimport]
+    runs += [(n, "wildtime") for n in names if args.wildtime]
     runs += [(n, "phase5") for n in names if args.phase5]
     for name, kind in runs:
-        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.phase5]) == 1 else f"{name} ({kind})"
+        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.phase5]) == 1 else f"{name} ({kind})"
         print(f"\n== {key}")
         try:
-            if kind in ("transplant", "triple", "swap", "maplist", "newtileset", "tileimport", "phase5"):
+            if kind in ("transplant", "triple", "swap", "maplist", "newtileset", "tileimport", "wildtime", "phase5"):
                 ok, lines = phase4_fixture(cfg, name, args, log_dir, kind)
             else:
                 run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]

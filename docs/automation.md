@@ -466,3 +466,23 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 取り込みウィザードの下地選択は `ti.mode`（1 下地の上・主人公の下、2 下地の上・主人公より手前）と `ti.pickBase` で開きます。`ti.picker` に `pointer` を送り、ダイアログの `ok` で決定します。`ti.base` の16進番号による入力も使えます。
 
 置き場所の `ti.place.source` と `ti.place.target` は1マス32画素です。左で選んだマスから右へドラッグし、形を保って配置します。`ti.allowReplace` で使用中のブロックへの置き換えを許可し、`ti.autoPlace` または `ti.resetPlace` で自動配置に戻せます。`tileImport.wait` の結果の `plan.locals` はブロックごとの配置番号、`firstBlock` は最初の通し番号です。
+
+## Phase6 の部品と命令（時間帯と野生。P6-C1）
+
+命令は `apps/desktop/src/app/automation/timeOfDay.ts` にまとめています。確認のスクリプトは `tests/automation/time_of_day_check.py`。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `view.timeOfDay` | `time`（`morning` / `day` / `evening` / `night`）か `settimeofday`（Chronos の値。0 昼・1 朝・2 夕・3 夜・4 深夜。深夜は夜にする）。どちらも省けば切り替えない。`wait`（true で隣の帯を描き終えるまで待つ） | 時間帯ビューア（#434）。返事は、切り替えられたか `ok`（読めないときは false で昼のまま）、今の区分 `time`、区分の並び `times`、読めなかった理由 `error`、区分の代表の時刻 `sections`（`id`・`hour`・`minute`。昼のままなら null）、時刻の元 `clock`（`chronos` / `rtc`）、表示中のマップの色が変わるか `mapTinted`（屋内などは false）、使った色 `fade`（`color`（BGR555）・`amount`（係数）・`halve`（Chronos の朝の半分の計算か）。昼は null）、最後の切り替えで主マップを描き直した時間 `switchMs`、ツール欄のコンボ `combo`（`value`・`disabled`）、ステータスバーの文 `status` |
+
+- メニューの項目は `time.morning`・`time.day`・`time.evening`・`time.night`（`action` か `menu.run`。`menu.list` の `checked` で今の区分が分かる）。ツール欄のコンボは `toolbar.timeOfDay`。
+- スクリプトの再生（P6-A）で Chronos の `settimeofday`（0x2D）を再現するときは、`app.timeOfDay.set(区分)` か、値を区分に直す `app.timeOfDay.chronosTime(値)` を使う（この命令と同じ）。
+
+
+### 野生の時間帯（#436）
+
+プロジェクトを開き `tab {name: "wild"}` の後、`click {id: "wild.time.0"}`（朝）・`.1`（昼）・`.2`（夕）・`.3`（夜）で切り替えます。`wild.timeInfo` は表の無い時間帯の案内、`wild.timeCopy` は昼の表の複製、`wild.timeCreate` は空の表の作成ダイアログ、`wild.timeRemove` は今の表の削除です。昼の削除ボタンは出ません。通常の編集欄は今の時間帯に対して働きます。
+
+`command {name: "setWildTable", args: {bank: 3, map: 19, time: 3, from: 1, remove: false}}` で昼から夜へ複製できます。`remove: true` は指定の時間帯の表を削除します。履歴に1件として入り、`undo` で戻ります。
+
+`wild.search.time` は0が全時間帯、1〜4が朝・昼・夕・夜の絞り込みです。検索結果の6列目が時間帯です。`mouse {id: "wild.search.row.0", action: "dblclick", px: [4, 4]}` で、そのマップの該当する時間帯へ移動します（#437）。
