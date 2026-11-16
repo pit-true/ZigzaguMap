@@ -411,6 +411,7 @@ export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
+export * from "./script/movement/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,
