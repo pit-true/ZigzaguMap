@@ -98,6 +98,16 @@ export class ProcessRunner {
     return invoke<string>("process_read_text", { path, cwd });
   }
 
+  /** 作業フォルダの下のバイナリファイルを読む（DPE の連れ歩きの PNG。#476）。読むだけ。 */
+  static async readBytes(path: string, cwd: string | null): Promise<Uint8Array> {
+    return new Uint8Array(await invoke<ArrayBuffer>("process_read_bytes", { path, cwd }));
+  }
+
+  /** 作業フォルダの下のフォルダの中の名前（名前順。無ければ空）。 */
+  static list(path: string, cwd: string | null): Promise<string[]> {
+    return invoke<string[]>("process_list", { path, cwd });
+  }
+
   /** ファイルを写す（ビルドの手順の `copy`）。`from`・`to` は `cwd`（プロジェクトフォルダからの相対パスか絶対パス）から。写した大きさを返す。 */
   static copy(from: string, to: string, cwd: string | null): Promise<number> {
     return invoke<number>("process_copy", { from, to, cwd });

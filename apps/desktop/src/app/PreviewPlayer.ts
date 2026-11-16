@@ -1,4 +1,4 @@
-import { actorImagePosition, defaultFacingOf, MOVEMENT_DELTA, PLAYER_GRAPHICS, PLAYER_ID, viewportFrame, type MovementDirection, type PlaybackActorState, type PlaybackState } from "@zigzagumap/core";
+import { actorImagePosition, defaultFacingOf, MOVEMENT_DELTA, PLAYER_GRAPHICS, PLAYER_ID, viewportFrame, type MovementDirection, type PlaybackActorState, type PlaybackState, type SceneActor, type SceneView } from "@zigzagumap/core";
 import type { Actions } from "./Actions";
 import type { EditorState } from "./EditorState";
 import type { ViewAids, AidTab } from "./viewAids";
@@ -96,13 +96,18 @@ export class PreviewPlayer {
     for (const layer of Object.values(this.aids.layers)) layer.setExternalSight(true);
     this.state.setStatus(t.active); this.draw(); this.state.emit("view");
     this.loadNeighbors();
+    for (const l of this.activeListeners) l(true);
   }
+
+  /** 始めた・終えたときに呼ぶ（連れ歩きの読み込みと後始末。#476・#477）。 */
+  readonly activeListeners = new Set<(active: boolean) => void>();
 
   stop(quiet = false): void {
     if (!this.active) return;
     this.endWalk();
     this.active = false; this.playback = null; this.placement = null; this.missingCount = 0;
     this.token++; this.outside = undefined;
+    for (const l of this.activeListeners) l(false);
     this.controls.remove();
     for (const layer of Object.values(this.layers)) {
       layer.canvas.hidden = true; layer.handle.hidden = true; layer.shade.hidden = true;
@@ -116,12 +121,14 @@ export class PreviewPlayer {
 
   setPlayer(patch: Partial<PlayerPlacement>): void {
     if (!this.placement || !this.state.map || this.playback) return;
+    const previous = { ...this.placement };
     this.endWalk();
     const next = { ...this.placement, ...patch };
     next.x = Math.max(0, Math.min(this.state.map.doc.width - 1, Math.floor(next.x)));
     next.y = Math.max(0, Math.min(this.state.map.doc.height - 1, Math.floor(next.y)));
     if (!Number.isFinite(next.x) || !Number.isFinite(next.y) || !DIRECTIONS.includes(next.facing) || !["male", "female"].includes(next.gender)) return;
     this.placement = next; this.draw();
+    if (next.x !== previous.x || next.y !== previous.y) this.follower?.stepped(previous, { ...next });
     if (patch.gender && patch.gender !== this.state.settings.data.playbackGender) this.state.settings.update({ playbackGender: patch.gender });
   }
 
@@ -138,6 +145,7 @@ export class PreviewPlayer {
     return new Promise(resolve => {
       const from = { ...p, facing: direction };
       this.placement = { ...p, x, y, facing: direction };
+      this.follower?.stepped(from, { ...this.placement });
       const tick = (): void => {
         if (!this.walking) return;
         if (this.walkFrame() >= WALK_FRAMES - 1) {
@@ -170,6 +178,15 @@ export class PreviewPlayer {
     if (!w) return;
     cancelAnimationFrame(w.raf); this.walking = null; this.draw(); w.done();
   }
+
+  /**
+   * 連れ歩き（#477）。主人公の 1 歩ごとに `stepped(from, to)` を呼び、描くときに `actors(view, player)` の人物を足す。
+   * 再生の状態を描いている間は足さない（再生は自分で連れ歩きを持つ）。
+   */
+  private follower: { stepped(from: PlayerPlacement, to: PlayerPlacement): void; actors(view: SceneView, player: PlayerPlacement): readonly SceneActor[] } | null = null;
+  setFollower(source: typeof this.follower): void { this.follower = source; this.draw(); }
+  /** 仮の主人公の操作の欄（連れ歩きの選択を足す）。 */
+  get controlBar(): HTMLElement { return this.controls; }
 
   /** 人物を動かす（#471）から呼ぶ。null でイベントの位置の止め絵へ戻る。 */
   setNpcActors(source: (() => readonly PlaybackActorState[]) | null): void { this.npcActors = source; this.draw(); }
@@ -279,7 +296,8 @@ export class PreviewPlayer {
       ...(this.npcActors?.() ?? (map.doc.events?.persons ?? []).map(person => actor(person.localId, person.graphicsId, person.x, person.y, defaultFacingOf(person.movementType), person.elevation))), player,
     ];
     const frame = this.frame!;
-    const result = renderActorScene(session, map, frame, actors, undefined, this.outside);
+    const follower = this.playback ? null : this.follower;
+    const result = renderActorScene(session, map, frame, actors, undefined, this.outside, undefined, follower ? view => follower.actors(view, p) : undefined);
     const missing = result.missing.length + result.unknownBlocks.length;
     if (missing !== this.missingCount) {
       this.missingCount = missing;

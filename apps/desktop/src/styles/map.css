@@ -154,3 +154,6 @@
 .map-stage .npc-layer canvas.npc-actor { pointer-events: none; image-rendering: pixelated; }
 /* 表示 > 人物の移動範囲と視界（#472）。人物の層の上・重ね描きの下 */
 .map-stage canvas.npc-ranges { pointer-events: none; image-rendering: auto; }
+/* 仮の主人公の連れ歩き（#476・#477） */
+.follower-controls { display: inline-flex; gap: 4px; align-items: center; }
+.follower-controls select { max-width: 160px; }

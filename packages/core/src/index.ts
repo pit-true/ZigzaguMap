@@ -495,6 +495,7 @@ export * from "./script/summary/index.js";
 export * from "./script/movement/index.js";
 export * from "./script/playback/index.js";
 export * from "./npc/index.js";
+export * from "./follower/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,
