@@ -33,6 +33,8 @@ export function renderActorScene(
   tint: ActiveTint | null = activeTint(),
   outside?: (x: number, y: number) => number | null,
   options?: SceneOptions,
+  /** ROM の絵でない人物（連れ歩き #477）。画面の範囲を受け取って、描く形で返す。 */
+  extra?: (view: SceneView) => readonly SceneActor[],
 ) {
   const sprites = session.overworldSprites;
   const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
@@ -95,6 +97,6 @@ export function renderActorScene(
   const cfru = session.projectDir !== null || hasTripleLayerBlocks(session.project.rom, session.project.game.offsets);
   // タイルアニメとドア（#473・#474）。動かしていなければ null で、今までと同じ描き手を使う。
   const animation = sceneAnimation()?.forScene(session, map, tint) ?? null;
-  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, animation?.cellAt, options);
+  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, extra ? [...drawn, ...extra(view)] : drawn, cfru, animation?.cellAt, options);
   return { ...scene, missing };
 }

@@ -163,6 +163,8 @@ pub fn run() {
             process::process_running,
             process::process_copy,
             process::process_read_text,
+            process::process_read_bytes,
+            process::process_list,
             automation::automation_port,
             automation::automation_reply,
             automation::automation_ready,
