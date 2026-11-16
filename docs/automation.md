@@ -492,6 +492,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 `preview.player {enabled?, player?: {x?, y?, gender?, facing?}}` は仮の主人公を置く・動かす・終了する命令です。`gender` は `male` / `female`、`facing` は `down` / `up` / `left` / `right`。返事は `enabled`、`player`、`frame` です。`preview.playback {state: PlaybackState | null}` は同じ描画口に再生状態を渡し、nullで仮の配置へ戻します。`canvasPng {id: "preview.event.frame"}` などで240×160の画像を取得できます。`action {id: "preview.save"}` は画面と同じPNGを保存します。
 
+`npc.motion {enabled?, seed?}` は表示 > 人物を動かす（#471）を始める・やめる命令です。`seed` は乱数の種（既定0。同じ種なら同じ動き）。`npc.advance {frames}` は時計を使わずに進めて描きます（止めていても進むので、テストで決まったフレームの状態を作れます）。`npc.hold {owner, on}` は owner の名前で人物の動きを止める・解除します。`npc.state` を含め、返事は `enabled`、`frame`、`seed`、`holders`（止めている相手。マップの見えないタブでは `hiddenTab`）、`clock`（`running`: requestAnimationFrame を予約しているか、`frames`、`subscriptions`）、`actors`（`localId`・`movementType`・`x`・`y`・`facing`・`pixelX`・`pixelY`・`movementId`・`visible`・止めて見せる理由 `reason`: `still` / `copy` / `hide` / `unsupported` / `unknown`、動いていれば null）、`missing` です。`cost` は時計から進めた回数と、計算・描画にかかった時間の合計（ms）です。動く人物の層は `npc.image` で1枚のPNG（マップと同じ等倍の大きさ）にして取得できます。`clock.probe {on}` は何もしない購読で時計だけを回し、時計そのものの負荷を測るときに使います。
+
 `actors.scene {actors, x?, y?, width?, height?}` は表示中のマップの前景・人物・影を合成します。座標はマップ画素、既定の範囲は(0,0)から240×160です。`png`、読めなかった人物の `missing`、対応していない重ね方の `unknownBlocks` を返します。画面と保存で同じ合成を使います。
 
 `actors.render {actors, mapType?}` は `PlaybackActorState` の配列（64件まで）を共通描画部品で240×160の透明なCanvasに描き、`png`（base64）と各人物の `frames` を返します。座標はマップ画素です。`frames` の `reason` は非表示なら `hidden`、画像情報が無ければ `graphics`、アニメーションを読めなければ `animation` です。マップ・ROM・履歴を変えません。

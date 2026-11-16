@@ -1,4 +1,4 @@
-import { hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneView } from "@zigzagumap/core";
+import { hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneOptions, type SceneView } from "@zigzagumap/core";
 import type { OpenMap, ProjectSession } from "./ProjectSession";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
 
@@ -17,6 +17,7 @@ export function renderActorScene(
   actors: readonly PlaybackActorState[],
   tint: ActiveTint | null = activeTint(),
   outside?: (x: number, y: number) => number | null,
+  options?: SceneOptions,
 ) {
   const sprites = session.overworldSprites;
   const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
@@ -71,6 +72,6 @@ export function renderActorScene(
     return b.getBlock(((x % b.width) + b.width) % b.width, ((y % b.height) + b.height) % b.height);
   };
   const cfru = session.projectDir !== null || hasTripleLayerBlocks(session.project.rom, session.project.game.offsets);
-  const scene = renderGameScene(map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru);
+  const scene = renderGameScene(map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, options);
   return { ...scene, missing };
 }

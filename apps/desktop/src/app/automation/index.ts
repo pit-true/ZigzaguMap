@@ -33,6 +33,7 @@ import { penCommands } from "./pen";
 import { toolCommands } from "./tools";
 import { shortcutCommands } from "./shortcuts";
 import { timeOfDayCommands } from "./timeOfDay";
+import { npcCommands } from "./npc";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -74,6 +75,7 @@ const registry: CommandRegistry = new CommandRegistry([
   toolCommands,
   shortcutCommands,
   timeOfDayCommands,
+  npcCommands,
   { commands: () => registry.names() },
 ]);
 
