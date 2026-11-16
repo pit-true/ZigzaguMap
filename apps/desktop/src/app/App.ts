@@ -251,6 +251,7 @@ export class App implements ActionTarget {
       editTrainer: (index) => void this.trainers.editForPerson(index),
       placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
+      placePlayer: (x, y) => this.playback.placePlayer(x, y),
       placeItemBall: (x, y) => void events.placeItemBall(x, y),
       summaries: () => events.eventSummaries(),
     });

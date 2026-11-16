@@ -64,6 +64,8 @@ export interface EventTabHost {
   pickUnused?(kind: UnusedKind): Promise<number | null>;
   /** 「ここにひな形を置く」（#243。マスの位置）。 */
   placeTemplate?(x: number, y: number): void;
+  /** 「ここに仮の主人公を置く」（#457。保存しない）。 */
+  placePlayer?(x: number, y: number): void;
   /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
   canPlaceTemplate?(): boolean;
   /** スクリプトの要約（#226。ホバーの吹き出し）。 */
@@ -658,6 +660,7 @@ export class EventTab {
       ...(this.host.canPlaceTemplate?.() ? [{ id: "placeTemplate", label: jaTemplate.menuPlace, run: () => this.host.placeTemplate?.(cell.x, cell.y) }] : []),
       // 「ここに人を追加」など（#304）
       ...this.quickAdd.items(cell.x, cell.y),
+      ...(this.host.placePlayer && this.state.session ? [{ id: "placePlayer", label: jaPlayback.placePlayer, run: () => this.host.placePlayer?.(cell.x, cell.y) }] : []),
     ];
     if (!hit) {
       if (templates.length > 0) showContextMenu(x, y, templates);

@@ -21,6 +21,7 @@ export class PlaybackBar {
   private readonly facing = document.createElement("select");
   private readonly people = document.createElement("details");
   private readonly absent = new Map<number, HTMLInputElement>();
+  private readonly condition = document.createElement("output");
 
   constructor(private readonly actions: PlaybackBarActions) {
     this.element.className = "playback-bar"; this.element.dataset["autoId"] = "playback.bar";
@@ -42,7 +43,8 @@ export class PlaybackBar {
     for (const value of ["down", "up", "left", "right"] as const) this.facing.add(new Option(t[value], value));
     this.facing.title = t.facing; this.facing.dataset["autoId"] = "playback.facing";
     this.gender.addEventListener("change", () => this.changedStart()); this.facing.addEventListener("change", () => this.changedStart());
-    row.append(speed, this.gender, this.facing, this.people, this.status);
+    this.condition.dataset["autoId"] = "playback.condition"; this.condition.className = "playback-condition"; this.condition.hidden = true;
+    row.append(speed, this.gender, this.facing, this.people, this.status, this.condition);
     this.status.dataset["autoId"] = "playback.position";
     this.slider.type = "range"; this.slider.min = "0"; this.slider.step = "1"; this.slider.dataset["autoId"] = "playback.seek";
     this.slider.addEventListener("input", () => actions.seek(Number(this.slider.value)));
@@ -67,8 +69,11 @@ export class PlaybackBar {
     this.play.textContent = playing ? t.pause : message ? t.continue : t.play;
   }
 
+  /** 踏むスクリプトの変数の条件（見ずに再生したことを知らせる）。null で隠す。 */
+  setCondition(text: string | null): void { this.condition.textContent = text ?? ""; this.condition.hidden = text === null; }
+
   private changedStart(): void {
     this.actions.startState(this.gender.value as PlayerGender, this.facing.value as MovementDirection, [...this.absent].filter(([, input]) => input.checked).map(([id]) => id));
   }
-  clear(): void { this.details.replaceChildren(); this.people.replaceChildren(); this.absent.clear(); }
+  clear(): void { this.setCondition(null); this.details.replaceChildren(); this.people.replaceChildren(); this.absent.clear(); }
 }
