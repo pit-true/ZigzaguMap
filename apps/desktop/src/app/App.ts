@@ -71,6 +71,7 @@ import { NpcMotion } from "./NpcMotion";
 import { FollowerEntry } from "./FollowerEntry";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { MapAnimations } from "./animation/MapAnimations";
+import { WeatherEntry } from "./weather/WeatherEntry";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
@@ -155,6 +156,8 @@ export class App implements ActionTarget {
   readonly playback: PlaybackEntry;
   /** タイルアニメとドア（#473・#474）。既定はオフ。 */
   readonly mapAnimations: MapAnimations;
+  /** 天候のプレビュー（#498）。既定はオフ。 */
+  readonly weather: WeatherEntry;
   /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
   readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
@@ -298,6 +301,11 @@ export class App implements ActionTarget {
     this.mapAnimations = new MapAnimations(state, this.gameClock, this.actions, () => this.previewPlayer.enabled);
     this.mapAnimations.onChange = () => this.previewPlayer.refresh();
     this.previewPlayer.onPlayback = (playback) => this.mapAnimations.followPlayback(playback?.frame ?? null);
+    this.weather = new WeatherEntry(state, this.previewPlayer, this.gameClock, this.actions, () => this.playback.controller?.result?.markers ?? null);
+    {
+      const follow = this.previewPlayer.onPlayback;
+      this.previewPlayer.onPlayback = (playback) => { follow?.(playback); this.weather.followPlayback(playback); };
+    }
     this.follower = new FollowerEntry(state, this.previewPlayer, this.gameClock);
     this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions, {
       selected: () => {

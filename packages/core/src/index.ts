@@ -12,7 +12,7 @@ export { decompressLz77 } from "./rom/lz77.js";
 
 // ゲーム判定とオフセット
 export { detectGame, requireSupportedGame, type GameInfo } from "./game/GameInfo.js";
-export { BPRJ_OFFSETS, OFFSETS_BY_CODE, type GameOffsets } from "./game/offsets.js";
+export { BPRJ_OFFSETS, OFFSETS_BY_CODE, type GameOffsets, type WeatherOffsets } from "./game/offsets.js";
 
 // マップ
 export * from "./map/constants.js";
@@ -510,6 +510,7 @@ export * from "./script/movement/index.js";
 export * from "./script/playback/index.js";
 export * from "./npc/index.js";
 export * from "./follower/index.js";
+export * from "./weather/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,
