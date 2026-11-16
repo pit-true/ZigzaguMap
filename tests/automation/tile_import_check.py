@@ -212,6 +212,7 @@ def check_444(z: Zigzagu, shots: pathlib.Path | None, work: pathlib.Path) -> Non
     wait_window(z, TI)
     st = ti_open(z, 0, png)
     plan = st["plan"]
+    check(not ti(z, {"cmd": "getField", "id": "ti.run"})["enabled"], "444: 確認のページに進むまでは取り込めない")
     check(plan is not None and plan["ok"], f"444: 画像を開くと計画ができる（{st['error']}）")
     if not plan:
         return

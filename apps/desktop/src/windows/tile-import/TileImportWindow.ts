@@ -400,6 +400,7 @@ export class TileImportWindow {
   // ---- 取り込む ----
 
   private async run(): Promise<void> {
+    if (this.page !== PAGES - 1) return;
     await this.waitPlan();
     if (!this.plan?.ok) {
       this.showStatus(t.cannotNext);
@@ -683,7 +684,7 @@ export class TileImportWindow {
     const busy = this.computing;
     this.backButton.disabled = this.page === 0;
     this.nextButton.disabled = this.page === PAGES - 1 || busy;
-    this.runButton.disabled = busy || !this.plan?.ok;
+    this.runButton.disabled = this.page !== PAGES - 1 || busy || !this.plan?.ok;
     this.statusLine.textContent = busy ? t.computing : this.status;
   }
 

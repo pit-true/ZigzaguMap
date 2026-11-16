@@ -44,7 +44,7 @@ export const jaTileImport = {
   shortageText: (used: number, capacity: number, free: number, needed: number, atLeast: boolean, over: number) =>
     `この画像は今のパレットに収まりません。\n` +
     `書く先のパレット: ${capacity} 本のうち使用中 ${used} 本、空き ${free} 本。\n` +
-    `この画像に要る新しいパレット: ${needed} 本${atLeast ? "以上" : ""}（${Math.max(0, needed - free)} 本足りません）` +
+    (over > 0 ? "新しいパレットの必要数は、各タイルを15色以内に減色してから計算します" : `この画像に要る新しいパレット: ${needed} 本${atLeast ? "以上" : ""}（${Math.max(0, needed - free)} 本足りません）`) +
     (over > 0 ? `。1 枚で 15 色を超えるタイルが ${over} 枚あります` : "") +
     `。\n\n減色すると、色を減らして収めます（色が変わった画素の数を 2. パレットに出します）。`,
   shortageReduce: "減色する",
