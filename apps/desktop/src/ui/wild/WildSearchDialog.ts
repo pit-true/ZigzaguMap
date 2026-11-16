@@ -1,10 +1,11 @@
-import { searchSpecies, rateGroup, type MapId, type WildEncounters, type WildSearchRow } from "@zigzagumap/core";
+import { NameSuggest, searchSpecies, rateGroup, type MapId, type WildEncounters, type WildSearchRow } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaWildTools as wt } from "../../i18n/ja.wildTools";
 import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { autoId } from "../form/controls";
-import { FR_SPECIES_COUNT, SpeciesOptions } from "./SpeciesNames";
+import { SuggestInput } from "../form/SuggestInput";
+import { FR_SPECIES_COUNT, speciesLabel, speciesNameProvider } from "./SpeciesNames";
 import { shownWild } from "./WildTab";
 
 /** 表の列（並べ替えの鍵）。 */
@@ -18,9 +19,9 @@ export interface WildSearchHost {
 }
 
 /**
- * ツール > 野生ポケモンの検索…（#398）。種族を選んで「検索」を押すと、全マップ（ROM と maps\ の両方）から
+ * ツール > 野生ポケモンの検索…（#398）。種族を打って選び（#447。カタカナ・ひらがな・ローマ字・番号）、「検索」か Enter を押すと、全マップ（ROM と maps\ の両方）から
  * その種族が出る枠を表にする（マップ・種類・枠・レベル・割合）。列の見出しで並べ替え、行のダブルクリックでそのマップの野生タブを開く。
- * 全マップの野生は押したときに読み、窓を閉じたら捨てる。今の表は昼だけ（時間帯は Phase6）。
+ * 全マップの野生は押したときに読み、窓を閉じたら捨てる。種族の読みの表も窓を開いたときに作る。今の表は昼だけ（時間帯は Phase6）。
  */
 export function openWildSearch(host: WildSearchHost): void {
   const session = host.state.session;
@@ -30,9 +31,18 @@ export function openWildSearch(host: WildSearchHost): void {
   // 浮いた窓は位置を決める（マップを開き直しても検索の結果を見続けられるように、後ろを覆わない）
   frame.box.style.left = `${Math.max(0, Math.round((window.innerWidth - 520) / 2))}px`;
   frame.box.style.top = `${Math.max(0, Math.round((window.innerHeight - 420) / 2))}px`;
-  const species = new SpeciesOptions(() => host.state.session).options(FR_SPECIES_COUNT).cloneNode(true) as HTMLSelectElement;
-  species.dataset["autoId"] = "wild.search.species";
-  species.selectedIndex = 1;
+  // 種族の欄（1 番から。名前が読めなければ番号だけで当てる）
+  const provider = speciesNameProvider(session);
+  const suggest = new NameSuggest(Array.from({ length: FR_SPECIES_COUNT - 1 }, (_, i) => ({ value: i + 1, name: provider?.name(i + 1) ?? null })));
+  const species = new SuggestInput({
+    autoId: "wild.search.species",
+    suggest,
+    label: (h) => speciesLabel(provider, h.value),
+    detail: (h) => (h.name === null ? "" : wt.searchNumber(h.value)),
+    noneText: wt.searchNoMatch,
+  });
+  species.setValue(1);
+  species.input.placeholder = wt.searchPlaceholder;
   const info = document.createElement("div");
   info.className = "wild-search-info";
   info.dataset["autoId"] = "wild.search.info";
@@ -98,7 +108,14 @@ export function openWildSearch(host: WildSearchHost): void {
       maps.push({ id, wild: shownWild(doc.wild), name: `${id.bank}.${id.map} ${doc.mapNameText() ?? ""}`.trim() });
     }
     const names = new Map(maps.map((m) => [`${m.id.bank}.${m.id.map}`, m.name]));
-    rows = searchSpecies(maps, species.selectedIndex).map((r) => ({ ...r, name: names.get(`${r.map.bank}.${r.map.map}`) ?? "" }));
+    const target = species.value;
+    if (target === null) {
+      info.textContent = wt.searchChoose;
+      rows = [];
+      render();
+      return;
+    }
+    rows = searchSpecies(maps, target).map((r) => ({ ...r, name: names.get(`${r.map.bank}.${r.map.map}`) ?? "" }));
     info.textContent = rows.length === 0 ? wt.searchNone : wt.searchCount(rows.length, new Set(rows.map((r) => `${r.map.bank}.${r.map.map}`)).size, Math.round(performance.now() - t0));
     render();
   };
@@ -108,10 +125,13 @@ export function openWildSearch(host: WildSearchHost): void {
   const caption = document.createElement("span");
   caption.textContent = wt.searchSpecies;
   const go = autoId(dialogButton(wt.searchRun, () => void run()), "wild.search.run");
-  top.append(caption, species, go);
+  top.append(caption, species.element, go);
   const buttons = dialogButtonRow(dialogButton(wt.close, finish));
   frame.body.append(top, info, wrap, buttons);
-  handleDialogKeys(frame, finish);
+  // 種族の欄で Enter（候補の一覧を閉じているとき）を押すと検索する
+  handleDialogKeys(frame, finish, (e) => {
+    if (e.key === "Enter" && e.target === species.input) void run();
+  });
   frame.register({
     title: wt.searchTitle,
     text: "",

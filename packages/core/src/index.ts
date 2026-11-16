@@ -110,6 +110,8 @@ export { ND_CHARMAP_TBL } from "./name/charmapNd.js";
 export { ITEM_ENTRY_SIZE, ITEM_NAME_BYTES, ItemNameTable } from "./name/ItemNameTable.js";
 export { MAP_NAME_COUNT, MAP_NAME_FIRST_ID, MAP_NAME_MAX_BYTES, MapNameTable, hasMapName } from "./name/MapNameTable.js";
 export { SPECIES_COUNT, SPECIES_NAME_BYTES, SpeciesNameTable } from "./name/SpeciesNameTable.js";
+export { matchReading, normalizeReading, readingTokens, romajiReading, toHiragana, toKatakana, type ReadingMatch, type ReadingToken } from "./name/kanaReading.js";
+export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSuggest.js";
 
 // OW（人のスプライト）
 export { OverworldSprites, type OverworldGraphicsInfo } from "./sprite/OverworldSprites.js";
@@ -135,7 +137,7 @@ export { MapSourceConverter } from "./project/MapSourceConverter.js";
 export { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./project/ProjectManifest.js";
 export { MemoryProjectFs, readTextIfExists, type ProjectFs } from "./project/ProjectFs.js";
 export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
-export { decodeIndexedPng, type IndexedImage } from "./project/png/PngDecoder.js";
+export { decodeIndexedPng, decodeRgbaPng, type IndexedImage, type RgbaPng } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
 export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
@@ -238,6 +240,35 @@ export {
 } from "./tileset/TileSelection.js";
 export { unusedTiles, usedTileFlags, type TileUsageInput } from "./tileset/TileUsage.js";
 export { colorUsage, unusedColors, type ColorUsageInput } from "./tileset/ColorUsage.js";
+export {
+  IMPORT_MAX_LAYERS,
+  IMPORT_MAX_SIDE,
+  ImportError,
+  TRANSPARENT,
+  isTransparentTile,
+  prepareImportLayers,
+  rgbaToColor,
+  splitTiles,
+  tileColors,
+  type ImportImageOptions,
+  type ImportLayers,
+  type ImportSource,
+} from "./tileset/import/ImportImage.js";
+export { TileDeduper, flipIndices, packTile, unpackTile, type ExistingTiles, type TileDedupeCounts, type TileDedupeOptions, type TileMatch } from "./tileset/import/TileDeduper.js";
+export { channels, colorDistance, countColors, fromChannels, luminance, medianCut, nearestColor, remapTile } from "./tileset/import/Quantizer.js";
+export {
+  PALETTE_COLORS,
+  PALETTE_SIZE,
+  assignPalettes,
+  colorSet,
+  indexTile,
+  reduceToFit,
+  type AssignOptions,
+  type PaletteAssignment,
+  type PaletteGroup,
+  type PaletteSlotInput,
+  type ReduceResult,
+} from "./tileset/import/PaletteAssigner.js";
 export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTilesetContent, type NewTilesetOptions, type NewTilesetPlan, type NewTilesetSource } from "./tileset/NewTileset.js";
 
 // 描画
@@ -380,6 +411,8 @@ export * from "./script/build/index.js";
 export * from "./script/assist/index.js";
 export * from "./script/usage/index.js";
 export * from "./script/summary/index.js";
+export * from "./script/movement/index.js";
+export * from "./script/playback/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,
