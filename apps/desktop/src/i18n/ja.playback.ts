@@ -38,6 +38,9 @@ const speedText = (s: number) => `${s} 倍の速さ`;
 export const jaPlayback = {
   menu: "スクリプトを再生",
   projectRequired: "再生するプロジェクトを開いてください。",
+  /** 人物の呼び方。イベントの欄の「人No.」（並びの番号＋1）と、スクリプトで使う番号（localId）を両方出す。 */
+  personName: (no: number | null, localId: number) => no === null ? `人物（スクリプトの番号 ${localId}）` : `人No.${no}（スクリプトの番号 ${localId}）`,
+  noScript: (kind: string) => `この${kind === "sign" ? "看板" : kind === "trap" ? "スクリプトタイル" : kind === "person" ? "人物" : "イベント"}にはスクリプトがありません。`,
   noCommands: "xse_commands.s を読み込めませんでした。",
   noEntry: "再生を始めるラベルが見つかりません。",
   stale: "読み込み中にマップが切り替わりました。",

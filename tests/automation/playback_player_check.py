@@ -10,33 +10,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import pathlib
-import shutil
 import tempfile
 
-from zz import Zigzagu
+from zz import Zigzagu, copy_project
 
-COPY_DIRS = ["assembly", "strings", "maps"]
-COPY_FILES = ["xse_commands.s", "xse_defines.s", "asm_defines.s", "eventscripts", "charmap.tbl", "zigzagumap.json", "BPRJ.ld"]
 SCRIPT = "assembly/overworld_scripts/zz_player.s"
-
-
-def prepare(src: pathlib.Path, work: pathlib.Path) -> pathlib.Path:
-    src, work = src.resolve(), work.resolve()
-    if work == src or src in work.parents:
-        raise SystemExit(f"作業フォルダが元のフォルダの中です: {work}")
-    dst = work / "project"
-    if dst.exists():
-        shutil.rmtree(dst)
-    dst.mkdir(parents=True)
-    for d in COPY_DIRS:
-        if (src / d).is_dir():
-            shutil.copytree(src / d, dst / d)
-    for f in COPY_FILES:
-        if (src / f).is_file():
-            shutil.copy2(src / f, dst / f)
-    for f in (dst / "assembly/overworld_scripts").glob("zz_*.s"):
-        f.unlink()
-    return dst
 
 
 def digest(project: pathlib.Path) -> dict[str, bytes]:
@@ -54,7 +32,7 @@ def main():
     ap.add_argument("--project", required=True)
     ap.add_argument("--work", required=True)
     a = ap.parse_args()
-    project = prepare(pathlib.Path(a.project), pathlib.Path(a.work))
+    project = copy_project(pathlib.Path(a.project), pathlib.Path(a.work))
     rom_before = hashlib.sha256(pathlib.Path(a.rom).read_bytes()).digest()
     with tempfile.TemporaryDirectory(prefix="zzm-player-", ignore_cleanup_errors=True) as tmp:
         with Zigzagu(a.exe, profile=pathlib.Path(tmp) / "profile", extra=["--mute-audio"]) as z:
@@ -128,8 +106,18 @@ def main():
             assert walked["player"] == {"x": 5, "y": 6, "facing": "down", "gender": "female"} and not walked["playback"]["active"], walked
             z.call(dict(cmd="export"), timeout=300)
             assert digest(project) == exported
-            z.call(dict(cmd="preview.player", enabled=False))
             print("OK 仮の主人公を置いて歩かせたまま出力しても、maps のファイルは変わらない")
+
+            # 歩きを 1 フレームずつ進める（#493）。1 フレームに 1 画素、16 フレームで隣のマスに着く
+            z.call(dict(cmd="playback.player.place", x=5, y=5, facing="down"))
+            begun = z.call(dict(cmd="playback.player.walkStart", direction="down"))
+            assert begun["walk"] == {"frame": 0, "pixel": {"x": 80, "y": 81}, "manual": True}, begun
+            stepped = z.call(dict(cmd="playback.player.walkStep", frames=7))
+            assert stepped["walk"]["frame"] == 7 and stepped["walk"]["pixel"] == {"x": 80, "y": 88}, stepped
+            done = z.call(dict(cmd="playback.player.walkStep", frames=20))
+            assert done["walk"] is None and (done["player"]["x"], done["player"]["y"]) == (5, 6), done
+            z.call(dict(cmd="preview.player", enabled=False))
+            print("OK 仮の主人公の歩きを 1 フレームずつ進める（walkStart・walkStep）")
     assert hashlib.sha256(pathlib.Path(a.rom).read_bytes()).digest() == rom_before
     print("OK ROM は変わらない")
 

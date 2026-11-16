@@ -52,7 +52,7 @@ export class PlaybackBar {
     this.element.append(row, this.slider, this.details);
   }
 
-  configure(last: number, gender: PlayerGender, facing: MovementDirection, people: readonly number[], absent: readonly number[]): void {
+  configure(last: number, gender: PlayerGender, facing: MovementDirection, people: readonly number[], absent: readonly number[], name: (localId: number) => string = String): void {
     this.slider.max = String(last); this.gender.value = gender; this.facing.value = facing;
     const summary = document.createElement("summary"); summary.textContent = t.absent;
     this.people.replaceChildren(summary); this.absent.clear();
@@ -60,7 +60,7 @@ export class PlaybackBar {
       const label = document.createElement("label"), input = document.createElement("input");
       input.type = "checkbox"; input.checked = absent.includes(id); input.dataset["autoId"] = `playback.absent.${id}`;
       input.addEventListener("change", () => this.changedStart());
-      label.append(input, String(id)); this.people.append(label); this.absent.set(id, input);
+      label.append(input, name(id)); this.people.append(label); this.absent.set(id, input);
     }
   }
 

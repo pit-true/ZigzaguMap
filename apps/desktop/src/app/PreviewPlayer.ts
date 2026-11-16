@@ -3,12 +3,13 @@ import type { Actions } from "./Actions";
 import type { EditorState } from "./EditorState";
 import type { ViewAids, AidTab } from "./viewAids";
 import type { MapView } from "../ui/map/MapView";
-import { renderActorScene } from "./ActorScene";
+import { releaseActorScene, renderActorScene } from "./ActorScene";
 import { jaPreviewPlayer as t } from "../i18n/ja.previewPlayer";
 import { jaMapExport } from "../i18n/ja.mapExport";
 import { writeFile, type FileDialogs } from "./FileDialogs";
 import { errorText } from "../util/errors";
 import { sceneNeighborBlocks } from "./SceneNeighbors";
+import { scheduleIdleGc } from "../util/idleGc";
 
 export interface PlayerPlacement {
   readonly x: number;
@@ -44,7 +45,8 @@ export class PreviewPlayer {
   private readonly facing = document.createElement("select");
   /** 矢印キーで 1 マス歩き終えたとき（ドラッグや置き直しでは呼ばない。踏むスクリプトの再生 #457）。 */
   onStep: ((placement: PlayerPlacement) => void) | null = null;
-  private walking: { from: PlayerPlacement; start: number; raf: number; done: () => void } | null = null;
+  /** 歩いている途中。`manual` は自動操作で 1 フレームずつ進めるときのフレーム（時計を使わない）。 */
+  private walking: { from: PlayerPlacement; start: number; raf: number; done: () => void; manual: number | null } | null = null;
   onTalk: ((placement: PlayerPlacement) => void) | null = null;
 
   constructor(private readonly state: EditorState, private readonly aids: ViewAids, views: Readonly<Record<AidTab, MapView>>, actions: Actions, private readonly files: FileDialogs) {
@@ -107,6 +109,8 @@ export class PreviewPlayer {
     this.endWalk();
     if (this.playback) this.onPlayback?.(null);
     this.active = false; this.playback = null; this.placement = null; this.missingCount = 0;
+    releaseActorScene(this.state.session);
+    scheduleIdleGc(true); // 240×160 の絵と隣のマップの読み込みを手放したので、落ち着いたら GC して空いた領域を OS へ返す（#496）
     this.token++; this.outside = undefined;
     for (const l of this.activeListeners) l(false);
     this.controls.remove();
@@ -137,7 +141,7 @@ export class PreviewPlayer {
    * 1 マス歩く（向きを変えて、16 フレームで隣のマスへ）。歩き終えたら onStep を呼ぶ。マップの外へは向きだけ変える。
    * 歩いている間の矢印キーは無視する。戻り値は歩き終えたとき（歩かなければすぐ）に決まる。
    */
-  walk(direction: MovementDirection): Promise<void> {
+  walk(direction: MovementDirection, manual = false): Promise<void> {
     const p = this.placement, map = this.state.map;
     if (!p || !map || this.playback || this.walking || !DIRECTIONS.includes(direction)) return Promise.resolve();
     const d = MOVEMENT_DELTA[direction];
@@ -158,15 +162,42 @@ export class PreviewPlayer {
         }
         this.draw(); this.walking.raf = requestAnimationFrame(tick);
       };
-      this.walking = { from, start: performance.now(), raf: requestAnimationFrame(tick), done: resolve };
+      this.walking = { from, start: performance.now(), raf: manual ? 0 : requestAnimationFrame(tick), done: resolve, manual: manual ? 0 : null };
       this.draw();
     });
+  }
+
+  /**
+   * `walk(direction, true)` で始めた歩きを frames だけ進める（自動操作で歩きのコマを 1 フレームずつ確かめる用）。
+   * 最後のフレームを過ぎると、画面の歩きと同じく歩き終えたことにする。返事は今のフレーム（歩いていなければ null）。
+   */
+  stepWalk(frames = 1): number | null {
+    const w = this.walking;
+    if (!w || w.manual === null) return null;
+    w.manual += Math.max(0, Math.floor(frames));
+    if (w.manual > WALK_FRAMES - 1) {
+      this.walking = null; this.draw();
+      this.onStep?.({ ...this.placement! }); w.done();
+      return null;
+    }
+    this.draw();
+    return w.manual;
+  }
+
+  /** 歩きの様子（自動操作の確かめ用）。 */
+  get walkState(): { readonly frame: number; readonly pixel: { x: number; y: number }; readonly manual: boolean } | null {
+    const w = this.walking, at = this.walkPixel();
+    return w && at ? { frame: this.walkFrame(), pixel: at, manual: w.manual !== null } : null;
   }
 
   /** 向いている方のマスを調べる（Enter・Space。人物・看板のスクリプトの再生 #457）。 */
   talk(): void { if (this.placement && !this.playback && !this.walking) this.onTalk?.({ ...this.placement }); }
 
-  private walkFrame(): number { return this.walking ? Math.min(WALK_FRAMES - 1, Math.floor((performance.now() - this.walking.start) * 60 / 1000)) : 0; }
+  private walkFrame(): number {
+    const w = this.walking;
+    if (!w) return 0;
+    return w.manual !== null ? w.manual : Math.min(WALK_FRAMES - 1, Math.floor((performance.now() - w.start) * 60 / 1000));
+  }
   /** 歩いている途中の画素の位置（歩いていなければ null）。 */
   private walkPixel(): { x: number; y: number } | null {
     const w = this.walking;
@@ -177,7 +208,8 @@ export class PreviewPlayer {
   private endWalk(): void {
     const w = this.walking;
     if (!w) return;
-    cancelAnimationFrame(w.raf); this.walking = null; this.draw(); w.done();
+    if (w.manual === null) cancelAnimationFrame(w.raf);
+    this.walking = null; this.draw(); w.done();
   }
 
   /**

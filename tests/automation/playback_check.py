@@ -8,7 +8,7 @@ import pathlib
 import tempfile
 import time
 
-from zz import AppError, Zigzagu
+from zz import AppError, Zigzagu, wait_editor
 
 
 def main():
@@ -232,7 +232,8 @@ def check_rom_only(exe, rom, shots, project=None):
                     try:
                         started = z.call(dict(cmd="playback.start", kind=kind, index=index))
                     except AppError as e:
-                        if "見つかりません" in str(e) or "プロジェクト" in str(e):
+                        # スクリプトの無いイベントは、その理由を知らせる（「プロジェクトを開いて」ではない。#495）
+                        if "見つかりません" in str(e) or "スクリプトがありません" in str(e):
                             continue
                         raise
                     if not started.get("active"):
@@ -264,22 +265,17 @@ def check_rom_only(exe, rom, shots, project=None):
                     played[kind] += 1
                     z.call(dict(cmd="playback.stop"))
             assert played["person"] > 0 and played["trap"] > 0 and moved > 0, (played, moved)
+            if not project:
+                # スクリプトの無いオーキド（人物 3、10,8）に下から話しかけると、相手に合った知らせを出す（#495）
+                z.call(dict(cmd="playback.player.place", x=10, y=9, facing="up"))
+                talked = z.call(dict(cmd="playback.player.talk"))
+                assert not talked["playback"]["active"] and "この人物にはスクリプトがありません" in talked["status"]["left"], talked
+                z.call(dict(cmd="preview.player", enabled=False))
+                print("OK スクリプトの無い人物に話しかけると「この人物にはスクリプトがありません」")
             assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before
             print(f"OK 素の ROM のマサラタウン: 人物 {played['person']} 件、踏むスクリプト {played['trap']} 件を最後まで再生（オーキドの所 {moved} 件）。箱は編集できない印、読み取り専用の表示を強調")
     assert hashlib.sha256(pathlib.Path(rom).read_bytes()).digest() == digest
     print("OK ROM が操作前後で同じ")
-
-
-def wait_editor(z, timeout=30):
-    deadline = time.monotonic() + timeout
-    while True:
-        try:
-            z.call(dict(cmd="editor.state", window="script-editor"))
-            return
-        except AppError:
-            if time.monotonic() >= deadline:
-                raise
-            time.sleep(0.2)
 
 
 def actor_of(state, actor_id):
