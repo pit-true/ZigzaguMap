@@ -278,8 +278,10 @@ class Simulator {
       }
       if (!done) return;
       this.wait = null;
-      // wait n は s+n+1 で続きを実行する（resume のフレームそのもの）。ほかは気づいた次のフレームから。
-      if (w.type !== "frames") {
+      // wait n は s+n+1 で続きを実行する（resume のフレームそのもの）。
+      // waitstate は VM の待ちを使わず、揺れのタスクが stateEnd-1 のタスクの処理で ContinueFieldScript を呼ぶので、
+      // stateEnd のスクリプトの番ですぐ続ける（素の BPRJ の KodaiMoveTask 0x080CBE50 で確認）。ほかは気づいた次のフレームから。
+      if (w.type === "movement") {
         this.resumeAt = f + 1;
         return;
       }
@@ -566,7 +568,8 @@ class Simulator {
     if (id === null) return undefined;
     const a = this.actors.get(id);
     if (!a) return undefined;
-    if (!includeAbsent && !a.base.present && a.id !== CAMERA_ID) return a;
+    // 居ない人物（帯で外した・出現のフラグで居ない・removeobject の後）は、実機と同じく命令の相手にならない（#494）
+    if (!includeAbsent && !a.base.present && a.id !== CAMERA_ID) return undefined;
     return a;
   }
 
@@ -600,11 +603,16 @@ class Simulator {
     const a = id === null ? undefined : this.actors.get(id);
     const label = cmd.args[1]?.text ?? "";
     if (!a) {
-      this.marker("ignored", src, id === null ? `人物の番号が分かりません（${cmd.args[0]?.text ?? ""}）` : `人物 ${id} がいません`);
+      this.marker("ignored", src, id === null ? `人物の番号が分かりません（${cmd.args[0]?.text ?? ""}）` : `スクリプトの番号 ${id} の人物がいません`);
+      return;
+    }
+    // 居ない人物への applymovement は実機では何もしない（#494）。箱を作らず、位置も変えない
+    if (!a.base.present && a.id !== CAMERA_ID) {
+      this.marker("ignored", src, `スクリプトの番号 ${a.id} の人物は居ないので動かしません`);
       return;
     }
     if (a.movement && a.movement.finished === null) {
-      this.marker("ignored", src, `人物 ${a.id} はまだ動いています`);
+      this.marker("ignored", src, `スクリプトの番号 ${a.id} の人物はまだ動いています`);
       return;
     }
     const block = this.movementBlock(cmd);

@@ -437,10 +437,9 @@ describe("カメラ、揺れ、callasm の表（#452）", () => {
   it("揺れの位置とフレーム数、waitstate", () => {
     const t = run("Main:\n\tsetvar 0x8004 2\n\tsetvar 0x8005 0\n\tsetvar 0x8006 4\n\tsetvar 0x8007 3\n\tspecial 0x136\n\twaitstate\n\tend\n");
     expect(t.shakes).toEqual([{ start: 0, end: 12, dx: 0, dy: 2, interval: 3 }]);
-    expect(t.stateAt(0).camera.shakeY).toBe(2);
-    expect(t.stateAt(3).camera.shakeY).toBe(-2);
-    expect(t.stateAt(12).camera.shakeY).toBe(0);
-    expect(frameOf(t, "end")).toBe(13);
+    // 最初の (間隔−1) フレームは揺れず、最初のずれは −揺れ幅。最後の反転のフレーム（11）で元に戻り、waitstate の次は 12
+    expect([0, 1, 2, 4, 5, 7, 8, 10, 11, 12].map((f) => t.stateAt(f).camera.shakeY)).toEqual([0, 0, -2, -2, 2, 2, -2, -2, 0, 0]);
+    expect(frameOf(t, "end")).toBe(12);
   });
 
   it("登録の無い callasm・special は印だけ。表に 1 行足すと処理が動く", () => {
@@ -517,6 +516,18 @@ describe("再生の始めの状態（#453）", () => {
     expect(s.actors.find((a) => a.id === 2)).toMatchObject({ facing: "up", present: false });
     expect(defaultFacingOf(8)).toBe("down");
     expect(defaultFacingOf(10)).toBe("right");
+  });
+
+  it("外した人物への applymovement は無視して、箱を作らず位置も変えない（#494）", () => {
+    const script = "Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tend\nm: .byte walk_up, walk_left, end_m\n";
+    const here = run(script, { start: buildPlaybackStart({ events, trigger: { kind: "map" }, gender: "male" }) });
+    expect(here.segmentsOf(1).length).toBeGreaterThan(0);
+    const gone = run(script, { start: buildPlaybackStart({ events, trigger: { kind: "map" }, gender: "male", absent: [1] }) });
+    expect(gone.segmentsOf(1)).toEqual([]);
+    expect(gone.markers.some((m) => m.kind === "ignored" && m.detail.includes("番号 1 の人物は居ない"))).toBe(true);
+    const at = gone.stateAt(gone.lastFrame).actors.find((x) => x.id === 1)!;
+    const start = gone.stateAt(0).actors.find((x) => x.id === 1)!;
+    expect([at.tileX, at.tileY, at.present]).toEqual([start.tileX, start.tileY, false]);
   });
 
   it("1 コマ目の向きを変えると faceplayer の結果が変わる", () => {
