@@ -23,6 +23,7 @@ import { jaUserScript } from "../i18n/ja.userScript";
 import { jaTools } from "../i18n/ja.tools";
 import { jaPreviewPlayer } from "../i18n/ja.previewPlayer";
 import { jaNpcMotion } from "../i18n/ja.npcMotion";
+import { jaTileAnimation } from "../i18n/ja.tileAnimation";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
@@ -121,6 +122,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.npcMotion", label: jaNpcMotion.menu, enable: "map" },
         // 移動範囲とトレーナーの視界（Phase6 #472）。既定はオフ
         { id: "view.npcRanges", label: jaNpcMotion.rangesMenu, enable: "map" },
+        // タイルアニメ（Phase6 #473）。共通の時計で動かす。既定はオフ
+        { id: "view.tileAnimation", label: jaTileAnimation.menu, enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },

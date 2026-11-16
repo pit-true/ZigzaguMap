@@ -173,6 +173,8 @@ export interface PlaybackMarker {
   readonly choice?: PlaybackChoiceMark;
   /** ドアの命令なら、そのフレーム・種類・マス（waitdooranim には無い）。描く側は印から DoorEvent の並びを作る。 */
   readonly door?: DoorEvent;
+  /** 待つ命令（waitdooranim）なら、続きを実行するフレーム（タイムラインに待ちの帯を出す。#474）。 */
+  readonly until?: number;
 }
 
 /** 選択肢の 1 つ。`name` は yes・no、customchoice の文のラベルなど。 */

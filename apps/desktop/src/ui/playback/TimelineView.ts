@@ -23,6 +23,8 @@ export class TimelineView {
   private timeline: Timeline | null = null;
   private readonly boxes: { segment: PlaybackSegment; button: HTMLButtonElement; index: number }[] = [];
   private selected: number | null = null;
+  /** 待つ命令（waitdooranim）の帯（#474）。 */
+  private readonly waits: { start: number; until: number; element: HTMLElement }[] = [];
 
   constructor(private readonly seek: (frame: number) => void, private readonly openSource: (source: PlaybackSource) => void) {
     this.element.className = "playback-timeline"; this.element.dataset["autoId"] = "playback.timeline";
@@ -42,7 +44,7 @@ export class TimelineView {
   /** answer は選択肢・選び直せる分岐の今の答え（印に添える）。印を押すとそのフレームへ飛び、帯の下で選び直せる。 */
   setTimeline(timeline: Timeline, sprites: OverworldSprites, answer: (marker: PlaybackMarker) => string | null = () => null, editing: TimelineEditing | null = null): void {
     const keep = this.selected;
-    this.timeline = timeline; this.boxes.length = 0; this.content.replaceChildren(); this.selected = null;
+    this.timeline = timeline; this.boxes.length = 0; this.waits.length = 0; this.content.replaceChildren(); this.selected = null;
     const row = (title: string, id: string): HTMLElement => {
       const row = document.createElement("div"), label = document.createElement("div");
       row.className = "playback-time-row"; row.dataset["autoId"] = id;
@@ -70,6 +72,12 @@ export class TimelineView {
       button.title = `${t.frames(marker.frame)}: ${marker.detail}`;
       button.dataset["autoId"] = `playback.marker.${index}`; button.dataset["frame"] = String(marker.frame);
       button.addEventListener("click", () => this.seek(marker.frame));
+      if (marker.until !== undefined && marker.until > marker.frame) {
+        const wait = document.createElement("div"); wait.className = "playback-time-wait";
+        wait.title = `${button.textContent}: ${t.frames(marker.frame)} → ${t.frames(marker.until)}`;
+        wait.dataset["autoId"] = `playback.wait.${this.waits.length}`;
+        global.append(wait); this.waits.push({ start: marker.frame, until: marker.until, element: wait });
+      }
       global.append(button);
     });
     for (const track of timeline.tracks) {
@@ -151,6 +159,7 @@ export class TimelineView {
       scale: this.scale, labels: this.labels, scrollLeft: this.element.scrollLeft, width: this.content.offsetWidth,
       cursor: left(this.cursor),
       segments: this.boxes.map(({ segment, button, index }) => ({ index, locked: button.classList.contains("locked"), selected: button.classList.contains("selected"), actor: segment.actor, start: segment.start, end: segment.end, left: left(button), width: Number.parseFloat(button.style.width) || 0, top: button.offsetTop + (button.parentElement?.offsetTop ?? 0), active: button.classList.contains("active") })),
+      waits: this.waits.map(({ start, until, element }) => ({ start, until, left: left(element), width: Number.parseFloat(element.style.width) || 0 })),
       markers: [...this.content.querySelectorAll<HTMLElement>(".playback-time-mark")].map(marker => ({ frame: Number(marker.dataset["frame"]), left: left(marker), top: Number.parseFloat(marker.style.top) || 0, width: marker.offsetWidth, text: marker.textContent })),
     };
   }
@@ -159,12 +168,13 @@ export class TimelineView {
     const rect = this.element.getBoundingClientRect();
     this.element.dispatchEvent(new WheelEvent("wheel", { deltaY, ctrlKey: true, clientX: rect.left + x, clientY: rect.top + 4, bubbles: true, cancelable: true }));
   }
-  clear(): void { this.selected = null; this.timeline = null; this.boxes.length = 0; this.content.replaceChildren(); }
+  clear(): void { this.selected = null; this.timeline = null; this.boxes.length = 0; this.waits.length = 0; this.content.replaceChildren(); }
 
   private layout(): void {
     if (!this.timeline) return;
     this.content.style.width = `${this.labels + (this.timeline.lastFrame + 1) * this.scale + 12}px`;
     for (const { segment, button } of this.boxes) { button.style.left = `${this.labels + segment.start * this.scale}px`; button.style.width = `${Math.max(2, (segment.end - segment.start + 1) * this.scale)}px`; }
+    for (const wait of this.waits) { wait.element.style.left = `${this.labels + wait.start * this.scale}px`; wait.element.style.width = `${Math.max(2, (wait.until - wait.start) * this.scale)}px`; }
     // 同じ頃の印は重ねず、段を分けて並べる（全体の行が段の数だけ高くなる）。
     const lanes: number[] = [];
     let row: HTMLElement | null = null;

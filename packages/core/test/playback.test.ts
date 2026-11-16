@@ -308,6 +308,9 @@ describe("再生の計算（#451）", () => {
     expect(seen).toEqual([1, 0]);
     expect(frameOf(waited, "changeface")).toBe(30);
     expect(waited.markers.filter((m) => m.door).map((m) => m.door!.frame)).toEqual([0, 30]);
+    // 待ちの印は続きのフレームを持つ（タイムラインの帯）。渡さないときは持たない。
+    expect(waited.markers.find((m) => m.kind === "door" && !m.door)!.until).toBe(30);
+    expect(free.markers.find((m) => m.kind === "door" && !m.door)!.until).toBeUndefined();
   });
 
   it("箱の書き戻し: 編集できない理由（.if の中、end_m が無い）と、書き戻しの道具（#458）", () => {

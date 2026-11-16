@@ -238,7 +238,10 @@ export class PlaybackController {
     this.bar.setCondition(start.trapCondition ? t.trapCondition(start.trapCondition.variable, start.trapCondition.value) : null);
     const keep = this.clock?.frame ?? 0;
     this.timeline = simulatePlayback({ project: data.project, entry: this.entry, start, answers: this.answers, choices: this.choices,
-      elevationAt: (x, y) => x >= 0 && y >= 0 && x < map.doc.width && y < map.doc.height ? map.doc.grid.getMovement(x, y) >> 2 : null });
+      elevationAt: (x, y) => x >= 0 && y >= 0 && x < map.doc.width && y < map.doc.height ? map.doc.grid.getMovement(x, y) >> 2 : null,
+      // ドアの開け閉めと waitdooranim の待ち（#474）。
+      doorWait: (doors, frame) => this.app.mapAnimations.doorWaitFor(doors, frame) });
+    this.app.mapAnimations.setPlaybackDoors(this.timeline.markers.flatMap(m => m.door ? [m.door] : []));
     this.animation = new PlaybackAnimation(this.timeline, sprites);
     this.clock = new PlaybackClock(this.timeline.lastFrame, this.timeline.keyFrames());
     this.clock.seek(keep);

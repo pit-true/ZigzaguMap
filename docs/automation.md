@@ -521,6 +521,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 `npc.motion {enabled?, seed?}` は表示 > 人物を動かす（#471）を始める・やめる命令です。`seed` は乱数の種（既定0。同じ種なら同じ動き）。`npc.advance {frames}` は時計を使わずに進めて描きます（止めていても進むので、テストで決まったフレームの状態を作れます）。`npc.hold {owner, on}` は owner の名前で人物の動きを止める・解除します。`npc.state` を含め、返事は `enabled`、`frame`、`seed`、`holders`（止めている相手。マップの見えないタブでは `hiddenTab`）、`clock`（`running`: requestAnimationFrame を予約しているか、`frames`、`subscriptions`）、`actors`（`localId`・`movementType`・`x`・`y`・`facing`・`pixelX`・`pixelY`・`movementId`・`visible`・止めて見せる理由 `reason`: `still` / `copy` / `hide` / `unsupported` / `unknown`、動いていれば null）、`missing` です。`cost` は時計から進めた回数と、計算・描画にかかった時間の合計（ms）です。動く人物の層は `npc.image` で1枚のPNG（マップと同じ等倍の大きさ）にして取得できます。`clock.probe {on}` は何もしない購読で時計だけを回し、時計そのものの負荷を測るときに使います。
 
+`follower.state` は仮の主人公の連れ歩き（#476・#477）の状態を返します。返事は `status`（`enabled`、無効なら `reason`: `noProject` / `noSource` / `disabled` / `noDpe` / `noSheets`）、`enabled`、`species`、`shiny`、`female`、`speciesCount`（絵のある種族の数）、`position`（`x`・`y`・`facing`）、`busy`（歩いているか）、`sheet`（`path`・`big`・`fallback`・`sideOffset`）です。`follower.set {enabled?, species?, shiny?, female?}` で表示と見た目を変えます。`follower.advance {frames}` は時計を使わずに歩きを進めます。仮の主人公を置いていないときは何も出しません。欄の部品は `follower.enabled`・`follower.species`・`follower.shiny`・`follower.female`、理由の文は `follower.note` です。
+
 `npc.ranges {enabled?}` は表示 > 人物の移動範囲と視界（#472）を出す・消す命令です。返事は `enabled`、`rules`（`cfru`、`nonTrainerSpotting`）、`persons` です。`persons` の各項目は `localId`、`range`（`x0`・`y0`・`x1`・`y1`。範囲の無い人物は null）、`spotter`（`kind`: `trainer` / `npc`、`allDirections`、`range`。見つけない人物は null）、`rays`（向きごとの `direction`、見つかるマス `tiles`、遮ったマスと理由 `blocked`: `{x, y, hit}`。`hit` は `attribute` / `height` / `object`）です。重ねた絵は `canvasPng {id: "npc.ranges"}` で取得できます。
 
 `actors.scene {actors, x?, y?, width?, height?}` は表示中のマップの前景・人物・影を合成します。座標はマップ画素、既定の範囲は(0,0)から240×160です。`png`、読めなかった人物の `missing`、対応していない重ね方の `unknownBlocks` を返します。画面と保存で同じ合成を使います。
@@ -533,12 +535,15 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 - `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用の写しのバイト数。
 - `tileAnim.frame {frame: number | null}`: フレームを渡します。null で止めて元の絵へ戻します。返事の `shown` は各アニメの表示中のコマ（まだ差し替えていなければ null）。
+- `tileAnim.clock {on?, tick?}`: 表示 > タイルアニメを動かす のオン・オフ（`on`）と、時計の代わりに進める（`tick` フレーム）。返事は `on`・`frame`・購読の有無（`subscribed`）・止めている相手（`holders`。画面が無い間は `hidden`、再生中は `playback`）・時計の `clock`（`running` など）。
 - `tileAnim.scene {frame?, x?, y?, width?, height?, actors?}`: そのフレームの合成画像（既定は(0,0)から240×160）を `png` で返します。`frame` を渡すとそのフレームに合わせます。
 - `door.list`: 表示中のマップのドアのマス（`x`・`y`・`blockId`・`tall`）。`door.info {x, y}` は1マスの結果で、`reason` は挙動が0x69でなければ `behavior`、表に無いブロックなら `unknownDoor`。
 - `door.run {kind, x, y, frame?}`: `kind` は `open`・`close`（アニメあり。opendoor・closedoor）、`setOpen`・`setClosed`（アニメ無し。opendoor2・closedoor2）。返事の `lastFrame` はタスクが消えるフレーム。動いている間の `open`・`close` は `reason: "busy"` で何もしません。
 - `door.state {frame?}`: そのフレームの描き替えたマス（`at` と8個のタイル指定）、`task`、命令ごとの結果。`door.wait {frame}` は、そのフレームで waitdooranim を実行したときに続けるフレーム。`door.clear` は命令を消します。
 
-`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます。
+再生では、ドアの命令がタイムラインの印に入り、waitdoor の印は続きのフレーム（`until`）を持ちます。`playback.layout` の `waits` が帯の位置です。再生中の `door.state` は再生のドアの命令で計算します。
+
+`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます（`--project` のときは再生のドアも確かめます）。
 
 ### DPE の種族名（#439）
 

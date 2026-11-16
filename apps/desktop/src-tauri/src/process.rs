@@ -223,6 +223,45 @@ pub fn process_read_text(root: State<'_, ProjectRoot>, path: String, cwd: Option
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
+/// `cwd` の下のファイルの絶対パス（`cwd` の外は断る）。
+fn file_in(dir: &Path, path: &str) -> Result<PathBuf, String> {
+    let file = std::fs::canonicalize(dir.join(path)).map_err(|e| format!("{path}: {e}"))?;
+    if !file.starts_with(dir) || !file.is_file() {
+        return Err(format!("作業フォルダの中のファイルではありません: {}", display_path(&file)));
+    }
+    Ok(file)
+}
+
+/// `cwd` の下のバイナリファイルを読む（DPE の連れ歩きの PNG など。#476）。読むだけで、16MB を超える分は読まない。
+#[tauri::command]
+pub fn process_read_bytes(root: State<'_, ProjectRoot>, path: String, cwd: Option<String>) -> Result<tauri::ipc::Response, String> {
+    let dir = resolve_cwd(&root, cwd.as_deref())?;
+    let file = file_in(&dir, &path)?;
+    let mut bytes = Vec::new();
+    std::fs::File::open(&file)
+        .and_then(|f| f.take(16 * 1024 * 1024).read_to_end(&mut bytes))
+        .map_err(|e| format!("{}: {e}", display_path(&file)))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// `cwd` の下のフォルダの中の名前（名前順）。フォルダが無ければ空。`cwd` の外は断る。
+#[tauri::command]
+pub fn process_list(root: State<'_, ProjectRoot>, path: String, cwd: Option<String>) -> Result<Vec<String>, String> {
+    let dir = resolve_cwd(&root, cwd.as_deref())?;
+    let Ok(folder) = std::fs::canonicalize(dir.join(&path)) else {
+        return Ok(Vec::new());
+    };
+    if !folder.starts_with(&dir) {
+        return Err(format!("作業フォルダの中のフォルダではありません: {}", display_path(&folder)));
+    }
+    let Ok(entries) = std::fs::read_dir(&folder) else {
+        return Ok(Vec::new());
+    };
+    let mut names: Vec<String> = entries.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+    names.sort();
+    Ok(names)
+}
+
 /// 終了時に動いているコマンドを止める。
 pub fn kill_all(processes: &Processes) {
     let children: Vec<Arc<Mutex<Child>>> = processes.running.lock().map(|mut r| r.drain().map(|(_, c)| c).collect()).unwrap_or_default();

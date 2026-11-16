@@ -68,6 +68,7 @@ import { ViewAids } from "./viewAids";
 import { PreviewPlayer } from "./PreviewPlayer";
 import { GameClock } from "./GameClock";
 import { NpcMotion } from "./NpcMotion";
+import { FollowerEntry } from "./FollowerEntry";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { MapAnimations } from "./animation/MapAnimations";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
@@ -149,6 +150,8 @@ export class App implements ActionTarget {
   readonly gameClock = new GameClock();
   /** 表示 > 人物を動かす（#471）。 */
   readonly npcMotion: NpcMotion;
+  /** 仮の主人公の連れ歩き（#476・#477）。 */
+  readonly follower: FollowerEntry;
   readonly playback: PlaybackEntry;
   /** タイルアニメとドア（#473・#474）。既定はオフ。 */
   readonly mapAnimations: MapAnimations;
@@ -292,8 +295,10 @@ export class App implements ActionTarget {
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
     this.playback = new PlaybackEntry(this);
-    this.mapAnimations = new MapAnimations(state);
+    this.mapAnimations = new MapAnimations(state, this.gameClock, this.actions, () => this.previewPlayer.enabled);
     this.mapAnimations.onChange = () => this.previewPlayer.refresh();
+    this.previewPlayer.onPlayback = (playback) => this.mapAnimations.followPlayback(playback?.frame ?? null);
+    this.follower = new FollowerEntry(state, this.previewPlayer, this.gameClock);
     this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions, {
       selected: () => {
         const s = eventTab.selection;
