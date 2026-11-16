@@ -80,7 +80,7 @@ export const jaBlockTools = {
     `使用回数を数えました（未使用のブロック ${unusedBlocks} 個${unusedTiles === null ? "" : `、未使用のタイル ${unusedTiles} 枚`}、${ms}ms）`,
   exportMenu: "ブロック一覧の画像の書き出し…",
   exportTitle: "ブロック一覧の画像の書き出し",
-  exportTileset: "タイルセット",
+  exportTileset: ini.Allgemein["14"],
   exportTileset1: ini.BlockEditorForm["131"],
   exportTileset2: ini.BlockEditorForm["132"],
   exportRange: "範囲（16 進）",

@@ -55,6 +55,14 @@ ALIASES = {
 }
 
 
+# AdvanceMap 1.92 が言語ファイルを使わずに固定で出す文言のうち、改訂版で番号の付いた文言（正規表現, 新キー）。
+# 正規表現の 1 つ目の組は前に付く部分（一覧の「段:」）、2 つ目の組は後ろに付く部分（番号）。
+FIXED = [
+    # マップ一覧を「タイルセット番号で並び替え」たときのグループ名（AdvanceMap は「Tileset 0」）
+    (re.compile(r"^(\d+:)?Tileset( \d+)$"), "Allgemein.14"),
+]
+
+
 # 旧版では複数のキーの文言をつないで作り、改訂版では 1 つのキーの書式（%d）にした文言。{キー} は旧版の文言、%d は値
 COMPOSED = [
     ("{AnbindungsForm.13680} %d{AnbindungsForm.13681}", "AnbindungsForm.13680"),
@@ -193,6 +201,10 @@ class LangMap:
             return self.menu_table[m]
         if s in self.known_old:
             return s  # 言語ファイルの文言そのもので、変わっていないもの
+        for rx, key in FIXED:
+            m = rx.match(s)
+            if m and key in self.new:
+                return f"{m.group(1) or ''}{self.new[key].strip()}{m.group(2)}"
         for o, n in self.parts:
             if o in s:
                 s = s.replace(o, n)
