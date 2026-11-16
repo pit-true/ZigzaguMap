@@ -544,6 +544,15 @@ class Simulator {
       case 0x98:
         this.marker("fade", src, String(arg(0) ?? ""));
         return true;
+      case 0xa3:
+      case 0xa4:
+      case 0xa5: {
+        // 天候（#498）。待たないので時間は 0。絵は天候のプレビューが印から作る。
+        const command = ({ 0xa3: "reset", 0xa4: "set", 0xa5: "do" } as const)[cmd.opcode as 0xa3 | 0xa4 | 0xa5];
+        const value = command === "set" ? arg(0) : null;
+        this.markers.push({ frame: f, kind: "weather", source: src, detail: value === null ? cmd.macro : `${cmd.macro} ${value}`, branch: null, weather: { command, value } });
+        return true;
+      }
       default:
         return true;
     }

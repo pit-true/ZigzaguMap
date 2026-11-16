@@ -545,6 +545,18 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 `tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます（`--project` のときは再生のドアも確かめます）。
 
+### 天候のプレビュー（#498）
+
+どれもマップ・ROM・履歴を変えません。仮の主人公の画面（表示 > 仮の主人公を置く）に重ねます。
+
+- `weather.state`: `entry`（表示しているか・選んだ天候 `"map"` か 0〜14）、`weather`（今プレビューする中の番号）、`status`・`next`（今の天候と切り替え先）、`frame`（進めたフレーム）、`screen`（段 `evy` と半透明の係数 `eva`・`evb`）、`objects`（描く絵の数）、`problem`（「この天候はプレビューできません」の文。表示できれば null）、`graphicsBytes`（読んだ絵のバイト数）、`ashIsSandstorm`・`whiteSandstorm`（7 番が白い砂嵐か・その色を読めたか）、時計の購読（`subscribed`・`holders`）、再生のフレーム（`playback`）、時計の `clock`。
+- `weather.set {weather?, on?, seed?}`: プレビューする天候を選び（`"map"` か 0〜14）、表示のオン・オフを切り替えます。`seed` は雪・雷・泡の乱数の種（オンにするときだけ）。
+- `weather.tick {frames}`: 時計の代わりに進めます（再生中は何もしません）。
+
+メニューは `view.weather`（天候を表示する）と `view.weatherPick.map`・`view.weatherPick.0`〜`view.weatherPick.14`（プレビューする天候）です。再生の天候の命令は、タイムラインの `weather` の印（`weather.command` は `reset`・`set`・`do`、`weather.value` は setweather の値）になります。
+
+`tests/automation/weather_check.py --rom <BPRJ> --exe <exe> [--project <ND/Chronos>] [--shots <フォルダ>] [--name <写真の名前>] [--map <バンク.マップ>]` で確かめます（`--project` のときは時間帯との重なりと再生の命令も確かめます）。
+
 ### DPE の種族名（#439）
 
 野生タブやトレーナー編集の初回に名前表を読みます。`getField {id: "wild.species.1"}` の `options` が種族数です（ND 970件、Chronos 1573件）。`setField` は従来どおり種族番号を指定します。`tests/realcopy/run.py --species --reuse` で追加種族の選択、JSON出力、開き直し、トレーナーの名前の表示を確認できます。
