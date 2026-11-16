@@ -34,6 +34,9 @@ export async function startBlockTool(kind: ToolKind, root: HTMLElement): Promise
     case "transplant":
       (await import("./transplant/TransplantWindow")).TransplantWindow.start(root, client);
       break;
+    case "tile-import":
+      (await import("./tile-import/TileImportWindow")).TileImportWindow.start(root, client);
+      break;
   }
 }
 

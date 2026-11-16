@@ -1,6 +1,7 @@
 import type { MenuItem } from "../../app/menuDefinition";
 import { jaBlockEditor as t } from "../../i18n/ja.blockEditor";
 import { jaBlockTools as tt } from "../../i18n/ja.blockTools";
+import { jaTileImport } from "../../i18n/ja.tileImport";
 import { MenuBar } from "../../ui/MenuBar";
 import { isKeyAction, keyText, matchesKey } from "../../app/keymap";
 
@@ -22,6 +23,8 @@ export const BLOCK_EDITOR_MENU: readonly MenuItem[] = [
       { separator: true },
       { id: "tiles.exportBlocks", label: tt.exportMenu, accel: "E" },
       { id: "tiles.newTileset", label: tt.newTilesetMenu, accel: "N" },
+      // Phase6 #444
+      { id: "tiles.importImage", label: jaTileImport.menu, accel: "I" },
     ],
   },
   {

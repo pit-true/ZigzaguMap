@@ -433,6 +433,40 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ショートカットの変更（#392）: `action` の `opt.shortcuts` で窓「ショートカットの変更」を開く。キーの欄は `shortcuts.<操作の ID>.0`・`shortcuts.<操作の ID>.1`（`click` してから、`key` 命令に `id` でその欄を渡して押す）、外す `shortcuts.<操作の ID>.<n>.clear`、既定に戻す `shortcuts.reset`（`click`）。重なると窓「キーの重なり」が出るので、`dialog` の `press: "new"`（新しく決めた方に残す）か `"old"`（前からの方に残す）で答える。`dialog` の `press: "ok"` で決め、`"cancel"` で閉じる。操作の ID は `apps/desktop/src/app/keymap.ts` の表。
 - コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端の写しでなくこの柄で埋める）。
 
+## Phase6 の部品と命令（画像からタイルとブロックを作る。#440〜#446）
+
+命令は `apps/desktop/src/app/automation/tileset.ts`、計算は core の `packages/core/src/tileset/import/` です。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `tileset.importImage` | `paths`（PNG のパス 1〜3 個。下のレイヤーから順。1 つなら `path` でもよい）、`target`（`secondary`（既定。今の副）/ `primary`（今の主）/ `newSecondary` / `newPrimary`（新しいタイルセットを作り、表示中のマップの組を付け替える））、`transparent`（透明色の BGR555。省略で 1 枚目の左上の画素、`null` で使わずアルファ値だけで決める）、`options`（下の表）、`stamp`（スタンプの名前。省略で作らない） | 表示中のマップの組で計画を作り、問題が無ければ 1 回のコマンド（`group`。今あるタイルセットなら `setTiles`・`setPaletteColors`・`setBlockData`、新しいタイルセットなら `addTileset`・`setTilesets`）で書く。1 回の `undo` で戻る。書いた後は最初のブロックを選ぶ（最近使ったブロックにも入る）。返事は書いたか `done`、計画のまとめ `plan`（`ok`・`paletteShortage`・`problems`・`tiles`・`blocks`・`palettes`・`reduction`・`cellsWide`・`cellsHigh`・ブロックごとの置く番号 `locals`・マスごとの通し番号 `cells`（ブロックにしないマスは -1）・`firstBlock`・計画の時間 `ms`）、書いたタイルセットのポインタ `pointer`、作ったスタンプの名前 `stamp`（同じ名前があれば「名前 (2)」）、全体の時間 `ms`。問題があれば `done: false` で何も変えない |
+
+`options`（どれも省略できる）:
+
+| 項目 | 既定 | 意味 |
+|---|---|---|
+| `useFlip` | true | 反転で同じになるタイルをまとめる |
+| `reuseExisting` | true | 今あるタイル（副へ入れるときは主のタイルも）を使い回す |
+| `skipEmpty` | true | 全部が透明の 16×16 はブロックにしない |
+| `mergeSame` | true | 同じ 16×16 は 1 つのブロックにする |
+| `mode` | `picture` | 1 枚の画像の重ね方。`picture`（絵だけ。下のレイヤー）/ `under`（下地の上に重ね、プレイヤーの下に描く。属性のレイヤーの種類 1）/ `over`（下地の上に重ね、プレイヤーより手前） |
+| `upperBehind` | false | 2 枚の画像で、上のレイヤーもプレイヤーの下に描く（レイヤーの種類 1） |
+| `baseBlock` | null | 下地ブロックの通し番号（`under`・`over`。下のレイヤーと属性を写す） |
+| `reduce` | false | 本（パレット）が足りなければ減色する |
+| `excludedPalettes` | [] | 使わない本の番号 |
+| `reserveDoorTiles` | true | 副へ入れるとき、ドアのアニメが使う通し番号 1016〜1023 のタイルを空ける |
+| `placement` | [] | 手で決めた置き場所（`[ブロックの番号, タイルセットの中の番号]` の並び。#446） |
+| `allowReplace` | false | 手で決めた置き場所で、使っているブロックや中身のあるブロックの置き換えを許す |
+
+`problems` の `code`: `palettesShort`（本が足りない。`needed`・`free`・`short`、`atLeast` が 1 なら `needed` は下限）・`overColorTiles`（1 枚で 15 色を超えるタイル）・`tilesShort`・`blocksShort`（`needed`・`free`・`short`）・`noBlocks`・`baseSecondary`（主へ入れるのに副のタイルかパレットを使う下地）・`baseMissing`・`placementInvalid`（`block`・`local`・`problem`: `zero` / `tripleChild` / `outside` / `used` / `notEmpty` / `taken` / `noNext`）は書き込めない誤り（`level: "error"`）。`padded`（16 の倍数に埋めた）・`doorTiles`・`baseUpper`（下地の上のレイヤーは使わない）・`reduced`（`changed`・`before`・`after`）・`replaced` は知らせ（`level: "note"`）。
+
+写しでの確認: `python tests/realcopy/run.py --tileimport --reuse`（見本の PNG を 3.0 の副と 3.1 の新しい副へ取り込んで塗り、出力してビルドし、できた ROM の絵が出力の前と同じことを確かめる）。
+
+
+取り込みウィザードの下地選択は `ti.mode`（1 下地の上・主人公の下、2 下地の上・主人公より手前）と `ti.pickBase` で開きます。`ti.picker` に `pointer` を送り、ダイアログの `ok` で決定します。`ti.base` の16進番号による入力も使えます。
+
+置き場所の `ti.place.source` と `ti.place.target` は1マス32画素です。左で選んだマスから右へドラッグし、形を保って配置します。`ti.allowReplace` で使用中のブロックへの置き換えを許可し、`ti.autoPlace` または `ti.resetPlace` で自動配置に戻せます。`tileImport.wait` の結果の `plan.locals` はブロックごとの配置番号、`firstBlock` は最初の通し番号です。
+
 ## Phase6 の部品と命令（時間帯と野生。P6-C1）
 
 命令は `apps/desktop/src/app/automation/timeOfDay.ts` にまとめています。確認のスクリプトは `tests/automation/time_of_day_check.py`。

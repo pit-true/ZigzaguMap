@@ -1,8 +1,9 @@
 import { emitTo, listen } from "@tauri-apps/api/event";
-import { CommandGroup, EditError, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
+import { CommandGroup, EditError, ROM_BASE, SetPaletteColorsCommand, TOTAL_PALETTE_COUNT, decodeBase64, encodeBase64, PRIMARY_PALETTE_COUNT, type Command, type TilesetDocument } from "@zigzagumap/core";
 import type { App } from "../app/App";
 import { jaBlockEditor as t } from "../i18n/ja.blockEditor";
 import { jaTransplant } from "../i18n/ja.transplant";
+import { jaTileImport } from "../i18n/ja.tileImport";
 import {
   TOOL_MESSAGE_EVENT,
   TOOL_REQUEST_EVENT,
@@ -69,7 +70,8 @@ export class ToolWindowHost {
   async open(kind: ToolKind): Promise<void> {
     if (!this.app.state.map) return;
     const size = TOOL_WINDOW_SIZES[kind];
-    const title = kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : kind === "transplant" ? jaTransplant.title : t.adjustTitle;
+    const title =
+      kind === "block-editor" ? this.blockEditorTitle() : kind === "palette-editor" ? t.paletteEditor : kind === "transplant" ? jaTransplant.title : kind === "tile-import" ? jaTileImport.title : t.adjustTitle;
     this.opened.add(kind);
     try {
       await openToolWindow(kind, title, size);
@@ -158,6 +160,32 @@ export class ToolWindowHost {
         if (!map) throw new Error(t.notOpen);
         const host = await import("./block-editor/newTilesetHost");
         return host.createNewTileset(session.project, session.bus, map.doc.id, { secondary: req.secondary, tileCount: req.tileCount, blockCount: req.blockCount, copy: req.copy });
+      }
+      case "importContext": {
+        const session = this.requireSession();
+        const map = this.app.state.map;
+        if (!map) throw new Error(t.notOpen);
+        const usage = await this.app.extras.blockUsage.build();
+        if (!usage) throw new Error(t.notOpen);
+        const host = await import("./tile-import/tileImportHost");
+        return host.importContextData(session.project, usage, map.doc.primaryTileset, map.doc.secondaryTileset);
+      }
+      case "importTiles": {
+        if (!this.app.state.map) throw new Error(t.notOpen);
+        const host = await import("./tile-import/tileImportHost");
+        const r = await host.runTileImport(this.app, {
+          images: req.images.map((b) => decodeBase64(b)),
+          target: req.target as never,
+          ...(req.transparent === "auto" ? {} : { transparent: req.transparent }),
+          options: req.options as never,
+          stamp: req.stamp,
+        });
+        // 取り込んだ最初のブロックをブロックエディタで選ぶ（#396 の focus と同じ仕組み）
+        if (r.done && r.plan.firstBlock !== null && this.opened.has("block-editor")) {
+          this.ui.focus = { block: r.plan.firstBlock, seq: (this.ui.focus?.seq ?? 0) + 1 };
+          await this.broadcast({ type: "ui", ui: this.uiState() });
+        }
+        return r;
       }
       case "blockStats": {
         const session = this.requireSession();

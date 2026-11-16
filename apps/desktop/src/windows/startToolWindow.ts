@@ -24,6 +24,8 @@ const TOOL_WINDOWS: Readonly<Record<string, ToolWindowStarter>> = {
   "palette-editor": startBlockTool,
   "block-adjust": startBlockTool,
   transplant: startBlockTool,
+  // 画像からタイルとブロックを作る（Phase6 #444）
+  "tile-import": startBlockTool,
   // マップ作成補助（Phase4 #312）
   [MAP_ASSIST_WINDOW]: async (_label, root) => {
     const { MapAssistWindow } = await import("./map-assist/MapAssistWindow");

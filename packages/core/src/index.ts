@@ -257,6 +257,7 @@ export {
 export { TileDeduper, flipIndices, packTile, unpackTile, type ExistingTiles, type TileDedupeCounts, type TileDedupeOptions, type TileMatch } from "./tileset/import/TileDeduper.js";
 export { channels, colorDistance, countColors, fromChannels, luminance, medianCut, nearestColor, remapTile } from "./tileset/import/Quantizer.js";
 export {
+  MAX_COUNTED_PALETTES,
   PALETTE_COLORS,
   PALETTE_SIZE,
   assignPalettes,
@@ -269,6 +270,41 @@ export {
   type PaletteSlotInput,
   type ReduceResult,
 } from "./tileset/import/PaletteAssigner.js";
+export {
+  buildBlocks,
+  isEmptyBlock,
+  placeBlocks,
+  placementProblem,
+  type BaseBlock,
+  type BlockBuildOptions,
+  type BuiltBlock,
+  type ImportLayerMode,
+  type Placement,
+  type PlacementProblem,
+  type PlacementTable,
+} from "./tileset/import/BlockBuilder.js";
+export {
+  DOOR_TILE_START,
+  planImport,
+  type ImportInput,
+  type ImportMeter,
+  type ImportOptions,
+  type ImportPlan,
+  type ImportProblem,
+  type ImportProblemCode,
+  type ImportResult,
+  type ImportTable,
+  type ImportTarget,
+} from "./tileset/import/ImportPlan.js";
+export {
+  importStamp,
+  importTable,
+  importTilesetCommand,
+  prepareImport,
+  type ImportCommandResult,
+  type ImportContext,
+  type RunImportInput,
+} from "./tileset/import/ImportTilesetCommand.js";
 export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTilesetContent, type NewTilesetOptions, type NewTilesetPlan, type NewTilesetSource } from "./tileset/NewTileset.js";
 
 // 描画
