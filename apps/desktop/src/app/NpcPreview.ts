@@ -4,9 +4,10 @@ import type { ClockSubscription, GameClock } from "./GameClock";
 import type { PreviewPlayer } from "./PreviewPlayer";
 import type { AidTab } from "./viewAids";
 import type { MapView } from "../ui/map/MapView";
-import { renderActorScene } from "./ActorScene";
+import { releaseActorScene, renderActorScene } from "./ActorScene";
 import { npcSourcesOf, npcWorldOf } from "./npcWorld";
 import { jaNpcMotion as t } from "../i18n/ja.npcMotion";
+import { scheduleIdleGc } from "../util/idleGc";
 
 /** 自動操作に返す状態。 */
 export interface NpcPreviewState {
@@ -95,6 +96,8 @@ export class NpcPreview {
   stop(quiet = false): void {
     if (!this.sim) return;
     this.sim = null; this.world = null;
+    if (!this.player.enabled) releaseActorScene(this.state.session);
+    scheduleIdleGc(true); // 人物の計算と絵を手放したので、落ち着いたら GC して空いた領域を OS へ返す（#496）
     this.subscription?.dispose(); this.subscription = null;
     this.hiddenRelease = null;
     this.animators.clear(); this.actorsValue = []; this.drawn.clear(); this.missingCount = 0;

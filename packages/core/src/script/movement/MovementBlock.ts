@@ -350,11 +350,17 @@ export interface MovementReference {
 }
 
 /** ラベルを使っている所を数える（`findLabelOccurrences` の定義でないもの）。files は `.s` のパスと本文。 */
+/** 行頭のシンボルの宣言（`.global` など）。 */
+const SYMBOL_DIRECTIVE = /^\s*\.(?:global|globl|weak|hidden|type|size)\s/i;
+
 export function countMovementReferences(files: Iterable<{ readonly path: string; readonly text: string }>, label: string): MovementReference[] {
   const out: MovementReference[] = [];
   for (const f of files) {
     for (const o of findLabelOccurrences(f.text, label)) {
       if (o.definition) continue;
+      // `.global m_W` などのシンボルの宣言は、使っている所ではない（#493 の往復テストで 2 か所と数えていた）
+      const start = f.text.lastIndexOf("\n", o.from - 1) + 1;
+      if (SYMBOL_DIRECTIVE.test(f.text.slice(start, o.from))) continue;
       let line = 0;
       for (let k = f.text.indexOf("\n"); k >= 0 && k < o.from; k = f.text.indexOf("\n", k + 1)) line++;
       out.push({ path: f.path, line });

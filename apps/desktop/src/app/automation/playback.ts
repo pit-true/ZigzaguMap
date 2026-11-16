@@ -49,6 +49,24 @@ export const playbackCommands: CommandTable = {
     await controller?.ready();
     return { player: app.previewPlayer.player, playback: controller?.state() ?? { active: false } };
   },
+  // 仮の主人公の歩きを 1 フレームずつ進める（#493。動画とテストで歩きのコマを確かめる用）。
+  "playback.player.walkStart": (app, req) => {
+    const direction = str(req, "direction");
+    if (direction !== "down" && direction !== "up" && direction !== "left" && direction !== "right") throw new Error("direction は down / up / left / right のいずれかです。");
+    void app.previewPlayer.walk(direction, true);
+    return { player: app.previewPlayer.player, walk: app.previewPlayer.walkState };
+  },
+  "playback.player.walkStep": async (app, req) => {
+    const frames = req["frames"] === undefined ? 1 : int(req, "frames");
+    const frame = app.previewPlayer.stepWalk(frames);
+    if (frame === null) {
+      await app.playback.settled();
+      const controller = await app.playback.existing();
+      await controller?.ready();
+      return { player: app.previewPlayer.player, walk: null, playback: controller?.state() ?? { active: false } };
+    }
+    return { player: app.previewPlayer.player, walk: app.previewPlayer.walkState };
+  },
   "playback.player.talk": async app => {
     app.previewPlayer.talk();
     await app.playback.settled();

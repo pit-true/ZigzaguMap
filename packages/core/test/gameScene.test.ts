@@ -46,6 +46,8 @@ it("3枚目は前景になり、異なるelevationと固定したpriorityでも�
   expect(pixel(render(4, 2))).toEqual([255, 255, 0, 255]);
   expect(actorBgPriority(3)).toBe(2);
   expect(actorBgPriority(4)).toBe(1);
+  expect(actorBgPriority(0)).toBe(2);
+  expect(actorBgPriority(15)).toBe(2);
 });
 
 it("色0だけを透かし、下にBG3の決まったタイルを描く。元の編集画像は変えない", () => {

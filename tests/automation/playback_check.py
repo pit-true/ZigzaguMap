@@ -8,7 +8,7 @@ import pathlib
 import tempfile
 import time
 
-from zz import AppError, Zigzagu
+from zz import AppError, Zigzagu, wait_editor
 
 
 def main():
@@ -239,7 +239,8 @@ def check_rom_only(exe, rom, shots, project=None):
                     try:
                         started = z.call(dict(cmd="playback.start", kind=kind, index=index))
                     except AppError as e:
-                        if "見つかりません" in str(e) or "プロジェクト" in str(e):
+                        # スクリプトの無いイベントは、その理由を知らせる（「プロジェクトを開いて」ではない。#495）
+                        if "見つかりません" in str(e) or "スクリプトがありません" in str(e):
                             continue
                         raise
                     if not started.get("active"):
@@ -271,6 +272,13 @@ def check_rom_only(exe, rom, shots, project=None):
                     played[kind] += 1
                     z.call(dict(cmd="playback.stop"))
             assert played["person"] > 0 and played["trap"] > 0 and moved > 0, (played, moved)
+            if not project:
+                # スクリプトの無いオーキド（人物 3、10,8）に下から話しかけると、相手に合った知らせを出す（#495）
+                z.call(dict(cmd="playback.player.place", x=10, y=9, facing="up"))
+                talked = z.call(dict(cmd="playback.player.talk"))
+                assert not talked["playback"]["active"] and "この人物にはスクリプトがありません" in talked["status"]["left"], talked
+                z.call(dict(cmd="preview.player", enabled=False))
+                print("OK スクリプトの無い人物に話しかけると「この人物にはスクリプトがありません」")
             assert checked, "文が出なかった"
             print(f"OK 素の ROM の文 {len(checked)} 件の字が ROM のフォントの絵と同じ")
             assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before

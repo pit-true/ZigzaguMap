@@ -8,6 +8,7 @@ import { autoId } from "../form/controls";
 import { SuggestInput } from "../form/SuggestInput";
 import { FR_SPECIES_COUNT, speciesLabel, speciesNameProvider } from "./SpeciesNames";
 import { shownWild } from "./WildTab";
+import { scheduleIdleGc } from "../../util/idleGc";
 
 /** 表の列（並べ替えの鍵）。 */
 type Column = 0 | 1 | 2 | 3 | 4 | 5;
@@ -124,6 +125,8 @@ export async function openWildSearch(host: WildSearchHost): Promise<void> {
     rows = searchSpecies(maps, target, time.selectedIndex === 0 ? null : time.selectedIndex - 1).map((r) => ({ ...r, name: names.get(`${r.map.bank}.${r.map.map}`) ?? "" }));
     info.textContent = rows.length === 0 ? wt.searchNone : wt.searchCount(rows.length, new Set(rows.map((r) => `${r.map.bank}.${r.map.map}`)).size, Math.round(performance.now() - t0));
     render();
+    // 全マップを読んだごみ（時間帯ごとの表を含む）を、落ち着いたら GC して OS へ返す（#496）
+    scheduleIdleGc(true);
   };
 
   const top = document.createElement("div");

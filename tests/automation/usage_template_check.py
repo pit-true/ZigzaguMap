@@ -68,10 +68,11 @@ def main() -> int:
         f = z.call({"cmd": "getField", "id": "event.person.flagUnused"})
         check(not f["visible"], "プロジェクトフォルダが無いと「未使用」ボタンは出ない")
         z.call({"cmd": "mouse", "target": "event", "cell": [1, 1], "action": "rightClick"})
-        # 空いたマスの右クリックは「ここに○○を追加」（#304）の 4 つだけ。プロジェクトフォルダが要る「ここにひな形を置く」と落とし物は出ない
+        # 空いたマスの右クリックは「ここに○○を追加」（#304）の 4 つと「ここに仮の主人公を置く」（#457）だけ。
+        # プロジェクトフォルダが要る「ここにひな形を置く」と落とし物は出ない
         menu = z.call({"cmd": "contextMenu.state"})
         ids = [i["id"] for i in menu["items"]] if menu else []
-        check(ids == ["add.person", "add.sign", "add.trap", "add.warp"],
+        check(ids == ["add.person", "add.sign", "add.trap", "add.warp", "placePlayer"],
               f"プロジェクトフォルダが無いと空いたマスの右クリックに「ここにひな形を置く」と落とし物は出ない（{ids}）")
         z.call({"cmd": "key", "key": "Escape"})
         try:

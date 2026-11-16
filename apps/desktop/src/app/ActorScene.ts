@@ -25,6 +25,13 @@ export async function prepareActorScene(session: ProjectSession): Promise<void> 
   await value.loading;
 }
 
+/** 人物の絵の写しを手放す（仮の主人公・人物を動かすを止めたとき。次に描くときに読み直す。#496）。 */
+export function releaseActorScene(session: ProjectSession | null): void {
+  const value = session ? sessions.get(session) : undefined;
+  if (!value) return;
+  value.images.clear(); value.effects = undefined; value.emotions = undefined;
+}
+
 /** NPC・再生・仮の主人公の画面と書き出しが共用する、ROMの人物と前景の合成。 */
 export function renderActorScene(
   session: ProjectSession,

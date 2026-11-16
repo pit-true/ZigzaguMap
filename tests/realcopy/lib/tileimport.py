@@ -50,6 +50,48 @@ def sample_png(path: pathlib.Path, width: int = 48, height: int = 32) -> None:
     path.write_bytes(png)
 
 
+def tileimport_edit(z: Zigzagu, check, log, png: pathlib.Path) -> dict[tuple[int, int], str]:
+    """3.0 は今の副タイルセットへ、3.1 は新しい副タイルセットへ取り込んで塗る。返すのは塗った後のマップの絵。"""
+    expected: dict[tuple[int, int], str] = {}
+    for (bank, map_), target in TARGETS:
+        z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+        r = z.call({"cmd": "tileset.importImage", "paths": [str(png)], "target": target, "stamp": f"取り込みの確認 {bank}.{map_}"})
+        plan = r["plan"]
+        log(f"{bank}.{map_}（{target}）: 新しいタイル {plan['tiles']['created']}、ブロック {plan['blocks']['needed']}、本 {plan['palettes']['opened']}、{r['ms']}ms、問題 {[p['code'] for p in plan['problems']]}")
+        check(r["done"], f"{bank}.{map_} に取り込める（{target}）")
+        if not r["done"]:
+            continue
+        cells = [{"x": i % plan["cellsWide"], "y": i // plan["cellsWide"], "block": b} for i, b in enumerate(plan["cells"]) if b >= 0]
+        z.call({"cmd": "command", "name": "paintBlocks", "args": {"bank": bank, "map": map_, "cells": cells}})
+        expected[(bank, map_)] = z.call({"cmd": "canvasPng", "target": "map"})["png"]
+    return expected
+
+
+def tileimport_check_export(fx: Fixture, res: dict, check, log) -> None:
+    """出力したタイルセット（TileCount は 16 の倍数、tiles.png は 16 色、副タイルセットができる）。"""
+    written = [w.replace("\\", "/") for w in (res.get("written", []) if isinstance(res, dict) else [])]
+    tilesets = [w for w in written if w.endswith("tileset.json")]
+    log(f"出力: 書いた {len(written)} 件（タイルセット {tilesets}）")
+    for w in tilesets:
+        p = pathlib.Path(w) if pathlib.Path(w).is_absolute() else fx.project_path / w
+        data = json.loads(p.read_text(encoding="utf-8"))
+        check(data["TileCount"] % 16 == 0, f"{p.parent.name} の TileCount（{data['TileCount']}）が 16 の倍数")
+        raw = (p.parent / "tiles.png").read_bytes()
+        plte = raw.index(b"PLTE")
+        n = struct.unpack(">I", raw[plte - 4 : plte])[0] // 3
+        check(n == 16, f"{p.parent.name} の tiles.png が 16 色（{n}）")
+    check(any("secondary_" in w for w in tilesets), "取り込んだ副タイルセットが maps/tilesets に出力される")
+
+
+def tileimport_check_maps(z: Zigzagu, expected: dict[tuple[int, int], str], check, where: str) -> None:
+    """開き直した後のマップの絵が、取り込んで塗った直後と同じ。"""
+    for (bank, map_), png_b64 in expected.items():
+        z.call({"cmd": "selectMap", "bank": bank, "map": map_})
+        z.call({"cmd": "tab", "name": "map"})
+        time.sleep(0.2)
+        check(z.call({"cmd": "canvasPng", "target": "map"})["png"] == png_b64, f"{where} {bank}.{map_} の絵が出力の前と同じ")
+
+
 def tileimport_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log_dir: pathlib.Path) -> None:
     snap = TextSnapshot(fx.project_path, fx.copy_root)
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -57,45 +99,17 @@ def tileimport_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log
     sample_png(png)
     try:
         z.open_fixture(fx)
-        expected: dict[tuple[int, int], str] = {}
-        for (bank, map_), target in TARGETS:
-            z.call({"cmd": "selectMap", "bank": bank, "map": map_})
-            r = z.call({"cmd": "tileset.importImage", "paths": [str(png)], "target": target, "stamp": f"取り込みの確認 {bank}.{map_}"})
-            plan = r["plan"]
-            log(f"{bank}.{map_}（{target}）: 新しいタイル {plan['tiles']['created']}、ブロック {plan['blocks']['needed']}、本 {plan['palettes']['opened']}、{r['ms']}ms、問題 {[p['code'] for p in plan['problems']]}")
-            check(r["done"], f"{bank}.{map_} に取り込める（{target}）")
-            if not r["done"]:
-                continue
-            cells = [{"x": i % plan["cellsWide"], "y": i // plan["cellsWide"], "block": b} for i, b in enumerate(plan["cells"]) if b >= 0]
-            z.call({"cmd": "command", "name": "paintBlocks", "args": {"bank": bank, "map": map_, "cells": cells}})
-            expected[(bank, map_)] = z.call({"cmd": "canvasPng", "target": "map"})["png"]
+        expected = tileimport_edit(z, check, log, png)
         patch = PATCHES / f"map_project-pillow-{fx.name}.patch"
         check(_apply_patch(fx.project_path, patch, log, ("scripts/map_project.py", "_import_pil_image")), f"写しの map_project.py に {patch.name} を当てる")
-        res = z.export()
-        written = [w.replace("\\", "/") for w in (res.get("written", []) if isinstance(res, dict) else [])]
-        tilesets = [w for w in written if w.endswith("tileset.json")]
-        log(f"出力: 書いた {len(written)} 件（タイルセット {tilesets}）")
-        for w in tilesets:
-            p = pathlib.Path(w) if pathlib.Path(w).is_absolute() else fx.project_path / w
-            data = json.loads(p.read_text(encoding="utf-8"))
-            check(data["TileCount"] % 16 == 0, f"{p.parent.name} の TileCount（{data['TileCount']}）が 16 の倍数")
-            tiles_png = p.parent / "tiles.png"
-            raw = tiles_png.read_bytes()
-            plte = raw.index(b"PLTE")
-            n = struct.unpack(">I", raw[plte - 4 : plte])[0] // 3
-            check(n == 16, f"{p.parent.name} の tiles.png が 16 色（{n}）")
-        check(any("secondary_" in w for w in tilesets), "取り込んだ副タイルセットが maps/tilesets に出力される")
+        tileimport_check_export(fx, z.export(), check, log)
         r = build_fixture(fx, log_dir, timeout or 3600)
         log(r.summary())
         check(r.ok, "写しのビルドが通る")
         if not r.ok:
             return
-        rom_path = fx.path(f"{fx.build.cwd}/{fx.build.output}")
-        z.open(rom_path, None)
-        for (bank, map_), png_b64 in expected.items():
-            z.call({"cmd": "selectMap", "bank": bank, "map": map_})
-            time.sleep(0.2)
-            check(z.call({"cmd": "canvasPng", "target": "map"})["png"] == png_b64, f"できた ROM を開き直した {bank}.{map_} の絵が出力の前と同じ")
+        z.open(fx.path(f"{fx.build.cwd}/{fx.build.output}"), None)
+        tileimport_check_maps(z, expected, check, "できた ROM を開き直した")
     finally:
         changed = snap.restore()
         log(f"写しのテキストファイルを元に戻した（{changed} 件）")

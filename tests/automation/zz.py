@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import shutil
 import socket
 import subprocess
 import time
@@ -107,3 +108,56 @@ class Zigzagu:
                     self.proc.wait(10)
         finally:
             self.proc = None
+
+
+# ---- 作業者ごとのテストで同じだった部品（Phase6 の仕上げ #493 でまとめた） ----
+
+# 再生のテストでプロジェクトの写しに写すもの（スクリプトの確認に足りる分だけ）
+PROJECT_DIRS = ["assembly", "strings", "maps"]
+PROJECT_FILES = ["xse_commands.s", "xse_defines.s", "asm_defines.s", "eventscripts", "charmap.tbl", "zigzagumap.json", "BPRJ.ld"]
+
+
+def copy_project(src: pathlib.Path, work: pathlib.Path) -> pathlib.Path:
+    """プロジェクトの写しを work/project に作り直す（元のフォルダには書かない）。前のテストが残した zz_*.s は消す。"""
+    src, work = pathlib.Path(src).resolve(), pathlib.Path(work).resolve()
+    if work == src or src in work.parents:
+        raise SystemExit(f"作業フォルダが元のフォルダの中です: {work}")
+    dst = work / "project"
+    if dst.exists():
+        shutil.rmtree(dst)
+    dst.mkdir(parents=True)
+    for d in PROJECT_DIRS:
+        if (src / d).is_dir():
+            shutil.copytree(src / d, dst / d)
+    for f in PROJECT_FILES:
+        if (src / f).is_file():
+            shutil.copy2(src / f, dst / f)
+    for f in (dst / "assembly/overworld_scripts").glob("zz_*.s"):
+        f.unlink()
+    return dst
+
+
+def wait_window(z: Zigzagu, label: str, present: bool = True, timeout: float = 20) -> bool:
+    """別ウィンドウ label が開いて使えるようになる（present=False なら閉じる）まで待つ。"""
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        wins = {w["label"]: w for w in z.call({"cmd": "windows"})}
+        if present and wins.get(label, {}).get("ready"):
+            return True
+        if not present and label not in wins:
+            return True
+        time.sleep(0.2)
+    return False
+
+
+def wait_editor(z: Zigzagu, timeout: float = 30) -> None:
+    """スクリプトエディタの窓が命令に答えるまで待つ（答えなければ最後のエラーを投げる）。"""
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            z.call({"cmd": "editor.state", "window": "script-editor"})
+            return
+        except AppError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.2)

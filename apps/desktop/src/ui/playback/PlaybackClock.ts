@@ -1,3 +1,5 @@
+import { MAX_ELAPSED_MS } from "../../app/GameClock";
+
 /** 再生中だけrequestAnimationFrameから呼ぶ時計。停止中にはタイマーを持たない。 */
 export class PlaybackClock {
   private position = 0;
@@ -29,7 +31,7 @@ export class PlaybackClock {
   tick(timestamp: number, stopAt: number | null = null): number {
     if (!this.active || !Number.isFinite(timestamp)) return this.frame;
     if (this.previous !== null) {
-      const elapsed = Math.max(0, Math.min(250, timestamp - this.previous));
+      const elapsed = Math.max(0, Math.min(MAX_ELAPSED_MS, timestamp - this.previous));
       this.position = Math.min(this.lastFrame, this.position + elapsed * 60 / 1000 * this.multiplier);
     }
     this.previous = timestamp;

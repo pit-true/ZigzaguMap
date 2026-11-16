@@ -252,8 +252,12 @@ export class Timeline {
     let shakeX = 0;
     let shakeY = 0;
     for (const s of this.shakes) {
-      if (f < s.start || f >= s.end) continue;
-      const sign = Math.floor((f - s.start) / Math.max(1, s.interval)) % 2 === 0 ? 1 : -1;
+      // 揺れのタスクは作ったフレームから数え、間隔ごとに向きを反転してから画面をずらす（最初のずれは −揺れ幅）。
+      // 最後の反転のフレームで画面を元に戻す（素の BPRJ の KodaiMoveTask 0x080CBE50・MapViewInit 0x0805A6B4）。
+      if (f < s.start || f >= s.end - 1) continue;
+      const k = Math.floor((f - s.start + 1) / Math.max(1, s.interval));
+      if (k === 0) continue;
+      const sign = k % 2 === 0 ? 1 : -1;
       shakeX = s.dx * sign;
       shakeY = s.dy * sign;
     }

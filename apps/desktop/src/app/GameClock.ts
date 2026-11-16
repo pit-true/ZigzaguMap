@@ -9,8 +9,8 @@
 
 /** GBA の 1 フレームの長さ（ms）。 */
 export const GBA_FRAME_MS = (1000 * 280896) / 16777216;
-/** 1 回の呼び出しで進める時間の上限（ms）。 */
-const MAX_ELAPSED_MS = 250;
+/** 1 回の呼び出しで進める時間の上限（ms）。再生の時計（PlaybackClock）も同じ上限を使う。 */
+export const MAX_ELAPSED_MS = 250;
 
 /** requestAnimationFrame の代わり（テストで差し替える）。 */
 export interface ClockScheduler {

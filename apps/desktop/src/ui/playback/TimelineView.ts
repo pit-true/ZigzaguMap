@@ -26,6 +26,9 @@ export class TimelineView {
   /** 待つ命令（waitdooranim）の帯（#474）。 */
   private readonly waits: { start: number; until: number; element: HTMLElement }[] = [];
 
+  /** 人物の行の見出し（イベントの欄の「人No.」に合わせる。PlaybackController が入れる）。 */
+  personName: (localId: number) => string = (localId) => `${t.person} ${localId}`;
+
   constructor(private readonly seek: (frame: number) => void, private readonly openSource: (source: PlaybackSource) => void) {
     this.element.className = "playback-timeline"; this.element.dataset["autoId"] = "playback.timeline";
     this.content.className = "playback-timeline-content";
@@ -81,7 +84,7 @@ export class TimelineView {
       global.append(button);
     });
     for (const track of timeline.tracks) {
-      const title = track.id === PLAYER_ID ? t.player : track.id === CAMERA_ID ? t.camera : `${t.person} ${track.id}`;
+      const title = track.id === PLAYER_ID ? t.player : track.id === CAMERA_ID ? t.camera : this.personName(track.id);
       const trackRow = row(title, `playback.track.${track.id}`);
       const image = sprites.image(track.initial.graphicsId);
       if (image) { const portrait = canvasOf(image); portrait.className = "playback-time-portrait"; trackRow.firstElementChild!.prepend(portrait); }

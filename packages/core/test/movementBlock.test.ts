@@ -119,6 +119,8 @@ describe("移動データの書き戻し（#449）", () => {
     const files = [
       { path: "a.s", text: "m_W: .byte walk_up, end_m\n\tapplymovement PLAYER m_W\n" },
       { path: "b.s", text: "@ m_W\n\tapplymovement 1, m_W\n\tapplymovement 2 m_Wx\n" },
+      // シンボルの宣言は使っている所に数えない
+      { path: "c.s", text: ".global m_W\n\t.globl m_W\n" },
     ];
     expect(countMovementReferences(files, "m_W")).toEqual([
       { path: "a.s", line: 1 },
