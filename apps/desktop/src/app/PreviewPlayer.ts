@@ -16,7 +16,8 @@ export interface PlayerPlacement {
   readonly gender: "male" | "female";
   readonly facing: MovementDirection;
 }
-interface Layer { readonly view: MapView; readonly canvas: HTMLCanvasElement; readonly handle: HTMLDivElement }
+/** shade は枠と外側の暗さ（Canvas と別の要素にし、Canvas を描き直しても大きな影を描き直さない。#471）。 */
+interface Layer { readonly view: MapView; readonly canvas: HTMLCanvasElement; readonly shade: HTMLDivElement; readonly handle: HTMLDivElement }
 const PAD = { left: 8, top: 6, right: 8, bottom: 6 };
 const NO_PAD = { left: 0, top: 0, right: 0, bottom: 0 };
 const DIRECTIONS: readonly MovementDirection[] = ["down", "up", "left", "right"];
@@ -26,6 +27,8 @@ export class PreviewPlayer {
   private active = false;
   private placement: PlayerPlacement | null = null;
   private playback: PlaybackState | null = null;
+  /** 人物を動かしている間（#471）の人物。null ならイベントの位置に止めて描く。 */
+  private npcActors: (() => readonly PlaybackActorState[]) | null = null;
   private oldFrame = false;
   private missingCount = 0;
   private outside: ((x: number, y: number) => number | null) | undefined;
@@ -90,7 +93,7 @@ export class PreviewPlayer {
     this.token++; this.outside = undefined;
     this.controls.remove();
     for (const layer of Object.values(this.layers)) {
-      layer.canvas.hidden = true; layer.handle.hidden = true;
+      layer.canvas.hidden = true; layer.handle.hidden = true; layer.shade.hidden = true;
       layer.canvas.width = 0; layer.canvas.height = 0;
       layer.view.setPreviewMargins(NO_PAD);
     }
@@ -110,7 +113,10 @@ export class PreviewPlayer {
     if (moved) this.onStep?.({ ...next });
   }
 
-  /** 外から絵だけを描き直す（タイルアニメ・ドアのフレームが変わったとき。#473・#474）。 */
+  /** 人物を動かす（#471）から呼ぶ。null でイベントの位置の止め絵へ戻る。 */
+  setNpcActors(source: (() => readonly PlaybackActorState[]) | null): void { this.npcActors = source; this.draw(); }
+
+  /** 外から絵だけを描き直す（人物が動いたとき #471、タイルアニメ・ドアのフレームが変わったとき #473・#474）。 */
   refresh(): void { this.draw(); }
 
   /** 再生画面から呼ぶ。nullで、再生前の仮の主人公の配置へ戻る。 */
@@ -147,6 +153,8 @@ export class PreviewPlayer {
   private makeLayer(view: MapView, tab: AidTab): Layer {
     const canvas = document.createElement("canvas");
     canvas.className = "actor-preview-image"; canvas.hidden = true; canvas.width = 0; canvas.height = 0;
+    const shade = document.createElement("div");
+    shade.className = "actor-preview-shade"; shade.hidden = true;
     canvas.dataset["autoId"] = `preview.${tab}.frame`;
     const handle = document.createElement("div");
     handle.className = "actor-preview-handle"; handle.hidden = true; handle.tabIndex = 0; handle.title = t.hint;
@@ -181,8 +189,8 @@ export class PreviewPlayer {
         this.setPlayer({ facing: direction, x: p.x + (direction === "right" ? 1 : direction === "left" ? -1 : 0), y: p.y + (direction === "down" ? 1 : direction === "up" ? -1 : 0) });
       } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.onTalk?.({ ...this.placement }); }
     });
-    view.stage.append(canvas, handle);
-    return { view, canvas, handle };
+    view.stage.append(shade, canvas, handle);
+    return { view, canvas, shade, handle };
   }
 
   private draw(): void {
@@ -194,6 +202,7 @@ export class PreviewPlayer {
       const on = layer === active;
       layer.view.setPreviewMargins(on ? PAD : NO_PAD);
       layer.canvas.hidden = !on; layer.handle.hidden = !on || !!this.playback;
+      layer.shade.hidden = !on || !this.state.settings.data.playerView;
       if (!on) { layer.canvas.width = 0; layer.canvas.height = 0; }
     }
     if (!active) { this.controls.remove(); return; }
@@ -208,7 +217,7 @@ export class PreviewPlayer {
     const elevation = map.doc.grid.getMovement(p.x, p.y) >> 2;
     const player = actor(PLAYER_ID, PLAYER_GRAPHICS[p.gender], p.x, p.y, p.facing, elevation > 0 && elevation < 15 ? elevation : 3);
     const actors = this.playback?.actors ?? [
-      ...(map.doc.events?.persons ?? []).map(person => actor(person.localId, person.graphicsId, person.x, person.y, defaultFacingOf(person.movementType), person.elevation)), player,
+      ...(this.npcActors?.() ?? (map.doc.events?.persons ?? []).map(person => actor(person.localId, person.graphicsId, person.x, person.y, defaultFacingOf(person.movementType), person.elevation))), player,
     ];
     const frame = this.frame!;
     const result = renderActorScene(session, map, frame, actors, undefined, this.outside);
@@ -218,12 +227,14 @@ export class PreviewPlayer {
       this.state.setStatus(missing ? t.missing(missing) : t.active, undefined, missing > 0);
     }
     const canvas = active.canvas;
-    canvas.width = 240; canvas.height = 160;
+    // 大きさを入れ直すと Canvas の領域を作り直すので、変わるときだけ（人物を動かす間は毎フレーム描くため。#471）
+    if (canvas.width !== 240 || canvas.height !== 160) { canvas.width = 240; canvas.height = 160; }
     canvas.getContext("2d")!.putImageData(new ImageData(result.image.data, 240, 160), 0, 0);
     const scale = active.view.cellSize / 16, origin = active.view.originPx;
     canvas.style.left = `${origin.x + frame.x * scale}px`; canvas.style.top = `${origin.y + frame.y * scale}px`;
     canvas.style.width = `${240 * scale}px`; canvas.style.height = `${160 * scale}px`;
     canvas.classList.toggle("framed", this.state.settings.data.playerView);
+    Object.assign(active.shade.style, { left: canvas.style.left, top: canvas.style.top, width: canvas.style.width, height: canvas.style.height });
     const info = session.overworldSprites?.info(player.graphicsId);
     const position = actorImagePosition(player, info?.width ?? 16, info?.height ?? 32);
     active.handle.style.left = `${origin.x + position.x * scale}px`; active.handle.style.top = `${origin.y + position.y * scale}px`;

@@ -1,4 +1,4 @@
-import { EmotionSprites, ProjectEmotes, emotionRise, hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneView } from "@zigzagumap/core";
+import { EmotionSprites, ProjectEmotes, emotionRise, hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneOptions, type SceneView } from "@zigzagumap/core";
 import type { OpenMap, ProjectSession } from "./ProjectSession";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
 import { sceneAnimation } from "./animation/sceneAnimation";
@@ -32,6 +32,7 @@ export function renderActorScene(
   actors: readonly PlaybackActorState[],
   tint: ActiveTint | null = activeTint(),
   outside?: (x: number, y: number) => number | null,
+  options?: SceneOptions,
 ) {
   const sprites = session.overworldSprites;
   const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
@@ -94,6 +95,6 @@ export function renderActorScene(
   const cfru = session.projectDir !== null || hasTripleLayerBlocks(session.project.rom, session.project.game.offsets);
   // タイルアニメとドア（#473・#474）。動かしていなければ null で、今までと同じ描き手を使う。
   const animation = sceneAnimation()?.forScene(session, map, tint) ?? null;
-  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, animation?.cellAt);
+  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, animation?.cellAt, options);
   return { ...scene, missing };
 }

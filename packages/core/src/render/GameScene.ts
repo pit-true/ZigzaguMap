@@ -22,6 +22,11 @@ export interface SceneCell {
   readonly mode: number;
 }
 
+/** `overlay`: 背景色と人物より下のBGを描かず、透明な画像に人物と、人物の上に来るBGだけを描く（マップ画像に重ねる用）。 */
+export interface SceneOptions {
+  readonly overlay?: boolean;
+}
+
 export interface SceneView {
   readonly x: number;
   readonly y: number;
@@ -37,13 +42,16 @@ export function renderGameScene(
   actors: readonly SceneActor[],
   cfru: boolean,
   cellAt?: (x: number, y: number) => SceneCell | null,
+  options: SceneOptions = {},
 ): { readonly image: RgbaImage; readonly unknownBlocks: readonly number[] } {
   if (!Number.isInteger(view.width) || !Number.isInteger(view.height) || view.width < 1 || view.height < 1 || view.width > 4096 || view.height > 4096 || !Number.isFinite(view.x) || !Number.isFinite(view.y)) {
     throw new RangeError("Scene view must have finite coordinates and dimensions from 1 to 4096");
   }
   const image = createImage(view.width, view.height);
-  const color = renderer.backdropColor();
-  for (let at = 0; at < image.data.length; at += 4) image.data.set(color, at);
+  if (!options.overlay) {
+    const [r, g, b, a] = renderer.backdropColor();
+    new Uint32Array(image.data.buffer, image.data.byteOffset, image.data.length >> 2).fill(new Uint32Array(new Uint8Array([r, g, b, a]).buffer)[0]!);
+  }
   const unknown = new Set<number>();
   const visible = actors.filter(a => a.state.visible && a.state.present && a.state.graphicsId >= 0)
     .map(actor => ({
@@ -52,12 +60,14 @@ export function renderGameScene(
       subpriority: actor.subpriority ?? actor.state.subpriority ?? actorSubpriority(actor.state.elevation, actor.state.pixelY, view.y),
     }))
     .sort((a, b) => b.subpriority - a.subpriority || b.actor.state.id - a.actor.state.id);
+  const top = Math.max(-1, ...visible.map(v => v.priority));
   const objects = visible.flatMap(entry => [
     { ...entry, effect: false, order: entry.actor.state.id },
     ...(entry.actor.mark && entry.actor.state.mark ? [{ ...entry, priority: 1, subpriority: 0x53, effect: true, order: 0x100 + entry.actor.state.id }] : []),
   ]).sort((a, b) => b.subpriority - a.subpriority || b.order - a.order);
   for (const plane of [3, 2, 1, 0] as const) {
-    if (plane) {
+    // 重ね描きでは、人物より上に来るBGだけを描く（下のBGは呼び出し側のマップ画像にある）。
+    if (plane && (!options.overlay || plane < top)) {
       for (let y = Math.floor(view.y / 16); y < Math.ceil((view.y + view.height) / 16); y++) {
         for (let x = Math.floor(view.x / 16); x < Math.ceil((view.x + view.width) / 16); x++) {
           const cell = cellAt?.(x, y);
@@ -97,11 +107,13 @@ export function renderGameScene(
 /** 画像の外を切り取り、透明でない画素を上書きする（ROMの画像はalphaが0か255）。 */
 function blit(dest: RgbaImage, source: { readonly width: number; readonly height: number; readonly data: Uint8ClampedArray }, left: number, top: number): void {
   const ox = Math.round(left), oy = Math.round(top);
+  const s = source.data, d = dest.data;
+  const x0 = Math.max(0, -ox), x1 = Math.min(source.width, dest.width - ox);
   for (let y = Math.max(0, -oy); y < Math.min(source.height, dest.height - oy); y++) {
-    for (let x = Math.max(0, -ox); x < Math.min(source.width, dest.width - ox); x++) {
-      const from = (y * source.width + x) * 4;
-      if (!source.data[from + 3]) continue;
-      dest.data.set(source.data.subarray(from, from + 4), ((y + oy) * dest.width + x + ox) * 4);
+    let from = (y * source.width + x0) * 4, to = ((y + oy) * dest.width + x0 + ox) * 4;
+    for (let x = x0; x < x1; x++, from += 4, to += 4) {
+      if (!s[from + 3]) continue;
+      d[to] = s[from]!; d[to + 1] = s[from + 1]!; d[to + 2] = s[from + 2]!; d[to + 3] = s[from + 3]!;
     }
   }
 }

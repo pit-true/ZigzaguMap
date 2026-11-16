@@ -66,6 +66,8 @@ import { PenExtras } from "./penExtras";
 import { ToolExtras } from "./toolExtras";
 import { ViewAids } from "./viewAids";
 import { PreviewPlayer } from "./PreviewPlayer";
+import { GameClock } from "./GameClock";
+import { NpcMotion } from "./NpcMotion";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { MapAnimations } from "./animation/MapAnimations";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
@@ -143,6 +145,10 @@ export class App implements ActionTarget {
   /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
   readonly aids: ViewAids;
   readonly previewPlayer: PreviewPlayer;
+  /** ループする時計（#471。人物の移動タイプ・タイルアニメが共用する）。 */
+  readonly gameClock = new GameClock();
+  /** 表示 > 人物を動かす（#471）。 */
+  readonly npcMotion: NpcMotion;
   readonly playback: PlaybackEntry;
   /** タイルアニメとドア（#473・#474）。既定はオフ。 */
   readonly mapAnimations: MapAnimations;
@@ -287,6 +293,7 @@ export class App implements ActionTarget {
     this.playback = new PlaybackEntry(this);
     this.mapAnimations = new MapAnimations(state);
     this.mapAnimations.onChange = () => this.previewPlayer.refresh();
+    this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

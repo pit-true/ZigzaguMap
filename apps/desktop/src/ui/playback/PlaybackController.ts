@@ -32,6 +32,8 @@ export class PlaybackController {
   private raf: number | null = null;
   private generation = 0;
   private hadPreview = false;
+  /** 人物を動かす（#471）の止めの解除。 */
+  private npcRelease: (() => void) | null = null;
   private gender: PlayerGender = "male";
   private facing: MovementDirection | null = null;
   private absent: readonly number[] = [];
@@ -107,6 +109,8 @@ export class PlaybackController {
     this.gender = this.app.state.settings.data.playbackGender === "female" ? "female" : "male";
     this.facing = null; this.absent = []; this.answers.clear(); this.choices.clear();
     this.hadPreview = this.app.previewPlayer.enabled;
+    // 再生中は人物の自分の動き（表示 > 人物を動かす、#471）を止める（A-5）
+    this.npcRelease ??= this.app.npcMotion.hold("playback");
     this.time = new PlaybackTime(this.app.timeOfDay, () => session === this.app.state.session);
     this.scrolls = this.views().map(view => ({ view, left: view.element.scrollLeft, top: view.element.scrollTop, hidden: view.layer.hidden }));
     try {
@@ -127,6 +131,7 @@ export class PlaybackController {
     this.clock = null; this.timeline = null; this.animation = null; this.data = null; this.request = null;
     this.bar.element.remove(); this.consumed.clear();
     this.timelineView.clear(); this.bar.clear(); this.answers.clear(); this.choices.clear();
+    this.npcRelease?.(); this.npcRelease = null;
     if (hadState) {
       this.app.previewPlayer.setPlayback(null);
       if (!this.hadPreview) this.app.previewPlayer.stop(true);
