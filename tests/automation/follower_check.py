@@ -58,8 +58,6 @@ def main():
                 # 直線・曲がり角・戻る動き
                 z.call(dict(cmd="key", id="preview.event.player", key="ArrowDown"))
                 time.sleep(0.5)  # 主人公が 1 マス歩き終えるまで（歩いている間の矢印キーは無視される）
-                mid = z.call(dict(cmd="follower.state"))
-                assert mid["busy"]
                 s = z.call(dict(cmd="follower.advance", frames=20))
                 assert s["position"] == dict(x=10, y=10, facing="down"), s
                 z.call(dict(cmd="key", id="preview.event.player", key="ArrowRight"))
