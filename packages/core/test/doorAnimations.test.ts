@@ -115,13 +115,13 @@ it("アニメ無しの開け閉めはその場で最後の絵・元のブロッ�
   expect(doorStateAt(table, lookup, [{ frame: 0, kind: "open", x: 1, y: 1 }], 5).results[0]!.reason).toBe("behavior");
 });
 
-it("waitdooranim はタスクが消えた次のフレームから続ける", () => {
+it("waitdooranim はタスクが消えた次のフレームで終わりに気づき、その次のフレームから続ける", () => {
   const { table, lookup } = syntheticDoors();
   const events: DoorEvent[] = [{ frame: 10, kind: "open", x: 2, y: 3 }];
-  expect(doorWaitResume(table, lookup, events, 10)).toBe(30);
-  expect(doorWaitResume(table, lookup, events, 29)).toBe(30);
-  expect(doorWaitResume(table, lookup, events, 40)).toBe(41);
-  expect(doorWaitResume(table, lookup, [], 5)).toBe(6);
+  expect(doorWaitResume(table, lookup, events, 10)).toBe(31);
+  expect(doorWaitResume(table, lookup, events, 29)).toBe(31);
+  expect(doorWaitResume(table, lookup, events, 40)).toBe(42);
+  expect(doorWaitResume(table, lookup, [], 5)).toBe(7);
 });
 
 function tileset(): Tileset {

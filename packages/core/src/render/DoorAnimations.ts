@@ -209,8 +209,10 @@ export function doorStateAt(table: DoorTable, lookup: DoorCellLookup, events: re
 /**
  * `waitdooranim`（waitdoor、0xAE）を `frame` で実行したとき、続きを実行するフレーム。
  * 待ちは次のフレームから毎回「タスクが無いか」を見る（VM_SetWait）。タスクは lastFrame のタスクの処理で消える。
+ * 待ちの関数が「終わった」と返したフレームは VM_Control（0x080690C4）が戻るだけなので、続きの命令はその次のフレーム
+ * （タスクがあれば lastFrame+2、無ければ命令の 2 フレーム後。素の BPRJ の 0x0806BE64 と VM_Control の逆アセンブルで確認）。
  */
 export function doorWaitResume(table: DoorTable, lookup: DoorCellLookup, events: readonly DoorEvent[], frame: number): number {
   const state = doorStateAt(table, lookup, events, frame);
-  return state.task ? Math.max(frame + 1, state.task.lastFrame + 1) : frame + 1;
+  return state.task ? Math.max(frame + 2, state.task.lastFrame + 2) : frame + 2;
 }

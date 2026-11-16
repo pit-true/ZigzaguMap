@@ -130,7 +130,8 @@ def main():
             assert cells[5] == cells[4] and cells[6] == cells[4]
             assert z.call(dict(cmd="door.state", frame=118))["task"]["lastFrame"] == 119
             assert z.call(dict(cmd="door.state", frame=119))["task"] is None
-            assert z.call(dict(cmd="door.wait", frame=100))["resume"] == 120
+            # タスクは 119 のタスクの処理で消え、120 のスクリプトの番で終わりに気づき、続きは 121（#493 で ROM の VM_Control と照合）
+            assert z.call(dict(cmd="door.wait", frame=100))["resume"] == 121
             busy = z.call(dict(cmd="door.run", kind="close", x=x, y=y, frame=110))
             assert busy["ok"] is False and busy["reason"] == "busy", busy
             z.call(dict(cmd="door.clear"))
