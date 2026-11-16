@@ -5,6 +5,7 @@ import type { PreviewPlayer } from "./PreviewPlayer";
 import type { AidTab } from "./viewAids";
 import type { MapView } from "../ui/map/MapView";
 import type { NpcPreview, NpcPreviewState } from "./NpcPreview";
+import type { NpcRanges } from "./NpcRanges";
 import { jaNpcMotion as t } from "../i18n/ja.npcMotion";
 import { errorText } from "../util/errors";
 
@@ -15,6 +16,8 @@ import { errorText } from "../util/errors";
 export class NpcMotion {
   private preview: NpcPreview | null = null;
   private loading: Promise<NpcPreview> | null = null;
+  private ranges: NpcRanges | null = null;
+  private rangesLoading: Promise<NpcRanges> | null = null;
   private readonly holds = new Map<string, number>();
   /** 今の NpcPreview の購読に掛けた止め（owner ごと）。 */
   private readonly releases = new Map<string, (() => void)[]>();
@@ -25,7 +28,12 @@ export class NpcMotion {
     private readonly player: PreviewPlayer,
     private readonly clock: GameClock,
     actions: Actions,
+    /** イベントタブで選んでいる人物（#472 の表示で強調する）。 */
+    private readonly selection: { readonly selected: () => number | null; readonly onSelect: (listener: () => void) => void },
   ) {
+    selection.onSelect(() => this.ranges?.update());
+    actions.register("view.npcRanges", () => this.rangesEnabled ? this.stopRanges() : this.startRanges().catch(error => state.setStatus(errorText(error), undefined, true)));
+    actions.registerCheck("view.npcRanges", () => this.rangesEnabled);
     actions.register("view.npcMotion", () => this.enabled ? this.stop() : this.start().catch(error => state.setStatus(errorText(error), undefined, true)));
     actions.registerCheck("view.npcMotion", () => this.enabled);
   }
@@ -78,8 +86,26 @@ export class NpcMotion {
     return this.preview?.snapshot ?? { enabled: false, frame: 0, seed: 0, holders: [], clock: this.clock.state, actors: [], missing: 0, cost: { ticks: 0, ms: 0 } };
   }
 
+  /** 表示 > 人物の移動範囲と視界（#472）。 */
+  get rangesEnabled(): boolean { return this.ranges?.enabled ?? false; }
+  async startRanges(): Promise<void> { await (await this.loadRanges()).start(); }
+  stopRanges(): void { if (this.ranges?.enabled) { this.ranges.stop(); this.state.setStatus(t.rangesOff); } }
+  /** 移動範囲と視界の今の表示（自動操作）。 */
+  get rangesSnapshot(): { enabled: boolean; rules: NpcRanges["spottingRules"] | null; persons: NpcRanges["info"] } {
+    return { enabled: this.rangesEnabled, rules: this.ranges?.spottingRules ?? null, persons: this.ranges?.enabled ? this.ranges.info : [] };
+  }
+
   private load(): Promise<NpcPreview> {
-    this.loading ??= import("./NpcPreview").then(({ NpcPreview }) => (this.preview = new NpcPreview(this.state, this.views, this.player, this.clock)));
+    this.loading ??= import("./NpcPreview").then(({ NpcPreview }) => {
+      const preview = new NpcPreview(this.state, this.views, this.player, this.clock);
+      preview.onChange = () => this.ranges?.update();
+      return (this.preview = preview);
+    });
     return this.loading;
+  }
+
+  private loadRanges(): Promise<NpcRanges> {
+    this.rangesLoading ??= import("./NpcRanges").then(({ NpcRanges }) => (this.ranges = new NpcRanges(this.state, this.views, () => this.preview?.simulation ?? null, this.selection.selected)));
+    return this.rangesLoading;
   }
 }

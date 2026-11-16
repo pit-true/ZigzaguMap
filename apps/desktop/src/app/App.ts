@@ -294,7 +294,13 @@ export class App implements ActionTarget {
     this.playback = new PlaybackEntry(this);
     this.mapAnimations = new MapAnimations(state);
     this.mapAnimations.onChange = () => this.previewPlayer.refresh();
-    this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions);
+    this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions, {
+      selected: () => {
+        const s = eventTab.selection;
+        return s.kind === "person" ? state.map?.doc.events?.persons[s.index]?.localId ?? null : null;
+      },
+      onSelect: (listener) => eventTab.onSelect(listener),
+    });
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

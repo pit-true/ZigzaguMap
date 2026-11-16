@@ -1,10 +1,11 @@
-import { ActorAnimator, actorImagePosition, BEHAVIOR_MASK, NpcSimulation, type NpcObstacle, type NpcSource, type NpcStatus, type NpcWorld, type PlaybackActorState } from "@zigzagumap/core";
+import { ActorAnimator, actorImagePosition, NpcSimulation, type NpcObstacle, type NpcSource, type NpcStatus, type NpcWorld, type PlaybackActorState } from "@zigzagumap/core";
 import type { EditorState } from "./EditorState";
 import type { ClockSubscription, GameClock } from "./GameClock";
 import type { PreviewPlayer } from "./PreviewPlayer";
 import type { AidTab } from "./viewAids";
 import type { MapView } from "../ui/map/MapView";
 import { renderActorScene } from "./ActorScene";
+import { npcSourcesOf, npcWorldOf } from "./npcWorld";
 import { jaNpcMotion as t } from "../i18n/ja.npcMotion";
 
 /** 自動操作に返す状態。 */
@@ -59,7 +60,12 @@ export class NpcPreview {
     for (const view of Object.values(views)) view.wakeListeners.push(() => { if (this.enabled && view === this.host) this.redrawAll(); });
   }
 
+  /** 人物の位置か向きが変わったときに呼ぶ（移動範囲と視界の表示 #472 が使う）。 */
+  onChange: (() => void) | null = null;
+
   get enabled(): boolean { return this.sim !== null; }
+  /** 今の計算（止まっていれば null）。 */
+  get simulation(): NpcSimulation | null { return this.sim; }
   /** 今のフレームの人物（仮の主人公の枠と共用）。 */
   get actors(): readonly PlaybackActorState[] { return this.actorsValue; }
 
@@ -68,13 +74,7 @@ export class NpcPreview {
     if (!map || !session) return;
     this.stop(true);
     this.seed = seed >>> 0;
-    const doc = map.doc;
-    const world: NpcWorld = {
-      width: doc.width,
-      height: doc.height,
-      movement: (x: number, y: number) => x >= 0 && y >= 0 && x < doc.width && y < doc.height ? doc.grid.getMovement(x, y) : null,
-      behavior: (x: number, y: number) => x >= 0 && y >= 0 && x < doc.width && y < doc.height ? map.tiles.triple.attribute(doc.grid.getBlock(x, y)) & BEHAVIOR_MASK : 0,
-    };
+    const world = npcWorldOf(map);
     const sources = this.sources();
     this.signature = JSON.stringify(sources);
     this.world = world;
@@ -88,6 +88,7 @@ export class NpcPreview {
     this.attach();
     const still = this.sim.status().filter(s => s.reason !== null).length;
     this.state.setStatus(t.started(sources.length - still, still));
+    this.onChange?.();
     this.state.emit("view");
   }
 
@@ -103,6 +104,7 @@ export class NpcPreview {
     this.state.movingPersons = false;
     this.player.setNpcActors(null);
     if (!quiet) this.state.emit("view");
+    this.onChange?.();
   }
 
   /** owner の名前で止める。 */
@@ -122,7 +124,9 @@ export class NpcPreview {
     }
     // 仮の主人公の画面は、画面の中の人物の絵か位置が変わったときだけ描き直す
     const frame = this.player.frame;
-    if (count > 0 && this.draw().some(r => frame && overlaps(r, frame))) this.player.refresh();
+    const changed = count > 0 ? this.draw() : [];
+    if (changed.some(r => frame && overlaps(r, frame))) this.player.refresh();
+    if (changed.length) this.onChange?.();
     this.cost.ticks++; this.cost.ms += performance.now() - begin;
   }
 
@@ -138,13 +142,7 @@ export class NpcPreview {
     };
   }
 
-  /** マップの人物（クローンは除く。別のマップの人物の写しなので、元のマップで動かす）。 */
-  private sources(): NpcSource[] {
-    return (this.state.map?.doc.events?.persons ?? []).filter(p => p.kind === 0).map(p => ({
-      localId: p.localId, graphicsId: p.graphicsId, x: p.x, y: p.y, elevation: p.elevation,
-      movementType: p.movementType, movementRangeX: p.movementRangeX, movementRangeY: p.movementRangeY,
-    }));
-  }
+  private sources(): NpcSource[] { return npcSourcesOf(this.state.map); }
 
   /** 仮の主人公を、人物の通れないマスとして渡す。 */
   private obstacles(): NpcObstacle[] {
