@@ -467,6 +467,20 @@ describe("再生の始めの状態（#453）", () => {
     expect(buildPlaybackStart({ events, trigger: { kind: "map" }, gender: "male", provisionalPlayer: { x: 2, y: 2, facing: "left" } }).player).toEqual({ x: 2, y: 2, facing: "left" });
   });
 
+  it("仮の主人公が話しかけた・踏んだときは、その位置と向きから始める（#457）", () => {
+    // 看板の右から左を向いて調べた（看板の向きの条件は呼ぶ側が見る）
+    const sign = buildPlaybackStart({ events, trigger: { kind: "sign", index: 4 }, gender: "male", origin: { x: 11, y: 10, facing: "left" } });
+    expect(sign.player).toEqual({ x: 11, y: 10, facing: "left" });
+    expect(sign.signSide).toBeNull();
+    // 左から歩いて踏んだ
+    const trap = buildPlaybackStart({ events, trigger: { kind: "trap", index: 0 }, gender: "male", origin: { x: 6, y: 6, facing: "right" } });
+    expect(trap.player).toEqual({ x: 6, y: 6, facing: "right" });
+    expect(trap.trapCondition).toEqual({ variable: 0x4050, value: 1 });
+    // 人物は隣から話しかけた向きのまま
+    const person = buildPlaybackStart({ events, trigger: { kind: "person", localId: 2 }, gender: "male", origin: { x: 6, y: 2, facing: "right" }, provisionalPlayer: { x: 0, y: 0, facing: "down" } });
+    expect(person.player).toEqual({ x: 6, y: 2, facing: "right" });
+  });
+
   it("人物は全員居て、外した人物は居ない。向きは移動タイプの基本の向き", () => {
     const s = buildPlaybackStart({ events, trigger: { kind: "map" }, gender: "male", absent: [2] });
     expect(s.actors.find((a) => a.id === 1)).toMatchObject({ facing: "left", present: true, flag: 0x30 });

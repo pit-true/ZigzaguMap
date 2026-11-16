@@ -30,6 +30,31 @@ export const playbackCommands: CommandTable = {
   "playback.choose": async (app, req) => {
     const controller = await app.playback.get(); controller.choose(str(req, "key"), int(req, "value")); await controller.ready(); return controller.state();
   },
+  "playback.player.place": async (app, req) => {
+    const gender = req["gender"], facing = req["facing"];
+    app.playback.placePlayer(int(req, "x"), int(req, "y"), {
+      ...(gender === "male" || gender === "female" ? { gender } : {}),
+      ...(facing === "down" || facing === "up" || facing === "left" || facing === "right" ? { facing } : {}),
+    });
+    await app.previewPlayer.ready();
+    return { player: app.previewPlayer.player };
+  },
+  "playback.player.move": async (app, req) => {
+    const direction = str(req, "direction");
+    if (direction !== "down" && direction !== "up" && direction !== "left" && direction !== "right") throw new Error("direction は down / up / left / right のいずれかです。");
+    await app.previewPlayer.walk(direction);
+    await app.playback.settled();
+    const controller = await app.playback.existing();
+    await controller?.ready();
+    return { player: app.previewPlayer.player, playback: controller?.state() ?? { active: false } };
+  },
+  "playback.player.talk": async app => {
+    app.previewPlayer.talk();
+    await app.playback.settled();
+    const controller = await app.playback.existing();
+    await controller?.ready();
+    return { player: app.previewPlayer.player, playback: controller?.state() ?? { active: false }, status: app.state.status };
+  },
   "playback.layout": async app => (await app.playback.existing())?.timelineUi.layoutInfo() ?? null,
   "playback.wheel": async (app, req) => {
     const controller = await app.playback.get(); controller.timelineUi.wheel(Number(req["delta"] ?? -100), Number(req["x"] ?? 200)); return controller.timelineUi.layoutInfo();

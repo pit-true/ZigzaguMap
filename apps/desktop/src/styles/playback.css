@@ -32,3 +32,4 @@
 .playback-game-message { position: relative; width: 480px; height: 96px; }
 .playback-game-message canvas { width: 480px; height: 96px; image-rendering: pixelated; }
 .playback-game-message-text { position: absolute; top: 18px; left: 32px; width: 416px; height: 64px; white-space: pre-wrap; overflow: auto; font: 20px/32px monospace; }
+.playback-condition { opacity: 0.85; font-size: 90%; }

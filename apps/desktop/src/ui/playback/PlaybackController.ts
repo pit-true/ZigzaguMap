@@ -1,4 +1,4 @@
-import { buildPlaybackStart, CHOICE_CANCEL, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackChoiceMark, type PlaybackMarker, type PlaybackTrigger, type PlayerGender, type Timeline } from "@zigzagumap/core";
+import { buildPlaybackStart, CHOICE_CANCEL, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackChoiceMark, type PlaybackMarker, type PlaybackTrigger, type PlayerGender, type ProvisionalPlayer, type Timeline } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import type { OpenMap } from "../../app/ProjectSession";
 import { prepareActorScene } from "../../app/ActorScene";
@@ -17,7 +17,14 @@ import { PlaybackTime } from "./PlaybackTime";
 import { matchesKey } from "../../app/keymap";
 import "../../styles/playback.css";
 
-export interface PlaybackRequest { readonly label?: string; readonly target?: ScriptTarget }
+export interface PlaybackRequest {
+  readonly label?: string;
+  readonly target?: ScriptTarget;
+  /** 仮の主人公が話しかけた・踏んだときの位置と向き（#457）。主人公はここから始める。 */
+  readonly origin?: ProvisionalPlayer;
+  /** 準備ができたらすぐ再生する（踏むスクリプト）。 */
+  readonly play?: boolean;
+}
 
 /** メインのマップ上の再生。終了時には仮配置とスクロールを戻し、マップのデータを書き換えない。 */
 export class PlaybackController {
@@ -82,7 +89,7 @@ export class PlaybackController {
 
   get active(): boolean { return this.clock !== null; }
   state() {
-    return this.clock && this.timeline && this.animation ? { active: true, playing: this.clock.playing, speed: this.clock.speed, lastFrame: this.timeline.lastFrame, ...this.animation.stateAt(this.clock.frame), issues: this.animation.issues } : { active: false };
+    return this.clock && this.timeline && this.animation ? { active: true, entry: this.entry, trigger: this.trigger, playing: this.clock.playing, speed: this.clock.speed, lastFrame: this.timeline.lastFrame, ...this.animation.stateAt(this.clock.frame), issues: this.animation.issues } : { active: false };
   }
   get result(): Timeline | null { return this.timeline; }
   get timelineUi(): TimelineView { return this.timelineView; }
@@ -121,6 +128,7 @@ export class PlaybackController {
       this.mount(); this.draw(); await this.ready();
       if (token !== this.generation) return;
       this.bar.element.focus({ preventScroll: true });
+      if (request.play) this.toggle();
     } catch (error) { this.stop(); throw error; }
   }
 
@@ -134,6 +142,7 @@ export class PlaybackController {
     this.npcRelease?.(); this.npcRelease = null;
     if (hadState) {
       this.app.previewPlayer.setPlayback(null);
+      if (this.hadPreview) this.app.previewPlayer.setPlayer({ gender: this.gender });
       if (!this.hadPreview) this.app.previewPlayer.stop(true);
       for (const saved of this.scrolls) {
         saved.view.layer.hidden = saved.hidden;
@@ -194,7 +203,8 @@ export class PlaybackController {
     if (!map || !data) return;
     if (!sprites) throw new Error(t.noSprites);
     const events = map.doc.events ?? { persons: [], warps: [], traps: [], signs: [] };
-    const start = buildPlaybackStart({ events, trigger: this.trigger, gender: this.gender, facing: this.facing, absent: this.absent, provisionalPlayer: this.hadPreview ? this.app.previewPlayer.player : null });
+    const start = buildPlaybackStart({ events, trigger: this.trigger, gender: this.gender, facing: this.facing, absent: this.absent, provisionalPlayer: this.hadPreview ? this.app.previewPlayer.player : null, origin: this.request?.origin ?? null });
+    this.bar.setCondition(start.trapCondition ? t.trapCondition(start.trapCondition.variable, start.trapCondition.value) : null);
     const keep = this.clock?.frame ?? 0;
     this.timeline = simulatePlayback({ project: data.project, entry: this.entry, start, answers: this.answers, choices: this.choices,
       elevationAt: (x, y) => x >= 0 && y >= 0 && x < map.doc.width && y < map.doc.height ? map.doc.grid.getMovement(x, y) >> 2 : null });
