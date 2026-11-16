@@ -30,8 +30,10 @@ export class PlaybackEntry {
     };
   }
   get(): Promise<PlaybackController> {
-    return this.loaded ??= import("../ui/playback/PlaybackController").then(module => new module.PlaybackController(this.app));
+    return this.loaded ??= import("../ui/playback/PlaybackController").then(module => (this.controller = new module.PlaybackController(this.app)));
   }
+  /** 読み込み済みの再生（天候の印を読む #498）。読み込む前は null。 */
+  controller: PlaybackController | null = null;
   async start(request: PlaybackRequest): Promise<void> { await (await this.get()).start(request); }
   async existing(): Promise<PlaybackController | null> { return this.loaded ? this.loaded : null; }
   /** 仮の主人公の踏む・話しかけるで始めた再生の準備が済むまで待つ。 */

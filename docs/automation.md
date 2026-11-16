@@ -25,9 +25,10 @@
 | `playback.settled` | なし | 画面の操作で始めた書き戻しと、読み直しが済むまで待つ |
 | `playback.layout` | なし | タイムラインの倍率 `scale`、横のスクロール、箱 `segments`（`left`・`width`・`top`・`active`）、印 `markers`、縦線 `cursor` の位置（画素） |
 | `playback.wheel` | `delta`（負で拡大）、`x`（部品の左端からの画素） | タイムラインの上で Ctrl＋ホイールを回したのと同じ |
+| `playback.message` | なし | メッセージの窓の今のページ（#497）。`page`・`pages`・止まる理由 `reason`、フォントを読んだ ROM `font`（`kana`・`kanji`。null は開いた ROM、`kanji` が無ければ漢字無し）、窓の左上 `origin` と倍率 `scale`、字 `items`（`kind: glyph/fallback/placeholder`、窓の中の `x`・`y`・`width`、`text`、`source: font/kanji`・`font`・`code`、補った理由 `reason`、色 `colors`）、はみ出し `overflowRight`・`overflowBelow`。文が出ていなければ null |
 | `playback.choose` | `key`（印の `choice.key`）、`value` | 選択肢の答え（LASTRESULT の値）を替えて計算し直す。今のフレームは保つ |
 
-再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`（見出しはイベントの欄の「人No.」と、スクリプトの番号 localId の両方。外した人物への `applymovement` は無視して印を出す。#494）。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<n>` は区間の箱（n は `playback.layout` の `segments` の並び順で、タイムラインの行を上から、行の中を左から数えたもの。`playback.timeline` の `segments` の番号ではない。その箱がタイムラインの何番目の区間かは、`playback.layout` の `segments[n].index` で分かり、`playback.edit` の `segment` にはこちらを渡す）、`playback.marker.<番号>` は全体の印、`playback.condition` は踏むスクリプトの条件、箱の右クリックのメニューの項目は `playback.edit.down`・`up`・`left`・`right`・`replace`・`insertBefore`・`insertAfter`・`repeat`・`delete`、差し替えの窓の一覧は `playback.replaceChoice`、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
+再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`（見出しはイベントの欄の「人No.」と、スクリプトの番号 localId の両方。外した人物への `applymovement` は無視して印を出す。#494）。`playback.details` は今のフレームの文や印、`playback.message` はメッセージの窓（Canvas と本文）です。`playback.timeline` はタイムラインの部品、`playback.segment.<n>` は区間の箱（n は `playback.layout` の `segments` の並び順で、タイムラインの行を上から、行の中を左から数えたもの。`playback.timeline` の `segments` の番号ではない。その箱がタイムラインの何番目の区間かは、`playback.layout` の `segments[n].index` で分かり、`playback.edit` の `segment` にはこちらを渡す）、`playback.marker.<番号>` は全体の印、`playback.condition` は踏むスクリプトの条件、箱の右クリックのメニューの項目は `playback.edit.down`・`up`・`left`・`right`・`replace`・`insertBefore`・`insertAfter`・`repeat`・`delete`、差し替えの窓の一覧は `playback.replaceChoice`、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
 
 開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
 
@@ -546,6 +547,18 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 再生では、ドアの命令がタイムラインの印に入り、waitdoor の印は続きのフレーム（`until`）を持ちます。`playback.layout` の `waits` が帯の位置です。再生中の `door.state` は再生のドアの命令で計算します。
 
 `tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます（`--project` のときは再生のドアも確かめます）。
+
+### 天候のプレビュー（#498）
+
+どれもマップ・ROM・履歴を変えません。仮の主人公の画面（表示 > 仮の主人公を置く）に重ねます。
+
+- `weather.state`: `entry`（表示しているか・選んだ天候 `"map"` か 0〜14）、`weather`（今プレビューする中の番号）、`status`・`next`（今の天候と切り替え先）、`frame`（進めたフレーム）、`screen`（段 `evy` と半透明の係数 `eva`・`evb`）、`objects`（描く絵の数）、`problem`（「この天候はプレビューできません」の文。表示できれば null）、`graphicsBytes`（読んだ絵のバイト数）、`ashIsSandstorm`・`whiteSandstorm`（7 番が白い砂嵐か・その色を読めたか）、時計の購読（`subscribed`・`holders`）、再生のフレーム（`playback`）、時計の `clock`。
+- `weather.set {weather?, on?, seed?}`: プレビューする天候を選び（`"map"` か 0〜14）、表示のオン・オフを切り替えます。`seed` は雪・雷・泡の乱数の種（オンにするときだけ）。
+- `weather.tick {frames}`: 時計の代わりに進めます（再生中は何もしません）。
+
+メニューは `view.weather`（天候を表示する）と `view.weatherPick.map`・`view.weatherPick.0`〜`view.weatherPick.14`（プレビューする天候）です。再生の天候の命令は、タイムラインの `weather` の印（`weather.command` は `reset`・`set`・`do`、`weather.value` は setweather の値）になります。
+
+`tests/automation/weather_check.py --rom <BPRJ> --exe <exe> [--project <ND/Chronos>] [--shots <フォルダ>] [--name <写真の名前>] [--map <バンク.マップ>]` で確かめます（`--project` のときは時間帯との重なりと再生の命令も確かめます）。
 
 ### DPE の種族名（#439）
 

@@ -2,6 +2,7 @@ import { EmotionSprites, ProjectEmotes, emotionRise, hasTripleLayerBlocks, Overw
 import type { OpenMap, ProjectSession } from "./ProjectSession";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
 import { sceneAnimation } from "./animation/sceneAnimation";
+import { sceneWeather } from "./weather/sceneWeather";
 
 interface Assets {
   generation: number;
@@ -44,6 +45,12 @@ export function renderActorScene(
   extra?: (view: SceneView) => readonly SceneActor[],
 ) {
   const sprites = session.overworldSprites;
+  // 天候（#498）。重ね描き（人物の層）には入れない。表示していなければ null で、今までと同じ。
+  const weather = options?.overlay ? null : sceneWeather()?.forScene(session, map, view, tint) ?? null;
+  if (weather) {
+    tint = weather.tint;
+    if (weather.objects) options = { ...options, objects: weather.objects };
+  }
   const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
   const cache = assets(session);
   if (cache.generation !== (useTint?.generation ?? 0)) {

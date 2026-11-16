@@ -360,7 +360,8 @@ class Simulator {
         return true;
       }
       case 0x0f:
-        this.lastText = cmd.args[1]?.text ?? "";
+        // ND の改変 0F（loadpointer 先 ひらがな 漢字）は漢字の文を出す（#497。実機の漢字の設定のとき）。
+        this.lastText = cmd.args[2]?.text || (cmd.args[1]?.text ?? "");
         return true;
       case 0x67: {
         // msg 0x0 などのバンクの番号なら、前の loadpointer の文（ND・Chronos の書き方）。
@@ -513,7 +514,7 @@ class Simulator {
         // ND・Chronos の customchoice（CFRU で 0x74 を差し替え。上が 0、下が 1）。ほかの 0x74 は何もしない。
         if (cmd.macro.toLowerCase() === "customchoice") {
           const texts = cmd.args.map((a) => a.text ?? "");
-          const [top, bottom] = texts.length >= 4 ? [texts[0]!, texts[2]!] : [texts[0] ?? "", texts[1] ?? ""];
+          const [top, bottom] = texts.length >= 4 ? [texts[1] || texts[0]!, texts[3] || texts[2]!] : [texts[0] ?? "", texts[1] ?? ""];
           this.choice(src, this.lastText || cmd.written, "custom", [{ value: 0, name: top }, { value: 1, name: bottom }], 0);
         }
         return true;
@@ -546,6 +547,15 @@ class Simulator {
       case 0x98:
         this.marker("fade", src, String(arg(0) ?? ""));
         return true;
+      case 0xa3:
+      case 0xa4:
+      case 0xa5: {
+        // 天候（#498）。待たないので時間は 0。絵は天候のプレビューが印から作る。
+        const command = ({ 0xa3: "reset", 0xa4: "set", 0xa5: "do" } as const)[cmd.opcode as 0xa3 | 0xa4 | 0xa5];
+        const value = command === "set" ? arg(0) : null;
+        this.markers.push({ frame: f, kind: "weather", source: src, detail: value === null ? cmd.macro : `${cmd.macro} ${value}`, branch: null, weather: { command, value } });
+        return true;
+      }
       default:
         return true;
     }

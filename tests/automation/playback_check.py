@@ -23,6 +23,7 @@ def main():
     p.add_argument("--editor", action="store_true")
     p.add_argument("--message-label")
     p.add_argument("--message-time")
+    p.add_argument("--message-kanji", action="store_true", help="--message-label の文に漢字があり、漢字の絵が ROM の漢字と同じこと（#497）")
     p.add_argument("--emotes", action="store_true")
     p.add_argument("--choice-label", help="customchoice か yesno のあるラベル。答えを替えて計算し直す")
     p.add_argument("--start-state", action="store_true", help="男女・向き・居ない人物、マップとセッションの切り替え、タイムラインの位置・拡大・ドラッグ")
@@ -161,15 +162,18 @@ def main():
                 original_time = z.call(dict(cmd="view.timeOfDay"))["time"]
                 message = z.call(dict(cmd="playback.start", label=args.message_label))
                 assert message["active"] and not message["playing"]
+                z.call(dict(cmd="playback.message"))  # フォントを読み終えるまで待つ
                 field = z.call(dict(cmd="getField", id="playback.message"))
                 assert field["visible"] and field["value"] and "\\n" not in field["value"]
                 # 枠を読み込めたときは、ROMから描いたCanvasも取得できる。
                 assert z.call(dict(cmd="canvasPng", id="playback.message"))["png"]
+                check_message_font(z, args.rom, project, args.message_kanji)
                 if args.message_time:
                     assert z.call(dict(cmd="view.timeOfDay"))["time"] == args.message_time
                 if args.shots:
                     shot = z.call(dict(cmd="ui.shot", id="playback.message"))
                     (pathlib.Path(args.shots) / "playback_message.png").write_bytes(base64.b64decode(shot["png"]))
+                check_message_pages(z)
                 z.call(dict(cmd="playback.stop"))
                 assert z.call(dict(cmd="view.timeOfDay"))["time"] == original_time
                 assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before
@@ -200,7 +204,7 @@ def main():
     print("OK ROMとプロジェクトのJSONが操作前後で同じ")
 
 
-def play_to_end(z, timeout=30):
+def play_to_end(z, timeout=30, on_message=None):
     """4 倍で最後まで再生する（文で止まったら続きを読む）。"""
     z.call(dict(cmd="playback.seek", frame=0))
     z.call(dict(cmd="playback.speed", value=4))
@@ -210,6 +214,8 @@ def play_to_end(z, timeout=30):
         if not state["playing"]:
             if state["frame"] >= state["lastFrame"]:
                 return state
+            if on_message and z.call(dict(cmd="playback.message")):
+                on_message()
             z.call(dict(cmd="playback.play"))
         assert time.monotonic() < deadline, state
         time.sleep(0.05)
@@ -226,6 +232,7 @@ def check_rom_only(exe, rom, shots, project=None):
             z.call(dict(cmd="tab", name="event"))
             before = z.call(dict(cmd="canvasPng", target="event"))["png"]
             played = {"person": 0, "trap": 0}
+            checked = []
             moved = 0
             for kind in ("person", "trap"):
                 for index in range(16):
@@ -241,7 +248,7 @@ def check_rom_only(exe, rom, shots, project=None):
                     assert started["entry"].startswith("ROM_"), started["entry"]
                     timeline = z.call(dict(cmd="playback.timeline"))
                     assert not any(m["kind"] == "limit" for m in timeline["markers"]), (kind, index)
-                    end = play_to_end(z)
+                    end = play_to_end(z, on_message=lambda: checked.append(check_message_font(z, rom, None, False, shots and pathlib.Path(shots) / f"playback_rom_message_{len(checked)}.png")) if len(checked) < 2 else None)
                     assert end["frame"] == timeline["lastFrame"]
                     locks = z.call(dict(cmd="playback.locks"))
                     assert all(lock and ".s に取り込む" in lock for lock in locks), locks
@@ -272,10 +279,106 @@ def check_rom_only(exe, rom, shots, project=None):
                 assert not talked["playback"]["active"] and "この人物にはスクリプトがありません" in talked["status"]["left"], talked
                 z.call(dict(cmd="preview.player", enabled=False))
                 print("OK スクリプトの無い人物に話しかけると「この人物にはスクリプトがありません」")
+            assert checked, "文が出なかった"
+            print(f"OK 素の ROM の文 {len(checked)} 件の字が ROM のフォントの絵と同じ")
             assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before
             print(f"OK 素の ROM のマサラタウン: 人物 {played['person']} 件、踏むスクリプト {played['trap']} 件を最後まで再生（オーキドの所 {moved} 件）。箱は編集できない印、読み取り専用の表示を強調")
     assert hashlib.sha256(pathlib.Path(rom).read_bytes()).digest() == digest
     print("OK ROM が操作前後で同じ")
+
+
+def decode_glyph(data: bytes, base: int):
+    """2 ビットの 16×16 の字の上 12 行（MessageFont.ts と同じ読み方。値は 0〜3）。"""
+    rows = []
+    for y in range(12):
+        row = []
+        for half in range(2):
+            at = base + half * 0x10 + (0x100 if y >= 8 else 0) + (y & 7) * 2
+            v = data[at] | (data[at + 1] << 8)
+            row += [(v >> (14 - x * 2)) & 3 for x in range(8)]
+        rows.append(row)
+    return rows
+
+
+def rom_glyph(rom: bytes, item):
+    """ROM のファイルから、窓の字の絵を取り出す（フォント 2 か、漢字対応パッチの表）。"""
+    u32 = lambda a: int.from_bytes(rom[a:a + 4], "little")
+    if item["source"] == "font":
+        code = item["code"]
+        literal = {2: 0x63EC, 3: 0x63EC, 4: 0x6550, 5: 0x6614}[item["font"]]
+        return decode_glyph(rom, (u32(literal) - 0x08000000) + 0x200 * (code >> 3) + 0x20 * (code & 7))
+    lead, trail = item["code"] >> 8, item["code"] & 0xFF
+    for i, (lo, hi) in enumerate([(0x81, 0x82), (0x88, 0x9F), (0xE0, 0xEA)]):
+        if lo <= lead <= hi:
+            table = u32(0x58D0 + i * 4) - 0x08000000
+            base = u32(table + (lead - lo) * 4) - 0x08000000
+            return decode_glyph(rom, base + 0x200 * (trail >> 3) + 0x20 * (trail & 7))
+    raise AssertionError(item)
+
+
+def check_message_font(z, rom_path, project, expect_kanji, shot=None):
+    """窓の字の画素が、フォントを読んだ ROM の字の絵と同じ（文字・影・背景の 3 色の分かれ方が一致）。"""
+    from PIL import Image
+    import io
+    info = z.call(dict(cmd="playback.message"))
+    assert info and info["font"], info
+    png = Image.open(io.BytesIO(base64.b64decode(z.call(dict(cmd="canvasPng", id="playback.message"))["png"]))).convert("RGB")
+
+    def rom_of(path):
+        if path is None:
+            return pathlib.Path(rom_path).read_bytes()
+        return (pathlib.Path(project) / path).resolve().read_bytes()
+
+    kana = rom_of(info["font"]["kana"])
+    kanji = rom_of(info["font"]["kanji"]) if "kanji" in info["font"] else None
+    glyphs = [item for item in info["items"] if item["kind"] == "glyph"]
+    assert glyphs, info
+    scale, ox, oy = info["scale"], info["origin"]["x"], info["origin"]["y"]
+    for item in glyphs:
+        want = rom_glyph(kana if item["source"] == "font" else kanji, item)
+        colors = {}
+        for gy in range(12):
+            for gx in range(min(item["width"], 16)):
+                ax, ay = item["x"] + gx, item["y"] + gy
+                if not (0 <= ax < 208 and 0 <= ay < 32):
+                    continue
+                cls = {0: "bg", 3: "bg", 1: "fg", 2: "shadow"}[want[gy][gx]]
+                got = png.getpixel((ox + ax * scale, oy + ay * scale))
+                colors.setdefault(cls, set()).add(got)
+        assert all(len(c) == 1 for c in colors.values()), (item, colors)
+        assert len({next(iter(c)) for c in colors.values()}) == len(colors), (item, colors)
+    kinds = sorted({f"{item['source']}{item['font']}" for item in glyphs})
+    if expect_kanji:
+        assert any(k.startswith("kanji") for k in kinds), info
+    if shot:
+        pathlib.Path(shot).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(shot).write_bytes(base64.b64decode(z.call(dict(cmd="ui.shot", id="playback.message"))["png"]))
+    fallback = [item["text"] for item in info["items"] if item["kind"] == "fallback"]
+    print(f"OK 窓の字 {len(glyphs)} 字（{'・'.join(kinds)}）が ROM の絵と同じ。補った字: {fallback or 'なし'}。フォント: {info['font']}")
+    return info
+
+
+def check_message_pages(z):
+    """続きを読むでページ（改ページ・1 行送り）を進め、最後のページの次で文を読み終える。"""
+    info = z.call(dict(cmd="playback.message"))
+    pages = info["pages"]
+    for page in range(1, pages):
+        z.call(dict(cmd="playback.play"))
+        now = z.call(dict(cmd="playback.message"))
+        assert now["page"] == page and now["index"] == info["index"], now
+    print(f"OK 続きを読むで {pages} ページを進める")
+
+
+def wait_editor(z, timeout=30):
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            z.call(dict(cmd="editor.state", window="script-editor"))
+            return
+        except AppError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.2)
 
 
 def actor_of(state, actor_id):

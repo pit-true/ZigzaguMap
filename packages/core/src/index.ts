@@ -12,7 +12,7 @@ export { decompressLz77 } from "./rom/lz77.js";
 
 // ゲーム判定とオフセット
 export { detectGame, requireSupportedGame, type GameInfo } from "./game/GameInfo.js";
-export { BPRJ_OFFSETS, OFFSETS_BY_CODE, type GameOffsets } from "./game/offsets.js";
+export { BPRJ_OFFSETS, OFFSETS_BY_CODE, type GameOffsets, type WeatherOffsets } from "./game/offsets.js";
 
 // マップ
 export * from "./map/constants.js";
@@ -159,6 +159,19 @@ export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
 export { readMessageFrame, type MessageFrameStyle } from "./render/MessageFrame.js";
+export { BPRJ_MESSAGE_FONT, MessageFont, readKanji, type MessageFontSource, type MessageGlyph, type RomRangeReader } from "./render/MessageFont.js";
+export {
+  drawMessageGlyphs,
+  layoutMessage,
+  MESSAGE_AREA,
+  MESSAGE_TEXT,
+  messageAreaImage,
+  placeholderInfo,
+  type MessageColors,
+  type MessageFallbackReason,
+  type MessageItem,
+  type MessageStop,
+} from "./render/MessageLayout.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";
@@ -497,6 +510,7 @@ export * from "./script/movement/index.js";
 export * from "./script/playback/index.js";
 export * from "./npc/index.js";
 export * from "./follower/index.js";
+export * from "./weather/index.js";
 export { findCoordinateRefs, type CoordinateRef } from "./script/scan/coordinateRefs.js";
 export {
   USER_SCRIPT_DIR,

@@ -17,6 +17,8 @@ export class SpriteAnimation {
   constructor(private readonly read: AnimationReader, animation = 0) { this.animation = animation; }
   get commandIndex(): number { return this.command; }
   get failed(): boolean { return this.invalid; }
+  /** END まで進んだか（anmend_sw）。 */
+  get finished(): boolean { return this.ended; }
 
   /** ActAnmChg。次のtickで先頭を表示し、ループの数も戻す。 */
   restart(animation: number): void {
