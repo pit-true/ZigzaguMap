@@ -405,3 +405,34 @@ export {
 export { UserScriptRuntime, type UserScriptApi } from "./userscript/UserScriptRuntime.js";
 export { COMPOSITE_MAX_SIDE, EXPORT_PAD, compositeScale, exportCrop, layoutComposite, rectsOverlap, type CompositeLayout, type CompositeMap, type CompositeSource } from "./render/MapComposite.js";
 export { GifWriter, quantizeRgba, type GifOptions, type GifIndexedImage } from "./image/GifWriter.js";
+export {
+  DEFAULT_TIME_HOURS,
+  DNS_FILES,
+  TIMES_OF_DAY,
+  fadeAt,
+  parseDnsConfig,
+  readDnsConfig,
+  timeOfDayAt,
+  type DnsConfig,
+  type DnsConfigError,
+  type DnsConfigResult,
+  type DnsFade,
+  type DnsLitTile,
+  type DnsSourceFiles,
+  type DnsTimeSection,
+  type TimeOfDay,
+} from "./dns/DnsConfig.js";
+export {
+  isNeutralTint,
+  isNightSection,
+  isTintedMapType,
+  litTilesFor,
+  spritePaletteTint,
+  tilesetPairPalettes,
+  tintColor,
+  tintOf,
+  tintTilesetPalettes,
+  type DnsTint,
+  type PaletteTint,
+} from "./dns/DnsTint.js";
+export { evaluateCExpression, preprocessC, readCArray, readCEnum, stripCComments, type CInit, type CInitItem, type CInitList, type CSource } from "./dns/cTable.js";
