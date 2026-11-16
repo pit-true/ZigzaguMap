@@ -121,6 +121,7 @@ export { ProjectEmotes } from "./sprite/ProjectEmotes.js";
 export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.js";
 export { ActorAnimator } from "./sprite/ActorAnimator.js";
 export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
+export { EditMovementCommand, type EditMovementArgs } from "./command/commands/playback/EditMovementCommand.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
 export { renderGameScene, type SceneActor, type SceneCell, type SceneOptions, type SceneView } from "./render/GameScene.js";
 export {

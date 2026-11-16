@@ -11,6 +11,8 @@ import { PlaybackProjectData } from "./PlaybackProject";
 import { PlaybackClock } from "./PlaybackClock";
 import { PlaybackBar } from "./PlaybackBar";
 import { TimelineView } from "./TimelineView";
+import { TimelineEditor } from "./TimelineEditor";
+import { isScriptSourcePath } from "@zigzagumap/core";
 import type { PlaybackHighlightSpan } from "../../windows/script-editor/protocol";
 import { messageSkin, messageView, type MessageSkin } from "./MessageView";
 import { PlaybackTime } from "./PlaybackTime";
@@ -55,6 +57,9 @@ export class PlaybackController {
   private readonly bar: PlaybackBar;
   private readonly timelineView: TimelineView;
   private readonly resize: ResizeObserver;
+  readonly editor: TimelineEditor;
+  private reloadTimer: number | null = null;
+  private reloading: Promise<void> = Promise.resolve();
 
   constructor(private readonly app: App) {
     this.bar = new PlaybackBar({
@@ -71,6 +76,13 @@ export class PlaybackController {
     this.resize = new ResizeObserver(() => { if (this.active) this.mount(); });
     for (const view of this.views()) this.resize.observe(view.element);
     app.state.on("map", () => this.stop()); app.state.on("session", () => this.stop());
+    this.editor = new TimelineEditor({ app, data: () => this.data, timeline: () => this.timeline, reload: () => this.reload() });
+    // 取り消し・やり直しや外での書き換えで .s が変わったら、読み直して計算し直す（#458）。
+    app.scripts.files.onPathChange(path => {
+      if (!this.active || !isScriptSourcePath(path)) return;
+      if (this.reloadTimer !== null) clearTimeout(this.reloadTimer);
+      this.reloadTimer = window.setTimeout(() => { this.reloadTimer = null; void this.reload().catch(error => this.app.state.setStatus(errorText(error), undefined, true)); }, 30);
+    });
     app.state.on("tab", () => { if (this.active) { this.pause(); this.mount(); this.draw(); } });
     this.bar.element.addEventListener("keydown", event => {
       const target = event.target as HTMLElement;
@@ -93,6 +105,25 @@ export class PlaybackController {
   }
   get result(): Timeline | null { return this.timeline; }
   get timelineUi(): TimelineView { return this.timelineView; }
+
+  /** 本文を読み直して計算し直す。今のフレーム・答え・始めの状態は保つ。 */
+  reload(): Promise<void> {
+    const run = async (): Promise<void> => {
+      if (!this.active) return;
+      const token = this.generation, map = this.app.state.map;
+      const data = await PlaybackProjectData.load(this.app);
+      if (token !== this.generation || map !== this.app.state.map || !this.active) return;
+      if (!data.project.index.findLabel(this.entry)) throw new Error(t.noEntry);
+      this.data = data; this.calculate();
+    };
+    return (this.reloading = this.reloading.catch(() => undefined).then(run));
+  }
+  /** 書き戻しと読み直しが済むまで待つ（自動操作）。 */
+  async settled(): Promise<void> {
+    await this.editor.idle();
+    while (this.reloadTimer !== null) await new Promise(resolve => setTimeout(resolve, 20));
+    await this.reloading.catch(() => undefined);
+  }
 
   async start(request: PlaybackRequest): Promise<void> {
     this.stop();
@@ -213,7 +244,13 @@ export class PlaybackController {
     this.clock.seek(keep);
     this.consumed.clear();
     this.bar.configure(this.timeline.lastFrame, this.gender, start.player.facing, events.persons.map(person => person.localId), this.absent);
-    this.timelineView.setTimeline(this.timeline, sprites, marker => this.answerText(marker));
+    const timeline = this.timeline;
+    this.timelineView.setTimeline(timeline, sprites, marker => this.answerText(marker), {
+      locks: this.editor.locks(timeline),
+      menu: (index, x, y) => { this.pause(); this.editor.menu(index, x, y); },
+      key: (index, event) => this.editor.key(index, event),
+      move: (from, to) => { this.pause(); this.editor.move(from, to); },
+    });
     for (const saved of this.scrolls) saved.view.layer.hidden = true;
     this.mount(); this.draw();
   }

@@ -25,6 +25,7 @@ export const jaCommands = {
     addMapScript: "マップスクリプトの追加",
     addMapScriptCondition: "マップスクリプトの条件の追加",
     addRomEraseRanges: "ROM の消す範囲の記録",
+    editMovement: "移動データの編集",
     addScriptsTableEntry: "スクリプトの対応表の行の追加",
     addTileset: "タイルセットの追加",
     assignEventLabels: "イベントのラベルの割り当て",

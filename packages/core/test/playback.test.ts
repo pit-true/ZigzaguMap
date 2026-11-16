@@ -3,6 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { NodeProjectFs } from "../src/node/index.js";
 import {
+  affectedMaps,
+  createDefaultRegistry,
+  EditMovementCommand,
   buildPlaybackStart,
   buildScriptIndex,
   defaultFacingOf,
@@ -10,6 +13,8 @@ import {
   PLAYER_ID,
   ScriptCommandTable,
   ScriptIndex,
+  segmentLockReasons,
+  movementTextTools,
   signAllows,
   simulatePlayback,
   withPlaybackHandler,
@@ -303,6 +308,28 @@ describe("再生の計算（#451）", () => {
     expect(seen).toEqual([1, 0]);
     expect(frameOf(waited, "changeface")).toBe(30);
     expect(waited.markers.filter((m) => m.door).map((m) => m.door!.frame)).toEqual([0, 30]);
+  });
+
+  it("箱の書き戻し: 編集できない理由（.if の中、end_m が無い）と、書き戻しの道具（#458）", () => {
+    const script = "Main:\n\tapplymovement 1 m\n\tapplymovement 2 n\n\twaitmovement 0\n\tend\nm: .byte walk_down, walk_left, end_m\n.if 1\nn: .byte walk_up, end_m\n.endif\n";
+    const files: Record<string, string> = { "a.s": script };
+    const index = new ScriptIndex();
+    index.updateFile("a.s", script);
+    const project = { index, commands: ScriptCommandTable.build({ xseCommands: XSE }), text: (p: string) => files[p] ?? null };
+    const t = simulatePlayback({ project, entry: "Main", start: defaultStart });
+    const tools = movementTextTools(project);
+    expect(tools.resolve("walk_left")).toBe(0x12);
+    expect(segmentLockReasons(project, t.segments, tools)).toEqual(t.segments.map((s) => (s.actor === 2 ? "conditional" : null)));
+    // 本文が変わって、箱の値の場所が合わなくなった
+    files["a.s"] = script.replace("m: .byte walk_down", "m: .byte  walk_down");
+    expect(segmentLockReasons(project, t.segments, tools).filter((r) => r === "notFound").length).toBeGreaterThan(0);
+  });
+
+  it("移動データの編集のコマンドは操作列から作り直せて、マップを持たない（#458）", () => {
+    const command = createDefaultRegistry().create({ name: "editMovement", args: { path: "a.s", label: "m", edit: "move", newLabel: "m_2" } });
+    expect(command).toBeInstanceOf(EditMovementCommand);
+    expect(command.args).toEqual({ path: "a.s", label: "m", edit: "move", newLabel: "m_2" });
+    expect(affectedMaps(command)).toEqual([]);
   });
 
   it("文は長さ 0 の印、打ち切り（60 秒）", () => {

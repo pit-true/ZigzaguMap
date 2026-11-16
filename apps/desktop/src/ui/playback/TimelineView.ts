@@ -1,6 +1,17 @@
 import { CAMERA_ID, PLAYER_ID, movementAction, type OverworldSprites, type PlaybackMarker, type PlaybackSegment, type PlaybackSource, type Timeline } from "@zigzagumap/core";
 import { jaPlayback as t } from "../../i18n/ja.playback";
 import { canvasOf } from "../canvas";
+import { sameBlock } from "./TimelineEditor";
+
+/** 箱の編集（#458）。index は `Timeline.segments` の番号。 */
+export interface TimelineEditing {
+  /** 箱ごとの編集できない理由（編集できるなら null）。 */
+  readonly locks: readonly (string | null)[];
+  menu(index: number, x: number, y: number): void;
+  /** 扱ったら true。 */
+  key(index: number, event: KeyboardEvent): boolean;
+  move(from: number, to: number): void;
+}
 
 /** フレームを横軸に置く。人物の行と全体の印は、計算結果の区間をそのまま使う。 */
 export class TimelineView {
@@ -10,7 +21,8 @@ export class TimelineView {
   private scale = 2;
   private readonly labels = 100;
   private timeline: Timeline | null = null;
-  private readonly boxes: { segment: PlaybackSegment; button: HTMLButtonElement }[] = [];
+  private readonly boxes: { segment: PlaybackSegment; button: HTMLButtonElement; index: number }[] = [];
+  private selected: number | null = null;
 
   constructor(private readonly seek: (frame: number) => void, private readonly openSource: (source: PlaybackSource) => void) {
     this.element.className = "playback-timeline"; this.element.dataset["autoId"] = "playback.timeline";
@@ -28,8 +40,9 @@ export class TimelineView {
   }
 
   /** answer は選択肢・選び直せる分岐の今の答え（印に添える）。印を押すとそのフレームへ飛び、帯の下で選び直せる。 */
-  setTimeline(timeline: Timeline, sprites: OverworldSprites, answer: (marker: PlaybackMarker) => string | null = () => null): void {
-    this.timeline = timeline; this.boxes.length = 0; this.content.replaceChildren();
+  setTimeline(timeline: Timeline, sprites: OverworldSprites, answer: (marker: PlaybackMarker) => string | null = () => null, editing: TimelineEditing | null = null): void {
+    const keep = this.selected;
+    this.timeline = timeline; this.boxes.length = 0; this.content.replaceChildren(); this.selected = null;
     const row = (title: string, id: string): HTMLElement => {
       const row = document.createElement("div"), label = document.createElement("div");
       row.className = "playback-time-row"; row.dataset["autoId"] = id;
@@ -70,12 +83,60 @@ export class TimelineView {
         button.textContent = `${segment.step?.text ?? action?.sourceName ?? segment.movementId}${action?.direction ? ` ${t.arrows[action.direction]}` : ""}`;
         button.title = `${button.textContent}: ${action ? t.movementMotion(action) : t.unknown}\n${t.frames(segment.start)} → ${t.frames(segment.end)}`;
         button.dataset["autoId"] = `playback.segment.${this.boxes.length}`;
-        button.addEventListener("click", () => this.seek(segment.start));
+        const index = timeline.segments.indexOf(segment);
+        button.dataset["segment"] = String(index);
+        const lock = editing?.locks[index] ?? null;
+        if (editing && lock) { button.classList.add("locked"); button.title += `\n${lock}`; }
+        let dragged = false;
+        button.addEventListener("click", () => { if (dragged) { dragged = false; return; } this.select(index); this.seek(segment.start); });
         button.addEventListener("dblclick", () => this.openSource(segment.command));
-        trackRow.append(button); this.boxes.push({ segment, button });
+        if (editing) {
+          button.addEventListener("contextmenu", event => { event.preventDefault(); event.stopPropagation(); this.select(index); editing.menu(index, event.clientX, event.clientY); });
+          button.addEventListener("keydown", event => { if (editing.key(index, event)) { event.preventDefault(); event.stopPropagation(); } });
+          if (!lock) this.dragToMove(button, index, editing, () => { dragged = true; });
+        }
+        trackRow.append(button); this.boxes.push({ segment, button, index });
       }
     }
     this.content.append(this.cursor); this.layout();
+    if (keep !== null && keep < timeline.segments.length) this.select(keep);
+  }
+
+  /** 箱を選ぶ（Delete・Alt＋矢印の相手。null で外す）。 */
+  select(index: number | null): void {
+    this.selected = index;
+    for (const box of this.boxes) box.button.classList.toggle("selected", box.index === index);
+  }
+  get selection(): number | null { return this.selected; }
+
+  /** 横にドラッグして、同じ移動データの別の箱の上で離すと並べ替える。 */
+  private dragToMove(button: HTMLButtonElement, index: number, editing: TimelineEditing, moved: () => void): void {
+    button.addEventListener("pointerdown", down => {
+      if (down.button !== 0) return;
+      const startX = down.clientX;
+      let dragging = false;
+      const own = this.boxes.find(box => box.index === index)!;
+      // 箱は動かさず、離す先の箱に印を付ける（動く部品の上の座標で、離す位置がずれないように）。
+      const targetAt = (clientX: number) => {
+        const x = clientX - this.content.getBoundingClientRect().left;
+        return this.boxes.find(box => box.index !== index && sameBlock(own.segment, box.segment)
+          && x >= Number.parseFloat(box.button.style.left) && x < Number.parseFloat(box.button.style.left) + Number.parseFloat(box.button.style.width)) ?? null;
+      };
+      const mark = (target: { button: HTMLButtonElement } | null): void => { for (const box of this.boxes) box.button.classList.toggle("drop-target", box === target); };
+      const move = (e: PointerEvent): void => {
+        if (!dragging && Math.abs(e.clientX - startX) < 5) return;
+        if (!dragging) { dragging = true; try { button.setPointerCapture(e.pointerId); } catch { /* 自動操作のPointerEventには実ポインタが無い場合がある。 */ } button.classList.add("dragging"); }
+        mark(targetAt(e.clientX));
+      };
+      const up = (e: PointerEvent): void => {
+        button.removeEventListener("pointermove", move); button.removeEventListener("pointerup", up); button.removeEventListener("pointercancel", up);
+        if (!dragging) return;
+        moved(); mark(null); button.classList.remove("dragging");
+        const target = e.type === "pointerup" ? targetAt(e.clientX) : null;
+        if (target) editing.move(index, target.index);
+      };
+      button.addEventListener("pointermove", move); button.addEventListener("pointerup", up); button.addEventListener("pointercancel", up);
+    });
   }
 
   update(frame: number): void {
@@ -89,7 +150,7 @@ export class TimelineView {
     return {
       scale: this.scale, labels: this.labels, scrollLeft: this.element.scrollLeft, width: this.content.offsetWidth,
       cursor: left(this.cursor),
-      segments: this.boxes.map(({ segment, button }) => ({ actor: segment.actor, start: segment.start, end: segment.end, left: left(button), width: Number.parseFloat(button.style.width) || 0, top: button.offsetTop + (button.parentElement?.offsetTop ?? 0), active: button.classList.contains("active") })),
+      segments: this.boxes.map(({ segment, button, index }) => ({ index, locked: button.classList.contains("locked"), selected: button.classList.contains("selected"), actor: segment.actor, start: segment.start, end: segment.end, left: left(button), width: Number.parseFloat(button.style.width) || 0, top: button.offsetTop + (button.parentElement?.offsetTop ?? 0), active: button.classList.contains("active") })),
       markers: [...this.content.querySelectorAll<HTMLElement>(".playback-time-mark")].map(marker => ({ frame: Number(marker.dataset["frame"]), left: left(marker), top: Number.parseFloat(marker.style.top) || 0, width: marker.offsetWidth, text: marker.textContent })),
     };
   }
@@ -98,7 +159,7 @@ export class TimelineView {
     const rect = this.element.getBoundingClientRect();
     this.element.dispatchEvent(new WheelEvent("wheel", { deltaY, ctrlKey: true, clientX: rect.left + x, clientY: rect.top + 4, bubbles: true, cancelable: true }));
   }
-  clear(): void { this.timeline = null; this.boxes.length = 0; this.content.replaceChildren(); }
+  clear(): void { this.selected = null; this.timeline = null; this.boxes.length = 0; this.content.replaceChildren(); }
 
   private layout(): void {
     if (!this.timeline) return;
