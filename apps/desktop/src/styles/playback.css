@@ -24,7 +24,8 @@
 .playback-time-portrait { width: 16px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 .playback-time-segment, .playback-time-mark { position: absolute; top: 2px; bottom: 2px; overflow: hidden; white-space: nowrap; padding: 0 2px; min-width: 2px; text-align: left; }
 .playback-time-segment.active { background: var(--select); color: var(--select-text); }
-.playback-time-mark { max-width: 80px; opacity: 0.8; }
+.playback-time-mark { max-width: 120px; opacity: 0.8; bottom: auto; height: 20px; }
+.playback-time-mark.answer { opacity: 1; font-weight: bold; }
 .playback-time-tick { position: absolute; top: 3px; white-space: nowrap; border-left: 1px solid var(--shadow); padding-left: 2px; }
 .playback-time-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: #e53935; pointer-events: none; z-index: 4; }
 .playback-message-pages { display: flex; flex-wrap: wrap; gap: 4px; }

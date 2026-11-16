@@ -1,4 +1,4 @@
-import { CAMERA_ID, PLAYER_ID, movementAction, type OverworldSprites, type PlaybackSegment, type PlaybackSource, type Timeline } from "@zigzagumap/core";
+import { CAMERA_ID, PLAYER_ID, movementAction, type OverworldSprites, type PlaybackMarker, type PlaybackSegment, type PlaybackSource, type Timeline } from "@zigzagumap/core";
 import { jaPlayback as t } from "../../i18n/ja.playback";
 import { canvasOf } from "../canvas";
 
@@ -27,7 +27,8 @@ export class TimelineView {
     }, { passive: false });
   }
 
-  setTimeline(timeline: Timeline, sprites: OverworldSprites): void {
+  /** answer は選択肢・選び直せる分岐の今の答え（印に添える）。印を押すとそのフレームへ飛び、帯の下で選び直せる。 */
+  setTimeline(timeline: Timeline, sprites: OverworldSprites, answer: (marker: PlaybackMarker) => string | null = () => null): void {
     this.timeline = timeline; this.boxes.length = 0; this.content.replaceChildren();
     const row = (title: string, id: string): HTMLElement => {
       const row = document.createElement("div"), label = document.createElement("div");
@@ -50,7 +51,10 @@ export class TimelineView {
     const global = row(t.globalTrack, "playback.track.global");
     timeline.markers.forEach((marker, index) => {
       const button = document.createElement("button"); button.className = "playback-time-mark";
-      button.textContent = t.markerNames[marker.kind]; button.title = `${t.frames(marker.frame)}: ${marker.detail}`;
+      const answered = answer(marker);
+      button.textContent = answered === null ? t.markerNames[marker.kind] : `${t.markerNames[marker.kind]}: ${answered}`;
+      if (answered !== null) button.classList.add("answer");
+      button.title = `${t.frames(marker.frame)}: ${marker.detail}`;
       button.dataset["autoId"] = `playback.marker.${index}`; button.dataset["frame"] = String(marker.frame);
       button.addEventListener("click", () => this.seek(marker.frame));
       global.append(button);
@@ -79,13 +83,44 @@ export class TimelineView {
     this.cursor.style.left = `${this.labels + frame * this.scale}px`;
     for (const { segment, button } of this.boxes) button.classList.toggle("active", frame >= segment.start && frame <= segment.end);
   }
+  /** 自動操作の確かめ用: 倍率、横のスクロール、箱と印と縦線の位置（画素。行の左端から）。 */
+  layoutInfo() {
+    const left = (element: HTMLElement): number => Number.parseFloat(element.style.left) || 0;
+    return {
+      scale: this.scale, labels: this.labels, scrollLeft: this.element.scrollLeft, width: this.content.offsetWidth,
+      cursor: left(this.cursor),
+      segments: this.boxes.map(({ segment, button }) => ({ actor: segment.actor, start: segment.start, end: segment.end, left: left(button), width: Number.parseFloat(button.style.width) || 0, top: button.offsetTop + (button.parentElement?.offsetTop ?? 0), active: button.classList.contains("active") })),
+      markers: [...this.content.querySelectorAll<HTMLElement>(".playback-time-mark")].map(marker => ({ frame: Number(marker.dataset["frame"]), left: left(marker), top: Number.parseFloat(marker.style.top) || 0, width: marker.offsetWidth, text: marker.textContent })),
+    };
+  }
+  /** Ctrl＋ホイールと同じ拡大縮小（x は部品の左端からの画素）。 */
+  wheel(deltaY: number, x: number): void {
+    const rect = this.element.getBoundingClientRect();
+    this.element.dispatchEvent(new WheelEvent("wheel", { deltaY, ctrlKey: true, clientX: rect.left + x, clientY: rect.top + 4, bubbles: true, cancelable: true }));
+  }
   clear(): void { this.timeline = null; this.boxes.length = 0; this.content.replaceChildren(); }
 
   private layout(): void {
     if (!this.timeline) return;
     this.content.style.width = `${this.labels + (this.timeline.lastFrame + 1) * this.scale + 12}px`;
     for (const { segment, button } of this.boxes) { button.style.left = `${this.labels + segment.start * this.scale}px`; button.style.width = `${Math.max(2, (segment.end - segment.start + 1) * this.scale)}px`; }
-    for (const marker of this.content.querySelectorAll<HTMLElement>(".playback-time-mark")) marker.style.left = `${this.labels + Number(marker.dataset["frame"]) * this.scale}px`;
+    // 同じ頃の印は重ねず、段を分けて並べる（全体の行が段の数だけ高くなる）。
+    const lanes: number[] = [];
+    let row: HTMLElement | null = null;
+    const markers = [...this.content.querySelectorAll<HTMLElement>(".playback-time-mark")];
+    const widths = markers.map(marker => marker.offsetWidth); // 書く前にまとめて読む
+    for (const [index, marker] of markers.entries()) {
+      const left = this.labels + Number(marker.dataset["frame"]) * this.scale;
+      marker.style.left = `${left}px`;
+      // 段は 3 つまで。あふれた印は最後の段に重ねる（どれを押しても同じフレームへ飛び、答えの欄は帯の下にまとめて出る）。
+      let lane = lanes.findIndex(right => right <= left);
+      if (lane < 0 && lanes.length < 3) { lane = lanes.length; lanes.push(0); }
+      if (lane < 0) lane = lanes.length - 1;
+      lanes[lane] = Math.max(lanes[lane]!, left + widths[index]! + 1);
+      marker.style.top = `${2 + lane * 22}px`;
+      row = marker.parentElement;
+    }
+    if (row) row.style.height = `${Math.max(28, lanes.length * 22 + 6)}px`;
     const axis = this.content.firstElementChild!;
     for (const old of axis.querySelectorAll(".playback-time-tick")) old.remove();
     // 最大600秒でも、目盛りのDOMは約100個に収める。

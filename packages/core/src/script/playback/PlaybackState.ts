@@ -166,7 +166,34 @@ export interface PlaybackMarker {
   readonly detail: string;
   /** 分岐なら、その印と答え。 */
   readonly branch: PlaybackBranchMark | null;
+  /** 選択肢（yesnobox・multichoice・msgbox の MSG_YESNO・customchoice）なら、その答え。 */
+  readonly choice?: PlaybackChoiceMark;
 }
+
+/** 選択肢の 1 つ。`name` は yes・no、customchoice の文のラベルなど。 */
+export interface PlaybackChoiceOption {
+  readonly value: number;
+  readonly name: string;
+}
+
+/**
+ * 選択肢の印（#454）。既定の答えで最後まで計算し、答えを替えると計算し直す。
+ * 答えは LASTRESULT に入るので、後の compare と分岐は値から決まる。
+ */
+export interface PlaybackChoiceMark {
+  /** 答えの表の鍵（`choice:path:line:part#visit`）。 */
+  readonly key: string;
+  readonly kind: "yesno" | "multichoice" | "custom";
+  /** 選べる値。multichoice は表を読まないので null（0〜127 の数で選ぶ。127 は B で閉じた）。 */
+  readonly options: readonly PlaybackChoiceOption[] | null;
+  /** この計算で使った答え。 */
+  readonly value: number;
+  /** 既定の答えか（答えの表に無かった）。 */
+  readonly defaulted: boolean;
+}
+
+/** multichoice を B で閉じたときの LASTRESULT。 */
+export const CHOICE_CANCEL = 127;
 
 /** 分岐の印。 */
 export interface PlaybackBranchMark {

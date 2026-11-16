@@ -27,6 +27,13 @@ export const playbackCommands: CommandTable = {
     if (typeof req["taken"] !== "boolean") throw new Error("taken は真偽値です。");
     const controller = await app.playback.get(); controller.answer(str(req, "key"), req["taken"]); await controller.ready(); return controller.state();
   },
+  "playback.choose": async (app, req) => {
+    const controller = await app.playback.get(); controller.choose(str(req, "key"), int(req, "value")); await controller.ready(); return controller.state();
+  },
+  "playback.layout": async app => (await app.playback.existing())?.timelineUi.layoutInfo() ?? null,
+  "playback.wheel": async (app, req) => {
+    const controller = await app.playback.get(); controller.timelineUi.wheel(Number(req["delta"] ?? -100), Number(req["x"] ?? 200)); return controller.timelineUi.layoutInfo();
+  },
   "playback.timeline": async app => {
     const timeline = (await app.playback.existing())?.result;
     return timeline ? { segments: timeline.segments, markers: timeline.markers, keyFrames: timeline.keyFrames(), lastFrame: timeline.lastFrame } : null;

@@ -13,6 +13,8 @@ import {
   CAMERA_ID,
   PLAYER_ID,
   sourceOf,
+  type PlaybackChoiceMark,
+  type PlaybackChoiceOption,
   type PlaybackCommandRecord,
   type PlaybackMarker,
   type PlaybackMarkerKind,
@@ -83,6 +85,8 @@ export interface PlaybackOptions {
   readonly start: PlaybackStart;
   /** 分岐の答え（`Timeline.markers` の branch.key → 飛ぶか）。 */
   readonly answers?: ReadonlyMap<string, boolean>;
+  /** 選択肢の答え（`Timeline.markers` の choice.key → LASTRESULT の値）。無い所は既定（はい・既定の項目・上）。 */
+  readonly choices?: ReadonlyMap<string, number>;
   readonly handlers?: PlaybackHandlerTable;
   /** フレームの上限。既定 3,600（60 秒）。 */
   readonly maxFrames?: number;
@@ -108,6 +112,9 @@ const CONDITIONS: readonly (readonly [boolean, boolean, boolean])[] = [
   [false, true, true],
   [true, false, true],
 ];
+
+/** はい・いいえ（LASTRESULT は はい 1、いいえ 0）。 */
+const YES_NO: readonly PlaybackChoiceOption[] = [{ value: 1, name: "yes" }, { value: 0, name: "no" }];
 
 /** 向きの番号（`changeface` の 1 下、2 上、3 左、4 右）。 */
 function directionFromCode(code: number | null): MovementDirection | null {
@@ -336,8 +343,7 @@ class Simulator {
         // callstd: msgbox の型。5 ははい・いいえ（MSG_YESNO）。
         const type = arg(0);
         if (type === 5) {
-          this.marker("choice", src, this.lastText);
-          this.vars.set(VAR_LASTRESULT, null);
+          this.choice(src, this.lastText, "yesno", YES_NO, 1);
         } else {
           this.marker("message", src, this.lastText);
         }
@@ -346,9 +352,12 @@ class Simulator {
       case 0x0f:
         this.lastText = cmd.args[1]?.text ?? "";
         return true;
-      case 0x67:
-        this.marker("message", src, cmd.args[0]?.text ?? "");
+      case 0x67: {
+        // msg 0x0 などのバンクの番号なら、前の loadpointer の文（ND・Chronos の書き方）。
+        const text = cmd.args[0]?.text ?? "";
+        this.marker("message", src, /^(0x)?[0-3]$/i.test(text.trim()) ? this.lastText || text : text);
         return true;
+      }
       case 0x16:
         this.setVar(arg(0), this.valueOf(arg(1)) ?? (arg(1) !== null && arg(1)! < 0x4000 ? arg(1) : null));
         return true;
@@ -480,11 +489,23 @@ class Simulator {
         return true;
       }
       case 0x6e:
+        this.choice(src, this.lastText || cmd.written, "yesno", YES_NO, 1);
+        return true;
       case 0x6f:
       case 0x70:
-      case 0x71:
-        this.marker("choice", src, cmd.written);
-        this.vars.set(VAR_LASTRESULT, null);
+      case 0x71: {
+        // multichoice2 は 4 つ目の引数が既定の項目。
+        const initial = cmd.opcode === 0x70 ? (arg(3) ?? 0) : 0;
+        this.choice(src, this.lastText || cmd.written, "multichoice", null, initial);
+        return true;
+      }
+      case 0x74:
+        // ND・Chronos の customchoice（CFRU で 0x74 を差し替え。上が 0、下が 1）。ほかの 0x74 は何もしない。
+        if (cmd.macro.toLowerCase() === "customchoice") {
+          const texts = cmd.args.map((a) => a.text ?? "");
+          const [top, bottom] = texts.length >= 4 ? [texts[0]!, texts[2]!] : [texts[0] ?? "", texts[1] ?? ""];
+          this.choice(src, this.lastText || cmd.written, "custom", [{ value: 0, name: top }, { value: 1, name: bottom }], 0);
+        }
         return true;
       case 0x97:
       case 0x98:
@@ -729,6 +750,20 @@ class Simulator {
 
   private marker(kind: PlaybackMarkerKind, source: PlaybackSource | null, detail: string): void {
     this.markers.push({ frame: this.frame, kind, source, detail, branch: null });
+  }
+
+  private readonly choiceVisits = new Map<string, number>();
+
+  /** 選択肢。答えの表か既定の値を LASTRESULT に入れる。 */
+  private choice(source: PlaybackSource, detail: string, kind: PlaybackChoiceMark["kind"], options: readonly PlaybackChoiceOption[] | null, initial: number): void {
+    const place = `choice:${source.path}:${source.line}:${source.part}`;
+    const visit = this.choiceVisits.get(place) ?? 0;
+    this.choiceVisits.set(place, visit + 1);
+    const key = `${place}#${visit}`;
+    const given = this.options.choices?.get(key);
+    const value = given ?? initial;
+    this.vars.set(VAR_LASTRESULT, value);
+    this.markers.push({ frame: this.frame, kind: "choice", source, detail, branch: null, choice: { key, kind, options, value, defaulted: given === undefined } });
   }
 }
 

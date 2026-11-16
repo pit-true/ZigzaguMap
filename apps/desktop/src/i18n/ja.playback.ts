@@ -1,3 +1,4 @@
+import { ini } from "./ini";
 import type { MovementAction, MovementDirection, MovementKind, MovementSprite } from "@zigzagumap/core";
 
 /**
@@ -43,6 +44,10 @@ export const jaPlayback = {
   noMap: "再生するマップを開いてください。",
   noSprites: "人物の画像の表を読み込めませんでした。",
   noBranch: "選び直せる分岐が見つかりません。",
+  noChoice: "選び直せる選択肢が見つかりません。",
+  yes: ini.EndnutzerForm["10"], no: ini.EndnutzerForm["11"],
+  choiceAnswer: "選択肢の答え（選び直すと計算し直す）",
+  choiceNumber: "multichoice の答え（0〜127。127 は B で閉じた）",
   messageFont: "枠と色はROMから表示。文字は確認用フォントです。",
   globalTrack: "全体の印", player: "主人公", camera: "カメラ", person: "人物",
   arrows: { down: "↓", up: "↑", left: "←", right: "→" },

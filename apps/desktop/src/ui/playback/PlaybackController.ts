@@ -1,4 +1,4 @@
-import { buildPlaybackStart, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackTrigger, type PlayerGender, type Timeline } from "@zigzagumap/core";
+import { buildPlaybackStart, CHOICE_CANCEL, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackChoiceMark, type PlaybackMarker, type PlaybackTrigger, type PlayerGender, type Timeline } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import type { OpenMap } from "../../app/ProjectSession";
 import { prepareActorScene } from "../../app/ActorScene";
@@ -36,6 +36,7 @@ export class PlaybackController {
   private facing: MovementDirection | null = null;
   private absent: readonly number[] = [];
   private readonly answers = new Map<string, boolean>();
+  private readonly choices = new Map<string, number>();
   private readonly consumed = new Set<number>();
   private highlightKey = "";
   private skin: MessageSkin | null = null;
@@ -82,6 +83,7 @@ export class PlaybackController {
     return this.clock && this.timeline && this.animation ? { active: true, playing: this.clock.playing, speed: this.clock.speed, lastFrame: this.timeline.lastFrame, ...this.animation.stateAt(this.clock.frame), issues: this.animation.issues } : { active: false };
   }
   get result(): Timeline | null { return this.timeline; }
+  get timelineUi(): TimelineView { return this.timelineView; }
 
   async start(request: PlaybackRequest): Promise<void> {
     this.stop();
@@ -103,7 +105,7 @@ export class PlaybackController {
     const target = request.target;
     this.trigger = target?.kind === "person" ? { kind: "person", localId: map.doc.events?.persons[target.index ?? 0]?.localId ?? -1 } : target?.kind === "sign" || target?.kind === "trap" ? { kind: target.kind, index: target.index ?? 0 } : { kind: "map" };
     this.gender = this.app.state.settings.data.playbackGender === "female" ? "female" : "male";
-    this.facing = null; this.absent = []; this.answers.clear();
+    this.facing = null; this.absent = []; this.answers.clear(); this.choices.clear();
     this.hadPreview = this.app.previewPlayer.enabled;
     this.time = new PlaybackTime(this.app.timeOfDay, () => session === this.app.state.session);
     this.scrolls = this.views().map(view => ({ view, left: view.element.scrollLeft, top: view.element.scrollTop, hidden: view.layer.hidden }));
@@ -124,7 +126,7 @@ export class PlaybackController {
     const sameMap = this.sourceMap === this.app.state.map;
     this.clock = null; this.timeline = null; this.animation = null; this.data = null; this.request = null;
     this.bar.element.remove(); this.consumed.clear();
-    this.timelineView.clear(); this.bar.clear(); this.answers.clear();
+    this.timelineView.clear(); this.bar.clear(); this.answers.clear(); this.choices.clear();
     if (hadState) {
       this.app.previewPlayer.setPlayback(null);
       if (!this.hadPreview) this.app.previewPlayer.stop(true);
@@ -149,6 +151,13 @@ export class PlaybackController {
   answer(key: string, taken: boolean): void {
     if (!this.timeline?.markers.some(marker => marker.branch?.key === key && !marker.branch.known)) throw new Error(t.noBranch);
     this.answers.set(key, taken); this.calculate();
+  }
+  /** 選択肢の答えを替えて計算し直す（今のフレームは保つ）。 */
+  choose(key: string, value: number): void {
+    const choice = this.timeline?.markers.find(marker => marker.choice?.key === key)?.choice;
+    if (!choice) throw new Error(t.noChoice);
+    if (!Number.isInteger(value) || value < 0 || value > CHOICE_CANCEL || (choice.options && !choice.options.some(option => option.value === value))) throw new RangeError(t.choiceNumber);
+    this.choices.set(key, value); this.calculate();
   }
   pause(): void { if (this.raf !== null) cancelAnimationFrame(this.raf); this.raf = null; this.clock?.pause(); }
 
@@ -181,13 +190,15 @@ export class PlaybackController {
     if (!sprites) throw new Error(t.noSprites);
     const events = map.doc.events ?? { persons: [], warps: [], traps: [], signs: [] };
     const start = buildPlaybackStart({ events, trigger: this.trigger, gender: this.gender, facing: this.facing, absent: this.absent, provisionalPlayer: this.hadPreview ? this.app.previewPlayer.player : null });
-    this.timeline = simulatePlayback({ project: data.project, entry: this.entry, start, answers: this.answers,
+    const keep = this.clock?.frame ?? 0;
+    this.timeline = simulatePlayback({ project: data.project, entry: this.entry, start, answers: this.answers, choices: this.choices,
       elevationAt: (x, y) => x >= 0 && y >= 0 && x < map.doc.width && y < map.doc.height ? map.doc.grid.getMovement(x, y) >> 2 : null });
     this.animation = new PlaybackAnimation(this.timeline, sprites);
     this.clock = new PlaybackClock(this.timeline.lastFrame, this.timeline.keyFrames());
+    this.clock.seek(keep);
     this.consumed.clear();
     this.bar.configure(this.timeline.lastFrame, this.gender, start.player.facing, events.persons.map(person => person.localId), this.absent);
-    this.timelineView.setTimeline(this.timeline, sprites);
+    this.timelineView.setTimeline(this.timeline, sprites, marker => this.answerText(marker));
     for (const saved of this.scrolls) saved.view.layer.hidden = true;
     this.mount(); this.draw();
   }
@@ -227,11 +238,10 @@ export class PlaybackController {
     element.replaceChildren();
     if (!this.timeline || !this.clock) return;
     for (const [index, marker] of this.timeline.markers.entries()) {
-      if (marker.frame !== this.clock.frame || this.consumed.has(index)) continue;
+      if (marker.frame !== this.clock.frame || (this.consumed.has(index) && !marker.choice)) continue;
       if (marker.kind === "message" || marker.kind === "choice") {
-        if (index !== this.nextMessage()) continue;
-        const text = this.data?.messages.get(marker.detail.replace(/^@/, "")) ?? marker.detail;
-        element.append(messageView(text, this.skin));
+        if (index === this.nextMessage()) element.append(messageView(this.messageText(marker.detail), this.skin));
+        if (marker.choice) element.append(this.choicePicker(marker.choice, index));
       } else if (marker.branch && !marker.branch.known) {
         const select = document.createElement("select"); select.title = marker.detail;
         select.add(new Option(t.skipped, "0")); select.add(new Option(t.taken, "1")); select.value = marker.branch.taken ? "1" : "0";
@@ -242,6 +252,30 @@ export class PlaybackController {
         const note = document.createElement("span"); note.textContent = marker.detail; element.append(note);
       }
     }
+  }
+  private messageText(label: string): string { return this.data?.messages.get(label.replace(/^@/, "")) ?? label; }
+  /** タイムラインの印に添える答え（選択肢の答え、選び直せる分岐の進む・進まない）。 */
+  private answerText(marker: PlaybackMarker): string | null {
+    if (marker.choice) {
+      const option = marker.choice.options?.find(o => o.value === marker.choice!.value);
+      return option ? this.optionText(option.name) : String(marker.choice.value);
+    }
+    return marker.branch && !marker.branch.known ? (marker.branch.taken ? t.taken : t.skipped) : null;
+  }
+  private optionText(name: string): string { return name === "yes" ? t.yes : name === "no" ? t.no : this.messageText(name); }
+  private choicePicker(choice: PlaybackChoiceMark, index: number): HTMLElement {
+    const apply = (value: number): void => { try { this.choose(choice.key, value); } catch (error) { this.app.state.setStatus(errorText(error), undefined, true); } };
+    if (choice.options) {
+      const select = document.createElement("select"); select.title = t.choiceAnswer; select.dataset["autoId"] = `playback.choice.${index}`;
+      for (const option of choice.options) select.add(new Option(this.optionText(option.name), String(option.value)));
+      select.value = String(choice.value);
+      select.addEventListener("change", () => apply(Number(select.value)));
+      return select;
+    }
+    const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.max = String(CHOICE_CANCEL); input.step = "1";
+    input.title = t.choiceNumber; input.value = String(choice.value); input.dataset["autoId"] = `playback.choice.${index}`;
+    input.addEventListener("change", () => apply(Number(input.value)));
+    return input;
   }
   private highlight(): void {
     if (!this.timeline || !this.clock) return;
