@@ -35,6 +35,7 @@ import { shortcutCommands } from "./shortcuts";
 import { timeOfDayCommands } from "./timeOfDay";
 import { playbackCommands } from "./playback";
 import { animationCommands } from "./animation";
+import { weatherCommands } from "./weather";
 import { npcCommands } from "./npc";
 import { errorText } from "../../util/errors";
 
@@ -79,6 +80,7 @@ const registry: CommandRegistry = new CommandRegistry([
   timeOfDayCommands,
   playbackCommands,
   animationCommands,
+  weatherCommands,
   npcCommands,
   { commands: () => registry.names() },
 ]);

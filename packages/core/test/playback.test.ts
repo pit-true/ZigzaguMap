@@ -18,6 +18,7 @@ import {
   signAllows,
   simulatePlayback,
   withPlaybackHandler,
+  weatherChanges,
   type MapEvents,
   type PersonEvent,
   type PlaybackActorInit,
@@ -134,6 +135,16 @@ const XSE = `
 .endm
 .macro waitdooranim
 .byte 0xae
+.endm
+.macro resetweather
+.byte 0xa3
+.endm
+.macro setweather type:req
+.byte 0xa4
+.2byte \\type
+.endm
+.macro doweather
+.byte 0xa5
 .endm
 .macro yesnobox x:req, y:req
 .byte 0x6e
@@ -311,6 +322,15 @@ describe("再生の計算（#451）", () => {
     // 待ちの印は続きのフレームを持つ（タイムラインの帯）。渡さないときは持たない。
     expect(waited.markers.find((m) => m.kind === "door" && !m.door)!.until).toBe(30);
     expect(free.markers.find((m) => m.kind === "door" && !m.door)!.until).toBeUndefined();
+  });
+
+  it("天候: setweather・doweather・resetweather の印（#498）", () => {
+    const t = run("Main:\n\tsetweather 3\n\tdoweather\n\twait 30\n\tresetweather\n\tdoweather\n\tend\n");
+    expect(t.markers.filter((m) => m.weather).map((m) => [m.frame, m.weather!.command, m.weather!.value])).toEqual([
+      [0, "set", 3], [0, "do", null], [31, "reset", null], [31, "do", null],
+    ]);
+    expect(weatherChanges(t.markers, 2)).toEqual([{ frame: 0, weather: 3 }, { frame: 31, weather: 2 }]);
+    expect(weatherChanges([], 2)).toEqual([]);
   });
 
   it("箱の書き戻し: 編集できない理由（.if の中、end_m が無い）と、書き戻しの道具（#458）", () => {

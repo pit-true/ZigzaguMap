@@ -25,6 +25,11 @@ export interface SceneCell {
 /** `overlay`: 背景色と人物より下のBGを描かず、透明な画像に人物と、人物の上に来るBGだけを描く（マップ画像に重ねる用）。 */
 export interface SceneOptions {
   readonly overlay?: boolean;
+  /**
+   * 人物のほかの OBJ（天候 #498）。BG の優先度 `plane` ごとに、BG を描いたあと（`under`: 同じ優先度の人物より奥）と
+   * 人物を描いたあと（`over`: 人物より手前）に呼ぶ。
+   */
+  readonly objects?: (plane: number, image: RgbaImage, stage: "under" | "over") => void;
 }
 
 export interface SceneView {
@@ -84,6 +89,7 @@ export function renderGameScene(
         }
       }
     }
+    options.objects?.(plane, image, "under");
     // 影はAddActorBottomで作られるため、同じBG優先度の人物より先に描く。
     for (const { actor, priority } of visible) {
       if (priority !== plane) continue;
@@ -100,6 +106,7 @@ export function renderGameScene(
       if (effect && actor.mark) blit(image, actor.mark, state.pixelX + (16 - actor.mark.width) / 2 - view.x, at.y + actor.image.height / 2 - 16 - actor.mark.height / 2 + (actor.markOffsetY ?? 0) - view.y);
       else blit(image, actor.image, at.x - view.x, at.y - view.y);
     }
+    options.objects?.(plane, image, "over");
   }
   return { image, unknownBlocks: [...unknown] };
 }

@@ -24,6 +24,8 @@ import { jaTools } from "../i18n/ja.tools";
 import { jaPreviewPlayer } from "../i18n/ja.previewPlayer";
 import { jaNpcMotion } from "../i18n/ja.npcMotion";
 import { jaTileAnimation } from "../i18n/ja.tileAnimation";
+import { jaWeather } from "../i18n/ja.weather";
+import { WEATHER_PICK_IDS } from "./weather/WeatherEntry";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
@@ -124,6 +126,9 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.npcRanges", label: jaNpcMotion.rangesMenu, enable: "map" },
         // タイルアニメ（Phase6 #473）。共通の時計で動かす。既定はオフ
         { id: "view.tileAnimation", label: jaTileAnimation.menu, enable: "map" },
+        // 天候のプレビュー（#498）。240×160 の画面にだけ重ねる。既定はオフ
+        { id: "view.weather", label: jaWeather.menu, enable: "map" },
+        { label: jaWeather.pickMenu, children: WEATHER_PICK_IDS.map((id, i) => ({ id, label: i === 0 ? jaWeather.mapWeather : `${i - 1}: ${jaWeather.names[i - 1]}`, enable: "map" as const })) },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },

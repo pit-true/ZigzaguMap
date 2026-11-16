@@ -157,7 +157,9 @@ export type PlaybackMarkerKind =
   /** 60 秒・命令 10,000 個で打ち切った。 */
   | "limit"
   /** ドアの開け閉め（opendoor・closedoor・opendoor2・closedoor2）と waitdooranim。絵はタイルアニメの側（#474）が描く。 */
-  | "door";
+  | "door"
+  /** 天候の命令（resetweather・setweather・doweather。#498）。絵は天候のプレビューの側が描く。 */
+  | "weather";
 
 /** 全体の印。 */
 export interface PlaybackMarker {
@@ -175,6 +177,14 @@ export interface PlaybackMarker {
   readonly door?: DoorEvent;
   /** 待つ命令（waitdooranim）なら、続きを実行するフレーム（タイムラインに待ちの帯を出す。#474）。 */
   readonly until?: number;
+  /** 天候の命令なら、その種類と値（setweather の値。resetweather・doweather は null）。 */
+  readonly weather?: PlaybackWeatherCommand;
+}
+
+/** 天候の命令（#498）。setweather は値を覚え、resetweather はマップのヘッダーの値に戻し、doweather で切り替わる。 */
+export interface PlaybackWeatherCommand {
+  readonly command: "reset" | "set" | "do";
+  readonly value: number | null;
 }
 
 /** 選択肢の 1 つ。`name` は yes・no、customchoice の文のラベルなど。 */
