@@ -34,6 +34,30 @@ describe.skipIf(!romPath)("実 ROM: 種族名と OW 画像（ZIGZAGU_TEST_ROM）
     // 素の FR の 152 種類はすべて描ける。
     for (let id = 0; id < 152; id++) expect(sprites.image(id), `画像 ${id}`).not.toBeNull();
   });
+
+  it("主人公の四方向・歩き・走りを ROM の表から読み、左右反転を適用する", () => {
+    const { rom, offsets } = load();
+    const sprites = OverworldSprites.read(rom, offsets.overworldGraphicsTablePointer, offsets.overworldPaletteTablePointer);
+    const images = [0, 1, 2, 3].map(direction => sprites.frameImage(0, sprites.animationFrame(0, direction, 0)!)!);
+    expect(images[0]!.data).not.toEqual(images[1]!.data);
+    expect(images[0]!.data).not.toEqual(images[2]!.data);
+    const left = images[2]!, right = images[3]!;
+    for (let y = 0; y < left.height; y++) for (let x = 0; x < left.width; x++) {
+      const a = (y * left.width + x) * 4;
+      const b = (y * right.width + right.width - 1 - x) * 4;
+      expect(left.data.slice(a, a + 4)).toEqual(right.data.slice(b, b + 4));
+    }
+    for (const animation of [4, 5, 6, 7, 20, 21, 22, 23]) {
+      const frames = new Set<number>();
+      for (let t = 0; t < 64; t++) {
+        const frame = sprites.animationFrame(0, animation, t);
+        expect(frame, `animation ${animation} at ${t}`).not.toBeNull();
+        expect(sprites.frameImage(0, frame!)).not.toBeNull();
+        frames.add(frame!.index);
+      }
+      expect(frames.size).toBeGreaterThan(1);
+    }
+  });
 });
 
 describe.skipIf(!romPath)("実 ROM: 種族名の読み（#447。ZIGZAGU_TEST_ROM）", () => {

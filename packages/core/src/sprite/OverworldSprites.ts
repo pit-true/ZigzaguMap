@@ -19,6 +19,14 @@ export interface OverworldGraphicsInfo {
   readonly height: number;
   /** 1 コマ目（下向きの立ち姿）の画像データの位置。 */
   readonly imageOffset: number;
+  readonly framesOffset: number;
+  readonly animationsOffset: number | null;
+}
+
+export interface OverworldFrame {
+  readonly index: number;
+  readonly hFlip: boolean;
+  readonly vFlip: boolean;
 }
 
 /**
@@ -62,7 +70,11 @@ export class OverworldSprites {
         const imageOffset = rom.pointer(frames);
         const valid =
           rom.u16(at) === 0xffff && width > 0 && height > 0 && width <= 128 && height <= 128 && width % 8 === 0 && height % 8 === 0;
-        if (valid && rom.inRange(imageOffset, (width * height) / 2)) out = { paletteTag: rom.u16(at + 2), paletteSlot: rom.u8(at + 12) & 15, width, height, imageOffset };
+        if (valid && rom.inRange(imageOffset, (width * height) / 2)) out = {
+          paletteTag: rom.u16(at + 2), paletteSlot: rom.u8(at + 12) & 15, width, height, imageOffset,
+          framesOffset: frames,
+          animationsOffset: rom.isPointer(rom.u32(at + 0x18)) ? rom.pointer(at + 0x18) : null,
+        };
       }
     } catch {
       out = null;
@@ -85,6 +97,80 @@ export class OverworldSprites {
     const out = info && palette !== null ? this.decode(info, palette) : null;
     this.images.set(graphicsId, out);
     return out;
+  }
+
+  /** ROM のアニメーション命令をたどる。終了後は最後のコマを保ち、不正な参照は null。 */
+  animationFrame(graphicsId: number, animation: number, elapsed: number): OverworldFrame | null {
+    if (!Number.isInteger(animation) || animation < 0 || animation >= 64 || !Number.isSafeInteger(elapsed) || elapsed < 0) return null;
+    const info = this.info(graphicsId);
+    if (info?.animationsOffset == null) return null;
+    try {
+      const rom = this.rom;
+      const start = rom.pointer(info.animationsOffset + animation * 4);
+      let command = 0, count = 0, time = 0;
+      let last: OverworldFrame | null = null;
+      const visited = new Map<string, number>();
+      for (let steps = 0; steps < 4096; steps++) {
+        if (command < 0 || command >= 256) return null;
+        const key = `${command}:${count}`;
+        const previous = visited.get(key);
+        if (previous !== undefined) {
+          const period = time - previous;
+          if (period <= 0) return null;
+          time += Math.floor((elapsed - time) / period) * period;
+          visited.clear();
+        }
+        visited.set(key, time);
+        const at = start + command * 4;
+        const raw = rom.u16(at);
+        const arg = rom.u16(at + 2);
+        if (raw === 0xffff) return last;
+        if (raw === 0xfffe) { command = arg & 63; continue; }
+        if (raw === 0xfffd) {
+          count = count ? count - 1 : arg & 63;
+          if (count) {
+            // actanm.c: anm_count_back — 直前の LOOP の次、または先頭へ戻る。
+            do { command--; } while (command > 0 && rom.u16(start + (command - 1) * 4) !== 0xfffd);
+          } else command++;
+          continue;
+        }
+        if (raw >= 256) return null;
+        const entry = info.framesOffset + raw * FRAME_SIZE;
+        const imageOffset = rom.pointer(entry);
+        const size = info.width * info.height / 2;
+        if (rom.u16(entry + 4) < size || !rom.inRange(imageOffset, size)) return null;
+        last = { index: raw, hFlip: !!(arg & 64), vFlip: !!(arg & 128) };
+        const duration = Math.max(1, arg & 63);
+        if (elapsed < time + duration) return last;
+        time += duration;
+        command++;
+      }
+    } catch { /* 範囲外のポインタ・命令は表示しない。 */ }
+    return null;
+  }
+
+  /** 指定コマの画像。左右・上下反転は ROM の命令に従う。既定の画像を変更しない。 */
+  frameImage(graphicsId: number, frame: OverworldFrame, tint: PaletteTint | null = null): RgbaImage | null {
+    if (!Number.isInteger(frame.index) || frame.index < 0 || frame.index >= 256) return null;
+    const info = this.info(graphicsId);
+    if (!info) return null;
+    if (frame.index === 0 && !frame.hFlip && !frame.vFlip) return this.image(graphicsId, tint);
+    try {
+      const at = info.framesOffset + frame.index * FRAME_SIZE;
+      const imageOffset = this.rom.pointer(at);
+      const bytes = info.width * info.height / 2;
+      if (this.rom.u16(at + 4) < bytes || !this.rom.inRange(imageOffset, bytes)) return null;
+      const palette = this.paletteOffset(info.paletteTag);
+      if (palette === null) return null;
+      const image = this.decode({ ...info, imageOffset }, palette, tint);
+      if (!frame.hFlip && !frame.vFlip) return image;
+      const out = createImage(image.width, image.height);
+      for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+        const src = ((frame.vFlip ? image.height - 1 - y : y) * image.width + (frame.hFlip ? image.width - 1 - x : x)) * 4;
+        out.data.set(image.data.subarray(src, src + 4), (y * image.width + x) * 4);
+      }
+      return out;
+    } catch { return null; }
   }
 
   /** パレットのタグから、パレット（16 色）の位置を引く。無ければ null。 */

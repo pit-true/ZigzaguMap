@@ -488,6 +488,10 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 `wild.search.time` は0が全時間帯、1〜4が朝・昼・夕・夜の絞り込みです。検索結果の6列目が時間帯です。`mouse {id: "wild.search.row.0", action: "dblclick", px: [4, 4]}` で、そのマップの該当する時間帯へ移動します（#437）。
 
 
+### 人物のコマの描画（#468）
+
+`actors.render {actors, mapType?}` は `PlaybackActorState` の配列（64件まで）を共通描画部品で240×160の透明なCanvasに描き、`png`（base64）と各人物の `frames` を返します。座標はマップ画素です。`frames` の `reason` は非表示なら `hidden`、画像情報が無ければ `graphics`、アニメーションを読めなければ `animation` です。マップ・ROM・履歴を変えません。
+
 ### DPE の種族名（#439）
 
 野生タブやトレーナー編集の初回に名前表を読みます。`getField {id: "wild.species.1"}` の `options` が種族数です（ND 970件、Chronos 1573件）。`setField` は従来どおり種族番号を指定します。`tests/realcopy/run.py --species --reuse` で追加種族の選択、JSON出力、開き直し、トレーナーの名前の表示を確認できます。

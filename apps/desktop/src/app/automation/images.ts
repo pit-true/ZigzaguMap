@@ -1,4 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { resolveActorFrame, type PlaybackActorState } from "@zigzagumap/core";
+import { drawPlaybackActors } from "../../ui/map/PlaybackActors";
+import { actorSpriteSourceFor } from "../../ui/map/spriteCanvases";
 import type { App } from "../App";
 import { findField } from "./ui";
 import { optStr, str, type AutomationRequest, type CommandTable } from "./registry";
@@ -95,6 +98,19 @@ async function uiShot(_app: App, req: AutomationRequest): Promise<unknown> {
 }
 
 export const imageCommands: CommandTable = {
+  "actors.render": (app, req) => {
+    const session = app.state.session;
+    if (!session?.overworldSprites) throw new Error("ROM が開かれていません");
+    const actors = req["actors"] as PlaybackActorState[];
+    if (!Array.isArray(actors) || actors.length > 64) throw new Error("actors は64件までの配列です");
+    const canvas = document.createElement("canvas");
+    canvas.width = 240; canvas.height = 160;
+    const source = actorSpriteSourceFor(session, typeof req["mapType"] === "number" ? req["mapType"] : undefined)!;
+    drawPlaybackActors(canvas.getContext("2d")!, actors, source);
+    const png = canvas.toDataURL("image/png").split(",")[1];
+    canvas.width = 0; canvas.height = 0;
+    return { png, frames: actors.map(actor => resolveActorFrame(session.overworldSprites!, actor)) };
+  },
   canvasPng,
   "ui.shot": uiShot,
 };

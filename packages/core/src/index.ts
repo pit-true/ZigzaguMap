@@ -114,7 +114,8 @@ export { matchReading, normalizeReading, readingTokens, romajiReading, toHiragan
 export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSuggest.js";
 
 // OW（人のスプライト）
-export { OverworldSprites, type OverworldGraphicsInfo } from "./sprite/OverworldSprites.js";
+export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame } from "./sprite/OverworldSprites.js";
+export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";
