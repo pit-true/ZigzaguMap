@@ -1,10 +1,25 @@
-import { listProjectFiles, listScriptSourcePaths, parseStringFile, ScriptCommandTable, ScriptIndex, type PlaybackProject } from "@zigzagumap/core";
+import { listProjectFiles, listScriptSourcePaths, parseStringFile, romScriptPlayback, ScriptCommandTable, ScriptIndex, type PlaybackProject } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import { jaPlayback as t } from "../../i18n/ja.playback";
+import { disasmTools } from "../script/disasmTools";
+import { romTabKey, romTabText } from "../script/RomScripts";
 
 /** 再生を開いたときだけ読む。編集途中の本文も使い、ディスクには書かない。 */
 export class PlaybackProjectData {
-  private constructor(readonly project: PlaybackProject, readonly messages: ReadonlyMap<string, string>) {}
+  private constructor(readonly project: PlaybackProject, readonly messages: ReadonlyMap<string, string>, readonly romEntry: string | null = null) {}
+
+  /**
+   * 素の ROM のスクリプト（#459）。エディタの読み取り専用のタブと同じ本文を作り、そのタブの鍵をパスにする
+   * （エディタで開いていれば、その行を強調する）。プロジェクトがあれば、その命令表と文字の表を使う。
+   */
+  static async fromRom(app: App, pointer: number): Promise<PlaybackProjectData> {
+    const session = app.state.session;
+    if (!session) throw new Error(t.noMap);
+    const tools = await disasmTools(session);
+    const rom = romScriptPlayback({ rom: session.project.rom, pointer, commands: tools.commands, codec: tools.text, table: tools.table ?? null, path: romTabKey(pointer), frame: (r, d) => romTabText(pointer, d, r) });
+    if (!rom.entry) throw new Error(t.noEntry);
+    return new PlaybackProjectData(rom.project, rom.messages, rom.entry);
+  }
 
   static async load(app: App): Promise<PlaybackProjectData> {
     const session = app.state.session, map = app.state.map;

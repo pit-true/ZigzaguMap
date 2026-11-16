@@ -6,7 +6,7 @@
 
 | 命令 | 引数 | 結果・操作 |
 |---|---|---|
-| `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す |
+| `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す。イベントのスクリプトが ROM のアドレスのままなら、ROM から再生する（素の ROM だけでもよい。`entry` は `ROM_08XXXXXX`） |
 | `playback.stop` | なし | 再生を終了し、イベント表示とスクロールを戻す |
 | `playback.state` | なし | `active`、始めたラベル `entry`、始まり方 `trigger`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
 | `playback.timeline` | なし | 区間 `segments`、印 `markers`、送り先 `keyFrames` |

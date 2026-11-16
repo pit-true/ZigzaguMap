@@ -48,6 +48,8 @@ export class PlaybackController {
   private absent: readonly number[] = [];
   private readonly answers = new Map<string, boolean>();
   private readonly choices = new Map<string, number>();
+  /** 素の ROM のスクリプトを再生しているときの位置（#459）。 */
+  private romPointer: number | null = null;
   private readonly consumed = new Set<number>();
   private highlightKey = "";
   private skin: MessageSkin | null = null;
@@ -111,7 +113,7 @@ export class PlaybackController {
     const run = async (): Promise<void> => {
       if (!this.active) return;
       const token = this.generation, map = this.app.state.map;
-      const data = await PlaybackProjectData.load(this.app);
+      const data = this.romPointer !== null ? await PlaybackProjectData.fromRom(this.app, this.romPointer) : await PlaybackProjectData.load(this.app);
       if (token !== this.generation || map !== this.app.state.map || !this.active) return;
       if (!data.project.index.findLabel(this.entry)) throw new Error(t.noEntry);
       this.data = data; this.calculate();
@@ -128,15 +130,18 @@ export class PlaybackController {
   async start(request: PlaybackRequest): Promise<void> {
     this.stop();
     const token = ++this.generation, session = this.app.state.session, map = this.app.state.map;
-    if (!map) throw new Error(t.noMap);
-    if (!session?.projectDir) throw new Error(t.projectRequired);
+    if (!map || !session) throw new Error(t.noMap);
+    // ラベルで始めるときはプロジェクトが要る。イベントは、ラベルが無くてスクリプトが ROM のアドレスのままなら ROM から再生する（#459）。
+    const location = request.target && session.projectDir ? await new ScriptLocator(this.app, session.files).resolve(request.target) : null;
+    const romPointer = request.target && !location?.label ? eventRomPointer(map, request.target) : null;
+    if (!session.projectDir && romPointer === null) throw new Error(t.projectRequired);
     await this.cleanup;
     if (token !== this.generation) return;
-    const data = await PlaybackProjectData.load(this.app);
-    const location = request.target ? await new ScriptLocator(this.app, session.files).resolve(request.target) : null;
+    const data = romPointer !== null ? await PlaybackProjectData.fromRom(this.app, romPointer) : await PlaybackProjectData.load(this.app);
     if (token !== this.generation || map !== this.app.state.map) return;
-    const entry = request.label ?? location?.label;
+    const entry = data.romEntry ?? request.label ?? location?.label;
     if (!entry || !data.project.index.findLabel(entry)) throw new Error(t.noEntry);
+    this.romPointer = romPointer;
     const skin = await messageSkin(session, request.target?.kind === "sign");
     await prepareActorScene(session);
     if (token !== this.generation || map !== this.app.state.map) return;
@@ -167,7 +172,7 @@ export class PlaybackController {
     this.generation++; this.pause();
     const hadState = this.request !== null;
     const sameMap = this.sourceMap === this.app.state.map;
-    this.clock = null; this.timeline = null; this.animation = null; this.data = null; this.request = null;
+    this.clock = null; this.timeline = null; this.animation = null; this.data = null; this.request = null; this.romPointer = null;
     this.bar.element.remove(); this.consumed.clear();
     this.timelineView.clear(); this.bar.clear(); this.answers.clear(); this.choices.clear();
     this.npcRelease?.(); this.npcRelease = null;
@@ -348,4 +353,12 @@ export class PlaybackController {
     this.highlightKey = key;
     void this.app.scriptHostIfLoaded().then(host => host?.playbackHighlight(spans)).catch(() => undefined);
   }
+}
+
+/** イベントのスクリプトが ROM のアドレス（0x08〜0x09）なら、その位置。 */
+function eventRomPointer(map: OpenMap, target: ScriptTarget): number | null {
+  const events = map.doc.events, index = target.index ?? 0;
+  const sign = target.kind === "sign" ? events?.signs[index] : undefined;
+  const pointer = target.kind === "person" ? events?.persons[index]?.script : target.kind === "trap" ? events?.traps[index]?.script : sign?.content.type === "script" ? sign.content.script : undefined;
+  return pointer !== undefined && pointer >>> 24 >= 0x08 && pointer >>> 24 <= 0x09 ? pointer >>> 0 : null;
 }

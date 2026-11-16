@@ -19,7 +19,9 @@ import {
   scriptLabelMapName,
   tableArgs,
   type DisasmCommandSet,
+  type Disassembly,
   type MapScriptTableModel,
+  type RenderedDisassembly,
   type ScriptImportPlan,
   type ScriptTextCodec,
 } from "@zigzagumap/core";
@@ -32,6 +34,19 @@ import type { ScriptTarget } from "./ScriptEntry";
 const LABEL_TARGET = { person: "person", sign: "sign", trap: "tile" } as const;
 
 /** 16 進 8 桁（`08160A8E`）。 */
+/** 読み取り専用のタブの鍵（再生 #459 も、この鍵をパスにして同じ本文をたどる）。 */
+export function romTabKey(pointer: number): string {
+  return `ROM:${hex8(pointer)}`;
+}
+
+/** 読み取り専用のタブの本文（見出し、逆アセンブルのスクリプト、文字列と問題はコメント）。 */
+export function romTabText(pointer: number, d: Disassembly, r: RenderedDisassembly): string {
+  const lines = [t.header(hex8(pointer)), "", r.script.text.trimEnd()];
+  if (r.strings.text !== "") lines.push("", t.stringsHeader, ...r.strings.text.trimEnd().split("\n").map((l) => (l === "" ? "" : `@ ${l}`)));
+  if (d.problems.length > 0) lines.push("", t.problemsHeader, ...d.problems.map((p) => `@ ${p.offset === null ? "" : `0x${hex8(p.offset + ROM_BASE)}: `}${p.message}`));
+  return `${lines.join("\n")}\n`;
+}
+
 function hex8(n: number): string {
   return formatHex(n >>> 0, 8);
 }
@@ -60,9 +75,6 @@ export class RomScripts {
     const { commands, text } = await this.tools();
     const d = disassembleScripts(session.project.rom, [{ offset }], { commands, text });
     const r = renderDisassembly(d);
-    const lines = [t.header(hex8(pointer)), "", r.script.text.trimEnd()];
-    if (r.strings.text !== "") lines.push("", t.stringsHeader, ...r.strings.text.trimEnd().split("\n").map((l) => (l === "" ? "" : `@ ${l}`)));
-    if (d.problems.length > 0) lines.push("", t.problemsHeader, ...d.problems.map((p) => `@ ${p.offset === null ? "" : `0x${hex8(p.offset + ROM_BASE)}: `}${p.message}`));
     let importable = !!session.projectDir && target !== null;
     let items: ScriptRomOpenRequest["items"] = [];
     if (importable) {
@@ -71,7 +83,7 @@ export class RomScripts {
       // マップスクリプトは、表の行き先のアドレスのときだけ取り込める
       if (target!.kind === "map" && !plan) importable = false;
     }
-    return { key: `ROM:${hex8(pointer)}`, pointer: pointer >>> 0, text: `${lines.join("\n")}\n`, target, importable, items };
+    return { key: romTabKey(pointer), pointer: pointer >>> 0, text: romTabText(pointer, d, r), target, importable, items };
   }
 
   /**

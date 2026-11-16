@@ -47,7 +47,7 @@ export class PlaybackEntry {
   /** 踏んだマスの踏むスクリプト（変数の条件は見ない）。無ければ null。 */
   private stepRequest(placement: PlayerPlacement): PlaybackRequest | null {
     const map = this.app.state.map, session = this.app.state.session;
-    if (!map || !session?.projectDir) return null;
+    if (!map || !session) return null;
     const index = (map.doc.events?.traps ?? []).findIndex(trap => trap.x === placement.x && trap.y === placement.y);
     return index < 0 ? null : { target: { map: map.id, kind: "trap", index }, origin: placement, play: true };
   }
@@ -55,7 +55,7 @@ export class PlaybackEntry {
   /** 向いている先のマスの人物か看板。看板は向きの条件を見る。無ければ知らせる文。 */
   private talkRequest(placement: PlayerPlacement): PlaybackRequest | string | null {
     const map = this.app.state.map, session = this.app.state.session;
-    if (!map || !session?.projectDir) return null;
+    if (!map || !session) return null;
     const d = MOVEMENT_DELTA[placement.facing as MovementDirection];
     const x = placement.x + d.x, y = placement.y + d.y;
     const events = map.doc.events;
