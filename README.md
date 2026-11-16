@@ -2322,3 +2322,10 @@ MIT（[LICENSE](LICENSE)）
 出力先は既存の `maps/BB/MM.json` の `Wild[].Time`（0 朝・1 昼・2 夕・3 夜）です。`python tests/realcopy/run.py --wildtime --reuse` で、ND・Chronos の写しへの出力、ビルド、開き直しを確認できます。
 
 野生ポケモンの検索は全時間帯を調べ、結果に時間帯を表示します。時間帯の欄で絞り、行をダブルクリックすると該当するマップと時間帯を開きます。出現率のグラフの題にも、今見ている時間帯を表示します（#437）。
+
+
+### DPE の追加種族（#439）
+
+プロジェクトで野生タブやトレーナー編集を初めて開くと、DPE の `include/species.h` と `strings/Pokemon_Name_Table.string` から種族番号と名前を読みます。ND は隣の `NeoDark-DPE-main`、Chronos は隣の `dpe` を探します。場所を変える場合は、CFRU の `zigzagumap.json` の最上位に `"dpeDirectory": "../自分のDPE"` を指定します。読み込めない場合はROMの名前表を使います。
+
+野生の種族のコンボ、全マップ検索、トレーナーの手持ちの名前に同じ表を使います。追加種族も番号で出力し、開き直すと同じ番号と名前になります。ND の970件、Chronos の1573件（最後は0x624）を確認できます。`python tests/realcopy/run.py --species --reuse` が表示とJSON往復のテストです。

@@ -31,14 +31,17 @@ export function speciesLabel(provider: SpeciesNameProvider | null, species: numb
 export class SpeciesOptions {
   private template: HTMLSelectElement | null = null;
   private key = "";
+  private revision = 0;
+  private provider: SpeciesNameProvider | null = null;
 
   constructor(private readonly session: () => ProjectSession | null) {}
 
   /** `count` 件の選択肢を入れたコンボの元。 */
   options(count: number): HTMLSelectElement {
     const provider = speciesNameProvider(this.session());
-    const key = `${count}:${provider ? "names" : "numbers"}:${String(this.session()?.romPath)}`;
-    if (!this.template || this.key !== key) {
+    if (this.provider !== provider) this.revision++;
+    const key = `${this.revision}:${count}:${provider ? "names" : "numbers"}:${String(this.session()?.romPath)}`;
+    if (!this.template || this.key !== key || this.provider !== provider) {
       const select = document.createElement("select");
       const fragment = document.createDocumentFragment();
       for (let i = 0; i < count; i++) fragment.append(new Option(speciesLabel(provider, i)));
@@ -46,6 +49,7 @@ export class SpeciesOptions {
       select.dataset["key"] = key;
       this.template = select;
       this.key = key;
+      this.provider = provider;
     }
     return this.template;
   }

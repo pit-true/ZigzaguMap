@@ -21,7 +21,7 @@ export class MapNavigation {
   /** ツール > 野生ポケモンの検索…（#398）。行のダブルクリックでそのマップを開いて野生タブにする。 */
   async openWildSearch(): Promise<void> {
     const { openWildSearch } = await import("../ui/wild/WildSearchDialog");
-    openWildSearch({
+    await openWildSearch({
       state: this.host.state,
       openWild: async (id, time) => {
         await this.host.openMap(id);

@@ -130,7 +130,10 @@ export class TrainerService {
   /** ひな形の窓の「新しいトレーナーを作る」の欄が使うもの。 */
   newTrainerSource(): NewTrainerSource {
     return {
-      nextId: () => this.app.usage.next("trainer"),
+      nextId: async () => {
+        await this.app.state.session?.openSpeciesNames();
+        return this.app.usage.next("trainer");
+      },
       base: (id) => this.get(id),
       classes: () => this.classNames(),
       generate: async (seed) => {
@@ -188,6 +191,7 @@ export class TrainerService {
   async edit(id: number, answer?: TrainerEditResult | null): Promise<boolean> {
     const session = this.app.state.session;
     if (!session) return false;
+    await session.openSpeciesNames();
     // trainers.json はプロジェクトフォルダの maps\ に書くので、フォルダが要る
     if (!session.projectDir) {
       this.app.state.setStatus(jaTrainer.needProject, undefined, true);

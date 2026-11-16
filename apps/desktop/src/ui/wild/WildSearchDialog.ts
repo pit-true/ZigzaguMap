@@ -24,9 +24,11 @@ export interface WildSearchHost {
  * その種族が出る枠を表にする（マップ・種類・枠・レベル・割合）。列の見出しで並べ替え、行のダブルクリックでそのマップの野生タブを開く。
  * 全マップの野生は押したときに読み、窓を閉じたら捨てる。種族の読みの表も窓を開いたときに作る。時間帯の表をまとめて検索し、時間帯でも絞れます。
  */
-export function openWildSearch(host: WildSearchHost): void {
+export async function openWildSearch(host: WildSearchHost): Promise<void> {
   const session = host.state.session;
   if (!session) return;
+  await session.openSpeciesNames();
+  if (host.state.session !== session) return;
   const finish = (): void => frame.remove();
   const frame = createDialog({ title: wt.searchTitle, width: 520, className: "wild-search", modal: false, onClose: finish });
   // 浮いた窓は位置を決める（マップを開き直しても検索の結果を見続けられるように、後ろを覆わない）
@@ -34,7 +36,7 @@ export function openWildSearch(host: WildSearchHost): void {
   frame.box.style.top = `${Math.max(0, Math.round((window.innerHeight - 420) / 2))}px`;
   // 種族の欄（1 番から。名前が読めなければ番号だけで当てる）
   const provider = speciesNameProvider(session);
-  const suggest = new NameSuggest(Array.from({ length: FR_SPECIES_COUNT - 1 }, (_, i) => ({ value: i + 1, name: provider?.name(i + 1) ?? null })));
+  const suggest = new NameSuggest(Array.from({ length: Math.max(FR_SPECIES_COUNT, session.speciesCount) - 1 }, (_, i) => ({ value: i + 1, name: provider?.name(i + 1) ?? null })));
   const species = new SuggestInput({
     autoId: "wild.search.species",
     suggest,
