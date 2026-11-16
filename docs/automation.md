@@ -432,3 +432,23 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - 表示の補助（#391）: `action` か `menu.run` の `view.cursorFrame`（C）・`view.playerView`（V）・`view.gridSettings`（窓「グリッドの設定」を開いてすぐ返す）。窓の部品は `grid.width`・`grid.height`・`grid.offsetX`・`grid.offsetY`（`setField` に数の文字）・`grid.color`（`#rrggbb`）・`grid.line`（`setField` に 0 実線 / 1 破線 / 2 点）・`grid.reset`（既定に戻す）。`dialog` の `press: "ok"` でグリッドを出して覚え、`"cancel"` で元に戻す。枠は `mouse` の `hover` で動く（`view.aids` の `layers`）。移動許可の数値の欄は `movement.value`（`setField` に 16 進 2 桁。00〜3F の外は選択を変えない）。
 - ショートカットの変更（#392）: `action` の `opt.shortcuts` で窓「ショートカットの変更」を開く。キーの欄は `shortcuts.<操作の ID>.0`・`shortcuts.<操作の ID>.1`（`click` してから、`key` 命令に `id` でその欄を渡して押す）、外す `shortcuts.<操作の ID>.<n>.clear`、既定に戻す `shortcuts.reset`（`click`）。重なると窓「キーの重なり」が出るので、`dialog` の `press: "new"`（新しく決めた方に残す）か `"old"`（前からの方に残す）で答える。`dialog` の `press: "ok"` で決め、`"cancel"` で閉じる。操作の ID は `apps/desktop/src/app/keymap.ts` の表。
 - コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端の写しでなくこの柄で埋める）。
+
+## Phase6 の部品と命令（時間帯と野生。P6-C1）
+
+命令は `apps/desktop/src/app/automation/timeOfDay.ts` にまとめています。確認のスクリプトは `tests/automation/time_of_day_check.py`。
+
+| cmd | 引数 | 動作 |
+|---|---|---|
+| `view.timeOfDay` | `time`（`morning` / `day` / `evening` / `night`）か `settimeofday`（Chronos の値。0 昼・1 朝・2 夕・3 夜・4 深夜。深夜は夜にする）。どちらも省けば切り替えない。`wait`（true で隣の帯を描き終えるまで待つ） | 時間帯ビューア（#434）。返事は、切り替えられたか `ok`（読めないときは false で昼のまま）、今の区分 `time`、区分の並び `times`、読めなかった理由 `error`、区分の代表の時刻 `sections`（`id`・`hour`・`minute`。昼のままなら null）、時刻の元 `clock`（`chronos` / `rtc`）、表示中のマップの色が変わるか `mapTinted`（屋内などは false）、使った色 `fade`（`color`（BGR555）・`amount`（係数）・`halve`（Chronos の朝の半分の計算か）。昼は null）、最後の切り替えで主マップを描き直した時間 `switchMs`、ツール欄のコンボ `combo`（`value`・`disabled`）、ステータスバーの文 `status` |
+
+- メニューの項目は `time.morning`・`time.day`・`time.evening`・`time.night`（`action` か `menu.run`。`menu.list` の `checked` で今の区分が分かる）。ツール欄のコンボは `toolbar.timeOfDay`。
+- スクリプトの再生（P6-A）で Chronos の `settimeofday`（0x2D）を再現するときは、`app.timeOfDay.set(区分)` か、値を区分に直す `app.timeOfDay.chronosTime(値)` を使う（この命令と同じ）。
+
+
+### 野生の時間帯（#436）
+
+プロジェクトを開き `tab {name: "wild"}` の後、`click {id: "wild.time.0"}`（朝）・`.1`（昼）・`.2`（夕）・`.3`（夜）で切り替えます。`wild.timeInfo` は表の無い時間帯の案内、`wild.timeCopy` は昼の表の複製、`wild.timeCreate` は空の表の作成ダイアログ、`wild.timeRemove` は今の表の削除です。昼の削除ボタンは出ません。通常の編集欄は今の時間帯に対して働きます。
+
+`command {name: "setWildTable", args: {bank: 3, map: 19, time: 3, from: 1, remove: false}}` で昼から夜へ複製できます。`remove: true` は指定の時間帯の表を削除します。履歴に1件として入り、`undo` で戻ります。
+
+`wild.search.time` は0が全時間帯、1〜4が朝・昼・夕・夜の絞り込みです。検索結果の6列目が時間帯です。`mouse {id: "wild.search.row.0", action: "dblclick", px: [4, 4]}` で、そのマップの該当する時間帯へ移動します（#437）。

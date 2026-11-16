@@ -48,6 +48,7 @@ export interface StatusText {
  * - tool: 描く道具（鉛筆・塗りつぶし・シフト）とスマートパスの切り替え（Phase5 #388）
  */
 export type StateTopic =
+  | "wildTime"
   | "session"
   | "map"
   | "cells"
@@ -79,6 +80,8 @@ export class EditorState {
   /** 表示中のマップのブロック画像（各タブで共有する）。 */
   mapImage: MapImage | null = null;
   tab: TabId = "map";
+  /** 野生タブで選んでいる時間帯（0朝・1昼・2夕・3夜）。 */
+  wildTime = 1;
   selection: BlockSelection = { width: 1, height: 1, blocks: [0] };
   movement = 0;
   status: StatusText;

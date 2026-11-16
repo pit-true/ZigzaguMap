@@ -2,6 +2,7 @@ import { fileNameOf } from "./FileDialogs";
 import type { SettingsData } from "./Settings";
 import { ja } from "../i18n/ja";
 import { jaNeighbors } from "../i18n/ja.neighbors";
+import { jaTimeOfDay } from "../i18n/ja.timeOfDay";
 import { jaComposite } from "../i18n/ja.composite";
 import { jaTransplant } from "../i18n/ja.transplant";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
@@ -124,6 +125,12 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
             { id: "neighbors.all", label: jaNeighbors.viewAll },
             { id: "neighbors.off", label: jaNeighbors.viewOff },
           ],
+        },
+        // 時間帯（Phase6 #434。ZigzaguMap 独自）: CFRU の昼夜の色で見せる。起動したときはいつも昼
+        {
+          label: jaTimeOfDay.menu,
+          enable: "map",
+          children: (["morning", "day", "evening", "night"] as const).map((id) => ({ id: `time.${id}`, label: jaTimeOfDay.names[id]!, enable: "map" as const })),
         },
         // 移動許可だけ違うマスと、選んだ移動許可のマスの印（Phase3 #235。ZigzaguMap 独自）
         { id: "view.usageMarks", label: jaBlockUsage.menuMarks },

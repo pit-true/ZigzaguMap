@@ -87,6 +87,11 @@ export class Toolbar {
     this.sort.selectedIndex = this.host.sortMode();
   }
 
+  /** 並べ替えのコンボの後ろに部品を足す（時間帯のコンボ。Phase6 #434）。 */
+  insertAfterSort(element: HTMLElement): void {
+    this.sort.after(element);
+  }
+
   /** 表示・非表示。 */
   setVisible(visible: boolean): void {
     this.element.hidden = !visible;

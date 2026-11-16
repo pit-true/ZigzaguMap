@@ -194,3 +194,13 @@ select {
   padding: 2px 4px;
   color: var(--gray-text);
 }
+
+/* 野生ポケモンタブの時間帯のタブ（Phase6 #436）。表のある時間帯は太字、見ている時間帯は押した見た目。 */
+.wild-time-tab.has-table {
+  font-weight: bold;
+}
+
+.wild-time-tab.selected {
+  border-style: inset;
+  background: var(--highlight);
+}

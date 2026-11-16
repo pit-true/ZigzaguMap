@@ -17,18 +17,29 @@ const BLOCK_RGBA_BYTES = BLOCK_PIXELS * BLOCK_PIXELS * 4;
  * 上層と同じ透かし方で 3 枚目として重ねる（次のブロックが表の外なら 3 枚目は描かない）。
  */
 export class BlockRenderer {
-  /** 16 本 × 16 色の RGBA パレット（0〜6 は主、7〜15 は副から取る）。 */
+  /** 16 本 × 16 色の RGBA パレット（0〜6 は主、7〜15 は副から取る）。上のレイヤーを透かす判定に使う。 */
   private readonly paletteRgba = new Uint8ClampedArray(16 * 16 * 4);
+  /** 画素に書く色。時間帯の色（`tinted`）を渡されたらその色、無ければ paletteRgba と同じもの。 */
+  private readonly drawRgba: Uint8ClampedArray;
   private readonly cache = new Map<number, Uint8ClampedArray>();
 
+  /**
+   * `tinted` は、時間帯の色に変えた後の 256 色（BGR555。Phase6 #433）。上のレイヤーを透かす判定は変える前の色で比べる
+   * （時間帯の計算は 1 対 1 でなく、別の色が同じ色になることがあるため）。省けば今までと同じ絵になる。
+   */
   constructor(
     private readonly primary: Tileset,
     private readonly secondary: Tileset,
+    tinted?: ArrayLike<number>,
   ) {
     for (let pal = 0; pal < 16; pal++) {
       const source = pal < PRIMARY_PALETTE_COUNT ? primary.palettes : secondary.palettes;
       for (let c = 0; c < 16; c++) writeBgr555(this.paletteRgba, pal * 16 + c, source[pal * 16 + c] ?? 0);
     }
+    if (tinted) {
+      this.drawRgba = new Uint8ClampedArray(16 * 16 * 4);
+      for (let i = 0; i < 256; i++) writeBgr555(this.drawRgba, i, tinted[i] ?? 0);
+    } else this.drawRgba = this.paletteRgba;
   }
 
   /** 描いて持っているブロックの数。 */
@@ -62,7 +73,7 @@ export class BlockRenderer {
   private draw(blockId: number): Uint8ClampedArray {
     const out = new Uint8ClampedArray(BLOCK_RGBA_BYTES);
     // 背景色（パレット 0 の色 0）で塗る。
-    for (let i = 0; i < BLOCK_PIXELS * BLOCK_PIXELS; i++) out.set(this.paletteRgba.subarray(0, 4), i * 4);
+    for (let i = 0; i < BLOCK_PIXELS * BLOCK_PIXELS; i++) out.set(this.drawRgba.subarray(0, 4), i * 4);
 
     const isPrimary = blockId < PRIMARY_BLOCK_COUNT;
     const defs = isPrimary ? this.primary.blocks : this.secondary.blocks;
@@ -111,9 +122,9 @@ export class BlockRenderer {
         const dy = oy + (vflip ? 7 - py : py);
         const p = (pal * 16 + index) * 4;
         const o = (dy * BLOCK_PIXELS + dx) * 4;
-        out[o] = this.paletteRgba[p]!;
-        out[o + 1] = this.paletteRgba[p + 1]!;
-        out[o + 2] = this.paletteRgba[p + 2]!;
+        out[o] = this.drawRgba[p]!;
+        out[o + 1] = this.drawRgba[p + 1]!;
+        out[o + 2] = this.drawRgba[p + 2]!;
         out[o + 3] = 255;
       }
     }

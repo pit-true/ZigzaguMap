@@ -26,9 +26,11 @@ export class MapImage {
   version = 0;
   private readonly changes: { version: number; rect: DirtyRect }[] = [];
 
+  /** `mapType` はマップの種類（ヘッダーの 0x17）。時間帯の色を変えるかを決める（Phase6 #434。省けば元の色）。 */
   constructor(
     readonly grid: BlockGrid,
     readonly tiles: TilesetView,
+    readonly mapType?: number,
   ) {
     this.image = createImage(grid.width * BLOCK_PIXELS, grid.height * BLOCK_PIXELS);
     this.imageData = toImageData(this.image);
@@ -106,7 +108,7 @@ export class MapImage {
   private blit(index: number, block: number): void {
     const x = index % this.grid.width;
     const y = (index - x) / this.grid.width;
-    this.tiles.renderer.blit(block, this.image.data, this.image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
+    this.tiles.mapRenderer(this.mapType).blit(block, this.image.data, this.image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
   }
 }
 
