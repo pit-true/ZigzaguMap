@@ -70,3 +70,10 @@
   width: 193px;
   height: 19px;
 }
+
+/* 時間帯のコンボ（Phase6 #434）。 */
+.toolbar-time {
+  width: 56px;
+  height: 21px;
+  margin: 0 3px;
+}

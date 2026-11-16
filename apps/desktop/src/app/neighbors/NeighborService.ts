@@ -15,6 +15,7 @@ import type { EditorState } from "../EditorState";
 import type { NeighborView } from "../Settings";
 import { TilesetView } from "../TilesetView";
 import { timings } from "../timings";
+import { tintGeneration } from "../timeOfDay/activeTint";
 import { scheduleIdleGc } from "../../util/idleGc";
 import { tripleChildFlags } from "../../input/tripleRules";
 
@@ -191,7 +192,7 @@ export class NeighborService {
       const nd = docs.get(`${p.id.bank}.${p.id.map}`)!;
       const tilesKey = `${nd.primaryTileset >>> 0}:${nd.secondaryTileset >>> 0}`;
       const b = p.band;
-      const key = `${p.id.bank}.${p.id.map}|${tilesKey}|${this.tilesetGeneration}|${b.x},${b.y},${b.width},${b.height}|${bandHash(nd.grid, b)}`;
+      const key = `${p.id.bank}.${p.id.map}|${tilesKey}|${this.tilesetGeneration}|t${tintGeneration()}|${b.x},${b.y},${b.width},${b.height}|${bandHash(nd.grid, b)}`;
       let bitmap = this.bands.get(key);
       if (bitmap) this.bands.delete(key);
       const same = main.tiles.key === tilesKey;
@@ -210,7 +211,7 @@ export class NeighborService {
         }
         if (!same && !flags) flags = this.rememberFlags(flagKey, tripleChildFlags(tiles.triple));
         if (!bitmap) {
-          bitmap = await renderBand(nd.grid, b, tiles);
+          bitmap = await renderBand(nd.grid, b, tiles, nd.header.mapType);
           if (token !== this.token) {
             bitmap.close();
             return;
@@ -275,13 +276,22 @@ export class NeighborService {
   }
 }
 
-/** 隣のマップの帯の部分を等倍の画像にする（ダイブ先の重ね表示でも使う）。 */
-export async function renderBand(grid: BlockGrid, band: { x: number; y: number; width: number; height: number }, tiles: TilesetView): Promise<ImageBitmap> {
+/**
+ * 隣のマップの帯の部分を等倍の画像にする（ダイブ先の重ね表示でも使う）。
+ * `mapType`（そのマップの種類）を渡すと、時間帯の色で描く（Phase6 #434。省けば元の色）。
+ */
+export async function renderBand(
+  grid: BlockGrid,
+  band: { x: number; y: number; width: number; height: number },
+  tiles: TilesetView,
+  mapType?: number,
+): Promise<ImageBitmap> {
   const image = createImage(band.width * BLOCK_PIXELS, band.height * BLOCK_PIXELS);
+  const renderer = tiles.mapRenderer(mapType);
   for (let y = 0; y < band.height; y++) {
     for (let x = 0; x < band.width; x++) {
       const block = grid.cells[(band.y + y) * grid.width + band.x + x]! & BLOCK_ID_MASK;
-      tiles.renderer.blit(block, image.data, image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
+      renderer.blit(block, image.data, image.width, x * BLOCK_PIXELS, y * BLOCK_PIXELS);
     }
   }
   return createImageBitmap(new ImageData(image.data, image.width, image.height));

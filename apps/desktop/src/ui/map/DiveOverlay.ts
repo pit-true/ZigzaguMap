@@ -3,6 +3,7 @@ import type { EditorState, TabId } from "../../app/EditorState";
 import { matchesKey, releasesKey } from "../../app/keymap";
 import { renderBand } from "../../app/neighbors/NeighborService";
 import { TilesetView } from "../../app/TilesetView";
+import { tintGeneration } from "../../app/timeOfDay/activeTint";
 import { jaNeighbors } from "../../i18n/ja.neighbors";
 import type { Cell, MapView } from "./MapView";
 
@@ -153,14 +154,14 @@ export class DiveOverlay {
       return;
     }
     const tilesKey = `${doc.primaryTileset >>> 0}:${doc.secondaryTileset >>> 0}`;
-    const key = `${id.bank}.${id.map}|${tilesKey}|${doc.width}x${doc.height}|${gridHash(doc.grid.cells)}`;
+    const key = `${id.bank}.${id.map}|${tilesKey}|t${tintGeneration()}|${doc.width}x${doc.height}|${gridHash(doc.grid.cells)}`;
     if (this.image?.key === key) return;
     let tiles = this.state.map?.tiles.key === tilesKey ? this.state.map.tiles : session.cachedTiles(tilesKey);
     if (!tiles) {
       const t = await session.project.peekTilesets(doc);
       tiles = new TilesetView(tilesKey, t.primary, t.secondary);
     }
-    const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tiles);
+    const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tiles, doc.header.mapType);
     this.image?.bitmap.close();
     this.image = { key, bitmap };
   }

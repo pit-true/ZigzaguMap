@@ -64,6 +64,7 @@ import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
 import { ToolExtras } from "./toolExtras";
 import { ViewAids } from "./viewAids";
+import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
@@ -144,6 +145,8 @@ export class App implements ActionTarget {
   readonly mixingBag: MixingBag;
   /** Phase4 の表示・一覧・調査（接続の境目の注意など）。 */
   readonly views: ViewFeatures;
+  /** 時間帯ビューア（Phase6 #434。表示 > 時間帯とツール欄のコンボ）。 */
+  readonly timeOfDay: TimeOfDayView;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -269,6 +272,8 @@ export class App implements ActionTarget {
         state.setStatus(jaShortcutEdit.changed);
       });
     });
+    this.timeOfDay = new TimeOfDayView(state, this.actions, { rebuildNeighbors: () => this.extras.neighbors.schedule(false) });
+    this.toolbar.insertAfterSort(this.timeOfDay.select);
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     const tabControl = new TabControl(
       [
@@ -425,7 +430,7 @@ export class App implements ActionTarget {
       if (this.loadFailures.delete(`${id.bank}.${id.map}`)) this.tree.refreshMarks();
       if (nav === "visit") state.history.visit(state.map?.id ?? null, id);
       state.map = map;
-      state.mapImage = new MapImage(map.doc.grid, map.tiles);
+      state.mapImage = new MapImage(map.doc.grid, map.tiles, map.doc.header.mapType);
       state.emit("map");
       if (isWorkMapId(id)) {
         // 作業用のマップ（新規作成・.map）は一覧に無い。AdvanceMap と同じく一覧の選択とステータスバーは変えず、
