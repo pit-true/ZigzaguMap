@@ -75,6 +75,14 @@ export const playbackCommands: CommandTable = {
   "playback.wheel": async (app, req) => {
     const controller = await app.playback.get(); controller.timelineUi.wheel(Number(req["delta"] ?? -100), Number(req["x"] ?? 200)); return controller.timelineUi.layoutInfo();
   },
+  /** メッセージの窓の今のページ（字の位置・出どころ・補った字。#497）。文が出ていなければ null。 */
+  "playback.message": async app => {
+    const window = (await app.playback.existing())?.messageWindow;
+    if (!window) return null;
+    await window.ready();
+    await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+    return window.info;
+  },
   "playback.timeline": async app => {
     const timeline = (await app.playback.existing())?.result;
     return timeline ? { segments: timeline.segments, markers: timeline.markers, keyFrames: timeline.keyFrames(), lastFrame: timeline.lastFrame } : null;

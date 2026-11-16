@@ -244,6 +244,26 @@ pub fn process_read_bytes(root: State<'_, ProjectRoot>, path: String, cwd: Optio
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/// `cwd` の下のバイナリファイルの一部（`offset` から `length` バイト、1MB まで）を読む（再生のメッセージのフォント。#497）。読むだけ。
+/// ファイルの終わりを超えた分は返さない。
+#[tauri::command]
+pub fn process_read_range(root: State<'_, ProjectRoot>, path: String, cwd: Option<String>, offset: u64, length: u64) -> Result<tauri::ipc::Response, String> {
+    use std::io::{Seek, SeekFrom};
+    if length > 1024 * 1024 {
+        return Err(format!("一度に読めるのは 1MB までです: {length}"));
+    }
+    let dir = resolve_cwd(&root, cwd.as_deref())?;
+    let file = file_in(&dir, &path)?;
+    let mut bytes = Vec::new();
+    std::fs::File::open(&file)
+        .and_then(|mut f| {
+            f.seek(SeekFrom::Start(offset))?;
+            f.take(length).read_to_end(&mut bytes)
+        })
+        .map_err(|e| format!("{}: {e}", display_path(&file)))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /// `cwd` の下のフォルダの中の名前（名前順）。フォルダが無ければ空。`cwd` の外は断る。
 #[tauri::command]
 pub fn process_list(root: State<'_, ProjectRoot>, path: String, cwd: Option<String>) -> Result<Vec<String>, String> {

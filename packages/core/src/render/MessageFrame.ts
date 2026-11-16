@@ -39,6 +39,6 @@ export function readMessageFrame(rom: Rom, tilesPointer: number, palettesPointer
         for (const [i, x] of [0, 1, 28, 29].entries()) tile(x, row, side[i]!, false, row >= 3);
       }
     }
-    return { image, textColor: colors[2]!, shadowColor: colors[3]! };
+    return { image, textColor: colors[2]!, shadowColor: colors[3]!, palette: colors };
   } catch { return null; }
 }

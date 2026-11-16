@@ -159,6 +159,19 @@ export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
 export { readMessageFrame, type MessageFrameStyle } from "./render/MessageFrame.js";
+export { BPRJ_MESSAGE_FONT, MessageFont, readKanji, type MessageFontSource, type MessageGlyph, type RomRangeReader } from "./render/MessageFont.js";
+export {
+  drawMessageGlyphs,
+  layoutMessage,
+  MESSAGE_AREA,
+  MESSAGE_TEXT,
+  messageAreaImage,
+  placeholderInfo,
+  type MessageColors,
+  type MessageFallbackReason,
+  type MessageItem,
+  type MessageStop,
+} from "./render/MessageLayout.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

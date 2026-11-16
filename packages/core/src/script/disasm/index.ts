@@ -30,7 +30,7 @@ export {
   type RenderedText,
   renderDisassembly,
 } from "./renderDisassembly.js";
-export { ScriptTextCodec } from "./scriptText.js";
+export { ScriptTextCodec, type ScriptTextPart } from "./scriptText.js";
 export {
   findImportedLabels,
   importMarkLine,
