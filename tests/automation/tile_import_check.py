@@ -22,7 +22,7 @@ import time
 import zlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from zz import Zigzagu  # noqa: E402
+from zz import Zigzagu, wait_window as wait_window_ready  # noqa: E402
 
 failures: list[str] = []
 PALLET = {"bank": 3, "map": 0}
@@ -83,12 +83,8 @@ def snap(z: Zigzagu) -> dict:
 
 
 def wait_window(z: Zigzagu, label: str) -> None:
-    for _ in range(80):
-        if any(w["label"] == label and w["ready"] for w in z.call({"cmd": "windows"})):
-            return
-        time.sleep(0.2)
-    raise RuntimeError(f"窓が開きません: {label}")
-
+    if not wait_window_ready(z, label, timeout=16):
+        raise RuntimeError(f"窓が開きません: {label}")
 
 def open_window(z: Zigzagu, action: str, label: str) -> None:
     z.call({"cmd": "action", "id": action})

@@ -22,7 +22,7 @@ import tempfile
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from zz import Zigzagu  # noqa: E402
+from zz import Zigzagu, wait_window  # noqa: E402
 
 failures: list[str] = []
 TP = "transplant"
@@ -47,18 +47,6 @@ def save_shot(z: Zigzagu, shots: pathlib.Path | None, name: str, window: str | N
 
 def tp(z: Zigzagu, req: dict):
     return z.call({**req, "window": TP})
-
-
-def wait_window(z: Zigzagu, label: str, present: bool = True, timeout: float = 20) -> bool:
-    t0 = time.time()
-    while time.time() - t0 < timeout:
-        wins = {w["label"]: w for w in z.call({"cmd": "windows"})}
-        if present and wins.get(label, {}).get("ready"):
-            return True
-        if not present and label not in wins:
-            return True
-        time.sleep(0.2)
-    return False
 
 
 def private_mb(pid: int) -> float:

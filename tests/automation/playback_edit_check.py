@@ -10,14 +10,11 @@ from __future__ import annotations
 
 import argparse
 import pathlib
-import shutil
 import tempfile
 import time
 
-from zz import AppError, Zigzagu
+from zz import AppError, Zigzagu, copy_project, wait_editor
 
-COPY_DIRS = ["assembly", "strings", "maps"]
-COPY_FILES = ["xse_commands.s", "xse_defines.s", "asm_defines.s", "eventscripts", "charmap.tbl", "zigzagumap.json", "BPRJ.ld"]
 SCRIPT = "assembly/overworld_scripts/zz_edit.s"
 W = {"window": "script-editor"}
 SOURCE = """ZzEditMain:
@@ -46,22 +43,9 @@ ZzEdit_If: .byte walk_up, end_m
 
 
 def prepare(src: pathlib.Path, work: pathlib.Path) -> pathlib.Path:
-    src, work = src.resolve(), work.resolve()
-    if work == src or src in work.parents:
-        raise SystemExit(f"作業フォルダが元のフォルダの中です: {work}")
-    dst = work / "project"
-    if dst.exists():
-        shutil.rmtree(dst)
-    dst.mkdir(parents=True)
-    for d in COPY_DIRS:
-        if (src / d).is_dir():
-            shutil.copytree(src / d, dst / d)
-    for f in COPY_FILES:
-        if (src / f).is_file():
-            shutil.copy2(src / f, dst / f)
+    dst = copy_project(src, work)
     (dst / SCRIPT).write_bytes(SOURCE.encode("utf-8"))
     return dst
-
 
 def main():
     ap = argparse.ArgumentParser()
@@ -265,18 +249,6 @@ def wait_line(read, want, timeout=10):
         if time.monotonic() > end:
             raise AssertionError(f"行が期待どおりにならない: {read()}")
         time.sleep(0.1)
-
-
-def wait_editor(z, timeout=30):
-    end = time.monotonic() + timeout
-    while True:
-        try:
-            z.call(dict(cmd="editor.state", **W))
-            return
-        except AppError:
-            if time.monotonic() > end:
-                raise
-            time.sleep(0.2)
 
 
 def wait_editor_text(z, want, timeout=10):

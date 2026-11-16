@@ -30,6 +30,13 @@
 #                   count.js の操作で全マップを数えた後（-Project が要る。写しを渡す。最後に置いたファイルと zigzagumap.json を元に戻す）
 #   `all` は Phase4 の 6 つと Phase5 の tools・export（userscripts は -Project があるときだけ足す）。
 #   Phase6（#454）: playback … -PlaybackLabel のラベルを 3.0 で 4 倍で最後まで再生した後（再生中）と、再生を終えた後（-Project が要る。all には入らない）。
+#   Phase6 の仕上げ（#493）で足したもの（all には入らない）:
+#     timeofday  … 時間帯を朝・夕・夜・昼の順に切り替えた後
+#     tileimport … ブロックエディタから「画像からタイルを取り込む」の窓を開いて閉じ、ブロックエディタも閉じた後
+#     heavy      … いちばん重い組み合わせ。-HeavyMap（既定 3.6、人物の多いマップ）で、表示 > 人物を動かす・タイルアニメ・
+#                   人物の移動範囲と視界をオンにし、仮の主人公と連れ歩きを置き、夜にして、人 0 のスクリプトを 4 倍で最後まで
+#                   再生した後（再生中）と、再生を止めて全部を戻した後。CPU（exe と WebView2 の合計、論理コア 1 つ = 100%）も
+#                   「どれもオフ」「人物を動かすだけ」「仮の主人公も」「全部オフに戻した後」で -CpuSeconds 秒ずつ測る（-Project が要る）
 # - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
 # - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
@@ -50,6 +57,9 @@ param(
   [switch]$WildSearch,
   # -Stages playback で再生するラベル（-Project のスクリプト）
   [string]$PlaybackLabel = "TwoOpponentBattleShowMessage",
+  # -Stages heavy で使うマップ（"バンク.番号"。既定はタマムシシティ、人物 14 人）と、CPU を測る秒数
+  [string]$HeavyMap = "3.6",
+  [int]$CpuSeconds = 10,
   # 調べる用: WebView2 に足す引数（環境変数 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS で渡す。アプリが渡す引数に足される）
   [string]$BrowserArgs = ""
 )
@@ -96,6 +106,19 @@ function Kind($p, [int]$root) {
   }
   if ($p.Name -like "msedgewebview2*") { return "browser" }
   return $p.Name
+}
+
+function Get-Cpu([string]$label, [int]$root) {
+  # 落ち着くまで待ってから、exe と子孫の CPU 時間の増え方を測る（論理コア 1 つを使い切ると 100%）
+  Start-Sleep -Seconds 3
+  $ids = @(Tree $root | ForEach-Object { [int]$_.ProcessId })
+  $t0 = 0.0; foreach ($i in $ids) { try { $t0 += (Get-Process -Id $i).TotalProcessorTime.TotalMilliseconds } catch {} }
+  $sw = [Diagnostics.Stopwatch]::StartNew()
+  Start-Sleep -Seconds $CpuSeconds
+  $t1 = 0.0; foreach ($i in $ids) { try { $t1 += (Get-Process -Id $i).TotalProcessorTime.TotalMilliseconds } catch {} }
+  $pct = [math]::Round(100 * ($t1 - $t0) / $sw.ElapsedMilliseconds, 1)
+  Write-Host ("== CPU {0}: {1}%" -f $label, $pct)
+  return [pscustomobject]@{ stage = "CPU " + $label; cpu = $pct }
 }
 
 function Get-Snapshot([string]$label, [int]$root) {
@@ -171,8 +194,11 @@ try {
       Call @{ cmd = "tab"; name = "map" } | Out-Null
       $extra = @($Stages -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
       if ($extra -contains "all") {
+        # all の後ろに書いた場面（Phase6 の timeofday など）は、all の場面に続けて測る
+        $rest = @($extra | Where-Object { $_ -ne "all" })
         $extra = @("zoom8", "assist", "transplant", "pointers", "triple", "autopen", "tools", "export")
         if ($Project) { $extra += "userscripts" }
+        $extra += $rest
       }
       foreach ($st in $extra) {
         switch ($st) {
@@ -282,6 +308,73 @@ try {
             Call @{ cmd = "playback.stop" } | Out-Null
             Call @{ cmd = "tab"; name = "map" } | Out-Null
             $results += Get-Snapshot "再生を終えた後" $proc.Id
+          }
+          "timeofday" {
+            foreach ($t in @("morning", "evening", "night", "day")) { Call @{ cmd = "view.timeOfDay"; time = $t; wait = $true } | Out-Null }
+            $results += Get-Snapshot "時間帯を朝・夕・夜・昼と切り替えた後" $proc.Id
+          }
+          "tileimport" {
+            Call @{ cmd = "action"; id = "tools.blockEditor" } | Out-Null
+            Wait-Window "block-editor"
+            Call @{ cmd = "action"; id = "tiles.importImage"; window = "block-editor" } | Out-Null
+            Wait-Window "tile-import"
+            Call @{ cmd = "close"; window = "tile-import" } | Out-Null
+            Wait-Window "tile-import" $false
+            Call @{ cmd = "close"; window = "block-editor" } | Out-Null
+            Wait-Window "block-editor" $false
+            $results += Get-Snapshot "画像の取り込みの窓を開いて閉じた後" $proc.Id
+          }
+          "heavy" {
+            if (-not $Project) { throw "heavy には -Project が要ります" }
+            $best = $HeavyMap.Trim() -split "\."
+            Call @{ cmd = "selectMap"; bank = [int]$best[0]; map = [int]$best[1] } | Out-Null
+            Call @{ cmd = "tab"; name = "event" } | Out-Null
+            $bestCount = 0
+            for ($i = 0; $i -lt 50; $i++) {
+              $ev = (Call @{ cmd = "event.state" }).events
+              if ($ev) { $bestCount = @($ev.persons).Count; break }
+              Start-Sleep -Milliseconds 100
+            }
+            Write-Host ("重い組み合わせのマップ: {0}.{1}（人物 {2}）" -f $best[0], $best[1], $bestCount)
+            Call @{ cmd = "selectMap"; bank = [int]$best[0]; map = [int]$best[1] } | Out-Null
+            Call @{ cmd = "tab"; name = "map" } | Out-Null
+            $results += Get-Cpu "どれもオフ" $proc.Id
+            Call @{ cmd = "action"; id = "view.npcMotion" } | Out-Null
+            $results += Get-Cpu "人物を動かすだけ" $proc.Id
+            Call @{ cmd = "action"; id = "view.tileAnimation" } | Out-Null
+            Call @{ cmd = "action"; id = "view.npcRanges" } | Out-Null
+            $c = Call @{ cmd = "cells" }
+            Call @{ cmd = "preview.player"; enabled = $true; player = @{ x = [int][math]::Floor($c.width / 2); y = [int][math]::Floor($c.height / 2); facing = "down" } } | Out-Null
+            try { $fs = Call @{ cmd = "follower.set"; enabled = $true }; Write-Host ("連れ歩き: enabled={0} reason={1}" -f $fs.enabled, $fs.status.reason) } catch { Write-Host "連れ歩きを置けません: $_" }
+            Call @{ cmd = "view.timeOfDay"; time = "night"; wait = $true } | Out-Null
+            $results += Get-Cpu "全部オン（仮の主人公・連れ歩き・夜）" $proc.Id
+            Call @{ cmd = "tab"; name = "event" } | Out-Null
+            # 人物の多い順に、スクリプトを再生できる人を探す（ROM のアドレスのままのスクリプトも再生できる）
+            $started = $false
+            for ($pi = 0; $pi -lt [math]::Max($bestCount, 20) -and -not $started; $pi++) {
+              try { Call @{ cmd = "playback.start"; kind = "person"; index = $pi } | Out-Null; $started = $true; Write-Host "再生する人: $pi" } catch {}
+            }
+            if (-not $started) { throw "再生できる人がいません" }
+            $results += [pscustomobject]@{ stage = "重い組み合わせのマップ"; map = "$($best[0]).$($best[1])"; persons = $bestCount; follower = $fs.enabled }
+            Call @{ cmd = "playback.speed"; value = 4 } | Out-Null
+            Call @{ cmd = "playback.play" } | Out-Null
+            for ($i = 0; $i -lt 300; $i++) {
+              $st = Call @{ cmd = "playback.state" }
+              if (-not $st.playing) {
+                if ($st.frame -ge $st.lastFrame) { break }
+                Call @{ cmd = "playback.play" } | Out-Null
+              }
+              Start-Sleep -Milliseconds 100
+            }
+            $results += Get-Snapshot "重い組み合わせで再生した後（再生中）" $proc.Id
+            Call @{ cmd = "playback.stop" } | Out-Null
+            Call @{ cmd = "tab"; name = "map" } | Out-Null
+            try { Call @{ cmd = "follower.set"; enabled = $false } | Out-Null } catch {}
+            Call @{ cmd = "preview.player"; enabled = $false } | Out-Null
+            foreach ($a in @("view.npcMotion", "view.tileAnimation", "view.npcRanges")) { Call @{ cmd = "action"; id = $a } | Out-Null }
+            Call @{ cmd = "view.timeOfDay"; time = "day"; wait = $true } | Out-Null
+            $results += Get-Snapshot "止めて全部を戻した後" $proc.Id
+            $results += Get-Cpu "全部オフに戻した後" $proc.Id
           }
           "userscripts" {
             if (-not $Project) { throw "userscripts には -Project が要ります" }
