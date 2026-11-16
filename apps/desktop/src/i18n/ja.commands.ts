@@ -86,6 +86,7 @@ export const jaCommands = {
     setTrainer: "トレーナーの変更",
     setTripleLayer: "トリプルレイヤーの変更",
     setWildAreas: "出現ポケモンのエリアの変更",
+    setWildTable: "時間帯の出現ポケモンの表の写し・削除",
     setWildRate: "出現率の変更",
     setWildSlot: "出現ポケモンの変更",
     shiftConnection: "コネクションのずれの変更",

@@ -85,7 +85,7 @@ def main() -> int:
         shots.mkdir(parents=True, exist_ok=True)
     exe = pathlib.Path(args.exe) if args.exe else None
     with tempfile.TemporaryDirectory(prefix="zzm-time-", ignore_cleanup_errors=True) as profile:
-        with Zigzagu(exe, profile=profile) as z:
+        with Zigzagu(exe, profile=profile, extra=["--mute-audio"]) as z:
             z.call({"cmd": "open", "rom": args.rom, "project": args.nd}, timeout=120)
             z.call({"cmd": "selectMap", "bank": 3, "map": 0})
             st = z.call({"cmd": "view.timeOfDay"})

@@ -48,6 +48,7 @@ import { SwapBlocksCommand } from "./commands/tileset/SwapBlocksCommand.js";
 import { AddTilesetCommand } from "./commands/tileset/AddTilesetCommand.js";
 import { SetLayoutCommand } from "./commands/layout/SetLayoutCommand.js";
 import { SetWildAreasCommand } from "./commands/wild/SetWildAreasCommand.js";
+import { SetWildTableCommand } from "./commands/wild/SetWildTableCommand.js";
 import { SetWildRateCommand } from "./commands/wild/SetWildRateCommand.js";
 import { SetWildSlotCommand } from "./commands/wild/SetWildSlotCommand.js";
 
@@ -95,6 +96,7 @@ export const EDIT_COMMANDS: readonly { readonly name: string; readonly fromJson:
   SetWildRateCommand,
   SetWildSlotCommand,
   SetWildAreasCommand,
+  SetWildTableCommand,
   // 新規マップ・バンク、作業用のマップ（新規作成・.map）、マップの追加/挿入
   CreateMapCommand,
   CreateWorkMapCommand,

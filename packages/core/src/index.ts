@@ -374,6 +374,8 @@ export { newWildArea } from "./command/commands/wild/wildAreas.js";
 export { SetWildRateCommand, type SetWildRateArgs } from "./command/commands/wild/SetWildRateCommand.js";
 export { SetWildSlotCommand, type SetWildSlotArgs } from "./command/commands/wild/SetWildSlotCommand.js";
 export { SetWildAreasCommand, type SetWildAreasArgs } from "./command/commands/wild/SetWildAreasCommand.js";
+export { SetWildTableCommand, type SetWildTableArgs } from "./command/commands/wild/SetWildTableCommand.js";
+export { WILD_TIMES, hasWildData, usedWildTime, wildOfTime } from "./wild/WildTimes.js";
 export { CreateMapCommand, MAX_MAPS_PER_BANK, NEW_MAP_BORDER_SIZE, NEW_MAP_CELL, type CreateMapArgs } from "./command/commands/project/CreateMapCommand.js";
 export { CreateWorkMapCommand, type CreateWorkMapArgs } from "./command/commands/project/CreateWorkMapCommand.js";
 export { OpenMapFileCommand, type OpenMapFileArgs } from "./command/commands/project/OpenMapFileCommand.js";

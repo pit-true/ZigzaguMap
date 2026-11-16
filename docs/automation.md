@@ -443,3 +443,10 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 - メニューの項目は `time.morning`・`time.day`・`time.evening`・`time.night`（`action` か `menu.run`。`menu.list` の `checked` で今の区分が分かる）。ツール欄のコンボは `toolbar.timeOfDay`。
 - スクリプトの再生（P6-A）で Chronos の `settimeofday`（0x2D）を再現するときは、`app.timeOfDay.set(区分)` か、値を区分に直す `app.timeOfDay.chronosTime(値)` を使う（この命令と同じ）。
+
+
+### 野生の時間帯（#436）
+
+プロジェクトを開き `tab {name: "wild"}` の後、`click {id: "wild.time.0"}`（朝）・`.1`（昼）・`.2`（夕）・`.3`（夜）で切り替えます。`wild.timeInfo` は表の無い時間帯の案内、`wild.timeCopy` は昼の表の複製、`wild.timeCreate` は空の表の作成ダイアログ、`wild.timeRemove` は今の表の削除です。昼の削除ボタンは出ません。通常の編集欄は今の時間帯に対して働きます。
+
+`command {name: "setWildTable", args: {bank: 3, map: 19, time: 3, from: 1, remove: false}}` で昼から夜へ複製できます。`remove: true` は指定の時間帯の表を削除します。履歴に1件として入り、`undo` で戻ります。

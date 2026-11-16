@@ -1,7 +1,23 @@
-import { SetWildRateCommand, SetWildSlotCommand, WILD_SLOT_COUNTS, WildAreaKind, WildTime, rateGroup, slotRate, type Command, type WildArea, type WildEncounters } from "@zigzagumap/core";
+import {
+  SetWildRateCommand,
+  SetWildSlotCommand,
+  SetWildTableCommand,
+  WILD_SLOT_COUNTS,
+  WILD_TIMES,
+  WildAreaKind,
+  WildTime,
+  hasWildData,
+  rateGroup,
+  slotRate,
+  wildOfTime,
+  type Command,
+  type WildArea,
+  type WildEncounters,
+} from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
 import { ja } from "../../i18n/ja";
 import { jaWildTools as wt } from "../../i18n/ja.wildTools";
+import { jaWildTime as tt } from "../../i18n/ja.wildTime";
 import { commit, watchCommands } from "../form/commit";
 import { autoId, button, combo, edit, label, panel, place } from "../form/controls";
 import { clampByte, toByte } from "../form/inputErrors";
@@ -48,6 +64,16 @@ export class WildTab {
   private readonly speciesOptions: SpeciesOptions;
   private stale = true;
   private shownMap = "";
+  /** 時間帯のタブ（Phase6 #436。プロジェクトフォルダを開いているときだけ出す）。 */
+  private readonly times: HTMLElement;
+  private readonly timeButtons: HTMLButtonElement[];
+  private readonly removeTime: HTMLButtonElement;
+  /** 表の無い時間帯の案内（作る・写すボタン）。 */
+  private readonly missing: HTMLElement;
+  private readonly missingText: HTMLElement;
+  private readonly copyDay: HTMLButtonElement;
+  /** 見ている時間帯（Wild[].Time。既定は昼）。 */
+  private timeValue: number = WildTime.Day;
 
   constructor(private readonly state: EditorState) {
     const w = ja.wild;
@@ -89,7 +115,20 @@ export class WildTab {
 
     this.sorry = panel("wild-sorry", 537, 80);
     this.sorry.append(label(w.noWild, 8, 8), button("wild.create", w.create, 24, 24, 225, 41, () => void this.openAddDialog()));
-    this.element.append(this.frame, this.sorry);
+    // 時間帯のタブ（Phase6 #436。ZigzaguMap 独自）: 朝・昼・夕・夜。表の無い時間帯は、実機と同じく昼の表を使うと案内する
+    this.times = panel("wild-times", 537, 33);
+    this.timeButtons = WILD_TIMES.map((time, i) => {
+      const b = button(`wild.time.${time}`, tt.names[time] ?? String(time), 8 + i * 48, 4, 44, 25, () => this.setTime(time));
+      b.classList.add("wild-time-tab");
+      return b;
+    });
+    this.removeTime = button("wild.timeRemove", tt.remove, 216, 4, 161, 25, () => this.removeTable());
+    this.times.append(...this.timeButtons, this.removeTime);
+    this.missing = panel("wild-missing", 537, 80);
+    this.missingText = autoId(label("", 8, 8, 520), "wild.timeInfo");
+    this.copyDay = button("wild.timeCopy", tt.copyDay, 168, 32, 145, 33, () => this.copyFromDay());
+    this.missing.append(this.missingText, button("wild.timeCreate", tt.createEmpty, 8, 32, 145, 33, () => void this.openAddDialog()), this.copyDay);
+    this.element.append(this.times, this.missing, this.frame, this.sorry);
 
     this.type.addEventListener("change", () => this.showArea());
     // 入力のたびに読んでトラックバーと百分率を合わせる（読めなければエラー）。確定したら丸めた値を出し直す。
@@ -110,12 +149,84 @@ export class WildTab {
       this.render();
     };
     state.on("map", refresh);
+    state.on("session", () => {
+      this.timeValue = WildTime.Day;
+      refresh();
+    });
     state.on("tab", () => this.render());
     watchCommands(state, refresh);
   }
 
+  /** 時間帯のタブを出すか（プロジェクトフォルダがあるときだけ。maps\ の Wild[].Time に書くため）。 */
+  private get timesShown(): boolean {
+    return !!this.state.session?.projectDir;
+  }
+
+  /** 見ている時間帯。 */
+  get time(): number {
+    return this.timesShown ? this.timeValue : WildTime.Day;
+  }
+
   private get wild(): WildEncounters | null {
-    return shownWild(this.state.map?.doc.wild ?? []);
+    const all = this.state.map?.doc.wild ?? [];
+    return this.timesShown ? (wildOfTime(all, this.timeValue) ?? null) : shownWild(all);
+  }
+
+  /** 時間帯を切り替える（自動操作からも使う）。 */
+  setTime(time: number): void {
+    if (!WILD_TIMES.includes(time)) throw new Error(`時間帯は 0〜3 です: ${time}`);
+    this.timeValue = time;
+    this.stale = true;
+    this.shownMap = "";
+    this.render();
+  }
+
+  /** 時間帯のタブの見た目と、表の無い時間帯の案内を合わせる。表の無い昼以外の時間帯なら true。 */
+  private renderTimes(): boolean {
+    const map = this.state.map;
+    const shown = !!map && this.timesShown;
+    this.times.hidden = !shown;
+    if (!shown) {
+      this.missing.hidden = true;
+      return false;
+    }
+    const all = map.doc.wild;
+    WILD_TIMES.forEach((time, i) => {
+      const b = this.timeButtons[i]!;
+      const has = hasWildData(wildOfTime(all, time));
+      b.classList.toggle("selected", time === this.timeValue);
+      b.classList.toggle("has-table", has);
+      b.title = tt.tabHint(tt.names[time] ?? "", has);
+    });
+    const exists = wildOfTime(all, this.timeValue) !== undefined;
+    this.removeTime.hidden = this.timeValue === WildTime.Day || !exists;
+    const lacking = this.timeValue !== WildTime.Day && !hasWildData(wildOfTime(all, this.timeValue));
+    this.missing.hidden = !lacking;
+    if (lacking) {
+      this.missingText.textContent = tt.missing(tt.names[this.timeValue] ?? "");
+      this.copyDay.disabled = !hasWildData(wildOfTime(all, WildTime.Day));
+    }
+    return lacking;
+  }
+
+  /** 昼の表を写して、見ている時間帯の表を作る。 */
+  private copyFromDay(): void {
+    const map = this.state.map;
+    if (!map) return;
+    const time = this.timeValue;
+    if (commit(this.state, [new SetWildTableCommand({ bank: map.id.bank, map: map.id.map, time, from: WildTime.Day, remove: false })])) {
+      this.state.setStatus(tt.copied(tt.names[time] ?? ""));
+    }
+  }
+
+  /** 見ている時間帯の表を消す（昼の表は消さない）。 */
+  private removeTable(): void {
+    const map = this.state.map;
+    const time = this.timeValue;
+    if (!map || time === WildTime.Day) return;
+    if (commit(this.state, [new SetWildTableCommand({ bank: map.id.bank, map: map.id.map, time, remove: true })])) {
+      this.state.setStatus(tt.removed(tt.names[time] ?? ""));
+    }
   }
 
   private get area(): WildArea | null {
@@ -127,16 +238,17 @@ export class WildTab {
     if (!this.stale || this.state.tab !== "wild") return;
     this.stale = false;
     const map = this.state.map;
+    const lacking = this.renderTimes();
     const hasData = !!this.wild?.areas.some((a) => a.slots.length > 0);
     this.frame.hidden = !map || !hasData;
-    this.sorry.hidden = !map || hasData;
+    this.sorry.hidden = !map || hasData || lacking;
     if (!map || !hasData) {
       // AdvanceMap と同じく、データの無いマップではタイプを選んでいない状態にする
       this.type.selectedIndex = -1;
       this.shownMap = "";
       return;
     }
-    const key = `${map.id.bank}.${map.id.map}`;
+    const key = `${map.id.bank}.${map.id.map}:${this.time}`;
     if (key !== this.shownMap) {
       this.shownMap = key;
       this.type.selectedIndex = 0;
@@ -227,11 +339,11 @@ export class WildTab {
     const session = this.state.session;
     if (!map || !session) return;
     const { openWildAddDialog } = await import("./WildAddDialog");
-    const added = await openWildAddDialog(this.state, session, map.id);
+    const added = await openWildAddDialog(this.state, session, map.id, this.time);
     if (added !== null) {
       this.stale = true;
       this.type.selectedIndex = added;
-      this.shownMap = `${map.id.bank}.${map.id.map}`;
+      this.shownMap = `${map.id.bank}.${map.id.map}:${this.time}`;
       this.render();
     }
   }

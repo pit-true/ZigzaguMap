@@ -37,6 +37,7 @@ import {
   SetWildAreasCommand,
   SetWildRateCommand,
   SetWildSlotCommand,
+  SetWildTableCommand,
   createDefaultRegistry,
   encodeBase64,
   eventsOutsideMap,
@@ -435,6 +436,28 @@ describe("野生の編集コマンド", () => {
       expect(areas[3]!.slots).toHaveLength(10);
     });
     await roundTrip(open, () => new SetWildAreasCommand({ ...M01, areas: [true, false, false, false] }), (p) => expect(p.loaded(M01)!.wild).toHaveLength(1));
+  });
+
+  it("時間帯の表（Phase6 #436）: 昼の表を夜へ写す、朝の空の表を作る、夜の表を消す", async () => {
+    await roundTrip(open, () => new SetWildTableCommand({ ...M00, time: 3, from: 1, remove: false }), (p) => {
+      const wild = p.loaded(M00)!.wild;
+      expect(wild.map((w) => w.time)).toEqual([1, 3]);
+      expect(wild[1]!.areas).toEqual(wild[0]!.areas);
+      expect(wild[1]!.areas).not.toBe(wild[0]!.areas);
+    });
+    await roundTrip(open, () => new SetWildAreasCommand({ ...M00, time: 0, areas: [true, false, false, false] }), (p) =>
+      expect(p.loaded(M00)!.wild.map((w) => w.time)).toEqual([0, 1]),
+    );
+    const withNight = async () => {
+      const p = await open();
+      new CommandBus(p.editorContext()).execute(new SetWildTableCommand({ ...M00, time: 3, from: 1, remove: false }));
+      return p;
+    };
+    await roundTrip(withNight, () => new SetWildTableCommand({ ...M00, time: 3, remove: true }), (p) => expect(p.loaded(M00)!.wild.map((w) => w.time)).toEqual([1]));
+    const p = await open();
+    expectEditError(p, new SetWildTableCommand({ ...M00, time: 3, remove: true }), EditErrorCode.WildAreaMissing, { time: 3, area: -1 });
+    expectEditError(p, new SetWildTableCommand({ ...M00, time: 2, from: 0, remove: false }), EditErrorCode.WildAreaMissing, { time: 0 });
+    expectEditError(p, new SetWildTableCommand({ ...M00, time: 4, from: 1, remove: false }), EditErrorCode.ValueOutOfRange);
   });
 
   it("入力の検証", async () => {
