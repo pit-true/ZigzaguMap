@@ -18,11 +18,14 @@
 | `playback.player.place` | `x`・`y`、`gender`・`facing`（省略可） | 仮の主人公を置く（「ここに仮の主人公を置く」と同じ。置いただけでは踏むスクリプトを始めない）。返事は `player` |
 | `playback.player.move` | `direction: down/up/left/right` | 仮の主人公を 1 マス歩かせる（矢印キーと同じ）。踏むスクリプトなら再生を始め、準備ができるまで待つ。返事は `player` と `playback`（`playback.state` と同じ） |
 | `playback.player.talk` | なし | 向いている先の人物・看板に話しかける（Enter と同じ）。返事は `player`・`playback`・`status`（何も無いときの知らせ） |
+| `playback.edit` | `segment`（`playback.timeline` の `segments` の番号）、`edit`（`{type: "replace", index, value}`・`{type: "direction", index, direction}`・`{type: "insert", index, value, after?}`・`{type: "delete", index}`・`{type: "move", from, to}`・`{type: "repeat", index, count}`。`index` は移動データの何番目か）、`shared`（共用の移動データのとき `rewrite` / `copy`。省略で聞く） | 箱の編集を `.s` へ書き戻し、計算し直すまで待つ。返事は `result`（`changed`・`newLabel`。外で変わっていて書かなかったときは null）と `state` |
+| `playback.locks` | なし | 箱ごとの編集できない理由（`segments` と同じ並び。編集できるなら null） |
+| `playback.settled` | なし | 画面の操作で始めた書き戻しと、読み直しが済むまで待つ |
 | `playback.layout` | なし | タイムラインの倍率 `scale`、横のスクロール、箱 `segments`（`left`・`width`・`top`・`active`）、印 `markers`、縦線 `cursor` の位置（画素） |
 | `playback.wheel` | `delta`（負で拡大）、`x`（部品の左端からの画素） | タイムラインの上で Ctrl＋ホイールを回したのと同じ |
 | `playback.choose` | `key`（印の `choice.key`）、`value` | 選択肢の答え（LASTRESULT の値）を替えて計算し直す。今のフレームは保つ |
 
-再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.condition` は踏むスクリプトの条件、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
+再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.condition` は踏むスクリプトの条件、箱の右クリックのメニューの項目は `playback.edit.down`・`up`・`left`・`right`・`replace`・`insertBefore`・`insertAfter`・`repeat`・`delete`、差し替えの窓の一覧は `playback.replaceChoice`、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
 
 開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
 

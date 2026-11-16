@@ -1,3 +1,4 @@
+import type { MovementEdit } from "@zigzagumap/core";
 import { int, optStr, str, type CommandTable } from "./registry";
 
 export const playbackCommands: CommandTable = {
@@ -55,6 +56,21 @@ export const playbackCommands: CommandTable = {
     await controller?.ready();
     return { player: app.previewPlayer.player, playback: controller?.state() ?? { active: false }, status: app.state.status };
   },
+  "playback.edit": async (app, req) => {
+    const controller = await app.playback.get();
+    const edit = req["edit"];
+    if (!edit || typeof edit !== "object" || typeof (edit as { type?: unknown }).type !== "string") throw new Error("edit は {type, ...} のオブジェクトです（MovementEdit）。");
+    const shared = req["shared"];
+    if (shared !== undefined && shared !== "rewrite" && shared !== "copy") throw new Error("shared は rewrite / copy のいずれかです。");
+    const result = await controller.editor.edit(int(req, "segment"), edit as MovementEdit, shared);
+    await controller.settled(); await controller.ready();
+    return { result, state: controller.state() };
+  },
+  "playback.locks": async app => {
+    const controller = await app.playback.existing(), timeline = controller?.result;
+    return controller && timeline ? controller.editor.locks(timeline) : null;
+  },
+  "playback.settled": async app => { const controller = await app.playback.existing(); await controller?.settled(); return controller?.state() ?? { active: false }; },
   "playback.layout": async app => (await app.playback.existing())?.timelineUi.layoutInfo() ?? null,
   "playback.wheel": async (app, req) => {
     const controller = await app.playback.get(); controller.timelineUi.wheel(Number(req["delta"] ?? -100), Number(req["x"] ?? 200)); return controller.timelineUi.layoutInfo();

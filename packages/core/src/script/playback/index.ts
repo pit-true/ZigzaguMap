@@ -5,3 +5,4 @@ export * from "./Timeline.js";
 export * from "./PlaybackSimulator.js";
 export * from "./StartState.js";
 export * from "./handlers/PlaybackHandlers.js";
+export * from "./MovementWriteBack.js";
