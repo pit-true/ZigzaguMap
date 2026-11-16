@@ -53,6 +53,7 @@ import { openWorldMapWindow } from "../windows/world-map/openWorldMapWindow";
 import { WorldMapHost } from "../windows/world-map/WorldMapHost";
 import type { ScriptHost } from "../ui/script/ScriptHost";
 import { ScriptLink } from "../ui/script/ScriptLink";
+import { PlaybackEntry } from "./PlaybackEntry";
 import { errorText } from "../util/errors";
 import { startMainTheme, toTheme } from "../util/theme";
 import { startMainKeymap } from "./keymapSync";
@@ -141,6 +142,7 @@ export class App implements ActionTarget {
   /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
   readonly aids: ViewAids;
   readonly previewPlayer: PreviewPlayer;
+  readonly playback: PlaybackEntry;
   /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
   readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
@@ -238,6 +240,7 @@ export class App implements ActionTarget {
     const eventTab = new EventTab(state, {
       openMap: (id) => this.openMap(id),
       scriptFiles: this.scripts.files,
+      playScript: (kind, index) => { if (state.map) void this.playback.start({ target: { map: state.map.id, kind, index } }).catch(error => state.setStatus(errorText(error), undefined, true)); },
       deleteEvent: (kind, index) => void events.deleteEvent(kind, index),
       deleteEvents: (list) => void events.deleteEvents(list),
       pickUnused: (kind) => events.pickUnused(kind),
@@ -278,6 +281,7 @@ export class App implements ActionTarget {
     this.toolbar.insertAfterSort(this.timeOfDay.select);
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
+    this.playback = new PlaybackEntry(this);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },
@@ -563,6 +567,7 @@ export class App implements ActionTarget {
   eventTabSelect(kind: "person" | "sign" | "trap", index: number): void {
     this.eventTab.select(kind, index);
   }
+  eventTabSelection() { return this.eventTab.selection; }
 
   /** スクリプトエディタの窓口（初めて呼ばれたときに読み込む）。 */
   scriptHost(): Promise<ScriptHost> {

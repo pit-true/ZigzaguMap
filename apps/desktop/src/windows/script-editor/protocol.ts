@@ -55,6 +55,7 @@ type NoArgs = Record<never, never>;
  * 種類を足すときは、ここに 1 項目足し、`requestHandlers` に処理を 1 つ足す（足し忘れると型の誤りになる）。
  */
 export interface ScriptEditorRequestMap {
+  playback: MessageSpec<{ readonly label: string }, null>;
   /** 準備ができた。返事は、開くのを待っているファイル（ScriptEditorHello）。 */
   hello: MessageSpec<NoArgs, ScriptEditorHello>;
   /** ファイルを保存した（メインはラベルの索引のそのファイルの分を読み直す）。 */
@@ -89,7 +90,10 @@ export interface ScriptEditorRequestMap {
  * メイン → エディタの問い合わせ（種類 → 中身と返事）。エディタは ScriptEditorWindow の `queryHandlers` で答える。
  * 種類を足すときは、ここに 1 項目足し、`queryHandlers` に処理を 1 つ足す。
  */
+export interface PlaybackHighlightSpan { readonly path: string; readonly line: number; readonly start: number; readonly end: number }
+
 export interface ScriptEditorQueryMap {
+  playbackHighlight: MessageSpec<{ readonly spans: readonly PlaybackHighlightSpan[] }, number>;
   /** 未保存のファイルのパス。 */
   dirty: MessageSpec<NoArgs, string[]>;
   /** 未保存のファイルを全部保存する（全部保存できたら true）。 */

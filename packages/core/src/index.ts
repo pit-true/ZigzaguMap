@@ -124,6 +124,7 @@ export { renderGameScene, type SceneActor, type SceneView } from "./render/GameS
 export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
+export { readMessageFrame, type MessageFrameStyle } from "./render/MessageFrame.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

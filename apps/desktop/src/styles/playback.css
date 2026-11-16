@@ -1,0 +1,33 @@
+.playback-bar {
+  position: absolute;
+  z-index: 25;
+  left: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  padding: 4px;
+  border-top: 1px solid var(--shadow);
+  background: var(--face);
+}
+.playback-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.playback-controls button { width: auto; padding: 2px 6px; }
+.playback-controls output { font-variant-numeric: tabular-nums; }
+.playback-controls details { position: relative; }
+.playback-controls details[open] { display: flex; flex-wrap: wrap; max-width: 260px; }
+.playback-controls details label { display: inline-flex; align-items: center; }
+.playback-bar > input[type="range"] { width: 100%; }
+.playback-details { display: flex; gap: 6px; flex-wrap: wrap; max-height: 150px; overflow: auto; }
+.playback-message { white-space: pre-wrap; padding: 6px; border: 1px solid var(--shadow); background: var(--window); color: var(--text); }
+.playback-timeline { position: relative; max-height: 175px; overflow: auto; border: 1px solid var(--shadow); margin-top: 3px; }
+.playback-timeline-content { position: relative; min-width: 100%; }
+.playback-time-row { position: relative; height: 28px; border-bottom: 1px solid var(--shadow); }
+.playback-time-label { position: sticky; left: 0; z-index: 3; box-sizing: border-box; width: 100px; height: 28px; background: var(--face); display: flex; align-items: center; padding: 0 4px; border-right: 1px solid var(--shadow); }
+.playback-time-portrait { width: 16px; height: 24px; object-fit: contain; image-rendering: pixelated; }
+.playback-time-segment, .playback-time-mark { position: absolute; top: 2px; bottom: 2px; overflow: hidden; white-space: nowrap; padding: 0 2px; min-width: 2px; text-align: left; }
+.playback-time-segment.active { background: var(--select); color: var(--select-text); }
+.playback-time-mark { max-width: 80px; opacity: 0.8; }
+.playback-time-tick { position: absolute; top: 3px; white-space: nowrap; border-left: 1px solid var(--shadow); padding-left: 2px; }
+.playback-time-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: #e53935; pointer-events: none; z-index: 4; }
+.playback-message-pages { display: flex; flex-wrap: wrap; gap: 4px; }
+.playback-game-message { position: relative; width: 480px; height: 96px; }
+.playback-game-message canvas { width: 480px; height: 96px; image-rendering: pixelated; }
+.playback-game-message-text { position: absolute; top: 18px; left: 32px; width: 416px; height: 64px; white-space: pre-wrap; overflow: auto; font: 20px/32px monospace; }

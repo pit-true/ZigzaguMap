@@ -1,12 +1,14 @@
 import { listDialogs } from "../../../app/automation/dialogs";
 import { settle, str, waitAtMost } from "../../../app/automation/registry";
 import { describe, requireActive, type EditorCommandTable } from "./common";
+import { playbackHighlightRanges } from "../extensions/playbackHighlight";
 
 /**
  * タブとファイル（`state` / `editor.open` / `editor.text` / `editor.setText` / `editor.save` / `editor.closeTab` / `editor.activate` /
  * `editor.checkExternal` / `editor.rename` / `editor.import` / `close`）。
  */
 export const tabCommands: EditorCommandTable = {
+  "editor.playbackHighlights": w => w.tabs.map(tab => ({ path: tab.path, ranges: playbackHighlightRanges(tab.state) })),
   state: (w) => describe(w),
   "editor.state": (w) => describe(w),
   "editor.open": async (w, req) => {

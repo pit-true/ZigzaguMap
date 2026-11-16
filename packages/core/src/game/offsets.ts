@@ -17,6 +17,10 @@ export interface GameOffsets {
   readonly overworldPaletteTablePointer: number;
   /** 歩きと停止のコマを対応させる表（EvActBootsAnimeNoStのリテラル）。 */
   readonly overworldWalkingTablePointer: number;
+  readonly messageFrameTilesPointer: number;
+  readonly signFrameTilesPointer: number;
+  readonly textWindowPalettesPointer: number;
+  readonly messageFrameWriter: number;
   /** フィールドエフェクトのSpriteTemplate表（FeShadeSet内のリテラル）。 */
   readonly fieldEffectTemplateTablePointer: number;
   /** CFRUのDrawBlockHookが差し込まれる位置。 */
@@ -44,6 +48,10 @@ export const BPRJ_OFFSETS: GameOffsets = {
   overworldGraphicsTablePointer: 0x5ebb4,
   overworldPaletteTablePointer: 0x5ed98,
   overworldWalkingTablePointer: 0x62df8,
+  messageFrameTilesPointer: 0x152e2c,
+  signFrameTilesPointer: 0x152df8,
+  textWindowPalettesPointer: 0x153514,
+  messageFrameWriter: 0xf8184,
   fieldEffectTemplateTablePointer: 0xdc258,
   drawBlockHook: 0x5a274,
   tilesetHeaderTable: 0x298b44,

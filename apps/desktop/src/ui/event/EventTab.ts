@@ -47,10 +47,12 @@ import { EventSelection, eventsInRect, type EventRef } from "./EventSelection";
 import { duplicatePlan, groupDragStart, groupMoveCommand, type GroupDragStart } from "./EventMultiEdit";
 import { jaEventMulti } from "../../i18n/ja.eventMulti";
 import { jaEventLimit } from "../../i18n/ja.eventLimit";
+import { jaPlayback } from "../../i18n/ja.playback";
 import { Ruler } from "./RulerLayer";
 
 /** タブの外の機能（App が渡す）。 */
 export interface EventTabHost {
+  playScript?(kind: "person" | "sign" | "trap", index: number): void;
   openMap(id: MapId): Promise<void>;
   /** `.s` の読み書きとラベルの一覧。 */
   readonly scriptFiles: ScriptFiles;
@@ -683,6 +685,7 @@ export class EventTab {
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
+      { id: "playScript", label: jaPlayback.menu, enabled: scriptKind !== null && !signItem && this.state.session?.projectDir != null, run: () => scriptKind && this.host.playScript?.(scriptKind, index) },
       { id: "duplicate", label: jaEventMulti.menuDuplicate, enabled: kind !== "fly" || many, run: () => void this.duplicateSelected() },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
