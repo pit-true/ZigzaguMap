@@ -601,7 +601,8 @@ describe.skipIf(!ndDir || !existsSync(join(ndDir ?? "", "xse_commands.s")))("実
     const run = (choices?: Map<string, number>) => simulatePlayback({ project: { index, commands, text }, entry: "customMultiChoiceTest", start, ...(choices ? { choices } : {}) });
     const top = run();
     const choice = top.markers.find((m) => m.kind === "choice")!;
-    expect(choice.choice).toMatchObject({ kind: "custom", value: 0, options: [{ value: 0, name: "gText_CustomMultiChoiceTestGraffiti" }, { value: 1, name: "gText_CustomMultiChoiceTestClean" }] });
+    // ND の 4 つの引数の customchoice は漢字の文を選択肢に出す（#497）
+    expect(choice.choice).toMatchObject({ kind: "custom", value: 0, options: [{ value: 0, name: "gText_CustomMultiChoiceTestGraffiti_k" }, { value: 1, name: "gText_CustomMultiChoiceTestClean_k" }] });
     const target = (t: ReturnType<typeof run>) => t.markers.find((m) => m.kind === "branch")!.branch!;
     expect(target(top)).toMatchObject({ known: true, taken: true, target: "customMultiChoiceTestGraffiti" });
     const bottom = run(new Map([[choice.choice!.key, 1]]));
