@@ -10,7 +10,7 @@ import type { WalkCommand } from "./ScriptWalker.js";
  *   その間の値。絵はマスの下端に合わせて描く（今の `EventLayer` と同じ）。
  * - `height` はジャンプ・ワープの高さ（画素。マイナスが上）。絵だけを上へずらし、影は地面に出す。
  * - 画面の位置（`camera`）は、追う相手の `pixelX`・`pixelY` にずれ（`offsetX`・`offsetY`）を足したもの。B の枠の部品は、
- *   この点のマスが画面の真ん中（240×160 の左から 7 マス、上から 4 マスの所。ゲームと同じなら）に来るように枠を置く。揺れは別に
+ *   この点のマスが実画面の左から112px・上から72pxに来るように枠を置く（mapbg.cの縦8pxの補正を含む）。揺れは別に
  *   `shakeX`・`shakeY` で渡す。
  */
 
@@ -63,6 +63,8 @@ export interface PlaybackActorState {
   readonly elevation: number;
   /** 重なり順の固定（`set_fixed_priority`）。 */
   readonly fixedPriority: boolean;
+  /** 固定したOBJ同士の重なり順。固定を始めた時の値を保持する。 */
+  readonly subpriority?: number | undefined;
   /** 歩きの絵の切り替えを止めているか（`disable_anim`）。 */
   readonly animHold: boolean;
 }

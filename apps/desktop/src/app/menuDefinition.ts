@@ -20,6 +20,7 @@ import { jaPen } from "../i18n/ja.pen";
 import { jaAssist } from "../i18n/ja.assist";
 import { jaUserScript } from "../i18n/ja.userScript";
 import { jaTools } from "../i18n/ja.tools";
+import { jaPreviewPlayer } from "../i18n/ja.previewPlayer";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
@@ -113,6 +114,7 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.gridSettings", label: jaTools.gridSettingsMenu, enable: "map" },
         { id: "view.cursorFrame", label: jaTools.cursorFrameMenu },
         { id: "view.playerView", label: jaTools.playerViewMenu },
+        { id: "view.previewPlayer", label: jaPreviewPlayer.menu, enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },

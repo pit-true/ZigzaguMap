@@ -39,6 +39,7 @@ export class MapView {
   private gridStyle: GridStyle = DEFAULT_GRID_STYLE;
   /** 主マップのまわりの余白（マス。隣のマップの帯の分）。 */
   private marginsValue: Margins = NO_MARGINS;
+  private previewMargins: Margins = NO_MARGINS;
   /** 主マップの枠（隣のマップがあるときだけ出す）。 */
   private readonly frame: HTMLElement;
   /** `toPng` の前に呼ぶ（隠れているタブの隣の帯を描くため。NeighborLayer が入れる）。 */
@@ -195,12 +196,24 @@ export class MapView {
 
   /** 主マップのまわりの余白（マス）。 */
   get margins(): Margins {
-    return this.marginsValue;
+    const a = this.marginsValue, b = this.previewMargins;
+    return { left: a.left + b.left, top: a.top + b.top, right: a.right + b.right, bottom: a.bottom + b.bottom };
+  }
+
+  /** 仮の主人公の画面をマップ端でも置ける余白。接続の帯とは別に持ち、終了時に外す。 */
+  setPreviewMargins(value: Margins): void {
+    const old = this.previewMargins;
+    if (old.left === value.left && old.top === value.top && old.right === value.right && old.bottom === value.bottom) return;
+    const left = this.element.scrollLeft + (value.left - old.left) * this.screenCellSize;
+    const top = this.element.scrollTop + (value.top - old.top) * this.screenCellSize;
+    this.previewMargins = value;
+    this.layout();
+    this.element.scrollLeft = left; this.element.scrollTop = top;
   }
 
   /** 主マップの左上の、ステージの中の位置（表示上の画素）。 */
   get originPx(): { x: number; y: number } {
-    return { x: this.marginsValue.left * this.cellSize, y: this.marginsValue.top * this.cellSize };
+    return { x: this.margins.left * this.cellSize, y: this.margins.top * this.cellSize };
   }
 
   /**
@@ -304,7 +317,7 @@ export class MapView {
     }
     const dw = w * this.drawZoom;
     const dh = h * this.drawZoom;
-    const m = this.marginsValue;
+    const m = this.margins;
     const size = this.cellSize;
     const ox = m.left * size;
     const oy = m.top * size;

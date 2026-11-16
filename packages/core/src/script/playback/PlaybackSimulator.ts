@@ -1,4 +1,5 @@
 import type { ScriptCommandTable } from "../commands/ScriptCommandTable.js";
+import { PLAYER_SCREEN_ORIGIN } from "../../render/ViewportFrame.js";
 import type { ScriptIndex } from "../index/ScriptIndex.js";
 import { MOVEMENT_DIRECTIONS, MOVEMENT_END, movementAction, oppositeDirection, type MovementAction, type MovementDirection } from "../movement/MovementActionTable.js";
 import { readMovementBlock, type MovementBlock, type MovementStep } from "../movement/MovementBlock.js";
@@ -19,7 +20,7 @@ import {
   type PlaybackSource,
 } from "./PlaybackState.js";
 import { ScriptWalker, type WalkCommand, type WalkEvent, type WalkLocation } from "./ScriptWalker.js";
-import { applyStepFrame, Timeline, type ActorBase, type ActorChange, type CameraChange, type ShakeSpan } from "./Timeline.js";
+import { applyStepFrame, Timeline, type ActorBase, type ActorChange, type CameraChange, type ShakeSpan, type StepContext } from "./Timeline.js";
 
 /**
  * 再生の計算（#451）。たどった命令（{@link ScriptWalker}）を、ゲームと同じ順で 1 フレームずつ進め、タイムラインを作る。
@@ -89,6 +90,8 @@ export interface PlaybackOptions {
   readonly maxCommands?: number;
   /** ROM のアドレスの移動データ（素の ROM の再生、#459）。無ければ印を出して動かさない。 */
   readonly romMovement?: (pointer: number) => MovementBlock | null;
+  /** マップの高さ（移動許可の値 >> 2）。0は自由、15は前の優先順位を保持。 */
+  readonly elevationAt?: (x: number, y: number) => number | null;
 }
 
 /** フレームの上限の既定（60 秒）。 */
@@ -131,7 +134,7 @@ interface ActiveStep {
   readonly action: MovementAction;
   readonly start: number;
   readonly base: ActorBase;
-  readonly ctx: { playerFacing: MovementDirection; toPlayer: MovementDirection | null; defaultFacing: MovementDirection };
+  readonly ctx: StepContext;
 }
 
 interface SimActor {
@@ -613,6 +616,8 @@ class Simulator {
         playerFacing: playerState?.facing ?? "down",
         toPlayer: playerState && player !== a ? directionTo(a.base, playerState) : null,
         defaultFacing: a.init.defaultFacing,
+        priorityViewY: this.focus().y - PLAYER_SCREEN_ORIGIN.y,
+        ...(this.options.elevationAt ? { elevationAt: this.options.elevationAt } : {}),
       };
       a.current = { action, start: f, base: a.base, ctx };
       a.changes.push({ type: "step", frame: f, base: a.base, action, offset: 0, ...ctx });

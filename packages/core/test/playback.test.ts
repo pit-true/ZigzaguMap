@@ -148,6 +148,24 @@ function run(script: string, opts: Partial<PlaybackOptions> = {}) {
 const frameOf = (t: ReturnType<typeof run>, macro: string, nth = 0) => t.commands.filter((c) => c.command.macro === macro)[nth]?.frame;
 
 describe("再生の計算（#451）", () => {
+  it("高さを移動先から読み、固定中・高さ15の出入り・自由な高さ0では前の優先順位を保つ", () => {
+    const script = "Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tend\nm: .byte walk_right, walk_right, walk_right, walk_right, walk_right, end_m\n";
+    const t = run(script, { elevationAt: x => new Map([[5, 3], [6, 4], [7, 15], [8, 6], [9, 0], [10, 3]]).get(x) ?? 3 });
+    const elevation = (f: number) => t.stateAt(f).actors.find(a => a.id === 1)!.elevation;
+    expect([0, 16, 32, 48, 64].map(elevation)).toEqual([4, 4, 4, 4, 3]);
+    const hold = run("Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tend\nm: .byte 0x6a, walk_right, 0x6b, walk_right, end_m\n", { elevationAt: x => x >= 7 ? 6 : x === 6 ? 4 : 3 });
+    expect(hold.stateAt(1).actors.find(a => a.id === 1)).toMatchObject({ elevation: 3, fixedPriority: true });
+    expect(hold.stateAt(17).actors.find(a => a.id === 1)).toMatchObject({ elevation: 4, fixedPriority: false });
+    expect(hold.stateAt(18).actors.find(a => a.id === 1)).toMatchObject({ elevation: 6, fixedPriority: false });
+    // 逆順で問い合わせても、途中を飛ばしても同じ高さになる。
+    expect([64, 0, 48, 16].map(elevation)).toEqual([3, 4, 4, 4]);
+    const vertical = run("Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tend\nm: .byte 0x6a, walk_down, 0x6b, walk_down, end_m\n");
+    const subpriority = (f: number) => vertical.stateAt(f).actors.find(a => a.id === 1)!.subpriority;
+    expect(subpriority(0)).toBe(140);
+    expect(subpriority(16)).toBe(140);
+    expect(subpriority(17)).toBeUndefined();
+  });
+
   it("歩き 3 回 → waitmovement → 向き変え: F+T+2", () => {
     const t = run("Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tchangeface 1 2\n\tend\nm: .byte walk_down, walk_down, walk_down, end_m\n");
     expect(t.segments.map((s) => [s.start, s.end, s.toY])).toEqual([

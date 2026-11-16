@@ -64,6 +64,7 @@ import { ViewFeatures } from "./viewFeatures";
 import { PenExtras } from "./penExtras";
 import { ToolExtras } from "./toolExtras";
 import { ViewAids } from "./viewAids";
+import { PreviewPlayer } from "./PreviewPlayer";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
@@ -139,6 +140,7 @@ export class App implements ActionTarget {
   readonly tools: ToolExtras;
   /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
   readonly aids: ViewAids;
+  readonly previewPlayer: PreviewPlayer;
   /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
   readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
@@ -275,6 +277,7 @@ export class App implements ActionTarget {
     this.timeOfDay = new TimeOfDayView(state, this.actions, { rebuildNeighbors: () => this.extras.neighbors.schedule(false) });
     this.toolbar.insertAfterSort(this.timeOfDay.select);
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
+    this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

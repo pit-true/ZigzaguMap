@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { OverworldSprites, Rom, SPECIES_COUNT, SpeciesNameTable, matchReading, normalizeReading, readingTokens, requireSupportedGame, romajiReading, toHiragana } from "../src/index.js";
+import { OverworldEffects, OverworldSprites, Rom, SPECIES_COUNT, SpeciesNameTable, matchReading, normalizeReading, readingTokens, requireSupportedGame, romajiReading, toHiragana } from "../src/index.js";
 
 /** 実 ROM のパス。設定されていなければこのファイルのテストは飛ばす。 */
 const romPath = process.env.ZIGZAGU_TEST_ROM;
@@ -56,6 +56,19 @@ describe.skipIf(!romPath)("実 ROM: 種族名と OW 画像（ZIGZAGU_TEST_ROM）
         frames.add(frame!.index);
       }
       expect(frames.size).toBeGreaterThan(1);
+    }
+  });
+
+  it("人物に指定されたサイズの影を実ROMのエフェクト表から読む", () => {
+    const { rom, offsets } = load();
+    const sprites = OverworldSprites.read(rom, offsets.overworldGraphicsTablePointer, offsets.overworldPaletteTablePointer);
+    const effects = OverworldEffects.read(rom, offsets.fieldEffectTemplateTablePointer, sprites);
+    const sizes = [[8, 8], [16, 8], [32, 8], [64, 32]];
+    for (let id = 0; id < 152; id++) {
+      const shadow = effects.shadow(id)!;
+      expect(shadow, `影 ${id}`).not.toBeNull();
+      expect([shadow.width, shadow.height]).toEqual(sizes[sprites.info(id)!.shadowSize]);
+      expect(shadow.data.some((v, i) => i % 4 === 3 && v === 255)).toBe(true);
     }
   });
 });

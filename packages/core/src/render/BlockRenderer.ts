@@ -22,6 +22,7 @@ export class BlockRenderer {
   /** 画素に書く色。時間帯の色（`tinted`）を渡されたらその色、無ければ paletteRgba と同じもの。 */
   private readonly drawRgba: Uint8ClampedArray;
   private readonly cache = new Map<number, Uint8ClampedArray>();
+  private readonly gameCache = new Map<string, Uint8ClampedArray>();
 
   /**
    * `tinted` は、時間帯の色に変えた後の 256 色（BGR555。Phase6 #433）。上のレイヤーを透かす判定は変える前の色で比べる
@@ -44,7 +45,41 @@ export class BlockRenderer {
 
   /** 描いて持っているブロックの数。 */
   get cachedCount(): number {
-    return this.cache.size;
+    return this.cache.size + this.gameCache.size;
+  }
+
+  /** 実機のBG1/2/3を別々に描く。編集画面の既存の合成とは独立し、色番号0だけを透かす。 */
+  renderGamePlane(blockId: number, plane: 1 | 2 | 3, cfru: boolean): Uint8ClampedArray | null {
+    const key = `${+cfru}:${blockId}:${plane}`;
+    const cached = this.gameCache.get(key);
+    if (cached) return cached;
+    const primary = blockId < PRIMARY_BLOCK_COUNT;
+    const table = primary ? this.primary : this.secondary;
+    const local = primary ? blockId : blockId - PRIMARY_BLOCK_COUNT;
+    if (!Number.isInteger(local) || local < 0 || local * 8 + 8 > table.blocks.length) return null;
+    const attribute = localAttribute(table, local);
+    const mode = cfru ? (attribute >>> 28) & 7 : (attribute >>> 29) & 3;
+    const plan = gameLayerPlan(mode, cfru);
+    if (!plan) return null;
+    const out = new Uint8ClampedArray(BLOCK_RGBA_BYTES);
+    if (plan.fallback && plane === 3) {
+      // mapbg.c の WATER_CHR_CODE。通常ブロックの透明な下層から見えるBG3。
+      for (let part = 0; part < 4; part++) this.drawTile(out, 0x3014, (part & 1) * 8, (part >> 1) * 8, false, false);
+    }
+    for (let layer = 0; layer < plan.planes.length; layer++) {
+      if (plan.planes[layer] !== plane) continue;
+      const base = layer === 2 ? thirdLayerLocal(table, local) : local;
+      if (base === null) continue;
+      const tileBase = base * 8 + (layer === 1 ? 4 : 0);
+      for (let part = 0; part < 4; part++) this.drawTile(out, table.blocks[tileBase + part]!, (part & 1) * 8, (part >> 1) * 8, false, false);
+    }
+    this.gameCache.set(key, out);
+    return out;
+  }
+
+  /** BGの色番号0が透けた先の色。時間帯の色も反映する。 */
+  backdropColor(): readonly [number, number, number, number] {
+    return [this.drawRgba[0]!, this.drawRgba[1]!, this.drawRgba[2]!, 255];
   }
 
   /** ブロック番号の RGBA（16×16×4 バイト）を返す。定義が無い番号は背景色だけになる。 */
@@ -101,7 +136,7 @@ export class BlockRenderer {
    * タイル指定（番号 10 ビット、左右反転、上下反転、パレット 4 ビット）を 1 枚描く。
    * `opaque` なら色 0 もそのパレットの色 0 で塗る（下層）。そうでなければ色 0 と同じ色の画素を抜く（上層）。
    */
-  private drawTile(out: Uint8ClampedArray, entry: number, ox: number, oy: number, opaque: boolean): void {
+  private drawTile(out: Uint8ClampedArray, entry: number, ox: number, oy: number, opaque: boolean, colorKey = true): void {
     const tile = entry & 0x3ff;
     const hflip = (entry & 0x400) !== 0;
     const vflip = (entry & 0x800) !== 0;
@@ -117,7 +152,7 @@ export class BlockRenderer {
       for (let px = 0; px < 8; px++) {
         const byte = missing ? 0 : tiles[start + py * 4 + (px >> 1)]!;
         const index = px & 1 ? byte >> 4 : byte & 0xf;
-        if (!opaque && (index === 0 || this.sameAsColor0(pal, index))) continue;
+        if (!opaque && (index === 0 || (colorKey && this.sameAsColor0(pal, index)))) continue;
         const dx = ox + (hflip ? 7 - px : px);
         const dy = oy + (vflip ? 7 - py : py);
         const p = (pal * 16 + index) * 4;
@@ -137,6 +172,21 @@ export class BlockRenderer {
     const c = this.paletteRgba;
     return c[a] === c[z] && c[a + 1] === c[z + 1] && c[a + 2] === c[z + 2];
   }
+}
+
+/** 元の日本語版とCFRUの分岐表。各値は下層・上層・3枚目の行き先のBG番号。 */
+export function gameLayerPlan(mode: number, cfru: boolean): { readonly planes: readonly number[]; readonly fallback: boolean } | null {
+  if (!cfru) {
+    if (mode === 0) return { planes: [2, 1], fallback: true };
+    if (mode === 1) return { planes: [3, 2], fallback: false };
+    if (mode === 2) return { planes: [3, 1], fallback: false };
+    return null;
+  }
+  if (mode === 0 || mode === 1) return { planes: [2, 1], fallback: true };
+  if (mode === 2) return { planes: [3, 2], fallback: false };
+  if (mode === 3) return { planes: [3, 2, 1], fallback: false };
+  if (mode === 4) return { planes: [3, 1], fallback: false };
+  return null;
 }
 
 /**

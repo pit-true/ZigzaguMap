@@ -441,7 +441,7 @@ def check_view(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     z.call({"cmd": "key", "key": "v"})
     z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [10, 8]})
     sight = z.call({"cmd": "view.aids"})["layers"]["map"]["sight"]
-    check(sight == {"x": 3, "y": 4, "width": 15, "height": 10}, f"V で 15×10 マスの視界の枠（主人公は左に 7・上に 4 マス。{sight}）")
+    check(sight == {"x": 3, "y": 3.5, "width": 15, "height": 10}, f"V で実機の15×10マスの視界の枠（主人公のマス左上は112,72px。{sight}）")
     screenshot(z, shots, "tool_view_frames.png")
     # イベントタブと移動エリアタブでも
     z.call({"cmd": "tab", "name": "event"})
