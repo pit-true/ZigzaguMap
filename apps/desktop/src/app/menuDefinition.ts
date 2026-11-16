@@ -119,6 +119,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.previewPlayer", label: jaPreviewPlayer.menu, enable: "map" },
         // 人物の移動タイプの再生（Phase6 #471。ZigzaguMap 独自）。既定はオフ
         { id: "view.npcMotion", label: jaNpcMotion.menu, enable: "map" },
+        // 移動範囲とトレーナーの視界（Phase6 #472）。既定はオフ
+        { id: "view.npcRanges", label: jaNpcMotion.rangesMenu, enable: "map" },
         { id: "view.objects", label: ja.showObjects, accel: "K" },
         // イベントの種類ごとの表示（#304。ZigzaguMap 独自）: チェックを外した種類はイベントタブで描かず、クリックでも選ばない
         { label: jaEventView.menu, children: TOGGLE_EVENT_KINDS.map((kind) => ({ id: eventKindActionId(kind), label: jaEventView.kinds[kind]! })) },
