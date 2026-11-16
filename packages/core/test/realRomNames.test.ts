@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { OverworldSprites, Rom, SPECIES_COUNT, SpeciesNameTable, requireSupportedGame } from "../src/index.js";
+import { OverworldSprites, Rom, SPECIES_COUNT, SpeciesNameTable, matchReading, normalizeReading, readingTokens, requireSupportedGame, romajiReading, toHiragana } from "../src/index.js";
 
 /** 実 ROM のパス。設定されていなければこのファイルのテストは飛ばす。 */
 const romPath = process.env.ZIGZAGU_TEST_ROM;
@@ -33,5 +33,18 @@ describe.skipIf(!romPath)("実 ROM: 種族名と OW 画像（ZIGZAGU_TEST_ROM）
     expect(transparent).toBeLessThan(16 * 32);
     // 素の FR の 152 種類はすべて描ける。
     for (let id = 0; id < 152; id++) expect(sprites.image(id), `画像 ${id}`).not.toBeNull();
+  });
+});
+
+describe.skipIf(!romPath)("実 ROM: 種族名の読み（#447。ZIGZAGU_TEST_ROM）", () => {
+  it("全部の種族名が、自分のひらがなとローマ字の読みで当たる", () => {
+    const rom = new Rom(new Uint8Array(readFileSync(romPath!)));
+    const names = SpeciesNameTable.read(rom, requireSupportedGame(rom).offsets.speciesNameTablePointer);
+    for (let i = 1; i < SPECIES_COUNT; i++) {
+      const name = names.name(i)!;
+      const tokens = readingTokens(name);
+      expect(matchReading(normalizeReading(toHiragana(name)), tokens), `${i} ${name}`).toBe(2);
+      expect(matchReading(normalizeReading(romajiReading(name)), tokens), `${i} ${name} ${romajiReading(name)}`).toBe(2);
+    }
   });
 });
