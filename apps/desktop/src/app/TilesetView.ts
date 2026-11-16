@@ -9,7 +9,7 @@ import {
   type RgbaImage,
   type Tileset,
 } from "@zigzagumap/core";
-import { activeTint } from "./timeOfDay/activeTint";
+import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
 
 /**
  * 主・副タイルセットの組。ブロックの描画（キャッシュつき）と、ブロックパレットの画像を持つ。
@@ -51,8 +51,7 @@ export class TilesetView {
    * マップの表示に使う描き手（Phase6 #434）。時間帯が昼のとき、`mapType` を省いたとき、色の変わらない種類のマップ（屋内など）では
    * `renderer`（元の色）を返す。ブロックパレットとブロックエディタはいつも `renderer` を使う（元の色で見せる）。
    */
-  mapRenderer(mapType?: number): BlockRenderer {
-    const tint = activeTint();
+  mapRenderer(mapType?: number, tint: ActiveTint | null = activeTint()): BlockRenderer {
     if (!tint || mapType === undefined || !tint.tintsMapType(mapType)) return this.renderer;
     if (this.tinted?.generation !== tint.generation) {
       const [primaryPointer, secondaryPointer] = this.key.split(":").map(Number) as [number, number];

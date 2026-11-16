@@ -377,7 +377,7 @@ export class EventTab {
     // 隠れている間は描かない（出たときに描き直す。Phase4 #318）
     if (this.view.dormant) return;
     const selected = this.showCursor ? this.selectedPlaced() : null;
-    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
+    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session, this.state.map?.doc.header.mapType) : null;
     drawEvents(this.view.layer, this.placed, this.view.cellSize, selected, sprites, this.state.settings.data.eventOpacity);
     // 複数選択の枠と、Shift＋ドラッグの矩形（#399）
     if (this.showCursor && this.multi.multiple) drawSelectionFrames(this.view.layer, this.multi.placed(this.placed).filter((p) => p !== selected), this.view.cellSize);

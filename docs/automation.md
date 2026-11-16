@@ -491,3 +491,8 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 ### DPE の種族名（#439）
 
 野生タブやトレーナー編集の初回に名前表を読みます。`getField {id: "wild.species.1"}` の `options` が種族数です（ND 970件、Chronos 1573件）。`setField` は従来どおり種族番号を指定します。`tests/realcopy/run.py --species --reuse` で追加種族の選択、JSON出力、開き直し、トレーナーの名前の表示を確認できます。
+
+
+### 画像の時間帯（#435）
+
+`image.composite` は `time: "morning" | "day" | "evening" | "night"` を受けます。省略すると表示中の時間帯、指定すると書き出しだけにその色を使います。`mapExport.time` のコンボは0朝・1昼・2夕・3夜です。`mapExport.state` の `choice.time` に選択が出ます。プロジェクトを開いていないときは昼のままでコンボは無効です。

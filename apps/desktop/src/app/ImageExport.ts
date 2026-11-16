@@ -51,7 +51,7 @@ export class ImageExport {
     if (kind === "palette") return map.tiles.paletteImage(this.state.settings.data.paletteWidth);
     const { width, height } = mapImage.image;
     const c = canvasOf(mapImage.image).getContext("2d")!;
-    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session) : null;
+    const sprites = this.state.settings.data.showObjects ? spriteSourceFor(this.state.session, map.doc.header.mapType) : null;
     const { events, selected } = this.overlay();
     drawEventsOn(c, events, BLOCK_PIXELS, selected, sprites);
     const data = c.getImageData(0, 0, width, height);

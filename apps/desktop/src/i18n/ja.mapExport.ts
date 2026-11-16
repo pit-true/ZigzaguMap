@@ -4,6 +4,7 @@ import { ini } from "./ini";
 export const jaMapExport = {
   menu: "マップの画像を書き出す…",
   title: "マップの画像の書き出し",
+  time: "時間帯",
   range: "範囲",
   rangeMap: "このマップ",
   rangeWhole: "接続している全マップ（つなぎ合わせ）",
