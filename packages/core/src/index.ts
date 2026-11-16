@@ -474,3 +474,5 @@ export {
 export { UserScriptRuntime, type UserScriptApi } from "./userscript/UserScriptRuntime.js";
 export { COMPOSITE_MAX_SIDE, EXPORT_PAD, compositeScale, exportCrop, layoutComposite, rectsOverlap, type CompositeLayout, type CompositeMap, type CompositeSource } from "./render/MapComposite.js";
 export { GifWriter, quantizeRgba, type GifOptions, type GifIndexedImage } from "./image/GifWriter.js";
+
+export * from "./script/movement/MovementEdit.js";
