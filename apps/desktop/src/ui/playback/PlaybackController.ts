@@ -1,6 +1,7 @@
 import { buildPlaybackStart, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackTrigger, type PlayerGender, type Timeline } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import type { OpenMap } from "../../app/ProjectSession";
+import { prepareActorScene } from "../../app/ActorScene";
 import type { MapView } from "../map/MapView";
 import type { ScriptTarget } from "../script/ScriptEntry";
 import { ScriptLocator } from "../script/ScriptLocator";
@@ -95,6 +96,7 @@ export class PlaybackController {
     const entry = request.label ?? location?.label;
     if (!entry || !data.project.index.findLabel(entry)) throw new Error(t.noEntry);
     const skin = await messageSkin(session, request.target?.kind === "sign");
+    await prepareActorScene(session);
     if (token !== this.generation || map !== this.app.state.map) return;
     this.skin = skin;
     this.request = request; this.sourceMap = map; this.data = data; this.entry = entry;

@@ -69,6 +69,22 @@ it("未知の重ね方は報告し、影を地面に残して人物だけを持�
   expect(pixel(image, 4, 14)).toEqual([255, 255, 255, 255]);
 });
 
+it("頭上の印は人物の中心から16px上で、独立したBG優先度1を使う", () => {
+  const { renderer, state } = fixture(0);
+  const body = createImage(16, 32), mark = createImage(4, 4);
+  for (let i = 0; i < body.data.length; i += 4) body.data.set([0, 255, 0, 255], i);
+  for (let i = 0; i < mark.data.length; i += 4) mark.data.set([255, 0, 0, 255], i);
+  const actor = { state: { ...state, pixelY: 32, mark: { mark: "exclaim", frame: 10 } }, image: body, mark };
+  const image = renderGameScene(renderer, { ...view, height: 48 }, () => 0, [actor], false).image;
+  // 体はBG1の後ろ。印はBG1より手前で、top=14。
+  expect(pixel(image, 6, 16)).toEqual([255, 0, 0, 255]);
+  expect(pixel(image, 6, 13)).toEqual([0, 0, 255, 255]);
+  expect(pixel(image, 6, 24)).toEqual([0, 0, 255, 255]);
+  const risen = renderGameScene(renderer, { ...view, height: 48 }, () => 0, [{ ...actor, markOffsetY: -5 }], false).image;
+  expect(pixel(risen, 6, 10)).toEqual([255, 0, 0, 255]);
+  expect(pixel(risen, 6, 16)).toEqual([0, 0, 255, 255]);
+});
+
 it("対応した描画フックだけを検出し、別の関数や範囲外を同じ改造として扱わない", () => {
   const bytes = new Uint8Array(64);
   const data = new DataView(bytes.buffer);

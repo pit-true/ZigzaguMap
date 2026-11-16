@@ -21,6 +21,7 @@ export interface GameOffsets {
   readonly signFrameTilesPointer: number;
   readonly textWindowPalettesPointer: number;
   readonly messageFrameWriter: number;
+  readonly emotionTemplatePointer: number;
   /** フィールドエフェクトのSpriteTemplate表（FeShadeSet内のリテラル）。 */
   readonly fieldEffectTemplateTablePointer: number;
   /** CFRUのDrawBlockHookが差し込まれる位置。 */
@@ -52,6 +53,7 @@ export const BPRJ_OFFSETS: GameOffsets = {
   signFrameTilesPointer: 0x152df8,
   textWindowPalettesPointer: 0x153514,
   messageFrameWriter: 0xf8184,
+  emotionTemplatePointer: 0x82160,
   fieldEffectTemplateTablePointer: 0xdc258,
   drawBlockHook: 0x5a274,
   tilesetHeaderTable: 0x298b44,

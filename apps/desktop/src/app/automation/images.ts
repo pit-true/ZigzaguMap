@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { resolveActorFrame, type PlaybackActorState, type PlaybackState } from "@zigzagumap/core";
-import { renderActorScene } from "../ActorScene";
+import { prepareActorScene, renderActorScene } from "../ActorScene";
 import type { PlayerPlacement } from "../PreviewPlayer";
 import { canvasOf } from "../../ui/canvas";
 import { sceneNeighborBlocks } from "../SceneNeighbors";
@@ -118,6 +118,7 @@ export const imageCommands: CommandTable = {
     if (!session || !map) throw new Error("マップが開かれていません");
     const actors = req["actors"] as PlaybackActorState[];
     if (!Array.isArray(actors) || actors.length > 64) throw new Error("actors は64件までの配列です");
+    if (actors.some(actor => actor.mark?.mark.startsWith("emote_"))) await prepareActorScene(session);
     const number = (key: string, fallback: number): number => typeof req[key] === "number" ? req[key] : fallback;
     const outside = await sceneNeighborBlocks(session, map);
     const result = renderActorScene(session, map, { x: number("x", 0), y: number("y", 0), width: number("width", 240), height: number("height", 160) }, actors, undefined, outside);

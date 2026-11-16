@@ -13,6 +13,7 @@ export interface SceneActor {
   /** 影と頭上の印もROMから読んだ画像を渡す。影はジャンプで上へ動かさない。 */
   readonly shadow?: RgbaImage | null;
   readonly mark?: RgbaImage | null;
+  readonly markOffsetY?: number;
 }
 
 export interface SceneView {
@@ -44,6 +45,10 @@ export function renderGameScene(
       subpriority: actor.subpriority ?? actor.state.subpriority ?? actorSubpriority(actor.state.elevation, actor.state.pixelY, view.y),
     }))
     .sort((a, b) => b.subpriority - a.subpriority || b.actor.state.id - a.actor.state.id);
+  const objects = visible.flatMap(entry => [
+    { ...entry, effect: false, order: entry.actor.state.id },
+    ...(entry.actor.mark && entry.actor.state.mark ? [{ ...entry, priority: 1, subpriority: 0x53, effect: true, order: 0x100 + entry.actor.state.id }] : []),
+  ]).sort((a, b) => b.subpriority - a.subpriority || b.order - a.order);
   for (const plane of [3, 2, 1, 0] as const) {
     if (plane) {
       for (let y = Math.floor(view.y / 16); y < Math.ceil((view.y + view.height) / 16); y++) {
@@ -65,12 +70,12 @@ export function renderGameScene(
         blit(image, actor.shadow, at.x - view.x, at.y - view.y);
       }
     }
-    for (const { actor, priority } of visible) {
+    for (const { actor, priority, effect } of objects) {
       if (priority !== plane) continue;
       const state = actor.state;
       const at = actorImagePosition(state, actor.image.width, actor.image.height);
-      blit(image, actor.image, at.x - view.x, at.y - view.y);
-      if (actor.mark && state.mark) blit(image, actor.mark, state.pixelX + (16 - actor.mark.width) / 2 - view.x, at.y - actor.mark.height - view.y);
+      if (effect && actor.mark) blit(image, actor.mark, state.pixelX + (16 - actor.mark.width) / 2 - view.x, at.y + actor.image.height / 2 - 16 - actor.mark.height / 2 + (actor.markOffsetY ?? 0) - view.y);
+      else blit(image, actor.image, at.x - view.x, at.y - view.y);
     }
   }
   return { image, unknownBlocks: [...unknown] };

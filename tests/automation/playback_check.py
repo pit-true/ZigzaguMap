@@ -22,6 +22,7 @@ def main():
     p.add_argument("--editor", action="store_true")
     p.add_argument("--message-label")
     p.add_argument("--message-time")
+    p.add_argument("--emotes", action="store_true")
     args = p.parse_args()
     project = pathlib.Path(args.project)
 
@@ -145,6 +146,24 @@ def main():
                 assert z.call(dict(cmd="view.timeOfDay"))["time"] == original_time
                 assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before
                 print("OK メッセージ本文、改行、ROMの枠と色を表示")
+            if args.emotes:
+                actor = next(actor for actor in positions[0]["actors"] if actor["id"] == 0xff).copy()
+                actor.update(tileX=10, tileY=10, pixelX=160, pixelY=160, graphicsId=0, height=0, present=True, visible=True, mark=None)
+                def scene(mark=None):
+                    return z.call(dict(cmd="actors.scene", x=80, y=80, actors=[dict(actor, mark=mark)]))
+                plain = scene()
+                assert not plain["missing"]
+                names = ["exclaim", "question", "cross", "doubleExclaim", "smile"]
+                names += ["emote_" + name for name in ["exclaim", "question", "ellipsis", "double_exclaim", "music", "mon_exclaim", "mon_question", "mon_ellipsis", "mon_music", "mon_heart", "mon_poison", "mon_happy", "mon_very_happy", "mon_sad", "mon_upset", "mon_angry"]]
+                for name in names:
+                    marked = scene(dict(mark=name, frame=8))
+                    assert not marked["missing"], (name, marked["missing"])
+                    assert marked["png"] != plain["png"], name
+                original_time = z.call(dict(cmd="view.timeOfDay"))["time"]
+                z.call(dict(cmd="view.timeOfDay", time="night"))
+                assert not scene(dict(mark="emote_mon_heart", frame=24))["missing"]
+                z.call(dict(cmd="view.timeOfDay", time=original_time))
+                print("OK 通常の印5種と追加の感情アイコン16種、夜の描画")
     assert digest() == before_files
     print("OK ROMとプロジェクトのJSONが操作前後で同じ")
 
