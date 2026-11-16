@@ -11,6 +11,7 @@ export interface ActorFrameResult {
 export function resolveActorFrame(sprites: OverworldSprites, actor: PlaybackActorState): ActorFrameResult {
   if (!actor.present || !actor.visible || actor.graphicsId < 0) return { frame: null, reason: "hidden" };
   if (!sprites.info(actor.graphicsId)) return { frame: null, reason: "graphics" };
+  if (actor.animationFrame !== undefined) return { frame: actor.animationFrame, reason: actor.animationFrame ? null : "animation" };
   const direction = { down: 0, up: 1, left: 2, right: 3 }[actor.facing];
   const action = actor.movementId === null ? null : movementAction(actor.movementId);
   const speed = action?.speed ?? 1;

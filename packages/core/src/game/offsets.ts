@@ -15,6 +15,8 @@ export interface GameOffsets {
   readonly overworldGraphicsTablePointer: number;
   /** OW のパレット表（sObjectEventSpritePalettes）へのポインタが置かれている位置。 */
   readonly overworldPaletteTablePointer: number;
+  /** 歩きと停止のコマを対応させる表（EvActBootsAnimeNoStのリテラル）。 */
+  readonly overworldWalkingTablePointer: number;
   /** フィールドエフェクトのSpriteTemplate表（FeShadeSet内のリテラル）。 */
   readonly fieldEffectTemplateTablePointer: number;
   /** CFRUのDrawBlockHookが差し込まれる位置。 */
@@ -41,6 +43,7 @@ export const BPRJ_OFFSETS: GameOffsets = {
   speciesNameTablePointer: 0x144,
   overworldGraphicsTablePointer: 0x5ebb4,
   overworldPaletteTablePointer: 0x5ed98,
+  overworldWalkingTablePointer: 0x62df8,
   fieldEffectTemplateTablePointer: 0xdc258,
   drawBlockHook: 0x5a274,
   tilesetHeaderTable: 0x298b44,

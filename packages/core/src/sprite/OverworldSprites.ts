@@ -30,6 +30,19 @@ export interface OverworldFrame {
   readonly vFlip: boolean;
 }
 
+export type OverworldAnimationCommand =
+  | { readonly kind: "frame"; readonly frame: OverworldFrame; readonly duration: number }
+  | { readonly kind: "jump"; readonly target: number }
+  | { readonly kind: "loop"; readonly count: number }
+  | { readonly kind: "end" };
+
+export interface WalkingOffsets {
+  readonly stopLeft: number;
+  readonly stopRight: number;
+  readonly walkLeft: number;
+  readonly walkRight: number;
+}
+
 /**
  * OW（人などのスプライト）の表。画像番号から 1 コマ目（下向き）の画像を作る。
  * 画像は 4bpp のタイルを横に並べたもの（無圧縮）で、パレットの 0 番は透明。作った画像は覚えておく。
@@ -38,6 +51,8 @@ export class OverworldSprites {
   private readonly infos = new Map<number, OverworldGraphicsInfo | null>();
   private readonly images = new Map<number, RgbaImage | null>();
   private palettes: Map<number, number> | null = null;
+  private walking: Map<number, WalkingOffsets> | null | undefined;
+  private readonly animationCommands = new Map<string, OverworldAnimationCommand | null>();
 
   private constructor(
     private readonly rom: Rom,
@@ -45,11 +60,68 @@ export class OverworldSprites {
     readonly graphicsTable: number,
     /** パレット表の位置。 */
     readonly paletteTable: number,
+    private readonly walkingTablePointer?: number,
   ) {}
 
   /** 表へのポインタが置かれている位置から読む。 */
-  static read(rom: Rom, graphicsTablePointer: number, paletteTablePointer: number): OverworldSprites {
-    return new OverworldSprites(rom, rom.pointer(graphicsTablePointer), rom.pointer(paletteTablePointer));
+  static read(rom: Rom, graphicsTablePointer: number, paletteTablePointer: number, walkingTablePointer?: number): OverworldSprites {
+    return new OverworldSprites(rom, rom.pointer(graphicsTablePointer), rom.pointer(paletteTablePointer), walkingTablePointer);
+  }
+
+  /** nullは対応表に無い絵、undefinedは表自体を読めない場合。 */
+  walkingOffsets(graphicsId: number): WalkingOffsets | null | undefined {
+    if (this.walking === undefined) {
+      this.walking = null;
+      try {
+        if (this.walkingTablePointer !== undefined) {
+          const start = this.rom.pointer(this.walkingTablePointer);
+          const table = new Map<number, WalkingOffsets>();
+          for (let i = 0; i < 64; i++) {
+            const at = start + i * 8;
+            const pointer = this.rom.u32(at);
+            if (!pointer) { this.walking = table; break; }
+            if (!this.rom.isPointer(pointer)) break;
+            table.set(pointer - ROM_BASE, {
+              stopLeft: this.rom.u8(at + 4), stopRight: this.rom.u8(at + 5),
+              walkLeft: this.rom.u8(at + 6), walkRight: this.rom.u8(at + 7),
+            });
+          }
+        }
+      } catch { /* 壊れた表は、標準の値と決め付けない。 */ }
+    }
+    const info = this.info(graphicsId);
+    if (!this.walking || info?.animationsOffset == null) return undefined;
+    return this.walking.get(info.animationsOffset) ?? null;
+  }
+
+  /** 4バイトのアニメーション命令。コマの参照先も範囲を確かめる。 */
+  animationCommand(graphicsId: number, animation: number, command: number): OverworldAnimationCommand | null {
+    if (!Number.isInteger(animation) || animation < 0 || animation >= 64 || !Number.isInteger(command) || command < 0 || command >= 256) return null;
+    const key = `${graphicsId}:${animation}:${command}`;
+    if (this.animationCommands.has(key)) return this.animationCommands.get(key)!;
+    let result: OverworldAnimationCommand | null = null;
+    const info = this.info(graphicsId);
+    try {
+      if (info?.animationsOffset != null) {
+        const start = this.rom.pointer(info.animationsOffset + animation * 4);
+        const at = start + command * 4;
+        const raw = this.rom.u16(at), arg = this.rom.u16(at + 2);
+        if (raw === 0xffff) result = { kind: "end" };
+        else if (raw === 0xfffe) result = { kind: "jump", target: arg & 63 };
+        else if (raw === 0xfffd) result = { kind: "loop", count: arg & 63 };
+        else if (raw < 256) {
+          const entry = info.framesOffset + raw * FRAME_SIZE;
+          const offset = this.rom.pointer(entry);
+          const size = info.width * info.height / 2;
+          if (this.rom.u16(entry + 4) >= size && this.rom.inRange(offset, size)) {
+            result = { kind: "frame", frame: { index: raw, hFlip: !!(arg & 64), vFlip: !!(arg & 128) }, duration: arg & 63 };
+          }
+        }
+      }
+    } catch { /* 範囲外のポインタは表示しない。 */ }
+    this.animationCommands.set(key, result);
+    if (this.animationCommands.size > 4096) this.animationCommands.delete(this.animationCommands.keys().next().value!);
+    return result;
   }
 
   /** 画像番号の情報。読めなければ null。 */
@@ -103,11 +175,7 @@ export class OverworldSprites {
   /** ROM のアニメーション命令をたどる。終了後は最後のコマを保ち、不正な参照は null。 */
   animationFrame(graphicsId: number, animation: number, elapsed: number): OverworldFrame | null {
     if (!Number.isInteger(animation) || animation < 0 || animation >= 64 || !Number.isSafeInteger(elapsed) || elapsed < 0) return null;
-    const info = this.info(graphicsId);
-    if (info?.animationsOffset == null) return null;
     try {
-      const rom = this.rom;
-      const start = rom.pointer(info.animationsOffset + animation * 4);
       let command = 0, count = 0, time = 0;
       let last: OverworldFrame | null = null;
       const visited = new Map<string, number>();
@@ -122,26 +190,20 @@ export class OverworldSprites {
           visited.clear();
         }
         visited.set(key, time);
-        const at = start + command * 4;
-        const raw = rom.u16(at);
-        const arg = rom.u16(at + 2);
-        if (raw === 0xffff) return last;
-        if (raw === 0xfffe) { command = arg & 63; continue; }
-        if (raw === 0xfffd) {
-          count = count ? count - 1 : arg & 63;
+        const item = this.animationCommand(graphicsId, animation, command);
+        if (!item) return null;
+        if (item.kind === "end") return last;
+        if (item.kind === "jump") { command = item.target; continue; }
+        if (item.kind === "loop") {
+          count = count ? count - 1 : item.count;
           if (count) {
             // actanm.c: anm_count_back — 直前の LOOP の次、または先頭へ戻る。
-            do { command--; } while (command > 0 && rom.u16(start + (command - 1) * 4) !== 0xfffd);
+            do { command--; } while (command > 0 && this.animationCommand(graphicsId, animation, command - 1)?.kind !== "loop");
           } else command++;
           continue;
         }
-        if (raw >= 256) return null;
-        const entry = info.framesOffset + raw * FRAME_SIZE;
-        const imageOffset = rom.pointer(entry);
-        const size = info.width * info.height / 2;
-        if (rom.u16(entry + 4) < size || !rom.inRange(imageOffset, size)) return null;
-        last = { index: raw, hFlip: !!(arg & 64), vFlip: !!(arg & 128) };
-        const duration = Math.max(1, arg & 63);
+        last = item.frame;
+        const duration = Math.max(1, item.duration);
         if (elapsed < time + duration) return last;
         time += duration;
         command++;

@@ -225,7 +225,7 @@ export class ProjectSession {
     if (this.sprites === undefined) {
       const o = this.project.game.offsets;
       try {
-        this.sprites = OverworldSprites.read(this.project.rom, o.overworldGraphicsTablePointer, o.overworldPaletteTablePointer);
+        this.sprites = OverworldSprites.read(this.project.rom, o.overworldGraphicsTablePointer, o.overworldPaletteTablePointer, o.overworldWalkingTablePointer);
       } catch {
         this.sprites = null;
       }

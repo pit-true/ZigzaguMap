@@ -114,8 +114,11 @@ export { matchReading, normalizeReading, readingTokens, romajiReading, toHiragan
 export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSuggest.js";
 
 // OW（人のスプライト）
-export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame } from "./sprite/OverworldSprites.js";
+export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame, type OverworldAnimationCommand, type WalkingOffsets } from "./sprite/OverworldSprites.js";
 export { OverworldEffects } from "./sprite/OverworldEffects.js";
+export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.js";
+export { ActorAnimator } from "./sprite/ActorAnimator.js";
+export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
 export { renderGameScene, type SceneActor, type SceneView } from "./render/GameScene.js";
 export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";

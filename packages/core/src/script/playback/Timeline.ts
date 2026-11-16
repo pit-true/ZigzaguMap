@@ -190,8 +190,25 @@ function resolveAt(track: ActorTrack, frame: number): Resolved {
   return { base: r.base, height: r.height, action: c.action, actionFrame: k };
 }
 
+function stateOf(track: ActorTrack, r: Resolved, frame: number): PlaybackActorState {
+  const mark = [...track.marks].reverse().find(m => m.frame <= frame && frame < m.frame + m.frames) ?? null;
+  return {
+    id: track.id, graphicsId: r.base.graphicsId,
+    tileX: r.base.tileX, tileY: r.base.tileY, pixelX: r.base.pixelX, pixelY: r.base.pixelY,
+    height: r.height, facing: r.base.facing,
+    sprite: r.action && r.action.kind === "face" ? "stand" : r.action?.sprite ?? "stand",
+    actionFrame: r.actionFrame, movementId: r.action?.id ?? null,
+    visible: r.base.visible, present: r.base.present, shadow: r.action?.kind === "jump",
+    mark: mark ? { mark: mark.mark, frame: frame - mark.frame } : null,
+    elevation: r.base.elevation, fixedPriority: r.base.fixedPriority,
+    ...(r.base.fixedPriority && r.base.subpriority !== undefined ? { subpriority: r.base.subpriority } : {}),
+    animHold: r.base.animHold,
+  };
+}
+
 /** 計算した結果。 */
 export class Timeline {
+  private readonly byId: ReadonlyMap<number, ActorTrack>;
   constructor(
     /** 人物ごとの記録（番号の小さい順）。 */
     readonly tracks: readonly ActorTrack[],
@@ -205,7 +222,15 @@ export class Timeline {
     readonly shakes: readonly ShakeSpan[],
     /** 最後のフレーム（含む）。 */
     readonly lastFrame: number,
-  ) {}
+  ) { this.byId = new Map(tracks.map(track => [track.id, track])); }
+
+  /** 1人だけの状態。アニメーションの計算で、他の人物やカメラを毎回作らない。 */
+  actorAt(id: number, frame: number): PlaybackActorState | null {
+    const track = this.byId.get(id);
+    if (!track) return null;
+    const f = Math.max(0, Math.min(Math.floor(frame), this.lastFrame));
+    return stateOf(track, resolveAt(track, f), f);
+  }
 
   /** フレームの状態。範囲の外は端に寄せる。 */
   stateAt(frame: number): PlaybackState {
@@ -215,29 +240,7 @@ export class Timeline {
     for (const t of this.tracks) {
       const r = resolveAt(t, f);
       resolved.set(t.id, r);
-      const mark = [...t.marks].reverse().find((m) => m.frame <= f && f < m.frame + m.frames) ?? null;
-      const sprite = r.action?.sprite ?? "stand";
-      actors.push({
-        id: t.id,
-        graphicsId: r.base.graphicsId,
-        tileX: r.base.tileX,
-        tileY: r.base.tileY,
-        pixelX: r.base.pixelX,
-        pixelY: r.base.pixelY,
-        height: r.height,
-        facing: r.base.facing,
-        sprite: r.action && r.action.kind === "face" ? "stand" : sprite,
-        actionFrame: r.actionFrame,
-        movementId: r.action?.id ?? null,
-        visible: r.base.visible,
-        present: r.base.present,
-        shadow: r.action?.kind === "jump",
-        mark: mark ? { mark: mark.mark, frame: f - mark.frame } : null,
-        elevation: r.base.elevation,
-        fixedPriority: r.base.fixedPriority,
-        ...(r.base.fixedPriority && r.base.subpriority !== undefined ? { subpriority: r.base.subpriority } : {}),
-        animHold: r.base.animHold,
-      });
+      actors.push(stateOf(t, r, f));
     }
     return { frame: f, actors, camera: this.cameraAt(f, resolved) };
   }
