@@ -48,6 +48,8 @@ export interface PlaybackProject {
   readonly index: ScriptIndex;
   readonly commands: ScriptCommandTable;
   readonly text: (path: string) => string | null;
+  /** 本文が ROM から作った読み取り専用のものか（#459。タイムラインの箱を編集できない）。 */
+  readonly readOnly?: boolean;
 }
 
 /** 始めに居る人物。 */

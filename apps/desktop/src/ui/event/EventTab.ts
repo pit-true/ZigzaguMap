@@ -689,7 +689,8 @@ export class EventTab {
         enabled: scriptKind !== null && !signItem,
         run: () => scriptKind && this.openScript(scriptKind, index),
       },
-      { id: "playScript", label: jaPlayback.menu, enabled: scriptKind !== null && !signItem && this.state.session?.projectDir != null, run: () => scriptKind && this.host.playScript?.(scriptKind, index) },
+      // 素の ROM でも、スクリプトが ROM のアドレスのままのイベントは再生できる（#459）
+      { id: "playScript", label: jaPlayback.menu, enabled: scriptKind !== null && !signItem && (this.state.session?.projectDir != null || this.romScriptOf(scriptKind, index)), run: () => scriptKind && this.host.playScript?.(scriptKind, index) },
       { id: "duplicate", label: jaEventMulti.menuDuplicate, enabled: kind !== "fly" || many, run: () => void this.duplicateSelected() },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
@@ -699,6 +700,13 @@ export class EventTab {
         : []),
       ...templates,
     ]);
+  }
+
+  /** イベントのスクリプトが ROM のアドレス（0x08〜0x09）か。 */
+  private romScriptOf(kind: "person" | "sign" | "trap", index: number): boolean {
+    const events = this.state.map?.doc.events;
+    const pointer = !events ? undefined : kind === "person" ? events.persons[index]?.script : kind === "trap" ? events.traps[index]?.script : signScript(events.signs[index]);
+    return pointer !== undefined && pointer >>> 24 >= 0x08 && pointer >>> 24 <= 0x09;
   }
 
   /** イベントマネージャーの「設定」。 */

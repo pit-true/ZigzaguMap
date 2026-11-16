@@ -27,7 +27,7 @@ export type MovementLockReason = MovementBlockProblemKind;
 /** 箱の移動データを今の本文から読む。ROM のもの（`.s` に無い）は problem が `rom` の空の移動データ。 */
 export function segmentMovementBlock(project: PlaybackProject, tools: MovementTextTools, segment: PlaybackSegment): MovementBlock {
   const rom: MovementBlock = { label: segment.movementLabel, labelLine: -1, steps: [], endStep: null, problem: { kind: "rom", line: null, detail: null } };
-  if (!segment.movementPath || !segment.step) return rom;
+  if (!segment.movementPath || !segment.step || project.readOnly) return rom;
   const text = project.text(segment.movementPath);
   const block = text === null ? null : readMovementBlock(text, segment.movementLabel, tools.resolve);
   return block ?? { label: segment.movementLabel, labelLine: -1, steps: [], endStep: null, problem: { kind: "notFound", line: null, detail: null } };

@@ -15,8 +15,9 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--exe", required=True)
     p.add_argument("--rom", required=True)
-    p.add_argument("--project", required=True)
-    p.add_argument("--label", required=True)
+    p.add_argument("--project")
+    p.add_argument("--label")
+    p.add_argument("--rom-only", action="store_true", help="素の ROM の 3.0 の人物と踏むスクリプトを再生する（#459）。--project を付けると、そのプロジェクトでまだ取り込んでいないイベントとして")
     p.add_argument("--camera", action="store_true")
     p.add_argument("--shots")
     p.add_argument("--editor", action="store_true")
@@ -27,6 +28,11 @@ def main():
     p.add_argument("--start-state", action="store_true", help="男女・向き・居ない人物、マップとセッションの切り替え、タイムラインの位置・拡大・ドラッグ")
     p.add_argument("--unsaved", action="store_true", help="エディタの未保存の本文を再生に使い、保存しない（--editor と一緒に）")
     args = p.parse_args()
+    if args.rom_only:
+        check_rom_only(args.exe, args.rom, args.shots, args.project)
+        return
+    if not args.project or not args.label:
+        p.error("--project と --label が要ります（--rom-only のときは要りません）")
     project = pathlib.Path(args.project)
 
     def digest():
@@ -192,6 +198,88 @@ def main():
                 print("OK 通常の印5種と追加の感情アイコン16種、夜の描画")
     assert digest() == before_files
     print("OK ROMとプロジェクトのJSONが操作前後で同じ")
+
+
+def play_to_end(z, timeout=30):
+    """4 倍で最後まで再生する（文で止まったら続きを読む）。"""
+    z.call(dict(cmd="playback.seek", frame=0))
+    z.call(dict(cmd="playback.speed", value=4))
+    deadline = time.monotonic() + timeout
+    while True:
+        state = z.call(dict(cmd="playback.state"))
+        if not state["playing"]:
+            if state["frame"] >= state["lastFrame"]:
+                return state
+            z.call(dict(cmd="playback.play"))
+        assert time.monotonic() < deadline, state
+        time.sleep(0.05)
+
+
+def check_rom_only(exe, rom, shots, project=None):
+    """素の ROM（プロジェクト無し）で、マサラタウンの人物と踏むスクリプトを最後まで再生する。箱は編集できず、読み取り専用の表示を強調する。"""
+    digest = hashlib.sha256(pathlib.Path(rom).read_bytes()).digest()
+    with tempfile.TemporaryDirectory(prefix="zzm-playback-rom-", ignore_cleanup_errors=True) as work:
+        with Zigzagu(exe, profile=pathlib.Path(work) / "profile", extra=["--mute-audio"]) as z:
+            # project を渡すと、プロジェクトでまだ取り込んでいない（ROM のアドレスのままの）イベントを、プロジェクトの命令表で再生する
+            z.call(dict(cmd="open", rom=rom, project=project) if project else dict(cmd="open", rom=rom))
+            z.call(dict(cmd="selectMap", bank=3, map=0))
+            z.call(dict(cmd="tab", name="event"))
+            before = z.call(dict(cmd="canvasPng", target="event"))["png"]
+            played = {"person": 0, "trap": 0}
+            moved = 0
+            for kind in ("person", "trap"):
+                for index in range(16):
+                    try:
+                        started = z.call(dict(cmd="playback.start", kind=kind, index=index))
+                    except AppError as e:
+                        if "見つかりません" in str(e) or "プロジェクト" in str(e):
+                            continue
+                        raise
+                    if not started.get("active"):
+                        break
+                    assert started["entry"].startswith("ROM_"), started["entry"]
+                    timeline = z.call(dict(cmd="playback.timeline"))
+                    assert not any(m["kind"] == "limit" for m in timeline["markers"]), (kind, index)
+                    end = play_to_end(z)
+                    assert end["frame"] == timeline["lastFrame"]
+                    locks = z.call(dict(cmd="playback.locks"))
+                    assert all(lock and ".s に取り込む" in lock for lock in locks), locks
+                    if kind == "trap" and len({s["actor"] for s in timeline["segments"]}) > 1:
+                        moved += 1
+                        # 読み取り専用の表示（逆アセンブルの行）を開いて、今の命令と移動データの値を強調する
+                        z.call(dict(cmd="script.rom", bank=3, map=0, kind="trap", index=index))
+                        wait_editor(z)
+                        segment = timeline["segments"][0]
+                        z.call(dict(cmd="playback.seek", frame=segment["start"]))
+                        ranges = z.call(dict(cmd="editor.playbackHighlights", window="script-editor"))
+                        rom_ranges = [entry for entry in ranges if entry["path"].startswith("ROM:") and entry["ranges"]]
+                        assert rom_ranges, ranges
+                        text = z.call(dict(cmd="editor.text", path=rom_ranges[0]["path"], window="script-editor"))["text"]
+                        marked = [text[r["from"]:r["to"]] for r in rom_ranges[0]["ranges"]]
+                        assert any("applymovement" in m for m in marked), marked
+                        if shots:
+                            folder = pathlib.Path(shots)
+                            folder.mkdir(parents=True, exist_ok=True)
+                            (folder / "playback_rom.png").write_bytes(base64.b64decode(z.call(dict(cmd="ui.shot", id="playback.bar"))["png"]))
+                    played[kind] += 1
+                    z.call(dict(cmd="playback.stop"))
+            assert played["person"] > 0 and played["trap"] > 0 and moved > 0, (played, moved)
+            assert z.call(dict(cmd="canvasPng", target="event"))["png"] == before
+            print(f"OK 素の ROM のマサラタウン: 人物 {played['person']} 件、踏むスクリプト {played['trap']} 件を最後まで再生（オーキドの所 {moved} 件）。箱は編集できない印、読み取り専用の表示を強調")
+    assert hashlib.sha256(pathlib.Path(rom).read_bytes()).digest() == digest
+    print("OK ROM が操作前後で同じ")
+
+
+def wait_editor(z, timeout=30):
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            z.call(dict(cmd="editor.state", window="script-editor"))
+            return
+        except AppError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.2)
 
 
 def actor_of(state, actor_id):
