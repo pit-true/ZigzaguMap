@@ -1,0 +1,188 @@
+[READMEへ戻る](../README.md)
+
+# 開発・テスト・性能
+
+## 構成
+
+pnpm の workspace です。
+
+- `packages/core`: ROM の解析・描画・操作コマンド・出力（TypeScript。Node とブラウザの両方で動き、画面なしでテストできる）
+  - `rom/`・`binary/`: ROM とバイト列の読み書き、LZ77、base64、16 進の表記（`formatHex`）
+  - `map/`・`event/`・`connection/`・`mapscript/`・`wild/`・`fly/`・`name/`・`sprite/`・`regionmap/`: ROM の各データの読み書き（`*Codec` が構造体、`*Reader`・`*Table` が表）
+  - `model/`: 編集中のマップ（`MapDocument`）とベース ROM からの読み込み
+  - `tileset/`・`render/`: タイルセットの編集用データと描画（`BlockRenderer`、`renderBlocks`、`MapRenderer`）
+  - `command/`: 操作コマンド（`commands/` に種類ごと）、`CommandBus`（実行・アンドゥ・リドゥ・履歴）、`CommandRegistry`（JSON の記録からコマンドを作る）、`CommandGroup`（複数のコマンドを 1 回の操作にまとめる。記録から作り直せる）、`DocumentStore`（編集中の状態）
+  - `project/`: `maps\` の読み書き（出力の形式は全部ここ）。`amfile/` は AdvanceMap の `.map` / `.evt`
+  - `script/`: スクリプト連携（Phase2。DOM を使わない）。`config/`（zigzagumap.json の `script` の節と方言）、`commands/`（xse_commands.s と commands.csv から命令表）、`asm/`（`.s` の 1 行の解析）、`index/`（ラベルと `.equ` の索引）、`strings/`（`.string` の読み書きと字数の幅検査）、`project/`（eventscripts と maps\scripts.json、対応表のコマンド）、`link/`（イベントのラベルと scripts_MM.json。型は `EventLabelTypes`、出力の中身は `eventLabelOutput`）、`edit/`（ひな形・ラベルの名前・名前の変更・マップスクリプトの表の文）、`disasm/`（ROM のスクリプトの逆アセンブルと取り込み。型は `DisasmTypes`）、`assist/`（エディタの補完・ホバー・波線・定義へ移動の元）、`build/`（ビルドのログと幅検査の出力の読み取り）
+- `apps/desktop`: デスクトップアプリ（Tauri 2 + Vite + 素の TypeScript）
+  - `src/app/`: アプリ全体（`App`）、状態（`EditorState`）、ROM とプロジェクト（`ProjectSession`、`TauriProjectFs`）、マップ一覧（`MapCatalog`、`MapTreeModel`）、メニューの定義とアクション（`menuDefinition`、`Actions`、`Shortcuts`）、設定（`Settings`、`SettingPrompts`、`SystemSettings`）、ファイル（`FileDialogs`）、自動操作（`automation/`）
+  - `src/ui/`: メニューバー、ツールバー、マップ一覧、タブ、ステータスバー、画面内のダイアログ（`Dialog`、`MessageBox`、`InputDialog`）、Canvas の共通処理（`canvas.ts`）、`map/`（マップ表示・パレット・重ね描き）、`tabs/`・`event/`・`header/`・`wild/`・`connection/`・`newmap/`（タブとダイアログ。マップの外のイベントの帯は `event/OutsideEventsBar`、場所の設定のかんたん表示は `header/SimpleHeaderView`）、`form/`（16 進欄・スピン・コンボなどの入力部品と入力エラー）、`view/`（表示メニューの小窓。透明度のスライダー）、`help/`（ヘルプの窓。Markdown の変換 `markdown.ts` と文書の窓 `HelpViewer`）、`script/`（「スクリプトを開く」の入口 `ScriptEntry`、スクリプトエディタのメイン側の窓口 `ScriptHost` とイベントから `.s` の行を引く `ScriptLocator`、ラベルの欄 `ScriptLabelField`、ひな形と取り込みの書き足し `ScriptLink`・`ScriptFiles`・`RomScripts`、マップスクリプトのパネル `MapScriptPanel`、対応表の画面 `ScriptsTableDialog`・`NewScriptDialog`）
+  - `src/input/`: マウス操作（ブロック・移動許可の配置）
+  - `src/windows/`: 別ウィンドウ。入口は `tool.html`（`src/tool.ts` → `startToolWindow.ts` の表でラベルから中身を選ぶ）。`block-editor/`・`palette-editor/`・`block-adjust/`（メインとの同期は `ToolWindowHost`・`ToolClient`・`protocol`）、`world-map/`（`WorldMapHost`・`WorldMapClient`）、`script-editor/`（スクリプトエディタ。窓 `ScriptEditorWindow` と部品のクラス `TabBar`・`ExternalChanges`・`LabelRenamer`・`RomTabs`・`Navigation`・`ThemeControl`・`BuildPanel`、プロジェクトの知識 `ScriptProject`、CodeMirror の機能ごとの拡張は `extensions/`、自動操作の命令は機能ごとに `automation/`、メインとのやり取りの型は `protocol.ts`）
+  - `src/i18n/`: 文言、`src/styles/`: 部品ごとの CSS、`src/util/`: 小さな共通処理（外部のリンクを開く `externalLinks` など）、`src/assets/`: 画像（ツールバーの主人公のドット絵）
+  - `test/`: 画面のうち DOM を使わない部分（メニューの構成、ショートカットの一覧、Markdown の変換、透明度の目盛り）の単体テスト
+  - `src-tauri/`: Rust 側。ファイルの入出力、ウィンドウの管理、自動操作の入口（HTTP）、画面の撮影だけを受け持つ
+- `scripts/`: ビルド・文言の生成と確認・計測、`tests/`: 自動操作の確認と比較テスト、`tools/`: AdvanceMap を動かすハーネスなど
+
+編集はすべて `packages/core` の操作コマンドを CommandBus で実行します（別ウィンドウもコマンドの JSON をメインへ送り、メインが実行する）。ダイアログの中の下書き（コネクション・マップスクリプトの表など）は写しを編集し、「保存」でコマンドにします。例外は、作成したマップを `.map` に保存したときの名前とパスの記録（保存の結果で、取り消す対象ではない）です。
+
+別ウィンドウを足すとき（Phase2 のスクリプトエディタなど）は、`src/windows/startToolWindow.ts` の表と `src-tauri/capabilities/default.json` の `windows` に足します。
+
+## 開発
+
+Node.js 22 以降、pnpm、Rust（1.96 以降）、WebView2 が必要です。
+
+```sh
+pnpm install
+pnpm typecheck   # 型チェック（使っていない変数・引数もエラーにする）
+pnpm test        # 単体テスト（core と、画面の DOM を使わない部分）
+pnpm lint        # 型チェック + 文言の生成物の確認 + 文言の突き合わせ
+scripts\build.cmd clippy   # Rust の lint（警告もエラーにする）
+scripts\build.cmd test     # Rust の単体テスト（画像の切り出しなど）
+```
+
+単体テスト（`packages/core/test`）には、出力の往復テストを含みます: マップを JSON にして読み直すと同じになること（`project.test.ts`。素の ROM では `realRomProject.test.ts` が全マップ）、全種類のコマンドを実行して出力し、開き直すと同じで、全部取り消すと JSON が消えること（`realRomEdit.test.ts`）、タイルセット・落とし物・新しいマップ・マップ名の出力（`editSave.test.ts`。漢字を含むマップ名（ND の `charmap.tbl` で漢字は `FC xx yy` の 3 バイト）を出力して読み直すテストも含む。`ZIGZAGU_TEST_ND_PROJECT` を入れると、NeoDark-CFRU の `charmap.tbl` そのもので確かめる）。
+
+画面の文言は、改訂版 `apps/desktop/src/i18n/source/Japanese.ini`（UTF-8）に、補正 `apps/desktop/src/i18n/source/overrides.ini`（同じ書式、UTF-8）を重ねたものです。`scripts/gen-i18n.mjs` が「Japanese.ini → overrides.ini」の順にキー（節と番号）ごとに値を重ね、文言のモジュール `apps/desktop/src/i18n/ini.generated.ts` を作ります。`ja*.ts` は生成物の値を `ini.節["番号"]` で引いています。
+
+- Japanese.ini はユーザーが用意した改訂版の写しなので、書き換えずにそのまま置きます。英語のまま・文字化け・機械翻訳のような値は overrides.ini で直します。各項目の上のコメントに、出どころ（旧版 = AdvanceMap 1.92 の日本語化パックの同じ番号の値／新規の案）と改訂版の値を書きます。
+- overrides.ini には Japanese.ini にある節・番号だけを書けます（無い番号を書くと生成でエラーになります）。
+- 言い回しを変えたいときは、overrides.ini を直すか（改訂版を差し替えるときは Japanese.ini を差し替えて）、生成し直し、生成物と一緒にコミットします。
+
+```sh
+node scripts/gen-i18n.mjs          # ini.generated.ts を作り直す
+node scripts/gen-i18n.mjs --check  # ini・overrides.ini と生成物が合っているか確かめる
+node scripts/check-i18n.mjs        # 文言の突き合わせ（下記）
+```
+
+`scripts/check-i18n.mjs` は、改訂版 Japanese.ini に overrides.ini を重ねた値を基準に、ini に無い番号の参照と、ini の値と同じなのに ini から引かず直接書いた文字列と、画面で使っている文言に残った英語だけの値・文字化け・タブ文字を探します（画面で使ってよい英語「OK」「BGM:」などは、スクリプトの `ALLOWED_ENGLISH` に理由を付けて書きます）。`--inventory <inventory のフォルダ> --old-ini <AdvanceMap 1.92 の Japanese.ini>` を付けると、AdvanceMap の画面を調べた部品表の文字列（1.92 の表記）を旧版の ini で番号に直し、アプリに対応が無いものも探します。意図した違いと番号の読み替え（改訂版で並びが変わったツールバーなど）は、スクリプトの `INTENTIONAL`・`RENAMED` に理由を付けて書きます（`--verbose` で一覧）。
+
+- 値の中の AdvanceMap 1.95 向けの注記（「(AM1.95未使用)」「(※AM1.95使用不可)」）は外します。外し方は `scripts/gen-i18n.mjs` の `stripNote` だけで決めています。行末の空白も外します。
+- 注記を外して空になった番号と、ini に無い番号は生成物に入りません。`ja*.ts` がそれを引いていると型チェック（`pnpm typecheck`）で止まるので、旧版の文言を直接書くか、ini に足してください。
+- ルビー・サファイア・エメラルドの挙動や季節など、ZigzaguMap に該当する機能の無い節は出しません（`EXCLUDED_SECTIONS`）。
+
+ROM が要るテストは、環境変数 `ZIGZAGU_TEST_ROM` に素の BPRJ のパスを入れたときだけ実行されます。ROM はリポジトリに入れません。
+
+```powershell
+$env:ZIGZAGU_TEST_ROM = "C:\path\to\BPRJ.gba"; pnpm test
+```
+
+別の ROM からのタイルセットの移植のテストは、`ZIGZAGU_TEST_EMERALD` にエメラルド（日本語版か英語版）のパスを入れると、エメラルドから FR への変換（全マップの組が上限に収まること、ミシロタウンの全ブロックの絵がエメラルドの決まりで描いた絵と同じこと）も確かめます。`ZIGZAGU_TEST_SOURCES` に FR の英語版や LG のパスを「;」区切りで入れると、それぞれの全マップの組を変換します。
+
+ND のベース ROM と NeoDark-CFRU のフォルダを `ZIGZAGU_TEST_ND_ROM` と `ZIGZAGU_TEST_ND_PROJECT` に入れると、`maps\` の JSON を読むテストも実行されます（フォルダには書き込みません）。
+
+ND と Chronos の実フォルダの写しを使うテストは `tests/realcopy` にあります（ローカルだけで動かす）。実フォルダと写し先のパスを `tests/realcopy/local.config.json`（コミットしない。見本は `local.config.example.json`）に書いて、`python tests/realcopy/run.py --smoke` を実行します。実フォルダを写し先へ写し（`build/`・`.git`・ベース ROM 以外の `.gba` などは除く）、ZigzaguMap（`--automation`）で写しを開いて何もせずに出力し、写しでビルドします（ND は CFRU の `python scripts/make.py`、Chronos はルートの `python build.py`）。実行の前後で実フォルダのファイルの更新日時が 1 つも変わらないことも確かめます。`--reuse` で前の写しをそのまま使い、`--dpe` で ND の DPE のビルドまで動かします。`--phase5` は Phase5 の全体の往復テストで、3.0 で塗りつぶし・マップシフト・対話式リサイズ・ブロックの入れ替え・イベントの複製と移動と削除・新しいタイルセットを行って出力し、写しを開き直すと配置・境界ブロック・大きさ・イベント・絵が同じこと、写しでビルドが通り、できた ROM の 3.0 が同じことを確かめます。写し・起動・出力・ビルドの部品（`tests/realcopy/lib`）は、ほかのテストからも使えます。
+
+コアライブラリを Node から使うときは `pnpm --filter @zigzagumap/core build` で `dist` を作ります（`@zigzagumap/core` と `@zigzagumap/core/node`）。マップを PNG に書いて確かめるには次のようにします。
+
+```sh
+pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --events
+pnpm --filter @zigzagumap/core dump-map -- <rom> 3 0 out.png --project <CFRU-JP のフォルダ>
+```
+
+全マップの描画を AdvanceMap の「マップ画像の保存」と画素で比べるには、`tools/am-harness/export_map_images.py <フォルダ>` で AdvanceMap に全マップの画像（`m<バンク>_<マップ>.DIB`）を書かせてから、次を実行します（色は 5 ビットに落として比べ、違うマップとマスを出します）。
+
+```sh
+pnpm --filter @zigzagumap/core compare-map-images -- <rom> <フォルダ> [--json out.json]
+```
+
+アプリの起動とビルド:
+
+```sh
+cd apps/desktop
+pnpm tauri dev     # 開発用に起動（自動操作の入口がポート 17890 で有効になる）
+```
+
+リリース用の exe は `scripts\build.cmd` で作ります（`apps/desktop/src-tauri/target/release/zigzagumap.exe`）。Visual Studio Build Tools の `vcvars64.bat` を読んでから `pnpm tauri build` を実行するので、cmd・PowerShell・Git Bash のどれからでも動きます（Git Bash だけで `pnpm tauri build` を実行すると、Git 付属の `link.exe` が先に見つかって失敗します）。
+
+```sh
+scripts\build.cmd          # リリースビルド
+scripts\build.cmd debug    # デバッグビルド
+scripts\build.cmd check    # cargo check だけ
+scripts\build.cmd clippy   # cargo clippy（Rust の lint）
+scripts\build.cmd test     # cargo test（Rust の単体テスト）
+```
+
+出力先を変えたいときは、環境変数 `CARGO_TARGET_DIR` を設定してから実行します（exe は `<CARGO_TARGET_DIR>\release\zigzagumap.exe` にできます）。
+
+自動操作の入口（テスト用の HTTP の命令）は [docs/automation.md](automation.md)、AdvanceMap との比較テストの回し方は [docs/compare-test.md](compare-test.md) にあります。
+
+## 性能
+
+| 項目 | 目標 | 測り方 |
+|---|---|---|
+| 起動からマップ表示まで | 1 秒以内 | `scripts/measure-startup.mjs` |
+| マップの切り替え | 100ms 以内 | `scripts/measure-startup.mjs`（`scripts\measure-memory.ps1` も出す） |
+| 待機時メモリ（WebView2 込み） | 150MB 以下 | `scripts\measure-memory.ps1` の専用ワーキングセットの合計 |
+| 配布物 | 10MB 以下 | `zigzagumap.exe` の大きさ |
+
+Phase1 の終わり（2026-11-14、素の BPRJ）に測った値: 起動からマップ表示まで 中央値 750ms（5 回の最大 767ms）、マップの切り替え 中央値 27ms（50 回の最大 58ms）、メモリ（専用ワーキングセットの合計）は起動直後 75MB・ROM を開いた後 105MB・マップを 10 枚切り替えた後 114MB・ブロックエディタを開いた後 146MB・閉じた後 116MB、exe 3.6MB です。
+
+Phase1 のフィードバックを入れたあと（2026-11-14、素の BPRJ）に測り直した値: 起動からマップ表示まで 中央値 867ms（9 回の最大 948ms）、マップの切り替え 中央値 28ms（90 回の最大 55ms）、メモリ（専用ワーキングセットの合計）は起動直後 77MB・ROM を開いた後 104MB・マップを 10 枚切り替えた後 134MB・ブロックエディタを開いた後 149MB・閉じた後 116MB、exe 3.6MB です。同じ時に Phase1 の終わりの exe を測ると起動は中央値 842ms だったので、起動の差は PC の混み具合によるものです。
+
+スクリプトエディタ（CodeMirror 6）を入れたあと（2026-11-14、素の BPRJ と ND のプロジェクトフォルダの写し）: 起動からマップ表示まで 中央値 889ms（5 回の最大 970ms）、マップの切り替え 中央値 29ms（50 回の最大 49ms）、メモリ（専用ワーキングセットの合計）は ROM とプロジェクトを開いた後 106MB・マップを 10 枚切り替えた後 140MB・ブロックエディタを開いた後 149.5MB・閉じた後 119MB・スクリプトエディタを開いた後 136MB・閉じた後 114MB、exe 3.8MB（3,963,904 バイト）です。エディタの束は minify 後 296KB（gzip 96KB）で、エディタのウィンドウを開いたときだけ読み込みます。
+
+Phase2 の終わり（2026-11-14）に測った値: 起動からマップ表示まで 中央値 798ms（素の BPRJ、7 回の最大 826ms）、マップの切り替え 中央値 26.6ms（70 回の最大 52.6ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し）は、起動直後 76MB・ROM とプロジェクトを開いた後 126MB・マップを 10 枚切り替えた後 131MB・ブロックエディタを開いた後 166MB・閉じた後 134MB・スクリプトエディタを開いた後 170MB（エディタのウィンドウは 38MB）・閉じた後 128MB、exe 3.9MB（4,099,072 バイト）です。スクリプトエディタを開いている間の合計は、GC の手直しの前は約 216MB でした。
+
+Phase2 のフィードバック（#218〜#221）を入れたあと（2026-11-14）: 起動からマップ表示まで 中央値 788ms（素の BPRJ、5 回の最大 846ms）、マップの切り替え 中央値 27.0ms（50 回の最大 42.7ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し）は、起動直後 77MB・ROM とプロジェクトを開いた後 127MB・マップを 10 枚切り替えた後 141MB・ブロックエディタを開いた後 162MB・閉じた後 137MB・スクリプトエディタを開いた後 175MB・閉じた後 133MB、exe 3.9MB（4,117,504 バイト）です。イベントの削除の処理（`EventDeleter`）は、初めて削除するときに読み込みます。
+
+- `--js-flags=--expose-gc` と `util/idleGc.ts`（操作が 1.5 秒落ち着いたら GC を 1 回）は、マップの切り替えを遅くしていません。切り替えの間を 0〜3 秒に変えて 20 回ずつ測ると、GC あり 中央値 21.5〜24.2ms（最大 35.4ms）、GC なし（`--js-flags` を上書きして `gc` を無くしたもの）中央値 22.5〜24.6ms（最大 41.4ms）で、GC が走る頃合い（1.55〜1.9 秒後）に切り替えても差はありませんでした。JavaScript のヒープは GC ありのほうが約 7MB 小さくなります。
+
+Phase3 の隣のマップの帯（#223）を入れたあと（2026-11-14）: マップの切り替え（主マップを出すまで）中央値 23.6ms（10 回の最大 30.7ms）、切り替え始めてから隣の帯を描き終えるまで 中央値 31.5ms（最大 42.6ms。目安は 200ms 以内）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、帯は既定の 8 ブロック）は、ROM とプロジェクトを開いた後 131MB・マップを 10 枚切り替えた後 144MB です。同じ時に帯の無い exe を測ると、それぞれ 128MB・140MB でした（帯の分は約 4MB）。帯は表示中のタブの分だけ Canvas を持ち、主マップと違うタイルセットの組を帯のために読んだときは、落ち着いたあと空いた領域を OS へ返します。exe 4.1MB（4,124,160 バイト）です。
+
+Phase3 の使われている番号の索引とひな形（#227・#243〜#245）を入れたあと（2026-11-14）: 起動からマップ表示まで 中央値 833ms（素の BPRJ、7 回の最大 870ms）、マップの切り替え 中央値 27.0ms（70 回の最大 54.2ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し）は、ROM とプロジェクトを開いた後 127.5MB・マップを 10 枚切り替えた後 136.9MB・ブロックエディタを開いた後 168.3MB・閉じた後 144.6MB・スクリプトエディタを開いた後 181.5MB・閉じた後 134.6MB でした（同じ時に main の exe を測ると 129MB・140.8MB・170.3MB・146.9MB・183.8MB・137.3MB）。索引を ROM を開いたあとすぐ作る形では、マップを 10 枚切り替えた後が 149〜152MB になった（ND で全マップと C のソース 398 ファイルを読むため）ので、イベントタブを開いたときに作る形にし、作り終えたら命令表を持たずに GC で空いた領域を OS へ返すようにしました。exe 4.2MB（4,156,928 バイト）です。
+
+Phase3 の画像のコピー（#246）を入れたあと（2026-11-14、素の BPRJ）: マサラタウンから接続している全マップ（37 枚、6,528×6,400 画素）の画像を作る間、メモリ（専用ワーキングセットの合計）は 150MB から 209MB まで増え、6 秒後には 143MB に戻りました。exe 4.2MB（4,192,256 バイト。クリップボードは Windows の API で渡すので、依存は増やしていません）。
+
+Phase3 の終わり（2026-11-14。スタンプ・隣の帯・索引・ひな形・トレーナーの窓まで全部入り）: 起動からマップ表示まで 中央値 833ms（素の BPRJ、10 回の最大 870ms）、マップの切り替え 中央値 28.4ms（100 回の最大 43.3ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ、2 回測った値）は、ROM とプロジェクトを開いた後 130〜132MB・マップを 10 枚切り替えた後 141MB・イベントタブを開いて使われている番号の索引を作った後 147〜149MB・ブロックエディタを開いた後 181〜185MB・閉じた後 151MB・スクリプトエディタを開いた後 185〜187MB・閉じた後 143.5MB でした。索引を作った後は、手直しの前は 151〜155MB でした。`--disable-gpu` でも残るソフトウェア描画の GPU プロセス（約 9MB）を `--in-process-gpu` でブラウザのプロセスにまとめ（ブラウザ側は 2〜3MB 増える）、索引の場所の説明の文字列を読むときに作るようにしました。マップの切り替えの速さは変わりません。exe 4.2MB（4,205,056 バイト）です。
+
+Phase4 の描く道具とオートペン（#300・#301・#303・#310〜#313）を入れたあと（2026-11-15）: 起動からマップ表示まで 中央値 908〜994ms（素の BPRJ、5〜7 回。ほかの作業者のビルドと同時に測ったので、1 回目は 1.3〜1.5 秒かかることがありました）、マップの切り替え 中央値 29.0〜30.5ms（最大 50.8ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ）は、ROM とプロジェクトを開いた後 131〜135MB・マップを 10 枚切り替えた後 145〜147MB です。オートペンを入れても 1MB ほどしか増えません。マップ作成補助の窓を開くと約 31MB、窓でマップから候補を作るとさらに約 7MB 増えますが、窓を閉じると切り替えた後と同じ 141MB に戻ります（候補を作ったあとと窓を閉じたあとに、GC で空いた領域を OS へ返します）。トリプルレイヤーの次の番号の印の Canvas は、印が無いときは領域を持ちません。exe 4.3MB（4,272,640 バイト）です。
+
+Phase4 の表示・一覧・調査（#304〜#308・#315・#316）を入れたあと（2026-11-15、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ）: マップの切り替え 中央値 30ms（10 回の最大 43ms）。メモリ（専用ワーキングセットの合計）は、ROM とプロジェクトを開いた後 131〜136MB・マップを 10 枚切り替えた後 146〜147MB・索引を作った後 149〜150MB でした。表示 > マップ一覧にサムネイルを出す をオンにすると、10 枚切り替えた後 154〜156MB（JavaScript のヒープは約 1.5MB 増え、残りは画面の側）、Ctrl＋ホイールで 8 倍にしたときは 150.8MB（オフとの差は測り方のゆれの範囲）でした。参照元の検索は 32MB の ROM で 17ms です。exe 4.3MB（4,276,224 バイト）です。
+
+Phase4 の仕上げ（#318。隠れたタブと表の持ち方の縮小 #355、サムネイルを開いた枝の分だけに #315、起動時の ROM の先読み）のあと（2026-11-15、同じ時に main の exe と交互に 2 回ずつ測った値。ほかの作業者のビルドと同時）: 起動からマップ表示まで 中央値 736〜753ms（素の BPRJ、5 回ずつ。最大 771ms。main は 858〜868ms）、マップの切り替え 中央値 23.0〜23.1ms（最大 31.8ms。main は 28.0〜28.2ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ、`-Stages all`）は、起動直後 76〜77MB・ROM とプロジェクトを開いた後 117〜121MB・マップを 10 枚切り替えた後 131〜134MB（main は 144〜145MB）・索引を作った後 138〜141MB・Ctrl＋ホイールで 8 倍にした後 141〜144MB・マップ作成補助の窓を開いて閉じた後 131〜132MB・取り込みの窓を開いて閉じた後 132〜134MB・ポインタの検索の後 133〜137MB・トリプルレイヤーのマップを表示した状態 134〜135MB・オートペンを使った後 140〜142MB・ブロックエディタを開いた後 165〜167MB・閉じた後 139〜141MB・スクリプトエディタを開いた後 183MB・閉じた後 140〜142MB でした。サムネイルをオンにすると、10 枚切り替えた後 138MB（main は 154〜155MB）です。JavaScript のヒープは 10 枚切り替えた後 45.2MB から 40.4MB になりました（ROM の 32MB を含む）。exe 4.3MB（4,329,472 バイト）です。
+
+Phase4 の終わり（2026-11-15。リファクタリングと全テストの直しまで入った main。ほかの作業の無いときに測った値）: 起動からマップ表示まで 中央値 755ms（素の BPRJ、10 回の最大 912ms。1 回目だけが 900ms 台で、2 回目からは 732〜770ms）、マップの切り替え 中央値 22.9ms（100 回の最大 29.9ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ、`-Stages all`）は、起動直後 75MB・ROM とプロジェクトを開いた後 121MB・マップを 10 枚切り替えた後 131MB・索引を作った後 139MB・Ctrl＋ホイールで 8 倍にした後 143MB・マップ作成補助の窓を開いて閉じた後 130MB・取り込みの窓を開いて閉じた後 134MB・ポインタの検索の後 133MB・トリプルレイヤーのマップを表示した状態 135MB・オートペンを使った後 140MB・ブロックエディタを開いた後 165MB・閉じた後 139MB・スクリプトエディタを開いた後 181MB・閉じた後 141MB でした。サムネイルをオンにすると、10 枚切り替えた後 138MB・索引を作った後 142MB です。JavaScript のヒープは 10 枚切り替えた後 40.5MB です。exe 4.1MB（4,332,544 バイト）です。
+
+Phase5 の終わり（2026-11-15。#388〜#405 と仕上げ #406 まで入った exe。まとめ動画の撮影と同じ時に測ったので、ほかの作業でぶれています）: 起動からマップ表示まで 中央値 800〜821ms（素の BPRJ、5 回ずつ 2 回。最大 855ms）、マップの切り替え 中央値 24.0〜24.1ms（100 回の最大 31.6ms）。メモリ（専用ワーキングセットの合計、ND のベース ROM と ND のプロジェクトフォルダの写し、メインのウィンドウだけ、`-Stages all -BlockStats -WildSearch` を 2 回）は、起動直後 78〜79MB・ROM とプロジェクトを開いた後 124〜125MB・マップを 10 枚切り替えた後 135〜136MB・索引を作った後 141MB・Ctrl＋ホイールで 8 倍にした後 148〜152MB・マップ作成補助の窓を開いて閉じた後 137〜139MB・取り込みの窓を開いて閉じた後 140〜141MB・ポインタの検索の後 140〜144MB・トリプルレイヤーのマップを表示した状態 141〜143MB・オートペンを使った後 147〜150MB・描く道具を使って戻した後 163〜171MB・画像とタイムラプスを書き出した後 141〜143MB・スクリプトを有効にした後 157〜160MB・野生ポケモンの検索の後 158〜162MB・検索の窓を閉じた後 150〜159MB・ブロックエディタを開いた後 179〜186MB・使用回数と未使用の印を出した後 188〜194MB・閉じた後 149〜152MB・スクリプトエディタを開いた後 191〜195MB・閉じた後 149〜153MB でした。JavaScript のヒープは 10 枚切り替えた後 40.9MB、最後まで 44〜46MB です。exe 4.2MB（4,425,728 バイト）です。
+
+- 描く道具・スクリプト・野生の検索の後と、窓を閉じた後の一部が 150MB を超えたので、#429 にしました。描く道具の後の値は前の場面からの積み重ねで、描く道具だけを使って戻したときは 10 秒後に +8MB、30 秒後には使う前と同じ値に戻ります。
+
+#429 の直しのあと（2026-11-16。同じ測り方を 3 回して中央値。まとめ動画の撮り直しと同じ時）: 起動直後 80.5MB・ROM とプロジェクトを開いた後 126MB・マップを 10 枚切り替えた後 137MB・索引を作った後 142MB・8 倍にした後 148MB・マップ作成補助の窓を開いて閉じた後 139MB・取り込みの窓を開いて閉じた後 141MB・ポインタの検索の後 140MB・トリプルレイヤーのマップを表示した状態 142MB・オートペンを使った後 143MB・描く道具を使って戻した後 143MB・画像とタイムラプスを書き出した後 142MB・スクリプトを有効にした後 148.5MB・野生ポケモンの検索の後 148MB・検索の窓を閉じた後 146MB・ブロックエディタを開いた後 177MB・使用回数と未使用の印を出した後 186MB・閉じた後 147MB・スクリプトエディタを開いた後 189MB・閉じた後 147MB でした。マップの切り替えは中央値 23.8ms（50 回の最大 36.3ms）、exe 4.2MB（4,426,752 バイト）です。
+
+- 増えていたのは JavaScript のヒープではなく、画面の側（Canvas の画素の領域と、閉じた窓の部品）と Worker のヒープでした。GC がすぐには走らず、使い終わった領域を持ったままになっていました。直したのは次の 4 つで、どれも動きと画面は変えていません。
+  - 下見の Canvas（塗りつぶし・マップシフト・矩形塗り）を外すときに 0×0 にしてから外し、落ち着いたら GC で空いた領域を OS へ返す（`input/PreviewCanvas.ts`）。
+  - 操作のあと（`ChangeTracker`）と、画面内の窓を閉じたとき（`ui/Dialog.ts` の `remove`）に、落ち着いたら GC を走らせる（窓を閉じたときは空いた領域も返す）。
+  - スクリプトの Worker の中でも、頼みが落ち着いたら GC を走らせ、空いた領域を返す（`app/scripting/userScriptWorker.ts`。Worker の `gc` はスクリプトからは使えないよう消してある）。Worker を止めたときも、メインで空いた領域を返す。
+- 場面を 1 つずつ測ると（索引を作った後からの増え方、3 回の中央値）、描く道具を使って戻した後は +22.6MB → +4.6MB、スクリプトを有効にして全マップを数えた後は +14.8MB → +3.8MB、Worker を止めた後は +7.4MB → −5.3MB、野生の検索の窓を閉じた後は +6.7MB → +2.5MB になりました。
+- 窓を閉じた後の値が Phase4 の終わりより 10MB ほど大きく見えたのは、Phase5 で足した場面の分が積み重なっていたためです。Phase4 の終わりの exe と同じ場面だけで交互に測ると（中央値）、ブロックエディタを閉じた後 142.6MB → 144.4MB、スクリプトエディタを閉じた後 138.6MB → 139.7MB、索引を作った後 138.4MB → 140.8MB で、差は 1〜2.5MB です（Phase5 で増えた部品と表の分）。
+
+### 起動とマップ切り替えの時間
+
+`scripts/measure-startup.mjs` で測ります。毎回、一時フォルダの `--profile` に前回のマップ（3.0）を覚えた設定を置き、`zigzagumap.exe --automation <ポート> --profile <一時フォルダ> <ROM>` で起動して（画面外・非アクティブ。通常の設定には触れない）、exe を起動してからマップを描き終えるまで（画面側の記録 `mapShown`）を測ります。続けてマップを 10 枚切り替え、自動操作の `selectMap` の返事の `switchMs`（読み込み・描画・一覧の更新まで）を集めます。最後に、起動の内訳（exe を起動してからページの読み込み開始まで、画面のコードの読み込み、個人設定、画面の組み立て、ROM の読み込み、マップの表示までのそれぞれの中央値）も出します。
+
+起動を速くするため、起動引数の ROM は、画面のコードを読み込む前に読み始めます（`app/startupPrefetch.ts`。個人設定を受け取ってから頼み、画面を組み立てる間に読み終える）。ROM は 4 つに分けて同時に受け取ります（Rust の `read_rom_part`。16MB を 1 本で受け取ると約 150ms、4 本同時なら約 100ms）。
+
+```sh
+node scripts/measure-startup.mjs --exe <zigzagumap.exe> --rom <素の BPRJ> [--port 17996] [--runs 5]
+```
+
+### メモリ
+
+待機時メモリ（目標 150MB 以下、WebView2 込み）は `scripts\measure-memory.ps1` で測ります。exe を `--automation` と一時フォルダの `--profile` で起動し（画面外・非アクティブ。通常の設定には触れない）、起動直後／ROM を開いた後（3.0）／マップを 10 枚切り替えた後／イベントタブを開いて使われている番号の索引を作った後／ブロックエディタを開いた後／閉じた後の 6 場面で、それぞれ 10 秒待ってから測ります。`-Project <CFRU-JP のフォルダの写し>` を付けると ROM と一緒に開き、スクリプトエディタを開いた後／閉じた後の 2 場面も測ります（開くファイルは `-ScriptFile`、省略で `assembly\overworld_scripts` の最初の `.s`。フォルダには書き込みません）。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\measure-memory.ps1 -Exe <zigzagumap.exe> -Rom <素の BPRJ> [-Port 17995] [-Out result.json] [-Stages all]
+```
+
+`-Stages` に場面の名前（`,` 区切り。`all` で全部）を渡すと、索引を作った後に次の場面を足して測ります: `zoom8`（マップタブを Ctrl＋ホイールで 8 倍にした後。測ったあと 1 倍に戻す）、`assist`（マップ作成補助の窓を開いて閉じた後）、`transplant`（別の ROM からの取り込みの窓を開いて閉じた後）、`pointers`（ポインタ一覧で 3.0 のヘッダーの参照元を探して閉じた後）、`triple`（3.0 のブロック 0x010 をトリプルレイヤーにした状態。メモリの上だけ）、`autopen`（オートペンで 3.0 に 1 回描いた後。メモリの上だけ）。どれも出力はしません。Phase5 の仕上げ（#406）で、`tools`（描く道具を使って全部戻した後）、`export`（3.0 を 12 回描いてから PNG・つなぎ合わせの PNG・タイムラプスの GIF を一時フォルダに書き、戻した後）、`userscripts`（`-Project` のフォルダに `docs/userscripts` の例を置いて有効にし、全マップを数えた後。最後に元に戻す）を足しました。`-BlockStats` でブロックエディタの使用回数と未使用の印を出した後、`-WildSearch` で野生ポケモンの検索の後も測ります。
+
+- exe とその子孫（WebView2 のブラウザ・レンダラー・GPU・ユーティリティ・crashpad）を、種類ごとに「専用ワーキングセット」「プライベート（コミット）」「ワーキングセット」で出します。目標は **専用ワーキングセットの合計** で判定します（タスクマネージャーの「メモリ」の列と同じ値。ワーキングセットは共有ページを二重に数えるので合計に向かない）。メインの JavaScript のヒープ（`state` の `jsHeap`）、入口が応答するまでの時間、マップ切り替えの時間も出します。
+- `-Baseline -Exe <webview-baseline.exe> -BrowserArgs "<引数>"` で、WebView2 の空のウィンドウだけの値（下限）を同じ方法で測ります（`tools\webview-baseline` を `CARGO_TARGET_DIR` を設定してから `build.cmd` でビルド）。
+- `-BrowserArgs` を付けると、WebView2 に引数を足して試せます（環境変数 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`）。
+
+WebView2 には、計測で効果のあった引数だけを付けています（`src-tauri/src/lib.rs` の `BROWSER_ARGS`）: `--disable-gpu`（GPU プロセスの約 50MB が無くなる。Canvas 2D と合成はソフトウェアで行い、描画とマップ切り替えの速さは変わらない）、`--enable-features=NetworkServiceInProcess2`（ネットワークのプロセスをまとめる。約 5MB）。
+
+### 配布物
+
+配布物は `zigzagumap.exe` 1 つです（画面のコードと文言は exe に入っています。WebView2 は Windows のものを使う）。大きさは `scripts\build.cmd` で作った exe のファイルの大きさで判定します。

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildMenu, flattenMenu } from "../src/app/menuDefinition";
 import { shortcutMarkdown, shortcutRows } from "../src/app/shortcutList";
 
-const README = readFileSync(new URL("../../../README.md", import.meta.url), "utf-8").replace(/\r\n/g, "\n");
+const GUIDE = readFileSync(new URL("../../../docs/guide.md", import.meta.url), "utf-8").replace(/\r\n/g, "\n");
 
 describe("ショートカット一覧", () => {
   it("メニューのショートカットを全部含む", () => {
@@ -13,8 +13,8 @@ describe("ショートカット一覧", () => {
     expect(keys).toContain("Ctrl+Y、Ctrl+Shift+Z");
   });
 
-  it("README の「ショートカット」の節の表と同じ", () => {
-    const section = README.slice(README.indexOf("## ショートカット\n"), README.indexOf("\n## 設定\n"));
+  it("操作ガイドの「ショートカット」の節の表と同じ", () => {
+    const section = GUIDE.slice(GUIDE.indexOf("## ショートカット\n"), GUIDE.indexOf("\n## 設定\n"));
     const table = shortcutMarkdown().slice(shortcutMarkdown().indexOf("| キー |")).trimEnd();
     expect(section).toContain(table);
   });
