@@ -1653,6 +1653,43 @@ AdvanceMap の 3 つのメニューと「編集」の後ろに「表示(V)」を
 - `.if`・`.ifdef`・`.ifndef` と `.else`・`.endif` は、値の分かる条件なら外れた側の行を読みません。
 - 定義の無いマクロを呼ぶ古い別名（`setobjectxy` → `movesprite`、`turnobject` → `spriteface`）は `moveobject`・`changeface` として読みます。そのほか展開できないマクロは、注意を出してその行を飛ばします。
 
+### 再生の計算とタイムラインのデータ（#451）
+
+たどった命令を、ゲームと同じ順（スクリプト → 移動データを人物に渡す → 人物を動かす → 画面）で 1 フレームずつ進め、最後まで計算してからタイムラインにします（`packages/core/src/script/playback/PlaybackSimulator.ts`・`Timeline.ts`・`PlaybackState.ts`）。コマ送り・戻し・ジャンプは、そのフレームの状態を `stateAt(frame)` で出すだけです。
+
+- フレームの決まり（ソースの読みだけ。エミュレータでの突き合わせはまだ）:
+  - `applymovement` を実行したフレームに 1 歩目の 1 画素が動き、論理の位置（マス）は歩き始めで行き先に変わります。命令と命令の間に空きはありません。
+  - 移動の合計が T フレームなら、`waitmovement` の次の命令は F+T+2 フレーム目（F は `applymovement` のフレーム）。`wait n` の次の命令は n+1 フレーム後です。
+  - 同じフレームの `applymovement` は同時に動きます。まだ動いている人物への `applymovement` はゲームと同じく無視し、印を出します。
+- 人物の番号は、0x4000 以上なら変数の中身（`setvar 0x8005 2` の後の `applymovement 0x8005` など）、0xFF は主人公、0x7F はカメラです。
+- 変数（`setvar`・`addvar`・`copyvar` など）とフラグは、分かる値だけ計算します。`compare`・`checkflag` の結果が分かる分岐は計算で決め、分からない分岐は「飛ばない」を既定にして、タイムラインの分岐の印で答えを選び直せます（選び直すと最初から計算し直す）。
+- 文（`msgbox` など）・はい・いいえ・選択肢は長さ 0 の印です（再生の画面ではそこで止まる）。ほかの命令（音、アイテムなど）も長さ 0 で並べます。
+- `hidesprite`・`showsprite`（マップのデータの位置に出す）・`moveobject`・`visible`・`invisible`・`faceplayer`・`changeface` を扱います。マップのデータ（イベント）は読むだけで変えません。
+- 人物の自分の動き（移動タイプ）は止めます。60 秒（3,600 フレーム）で打ち切ります。
+- 計算の時間: 命令 200 個・人物 16 人で中央値 1.8ms（vitest で計った値。命令表と索引を作る時間は入れない）。
+
+### カメラ・画面の揺れ・callasm の再現（#452）
+
+`special` の番号と `callasm` の名前 → 再生での処理、の表です（`packages/core/src/script/playback/handlers/PlaybackHandlers.ts`）。表に 1 行足すと、新しい callasm の処理を登録できます。表に無い special・callasm は何もせずに印を出し、結果を変数で返すものは後の分岐で答えを選びます。
+
+- `special 0x113`（CAMERA_START）: 画面が今追っているマスに見えない人物 0x7F を作り、画面が追う相手をそれに替えます。画面は動きません。
+- `applymovement CAMERA`: 普通の人物と同じに動き、画面はその 1 フレームの移動の分だけ動きます。ジャンプの高さでは動きません。
+- `special 0x114`（CAMERA_END）: 追う相手を主人公に戻し、0x7F を消します。画面は動かさないので、戻さずに終えると主人公が画面の真ん中から外れたままになります（ゲームと同じ）。
+- `special 0x136`（画面を揺らす）: 0x8004 縦の揺れ幅、0x8005 横の揺れ幅、0x8006 回数、0x8007 間隔。間隔ごとに向きを反転し、`waitstate` は「間隔 × 回数」フレームで進みます（長さはソースの読みだけ）。`special 0x111`（エレベーター）は印だけです。
+- callasm `MoveCameraToTrainerB`（ND・Chronos）: 0x8005 に 0x7F を入れ、もう 1 人のトレーナーの向き（LASTRESULT）は分からない値にします（後の `case` の分岐で選ぶ）。`HideFollower` は連れ歩きを見えなくします。
+- Chronos の `settimeofday` は時間帯の印を出します（画面の側で時間帯の切り替えにつなぐ）。
+
+### 再生の始めの状態（#453）
+
+`packages/core/src/script/playback/StartState.ts`。主人公はマップに置かれていなくても人物 0xFF として出し、絵は男 0（`EVENT_OBJ_GFX_RED_NORMAL`）・女 7（`EVENT_OBJ_GFX_LEAF_NORMAL`）です。
+
+- 人物に話しかける: 人物の下のマスで上を向きます（下が壁でも下から）。仮の主人公があれば、その位置のまま人物の方を向きます。
+- 看板: 下から上を向きます。看板の向きの条件で上向きが駄目なら、条件に合う側から調べます。
+- 踏むスクリプト: そのマスの上で下を向きます。変数の条件は見ずに始め、条件を帯に出します。
+- マップスクリプト: 仮の主人公の位置、無ければ最初のワープの上。
+- 1 コマ目の主人公の向きは変えられます（`faceplayer` の結果が変わる）。
+- マップの人物は全員居るものとし、外した人物だけ居ないことにします。向きは移動タイプの基本の向きです。
+
 ## 画面の構成
 
 AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.95 の言語ファイルをもとに改訂した Japanese.ini（リポジトリの `apps/desktop/src/i18n/source/Japanese.ini`）を基準にします。AdvanceMap の文言は ini から引き、ZigzaguMap 独自の文言（「出力」など）だけを `apps/desktop/src/i18n/ja*.ts` に直接書きます。作り直し方は「開発」を見てください。
