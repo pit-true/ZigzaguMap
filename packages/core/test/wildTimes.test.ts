@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WILD_TIMES, usedWildTime, type WildEncounters } from "../src/index.js";
+import { searchSpecies, WILD_TIMES, usedWildTime, type WildEncounters } from "../src/index.js";
 
 const table = (time: number, filled = true): WildEncounters => ({
   time,
@@ -20,4 +20,12 @@ describe("時間帯の野生（Phase6 #436）", () => {
     // データの無い（エリアが全部空の）表は無いのと同じ
     expect(usedWildTime([table(1), table(0, false)], 0)).toBe(1);
   });
+});
+
+
+it("全マップ検索は夜だけの種族を見つけ、時間帯でも絞れる", () => {
+  const maps = [{ id: { bank: 3, map: 19 }, wild: [table(1), { ...table(3), areas: [{ rate: 20, slots: [{ minLevel: 5, maxLevel: 7, species: 25 }] }, { rate: 0, slots: [] }, { rate: 0, slots: [] }, { rate: 0, slots: [] }] as WildEncounters["areas"] }] }];
+  expect(searchSpecies(maps, 25).map((r) => [r.time, r.minLevel, r.maxLevel])).toEqual([[3, 5, 7]]);
+  expect(searchSpecies(maps, 25, 1)).toEqual([]);
+  expect(searchSpecies(maps, 25, 3)).toHaveLength(1);
 });

@@ -23,8 +23,10 @@ export class MapNavigation {
     const { openWildSearch } = await import("../ui/wild/WildSearchDialog");
     openWildSearch({
       state: this.host.state,
-      openWild: async (id) => {
+      openWild: async (id, time) => {
         await this.host.openMap(id);
+        this.host.state.wildTime = time;
+        this.host.state.emit("wildTime");
         this.host.state.setTab("wild");
       },
     });

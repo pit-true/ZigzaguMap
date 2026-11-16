@@ -73,7 +73,6 @@ export class WildTab {
   private readonly missingText: HTMLElement;
   private readonly copyDay: HTMLButtonElement;
   /** 見ている時間帯（Wild[].Time。既定は昼）。 */
-  private timeValue: number = WildTime.Day;
 
   constructor(private readonly state: EditorState) {
     const w = ja.wild;
@@ -150,9 +149,10 @@ export class WildTab {
     };
     state.on("map", refresh);
     state.on("session", () => {
-      this.timeValue = WildTime.Day;
+      this.state.wildTime = WildTime.Day;
       refresh();
     });
+    state.on("wildTime", refresh);
     state.on("tab", () => this.render());
     watchCommands(state, refresh);
   }
@@ -164,18 +164,18 @@ export class WildTab {
 
   /** 見ている時間帯。 */
   get time(): number {
-    return this.timesShown ? this.timeValue : WildTime.Day;
+    return this.timesShown ? this.state.wildTime : WildTime.Day;
   }
 
   private get wild(): WildEncounters | null {
     const all = this.state.map?.doc.wild ?? [];
-    return this.timesShown ? (wildOfTime(all, this.timeValue) ?? null) : shownWild(all);
+    return this.timesShown ? (wildOfTime(all, this.state.wildTime) ?? null) : shownWild(all);
   }
 
   /** 時間帯を切り替える（自動操作からも使う）。 */
   setTime(time: number): void {
     if (!WILD_TIMES.includes(time)) throw new Error(`時間帯は 0〜3 です: ${time}`);
-    this.timeValue = time;
+    this.state.wildTime = time;
     this.stale = true;
     this.shownMap = "";
     this.render();
@@ -194,16 +194,16 @@ export class WildTab {
     WILD_TIMES.forEach((time, i) => {
       const b = this.timeButtons[i]!;
       const has = hasWildData(wildOfTime(all, time));
-      b.classList.toggle("selected", time === this.timeValue);
+      b.classList.toggle("selected", time === this.state.wildTime);
       b.classList.toggle("has-table", has);
       b.title = tt.tabHint(tt.names[time] ?? "", has);
     });
-    const exists = wildOfTime(all, this.timeValue) !== undefined;
-    this.removeTime.hidden = this.timeValue === WildTime.Day || !exists;
-    const lacking = this.timeValue !== WildTime.Day && !hasWildData(wildOfTime(all, this.timeValue));
+    const exists = wildOfTime(all, this.state.wildTime) !== undefined;
+    this.removeTime.hidden = this.state.wildTime === WildTime.Day || !exists;
+    const lacking = this.state.wildTime !== WildTime.Day && !hasWildData(wildOfTime(all, this.state.wildTime));
     this.missing.hidden = !lacking;
     if (lacking) {
-      this.missingText.textContent = tt.missing(tt.names[this.timeValue] ?? "");
+      this.missingText.textContent = tt.missing(tt.names[this.state.wildTime] ?? "");
       this.copyDay.disabled = !hasWildData(wildOfTime(all, WildTime.Day));
     }
     return lacking;
@@ -213,7 +213,7 @@ export class WildTab {
   private copyFromDay(): void {
     const map = this.state.map;
     if (!map) return;
-    const time = this.timeValue;
+    const time = this.state.wildTime;
     if (commit(this.state, [new SetWildTableCommand({ bank: map.id.bank, map: map.id.map, time, from: WildTime.Day, remove: false })])) {
       this.state.setStatus(tt.copied(tt.names[time] ?? ""));
     }
@@ -222,7 +222,7 @@ export class WildTab {
   /** 見ている時間帯の表を消す（昼の表は消さない）。 */
   private removeTable(): void {
     const map = this.state.map;
-    const time = this.timeValue;
+    const time = this.state.wildTime;
     if (!map || time === WildTime.Day) return;
     if (commit(this.state, [new SetWildTableCommand({ bank: map.id.bank, map: map.id.map, time, remove: true })])) {
       this.state.setStatus(tt.removed(tt.names[time] ?? ""));
@@ -330,7 +330,7 @@ export class WildTab {
     const kind = this.type.selectedIndex;
     const provider = speciesNameProvider(this.state.session);
     const { openWildChart } = await import("./WildChartDialog");
-    openWildChart({ kind, areaName: ja.wild.areas[kind] ?? "", area, speciesName: (s) => speciesLabel(provider, s) });
+    openWildChart({ kind, areaName: this.timesShown ? `${tt.names[this.time]} ${ja.wild.areas[kind] ?? ""}` : ja.wild.areas[kind] ?? "", area, speciesName: (s) => speciesLabel(provider, s) });
   }
 
   /** 「タイプの追加」「野生ポケモンの追加」のダイアログ（開いたときに読み込む）。 */

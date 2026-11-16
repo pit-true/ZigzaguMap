@@ -450,3 +450,5 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 プロジェクトを開き `tab {name: "wild"}` の後、`click {id: "wild.time.0"}`（朝）・`.1`（昼）・`.2`（夕）・`.3`（夜）で切り替えます。`wild.timeInfo` は表の無い時間帯の案内、`wild.timeCopy` は昼の表の複製、`wild.timeCreate` は空の表の作成ダイアログ、`wild.timeRemove` は今の表の削除です。昼の削除ボタンは出ません。通常の編集欄は今の時間帯に対して働きます。
 
 `command {name: "setWildTable", args: {bank: 3, map: 19, time: 3, from: 1, remove: false}}` で昼から夜へ複製できます。`remove: true` は指定の時間帯の表を削除します。履歴に1件として入り、`undo` で戻ります。
+
+`wild.search.time` は0が全時間帯、1〜4が朝・昼・夕・夜の絞り込みです。検索結果の6列目が時間帯です。`mouse {id: "wild.search.row.0", action: "dblclick", px: [4, 4]}` で、そのマップの該当する時間帯へ移動します（#437）。
