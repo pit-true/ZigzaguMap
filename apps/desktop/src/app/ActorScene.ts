@@ -1,6 +1,7 @@
 import { hasTripleLayerBlocks, OverworldEffects, PLAYER_ID, renderGameScene, resolveActorFrame, type PlaybackActorState, type RgbaImage, type SceneActor, type SceneView } from "@zigzagumap/core";
 import type { OpenMap, ProjectSession } from "./ProjectSession";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
+import { sceneAnimation } from "./animation/sceneAnimation";
 
 interface Assets {
   generation: number;
@@ -71,6 +72,8 @@ export function renderActorScene(
     return b.getBlock(((x % b.width) + b.width) % b.width, ((y % b.height) + b.height) % b.height);
   };
   const cfru = session.projectDir !== null || hasTripleLayerBlocks(session.project.rom, session.project.game.offsets);
-  const scene = renderGameScene(map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru);
+  // タイルアニメとドア（#473・#474）。動かしていなければ null で、今までと同じ描き手を使う。
+  const animation = sceneAnimation()?.forScene(session, map, tint) ?? null;
+  const scene = renderGameScene(animation?.renderer ?? map.tiles.mapRenderer(doc.header.mapType, tint), view, blockAt, drawn, cfru, animation?.cellAt);
   return { ...scene, missing };
 }

@@ -21,6 +21,12 @@ export interface GameOffsets {
   readonly fieldEffectTemplateTablePointer: number;
   /** CFRUのDrawBlockHookが差し込まれる位置。 */
   readonly drawBlockHook: number;
+  /** ドアの表（total_door_anime_table）を指すリテラルの位置（OpenDoorCellSet の中）。 */
+  readonly doorAnimationTablePointer: number;
+  /** ドアを開ける手順の表（1 マス・縦 2 マス）を指すリテラルの位置。 */
+  readonly doorOpenSequencePointers: readonly [number, number];
+  /** ドアを閉める手順の表（1 マス・縦 2 マス）を指すリテラルの位置。 */
+  readonly doorCloseSequencePointers: readonly [number, number];
   /** タイルセットヘッダー（24 バイト）が番号順に並ぶ表の位置（AdvanceMap のタイルセット番号はこの並び）。 */
   readonly tilesetHeaderTable: number;
   /** 表のタイルセットの数。 */
@@ -46,6 +52,9 @@ export const BPRJ_OFFSETS: GameOffsets = {
   overworldWalkingTablePointer: 0x62df8,
   fieldEffectTemplateTablePointer: 0xdc258,
   drawBlockHook: 0x5a274,
+  doorAnimationTablePointer: 0x5ab54,
+  doorOpenSequencePointers: [0x5aac8, 0x5aaac],
+  doorCloseSequencePointers: [0x5ab20, 0x5ab04],
   tilesetHeaderTable: 0x298b44,
   tilesetCount: 68,
   flyTablePointer: 0xc0e44,

@@ -120,7 +120,38 @@ export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.
 export { ActorAnimator } from "./sprite/ActorAnimator.js";
 export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
 export { actorFrame, resolveActorFrame, actorImagePosition, type ActorFrameResult } from "./sprite/ActorFrame.js";
-export { renderGameScene, type SceneActor, type SceneView } from "./render/GameScene.js";
+export { renderGameScene, type SceneActor, type SceneCell, type SceneView } from "./render/GameScene.js";
+export {
+  AnimatedTiles,
+  BPRJ_TILE_ANIMATIONS,
+  readTileAnimation,
+  tileAnimationBytes,
+  tileAnimationFrame,
+  type KnownTileAnimation,
+  type KnownTileAnimationTrack,
+  type TileAnimationReason,
+  type TileAnimationSet,
+  type TileAnimationTrack,
+} from "./render/TileAnimations.js";
+export {
+  DOOR_BEHAVIOR,
+  DOOR_CELL_LAYER,
+  DOOR_TEMP_BYTES,
+  DOOR_TEMP_TILE,
+  doorAt,
+  doorCell,
+  doorStateAt,
+  doorStepFrames,
+  doorWaitResume,
+  readDoorTable,
+  type DoorCellLookup,
+  type DoorEvent,
+  type DoorGraphic,
+  type DoorReason,
+  type DoorSceneState,
+  type DoorStep,
+  type DoorTable,
+} from "./render/DoorAnimations.js";
 export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
