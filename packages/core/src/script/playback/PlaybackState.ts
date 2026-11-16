@@ -2,6 +2,7 @@ import type { MovementDirection, MovementSprite } from "../movement/MovementActi
 import type { MovementStep } from "../movement/MovementBlock.js";
 import type { WalkCommand } from "./ScriptWalker.js";
 import type { OverworldFrame } from "../../sprite/OverworldSprites.js";
+import type { DoorEvent } from "../../render/DoorAnimations.js";
 
 /**
  * 再生の状態の型（#451）。`Timeline.stateAt(frame)` が返す形で、B の組の人物の絵の部品（#13・#15）と 240×160 の枠の部品に渡す。
@@ -154,7 +155,9 @@ export type PlaybackMarkerKind =
   /** スクリプトの終わり、止まったところ。 */
   | "stop"
   /** 60 秒・命令 10,000 個で打ち切った。 */
-  | "limit";
+  | "limit"
+  /** ドアの開け閉め（opendoor・closedoor・opendoor2・closedoor2）と waitdooranim。絵はタイルアニメの側（#474）が描く。 */
+  | "door";
 
 /** 全体の印。 */
 export interface PlaybackMarker {
@@ -166,7 +169,36 @@ export interface PlaybackMarker {
   readonly detail: string;
   /** 分岐なら、その印と答え。 */
   readonly branch: PlaybackBranchMark | null;
+  /** 選択肢（yesnobox・multichoice・msgbox の MSG_YESNO・customchoice）なら、その答え。 */
+  readonly choice?: PlaybackChoiceMark;
+  /** ドアの命令なら、そのフレーム・種類・マス（waitdooranim には無い）。描く側は印から DoorEvent の並びを作る。 */
+  readonly door?: DoorEvent;
 }
+
+/** 選択肢の 1 つ。`name` は yes・no、customchoice の文のラベルなど。 */
+export interface PlaybackChoiceOption {
+  readonly value: number;
+  readonly name: string;
+}
+
+/**
+ * 選択肢の印（#454）。既定の答えで最後まで計算し、答えを替えると計算し直す。
+ * 答えは LASTRESULT に入るので、後の compare と分岐は値から決まる。
+ */
+export interface PlaybackChoiceMark {
+  /** 答えの表の鍵（`choice:path:line:part#visit`）。 */
+  readonly key: string;
+  readonly kind: "yesno" | "multichoice" | "custom";
+  /** 選べる値。multichoice は表を読まないので null（0〜127 の数で選ぶ。127 は B で閉じた）。 */
+  readonly options: readonly PlaybackChoiceOption[] | null;
+  /** この計算で使った答え。 */
+  readonly value: number;
+  /** 既定の答えか（答えの表に無かった）。 */
+  readonly defaulted: boolean;
+}
+
+/** multichoice を B で閉じたときの LASTRESULT。 */
+export const CHOICE_CANCEL = 127;
 
 /** 分岐の印。 */
 export interface PlaybackBranchMark {

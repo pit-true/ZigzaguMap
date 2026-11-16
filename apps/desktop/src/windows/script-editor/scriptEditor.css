@@ -324,3 +324,5 @@
   background: var(--select);
   color: var(--select-text);
 }
+.cm-playback-line { background: #ffc10722; }
+.cm-playback-value { background: #ffc10755; outline: 1px solid #ad8500; }

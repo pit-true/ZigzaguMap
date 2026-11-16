@@ -116,6 +116,8 @@ export { NameSuggest, type SuggestEntry, type SuggestHit } from "./name/NameSugg
 // OW（人のスプライト）
 export { OverworldSprites, type OverworldGraphicsInfo, type OverworldFrame, type OverworldAnimationCommand, type WalkingOffsets } from "./sprite/OverworldSprites.js";
 export { OverworldEffects } from "./sprite/OverworldEffects.js";
+export { EmotionSprites, emotionRise } from "./sprite/EmotionSprites.js";
+export { ProjectEmotes } from "./sprite/ProjectEmotes.js";
 export { SpriteAnimation, type AnimationReader } from "./sprite/SpriteAnimation.js";
 export { ActorAnimator } from "./sprite/ActorAnimator.js";
 export { PlaybackAnimation } from "./script/playback/PlaybackAnimation.js";
@@ -155,6 +157,7 @@ export {
 export { actorBgPriority, actorSubpriority } from "./render/ActorPriority.js";
 export { hasTripleLayerBlocks } from "./game/features.js";
 export { viewportFrame, PLAYER_SCREEN_ORIGIN } from "./render/ViewportFrame.js";
+export { readMessageFrame, type MessageFrameStyle } from "./render/MessageFrame.js";
 
 // 編集モデル
 export { MapDocument, type ItemBall, type MapDocumentInit } from "./model/MapDocument.js";

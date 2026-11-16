@@ -23,6 +23,7 @@ import {
   type ScriptEditorQueryMap,
   type ScriptEditorReply,
   type ScriptEditorRequestMap,
+  type PlaybackHighlightSpan,
   type ScriptOpenRequest,
   type ScriptRomOpenRequest,
 } from "../../windows/script-editor/protocol";
@@ -87,6 +88,7 @@ export class ScriptHost {
 
   /** エディタからの要求の答え方（種類ごとに 1 つ）。 */
   private readonly requestHandlers: MessageHandlers<ScriptEditorRequestMap> = {
+    playback: async request => { await this.app.playback.start({ label: request.label }); return null; },
     hello: () => {
       this.ready = true;
       this.opened = true;
@@ -288,6 +290,9 @@ export class ScriptHost {
   async bufferText(path: string): Promise<string | null> {
     if (!this.ready) return null;
     return this.query({ type: "bufferText", path: normalizeScriptPath(path) });
+  }
+  async playbackHighlight(spans: readonly PlaybackHighlightSpan[]): Promise<number> {
+    return this.ready ? this.query({ type: "playbackHighlight", spans }) : 0;
   }
 
   /** エディタで開いているファイルの本文を書き換える（開いていなければ false）。 */

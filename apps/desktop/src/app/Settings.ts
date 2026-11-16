@@ -144,6 +144,7 @@ export interface SettingsData {
   cursorFrame: boolean;
   /** プレイヤーの視界の枠（表示メニュー。V。Phase5 #391。既定オフ）。 */
   playerView: boolean;
+  playbackGender: "male" | "female";
   /** グリッドの形（表示 > グリッドの設定…。Phase5 #391。既定は今までの見た目。読むときは normalizeGridStyle で確かめる）。 */
   gridStyle: { width: number; height: number; offsetX: number; offsetY: number; color: string; line: string };
   /**
@@ -211,6 +212,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   smartPath: false,
   cursorFrame: false,
   playerView: false,
+  playbackGender: "male",
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
 };

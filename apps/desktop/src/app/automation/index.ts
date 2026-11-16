@@ -33,6 +33,7 @@ import { penCommands } from "./pen";
 import { toolCommands } from "./tools";
 import { shortcutCommands } from "./shortcuts";
 import { timeOfDayCommands } from "./timeOfDay";
+import { playbackCommands } from "./playback";
 import { animationCommands } from "./animation";
 import { errorText } from "../../util/errors";
 
@@ -75,6 +76,7 @@ const registry: CommandRegistry = new CommandRegistry([
   toolCommands,
   shortcutCommands,
   timeOfDayCommands,
+  playbackCommands,
   animationCommands,
   { commands: () => registry.names() },
 ]);

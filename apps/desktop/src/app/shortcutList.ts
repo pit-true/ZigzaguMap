@@ -41,6 +41,7 @@ function otherKeys(): ShortcutRow[] {
   return [
     tableRow("edit.undo"),
     tableRow("edit.redo"),
+    ...["toggle", "previous", "next", "previousFrame", "nextFrame", "first", "last"].map(id => tableRow(`playback.${id}`)),
     { keys: "Alt", action: ja.shortcuts.menuFocus, where: ja.shortcuts.mainWindow },
     { keys: "Alt+アクセスキー", action: ja.shortcuts.menuOpen, where: ja.shortcuts.mainWindow },
     { keys: "←→↑↓、Enter、Esc", action: ja.shortcuts.menuMove, where: ja.shortcuts.inMenu },

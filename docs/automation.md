@@ -1,5 +1,26 @@
 # 自動操作の入口（テスト用）
 
+## スクリプトの再生（実装中）
+
+プロジェクトとマップを開いて使います。再生は編集中のスクリプトを読み取り、ROMやマップを書き換えません。
+
+| 命令 | 引数 | 結果・操作 |
+|---|---|---|
+| `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す |
+| `playback.stop` | なし | 再生を終了し、イベント表示とスクロールを戻す |
+| `playback.state` | なし | `active`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
+| `playback.timeline` | なし | 区間 `segments`、印 `markers`、送り先 `keyFrames` |
+| `playback.seek` | `frame` | 任意のフレームへ移動して一時停止 |
+| `playback.step` | `direction: previous/next`、`singleFrame`（任意） | 動きの前・中・後へ移動。`singleFrame: true` なら1フレーム |
+| `playback.speed` | `value: 0.25/0.5/1/2/4` | 再生速度の変更 |
+| `playback.play` | なし | 再生・一時停止の切り替え。文で止まっていれば続きへ |
+| `playback.answer` | `key`、`taken`（真偽値） | 不明な条件分岐の答えを替え、最初から計算し直す |
+| `playback.layout` | なし | タイムラインの倍率 `scale`、横のスクロール、箱 `segments`（`left`・`width`・`top`・`active`）、印 `markers`、縦線 `cursor` の位置（画素） |
+| `playback.wheel` | `delta`（負で拡大）、`x`（部品の左端からの画素） | タイムラインの上で Ctrl＋ホイールを回したのと同じ |
+| `playback.choose` | `key`（印の `choice.key`）、`value` | 選択肢の答え（LASTRESULT の値）を替えて計算し直す。今のフレームは保つ |
+
+再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
+
 開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
 
 - リリースの exe に付けたときは、操作を奪わないよう、メインも別ウィンドウも作った時点から画面外に置き、アクティブにせず、タスクバーにも出しません（見えない状態で作ってから画面外へ動かして表示する）。音も出しません（WebView2 に `--mute-audio` を付け、Windows 標準のメッセージボックスは出さない。画面内のダイアログは音を鳴らさない）。

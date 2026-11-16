@@ -6,6 +6,7 @@ import { jaTimeOfDay } from "../i18n/ja.timeOfDay";
 import { jaComposite } from "../i18n/ja.composite";
 import { jaTransplant } from "../i18n/ja.transplant";
 import { jaScriptsTable } from "../i18n/ja.scriptsTable";
+import { jaPlayback } from "../i18n/ja.playback";
 import { jaBuild } from "../i18n/ja.build";
 import { jaMapFind } from "../i18n/ja.mapFind";
 import { jaClone } from "../i18n/ja.clone";
@@ -228,6 +229,7 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "tools.mapAssist", label: jaAssist.menu, accel: "H", enable: "map" },
         // ZigzaguMap 独自（Phase2 #201）。maps\scripts.json の対応表。
         { id: "tools.scriptsTable", label: jaScriptsTable.menu, accel: "Q", enable: "rom" },
+        { id: "playback.open", label: jaPlayback.menu, enable: "map" },
         // ZigzaguMap 独自（Phase4 #314）。別の ROM のタイルセットを新しいタイルセットとして取り込む。
         { id: "tools.transplant", label: jaTransplant.menu, accel: "I", enable: "map" },
         // ZigzaguMap 独自（Phase5 #398）。種族を選び、全マップの野生からその種族が出る枠を探す。

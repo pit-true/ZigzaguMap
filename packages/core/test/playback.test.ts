@@ -113,6 +113,41 @@ const XSE = `
 .2byte \\localId
 .byte \\direction
 .endm
+.macro msg pointer:req
+.byte 0x67
+.word \\pointer
+.endm
+.macro opendoor x:req, y:req
+.byte 0xac
+.2byte \\x
+.2byte \\y
+.endm
+.macro closedoor2 x:req, y:req
+.byte 0xb0
+.2byte \\x
+.2byte \\y
+.endm
+.macro waitdooranim
+.byte 0xae
+.endm
+.macro yesnobox x:req, y:req
+.byte 0x6e
+.byte \\x
+.byte \\y
+.endm
+.macro multichoice2 x:req, y:req, list:req, default:req, b:req
+.byte 0x70
+.byte \\x
+.byte \\y
+.byte \\list
+.byte \\default
+.byte \\b
+.endm
+.macro customchoice top:req, bottom:req
+.byte 0x74
+.word \\top
+.word \\bottom
+.endm
 .equ PLAYER, 0xFF
 .equ CAMERA, 0x7F
 .equ walk_down, 0x10
@@ -235,9 +270,47 @@ describe("再生の計算（#451）", () => {
     expect(flag.markers.find((m) => m.kind === "branch")!.branch).toMatchObject({ taken: true, known: true });
   });
 
+  it("選択肢: 既定の答え（はい・既定の項目・上）で計算し、答えの表で替える", () => {
+    const script = "Main:\n\tmsgbox Q 5\n\tcompare 0x800d 1\n\tgoto_if 1 Yes\n\tchangeface 1 3\n\tend\nYes:\n\tchangeface 1 4\n\tend\n";
+    const first = run(script);
+    const choice = first.markers.find((m) => m.kind === "choice")!;
+    expect(choice.detail).toBe("Q");
+    expect(choice.choice).toMatchObject({ kind: "yesno", value: 1, defaulted: true, options: [{ value: 1, name: "yes" }, { value: 0, name: "no" }] });
+    expect(first.markers.find((m) => m.kind === "branch")!.branch).toMatchObject({ taken: true, known: true });
+    expect(first.stateAt(first.lastFrame).actors.find((a) => a.id === 1)!.facing).toBe("right");
+    const no = run(script, { choices: new Map([[choice.choice!.key, 0]]) });
+    expect(no.markers.find((m) => m.kind === "choice")!.choice).toMatchObject({ value: 0, defaulted: false });
+    expect(no.stateAt(no.lastFrame).actors.find((a) => a.id === 1)!.facing).toBe("left");
+    // yesnobox と multichoice2（既定の項目）、customchoice（上が 0）。同じ行を 2 度通ると別の鍵。
+    const many = run("Main:\n\tyesnobox 0 0\n\tmultichoice2 0 0 3 2 0\n\tsetvar 0x4001 1\nAgain:\n\tcustomchoice Top Bottom\n\tcompare 0x4001 1\n\tsetvar 0x4001 2\n\tgoto_if 1 Again\n\tend\n");
+    const marks = many.markers.filter((m) => m.kind === "choice").map((m) => m.choice!);
+    expect(marks.map((m) => [m.kind, m.value])).toEqual([["yesno", 1], ["multichoice", 2], ["custom", 0], ["custom", 0]]);
+    expect(marks[1]!.options).toBeNull();
+    expect(marks[2]!.options).toEqual([{ value: 0, name: "Top" }, { value: 1, name: "Bottom" }]);
+    expect(new Set(marks.map((m) => m.key)).size).toBe(4);
+    expect(marks[3]!.key.replace(/#1$/, "#0")).toBe(marks[2]!.key);
+  });
+
+  it("ドア: 命令の印とマス、waitdooranim は描く側の長さだけ待つ", () => {
+    const script = "Main:\n\topendoor 5 4\n\twaitdooranim\n\tchangeface 1 4\n\tsetvar 0x4001 6\n\tclosedoor2 0x4001 4\n\tend\n";
+    const free = run(script);
+    expect(free.markers.filter((m) => m.door).map((m) => m.door)).toEqual([
+      { frame: 0, kind: "open", x: 5, y: 4 },
+      { frame: 0, kind: "setClosed", x: 6, y: 4 },
+    ]);
+    const seen: number[] = [];
+    const waited = run(script, { doorWait: (doors, frame) => { seen.push(doors.length, frame); return frame + 30; } });
+    expect(seen).toEqual([1, 0]);
+    expect(frameOf(waited, "changeface")).toBe(30);
+    expect(waited.markers.filter((m) => m.door).map((m) => m.door!.frame)).toEqual([0, 30]);
+  });
+
   it("文は長さ 0 の印、打ち切り（60 秒）", () => {
     const t = run("Main:\n\tmsgbox Text 6\n\tend\n");
     expect(t.markers.find((m) => m.kind === "message")).toMatchObject({ frame: 0, detail: "Text" });
+    // msg 0x0 は前の loadpointer の文。
+    const loaded = run("Main:\n\tloadpointer 0x0 Hello\n\tmsg 0x0\n\tmsg Direct\n\tend\n");
+    expect(loaded.markers.filter((m) => m.kind === "message").map((m) => m.detail)).toEqual(["Hello", "Direct"]);
     const loop = run("Main:\n\twait 1\n\tgoto Main\n");
     expect(loop.lastFrame).toBe(3599);
     expect(loop.markers.some((m) => m.kind === "limit")).toBe(true);
@@ -256,6 +329,20 @@ describe("再生の計算（#451）", () => {
     const k = t.keyFrames();
     expect(k.slice(0, 3)).toEqual([0, 8, 15]);
     expect(k[k.length - 1]).toBe(t.lastFrame);
+  });
+
+  it("コマ送りの点: 2 人の重なりはまとめ、1 フレーム差の点は 1 つ、1 フレームの命令は 1 点", () => {
+    const two = run("Main:\n\tapplymovement 1 m\n\tapplymovement PLAYER p\n\twaitmovement 0\n\tend\nm: .byte walk_down, end_m\np: .byte walk_down, walk_down, end_m\n");
+    expect(two.segmentsOf(1).map((s) => [s.start, s.end])).toEqual([[0, 15]]);
+    expect(two.segmentsOf(PLAYER_ID).map((s) => [s.start, s.end])).toEqual([[0, 15], [16, 31]]);
+    // 15 と 16 は 1 フレーム差なので 15 にまとめる。
+    expect(two.keyFrames().slice(0, 5)).toEqual([0, 8, 15, 24, 31]);
+    const face = run("Main:\n\tapplymovement 1 m\n\twaitmovement 0\n\tend\nm: .byte 0x00, walk_down, end_m\n");
+    const [turn, walk] = face.segmentsOf(1);
+    expect(turn!.end - turn!.start).toBe(0);
+    const k = face.keyFrames();
+    expect(k.filter((f) => f >= turn!.start && f <= turn!.end)).toHaveLength(1);
+    expect(k).toContain(walk!.start + 8);
   });
 
   it("計算の時間: 命令 200 個・人物 16 人で 5ms 以内（中央値）", () => {
@@ -427,5 +514,23 @@ describe.skipIf(!ndDir || !existsSync(join(ndDir ?? "", "xse_commands.s")))("実
     ]);
     const end = t.stateAt(t.lastFrame).camera;
     expect(end).toMatchObject({ target: PLAYER_ID, x: 160, y: 160 });
+  });
+
+  it("customchoice の答えで、後の cond の行き先が変わる", async () => {
+    const read = (p: string) => readFileSync(join(ndDir!, p), "utf8");
+    const defines = ["xse_defines.s", "asm_defines.s"].filter((n) => existsSync(join(ndDir!, n))).map(read);
+    const commands = ScriptCommandTable.build({ xseCommands: read("xse_commands.s"), defines });
+    const index = await buildScriptIndex(new NodeProjectFs(ndDir!));
+    const text = (p: string) => (existsSync(join(ndDir!, p)) ? read(p) : null);
+    const start: PlaybackStart = { actors: [actor(PLAYER_ID, 10, 10, "up")], talker: null };
+    const run = (choices?: Map<string, number>) => simulatePlayback({ project: { index, commands, text }, entry: "customMultiChoiceTest", start, ...(choices ? { choices } : {}) });
+    const top = run();
+    const choice = top.markers.find((m) => m.kind === "choice")!;
+    expect(choice.choice).toMatchObject({ kind: "custom", value: 0, options: [{ value: 0, name: "gText_CustomMultiChoiceTestGraffiti" }, { value: 1, name: "gText_CustomMultiChoiceTestClean" }] });
+    const target = (t: ReturnType<typeof run>) => t.markers.find((m) => m.kind === "branch")!.branch!;
+    expect(target(top)).toMatchObject({ known: true, taken: true, target: "customMultiChoiceTestGraffiti" });
+    const bottom = run(new Map([[choice.choice!.key, 1]]));
+    expect(target(bottom)).toMatchObject({ known: true, taken: false });
+    expect(bottom.commands.some((c) => c.command.args.some((a) => a.text === "gText_CustomMultiChoiceTestCancel"))).toBe(true);
   });
 });
