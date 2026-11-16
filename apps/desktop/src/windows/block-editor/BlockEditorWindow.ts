@@ -146,6 +146,7 @@ export class BlockEditorWindow {
           client,
           created: (text) => this.status.show(text),
         }),
+      "tiles.importImage": () => client.request({ op: "open", kind: "tile-import" }),
       "tiles.exportBlocks": () =>
         openBlockSheetExport({
           get model() {

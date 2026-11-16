@@ -16,6 +16,8 @@ import { colorDistance, countColors, luminance, medianCut, nearestColor, remapTi
 export const PALETTE_SIZE = 16;
 /** 1 本で使える色の数。 */
 export const PALETTE_COLORS = 15;
+/** 数える新しい本の上限（これを超えたら、それ以上は数えない。写真のような絵で時間がかからないように）。 */
+export const MAX_COUNTED_PALETTES = 64;
 
 /** 割り当てに使える本 1 つ。 */
 export interface PaletteSlotInput {
@@ -53,8 +55,10 @@ export interface PaletteAssignment {
   readonly fixedUsed: readonly number[];
   /** 新しく開けた本（空いている本から順に）。 */
   readonly opened: readonly number[];
-  /** 要る新しい本の数（足りなくても数える）。 */
+  /** 要る新しい本の数（足りなくても数える。MAX_COUNTED_PALETTES を超えたら数えるのをやめ、neededAtLeast が true）。 */
   readonly needed: number;
+  /** needed が下限か（数えるのをやめた）。 */
+  readonly neededAtLeast: boolean;
   /** 空いている本の数。 */
   readonly available: number;
   /** 1 枚で 15 色を超えるタイルの数（減色しないと入らない）。 */
@@ -138,7 +142,12 @@ export function assignPalettes(tiles: readonly Uint16Array[], slots: readonly Pa
   const fixedUsed = new Set<number>();
   const bins: Bin[] = [];
   let overColorTiles = 0;
+  let stopped = false;
   for (const g of groupSets(tiles)) {
+    if (stopped) {
+      for (const t of g.tiles) tilePalettes[t] = -2;
+      continue;
+    }
     const hit = fixed.find((f) => g.colors.every((c) => f.set.has(c)));
     if (hit) {
       for (const t of g.tiles) tilePalettes[t] = hit.slot.index;
@@ -149,8 +158,9 @@ export function assignPalettes(tiles: readonly Uint16Array[], slots: readonly Pa
       overColorTiles += g.tiles.length;
       for (const t of g.tiles) tilePalettes[t] = -2;
     }
+    if (bins.length > MAX_COUNTED_PALETTES) stopped = true;
   }
-  return finish(tiles, tilePalettes, bins, free, [...fixedUsed], overColorTiles, options);
+  return finish(tiles, tilePalettes, bins, free, [...fixedUsed], overColorTiles, options, stopped);
 }
 
 function finish(
@@ -161,6 +171,7 @@ function finish(
   fixedUsed: readonly number[],
   overColorTiles: number,
   options: AssignOptions,
+  stopped = false,
 ): PaletteAssignment {
   const palettes = new Map<number, Uint16Array>();
   const opened: number[] = [];
@@ -174,7 +185,7 @@ function finish(
     palettes.set(slot.index, paletteOf(slot, bin.colors, options.zeroColor));
     for (const t of bin.tiles) tilePalettes[t] = slot.index;
   });
-  const ok = overColorTiles === 0 && bins.length <= free.length;
+  const ok = !stopped && overColorTiles === 0 && bins.length <= free.length;
   return {
     ok,
     tilePalettes,
@@ -182,6 +193,7 @@ function finish(
     fixedUsed: [...fixedUsed].sort((a, b) => a - b),
     opened,
     needed: bins.length,
+    neededAtLeast: stopped,
     available: free.length,
     overColorTiles,
     groups: bins.map((b) => ({ colors: b.colors.size, tiles: b.tiles.length })),
@@ -225,7 +237,7 @@ export interface ReduceResult {
 }
 
 /** 組分けを、まとめる方法で行う組の数の上限（これより多ければ平均の色で分ける）。 */
-const MERGE_LIMIT = 512;
+const MERGE_LIMIT = 256;
 
 /** 収まらない絵を減色して収める（空いている本が 1 本も無ければ、今ある本のいちばん近い本の色で描く）。 */
 export function reduceToFit(tiles: readonly Uint16Array[], slots: readonly PaletteSlotInput[], options: AssignOptions = {}): ReduceResult {
@@ -310,9 +322,16 @@ export function reduceToFit(tiles: readonly Uint16Array[], slots: readonly Palet
 /** タイル（`members` の番号）を `count` 組以下に分ける。 */
 function splitIntoGroups(tiles: readonly Uint16Array[], members: readonly number[], count: number): number[][] {
   const bins: Bin[] = [];
-  for (const g of groupSets(tiles, members)) packIntoBins(bins, g.colors, g.tiles, true);
-  if (bins.length <= count) return bins.map((b) => b.tiles);
-  if (bins.length <= MERGE_LIMIT) {
+  let many = false;
+  for (const g of groupSets(tiles, members)) {
+    packIntoBins(bins, g.colors, g.tiles, true);
+    if (bins.length > MERGE_LIMIT) {
+      many = true;
+      break;
+    }
+  }
+  if (!many && bins.length <= count) return bins.map((b) => b.tiles);
+  if (!many) {
     // 小さい組から順に、合わせたときの色がいちばん少ない組へまとめる
     while (bins.length > count) {
       let small = 0;

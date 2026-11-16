@@ -10,7 +10,7 @@
  */
 
 /** 別ウィンドウの種類（Tauri のウィンドウのラベル）。 */
-export type ToolKind = "block-editor" | "palette-editor" | "block-adjust" | "transplant";
+export type ToolKind = "block-editor" | "palette-editor" | "block-adjust" | "transplant" | "tile-import";
 
 /** 別ウィンドウ → メインのイベント名。 */
 export const TOOL_REQUEST_EVENT = "tool-request";
@@ -75,7 +75,23 @@ export type ToolRequest =
   /** ブロックの使用回数と未使用のタイル（#395）。表示中のマップの組で数える（返事は BlockStats）。 */
   | { readonly from: ToolKind; readonly id: number; readonly op: "blockStats"; readonly tiles: boolean }
   /** 新しいタイルセット（#397）: 加えて、表示中のマップの組を付け替える（返事は NewTilesetResult）。 */
-  | { readonly from: ToolKind; readonly id: number; readonly op: "newTileset"; readonly secondary: boolean; readonly tileCount: number; readonly blockCount: number; readonly copy: boolean };
+  | { readonly from: ToolKind; readonly id: number; readonly op: "newTileset"; readonly secondary: boolean; readonly tileCount: number; readonly blockCount: number; readonly copy: boolean }
+  /** 画像からタイルとブロックを作る（Phase6 #444）: 計画に要る使用回数と、同じ主を使うほかの組の副のブロック（返事は ImportContextData）。 */
+  | { readonly from: ToolKind; readonly id: number; readonly op: "importContext" }
+  /**
+   * 画像からタイルとブロックを作る（Phase6 #444）: 画像（PNG の base64）と設定で、メインが計画を作り直して書く（返事は TileImportOutcome）。
+   * `transparent` は BGR555、null（使わない）、"auto"（1 枚目の左上の画素）。
+   */
+  | {
+      readonly from: ToolKind;
+      readonly id: number;
+      readonly op: "importTiles";
+      readonly images: readonly string[];
+      readonly target: string;
+      readonly transparent: number | null | "auto";
+      readonly options: Record<string, unknown>;
+      readonly stamp: string | null;
+    };
 
 /** ベース ROM の `address`（0x08 起点）に `bytes`（base64）と同じ機械語があるか、の問い合わせ。 */
 export interface TransplantCodeProbe {
@@ -105,4 +121,6 @@ export const TOOL_WINDOW_SIZES: Readonly<Record<ToolKind, { readonly width: numb
   "palette-editor": { width: 286, height: 236 },
   "block-adjust": { width: 264, height: 461 },
   transplant: { width: 760, height: 470 },
+  // 画像からタイルとブロックを作る（Phase6 #444）
+  "tile-import": { width: 800, height: 541 },
 };
