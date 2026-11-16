@@ -271,6 +271,16 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     check(field(z, "help.doc")["value"] == "README.md", "戻り先のリンクで README へ戻る")
     back_at = z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"]
     check(abs(back_at - scrolled) <= 2, f"README の離れたときの位置へ戻る（{scrolled} → {back_at}）")
+    for name in ("guide", "map-editing", "tilesets", "script-editor", "time-and-wild", "reference", "development"):
+        path = f"docs/{name}.md"
+        z.call({"cmd": "click", "id": f"help.link:{path}"})
+        check(field(z, "help.doc")["value"] == path, f"分割した文書をヘルプ内で開く: {name}")
+        check(field(z, "help.home")["visible"], f"READMEへ戻るリンクがある: {name}")
+        z.call({"cmd": "click", "id": "help.home"})
+    z.call({"cmd": "click", "id": "help.link:docs/guide.md#ショートカット"})
+    check(field(z, "help.doc")["value"] == "docs/guide.md", "別文書のショートカット節へ移る")
+    check(z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"] > 0, "移動先の見出しまでスクロールする")
+    z.call({"cmd": "click", "id": "help.home"})
     z.call({"cmd": "menu.run", "id": "help.shortcuts"})
     time.sleep(0.2)
     check(field(z, "help.doc")["value"] == "shortcuts.md", "ショートカット一覧を開く")

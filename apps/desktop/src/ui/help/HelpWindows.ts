@@ -2,6 +2,14 @@ import { getVersion } from "@tauri-apps/api/app";
 import license from "../../../../../LICENSE?raw";
 import automationDoc from "../../../../../docs/automation.md?raw";
 import compareDoc from "../../../../../docs/compare-test.md?raw";
+import guideDoc from "../../../../../docs/guide.md?raw";
+import editingDoc from "../../../../../docs/map-editing.md?raw";
+import tilesetsDoc from "../../../../../docs/tilesets.md?raw";
+import scriptsDoc from "../../../../../docs/script-editor.md?raw";
+import timeDoc from "../../../../../docs/time-and-wild.md?raw";
+import referenceDoc from "../../../../../docs/reference.md?raw";
+import developmentDoc from "../../../../../docs/development.md?raw";
+import buildSupportDoc from "../../../../../build-support/README.md?raw";
 import readme from "../../../../../README.md?raw";
 import { shortcutMarkdown } from "../../app/shortcutList";
 import { ja } from "../../i18n/ja";
@@ -76,6 +84,14 @@ const DOCS = {
   "README.md": readme,
   "docs/automation.md": automationDoc,
   "docs/compare-test.md": compareDoc,
+  "docs/guide.md": guideDoc,
+  "docs/map-editing.md": editingDoc,
+  "docs/tilesets.md": tilesetsDoc,
+  "docs/script-editor.md": scriptsDoc,
+  "docs/time-and-wild.md": timeDoc,
+  "docs/reference.md": referenceDoc,
+  "docs/development.md": developmentDoc,
+  "build-support/README.md": buildSupportDoc,
   LICENSE: license,
   // 開くたびに今のキーで作る（設定 > ショートカットの変更… で変えたキーを出す。#392）
   get [SHORTCUTS_DOC](): string {
