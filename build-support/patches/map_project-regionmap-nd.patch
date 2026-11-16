@@ -1,0 +1,247 @@
+--- a/scripts/map_project.py
++++ b/scripts/map_project.py
+@@ -667,13 +667,209 @@
+     print(f"Wrote {len(trainers)} trainers from maps/{TRAINERS_FILE}")
+ 
+ 
++REGIONMAP_FILE = "regionmap.json"
++# Town map (region map) tables of FireRed (JP), read through the pointers in the code (ZigzaguMap #119).
++REGION_LAYOUT_POINTERS = {"kanto": 0xC5378, "sevii123": 0xC5380, "sevii45": 0xC5388, "sevii67": 0xC53B0}  # GetMapNo
++REGION_LAYERS = ("map", "dungeon")      # u8 [2][15][22] per page: the base layer, then the dungeon (top) layer
++REGION_WIDTH, REGION_HEIGHT = 22, 15
++REGION_POSITION_POINTER = 0xC4F20       # SetMapNo_and_Pos: s16 x, y per map section
++REGION_SIZE_POINTER = 0xC4F1C           # SetMapNo_and_Pos: u16 width, height per map section
++REGION_FLY_POINTER = 0xC648C            # FlyDestination: u8 bank, map, heal location per map section
++REGION_HEAL_POINTERS = (0xC0E74, 0xC0E94)   # GetWarpPosByMapID / GetWarpPosByNo: the heal location table - 8
++REGION_HEAL_TABLE_POINTER = 0xC0E44     # the same table (AdvanceMap's FlugposHeader)
++REGION_SECTION_FIRST = 0x58
++REGION_SECTION_COUNT = 110              # map sections 0x58-0xC5
++REGION_FLY_COUNT = 108                  # map sections 0x58-0xC3
++REGION_HEAL_COUNT = 20                  # heal locations 1-20, 8 bytes each
++# Visit flags are switch statements in GetMapState / GetCaveState, not tables: not imported (ZigzaguMap #499).
++REGIONMAP_PENDING = ("MapVisitFlags", "DungeonVisitFlags")
++REGIONMAP_TABLES = ("Layouts", "Positions", "Sizes", "FlyDestinations", "HealLocations") + REGIONMAP_PENDING
++
++
++def _regionmap_int(item, key, low, high, where):
++    value = item.get(key) if isinstance(item, dict) else None
++    if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
++        raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の {key} は {low} から {high} までの整数にしてください（値: {value!r}）")
++    return value
++
++
++def _regionmap_list(source, key, count):
++    """The entries of a table written for every map section / heal location, or None when the key is absent."""
++    if key not in source:
++        return None
++    items = source[key]
++    if not isinstance(items, list) or len(items) != count:
++        size = len(items) if isinstance(items, list) else type(items).__name__
++        raise ValueError(f"maps/{REGIONMAP_FILE}: {key} は {count} 件の配列にしてください（今は {size}）")
++    for number, item in enumerate(items):
++        if not isinstance(item, dict):
++            raise ValueError(f"maps/{REGIONMAP_FILE}: {key}[{number}] がオブジェクトではありません")
++        if key == "HealLocations":
++            if item.get("Index") != number + 1:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {key}[{number}] の Index は {number + 1} にしてください"
++                                 f"（値: {item.get('Index')!r}）")
++        else:
++            expected = f"0x{REGION_SECTION_FIRST + number:02X}"
++            value = item.get("Id")
++            if not isinstance(value, str) or value.upper().replace("0X", "0x") != expected:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {key}[{number}] の Id は \"{expected}\" にしてください（値: {value!r}）")
++    return items
++
++
++def _read_regionmap(root_dir):
++    """maps/regionmap.json (written by ZigzaguMap's world map editor): {table: values} of the town map tables to
++    write, only the tables in the file. {} without it. A broken file or a value out of range stops the build."""
++    path = root_dir / REGIONMAP_FILE
++    if not path.exists():
++        return {}
++    try:
++        source = json.loads(path.read_text(encoding="utf-8"))
++    except json.JSONDecodeError as e:
++        raise ValueError(f"maps/{REGIONMAP_FILE} を JSON として読めません（{e.lineno} 行 {e.colno} 文字目: {e.msg}）") from None
++    if not isinstance(source, dict):
++        raise ValueError(f"maps/{REGIONMAP_FILE} は JSON のオブジェクトにしてください")
++    if source.get("Format") != 1:
++        raise ValueError(f"maps/{REGIONMAP_FILE}: Format は 1 にしてください（値: {source.get('Format')!r}）")
++    for key in source:
++        if key != "Format" and key not in REGIONMAP_TABLES:
++            raise ValueError(f"maps/{REGIONMAP_FILE}: 知らないキーです: {key}")
++    tables = {}
++
++    if "Layouts" in source:
++        layouts = source["Layouts"]
++        if not isinstance(layouts, list):
++            raise ValueError(f"maps/{REGIONMAP_FILE}: Layouts は配列にしてください")
++        tables["Layouts"] = []
++        seen = set()
++        for number, item in enumerate(layouts):
++            where = f"Layouts[{number}]"
++            if not isinstance(item, dict):
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {where} がオブジェクトではありません")
++            page, layer = item.get("Page"), item.get("Layer")
++            if page not in REGION_LAYOUT_POINTERS:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の Page は {' / '.join(REGION_LAYOUT_POINTERS)} の"
++                                 f"どれかにしてください（値: {page!r}）")
++            if layer not in REGION_LAYERS:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の Layer は map か dungeon にしてください（値: {layer!r}）")
++            if (page, layer) in seen:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の {page} / {layer} が 2 回書かれています")
++            seen.add((page, layer))
++            rows = item.get("Rows")
++            if not isinstance(rows, list) or len(rows) != REGION_HEIGHT:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の Rows は {REGION_HEIGHT} 行の配列にしてください")
++            cells = bytearray()
++            for y, row in enumerate(rows):
++                parts = row.split() if isinstance(row, str) else []
++                if len(parts) != REGION_WIDTH or any(len(p) > 2 or any(c not in "0123456789abcdefABCDEF" for c in p)
++                                                     for p in parts):
++                    raise ValueError(f"maps/{REGIONMAP_FILE}: {where} の Rows[{y}] は 16 進 2 桁を空白区切りで "
++                                     f"{REGION_WIDTH} 個並べてください（値: {row!r}）")
++                cells += bytes(int(p, 16) for p in parts)
++            tables["Layouts"].append((page, REGION_LAYERS.index(layer), bytes(cells)))
++
++    items = _regionmap_list(source, "Positions", REGION_SECTION_COUNT)
++    if items is not None:
++        tables["Positions"] = [(_regionmap_int(e, "X", -0x8000, 0x7FFF, f"Positions[{n}]（Id {e['Id']}）"),
++                                _regionmap_int(e, "Y", -0x8000, 0x7FFF, f"Positions[{n}]（Id {e['Id']}）"))
++                               for n, e in enumerate(items)]
++    items = _regionmap_list(source, "Sizes", REGION_SECTION_COUNT)
++    if items is not None:
++        tables["Sizes"] = [(_regionmap_int(e, "Width", 0, 0xFFFF, f"Sizes[{n}]（Id {e['Id']}）"),
++                            _regionmap_int(e, "Height", 0, 0xFFFF, f"Sizes[{n}]（Id {e['Id']}）"))
++                           for n, e in enumerate(items)]
++    items = _regionmap_list(source, "FlyDestinations", REGION_FLY_COUNT)
++    if items is not None:
++        tables["FlyDestinations"] = [
++            tuple(_regionmap_int(e, key, 0, 0xFF, f"FlyDestinations[{n}]（Id {e['Id']}）")
++                  for key in ("Bank", "Map", "HealLocation"))
++            for n, e in enumerate(items)]
++    items = _regionmap_list(source, "HealLocations", REGION_HEAL_COUNT)
++    if items is not None:
++        heal = []
++        for n, e in enumerate(items):
++            where = f"HealLocations[{n}]（Index {n + 1}）"
++            unknown = None if "Unknown" not in e else _regionmap_int(e, "Unknown", 0, 0xFFFF, where)  # absent: keep the ROM's
++            heal.append((_regionmap_int(e, "Bank", 0, 0xFF, where), _regionmap_int(e, "Map", 0, 0xFF, where),
++                         _regionmap_int(e, "X", -0x8000, 0x7FFF, where), _regionmap_int(e, "Y", -0x8000, 0x7FFF, where),
++                         unknown))
++        tables["HealLocations"] = heal
++    for key in REGIONMAP_PENDING:
++        if key in source:
++            print(f"注意: maps/{REGIONMAP_FILE} の {key} は未対応のキーです。訪問フラグ（人ID）は ROM へ取り込みません"
++                  f"（ZigzaguMap #499）")
++    return tables
++
++
++def _regionmap_table(data, pointer, size, what, minus=0):
++    """Where the table read through the pointer at `pointer` starts (the code may point `minus` bytes before it)."""
++    value = _u32(data, pointer)
++    start = value - ROM_BASE + minus
++    if value < ROM_BASE or start < 0 or start + size > len(data):
++        raise ValueError(f"maps/{REGIONMAP_FILE}: {what} の表を指すポインタ（{ROM_BASE + pointer:#010x}）が"
++                         f"ROM の外を指しています（{value:#010x}）")
++    return start
++
++
++def _regionmap_writes(data, tables):
++    """[(offset, bytes, what)] that write the tables into the ROM, at the places the code reads them from."""
++    writes = []
++    for page, layer, cells in tables.get("Layouts", ()):
++        size = REGION_WIDTH * REGION_HEIGHT
++        start = _regionmap_table(data, REGION_LAYOUT_POINTERS[page], size * len(REGION_LAYERS), f"Layouts {page}")
++        writes.append((start + layer * size, cells, f"Layouts {page}/{REGION_LAYERS[layer]}"))
++    if "Positions" in tables:
++        start = _regionmap_table(data, REGION_POSITION_POINTER, REGION_SECTION_COUNT * 4, "Positions")
++        writes.append((start, b"".join(struct.pack("<hh", x, y) for x, y in tables["Positions"]), "Positions"))
++    if "Sizes" in tables:
++        start = _regionmap_table(data, REGION_SIZE_POINTER, REGION_SECTION_COUNT * 4, "Sizes")
++        writes.append((start, b"".join(struct.pack("<HH", w, h) for w, h in tables["Sizes"]), "Sizes"))
++    if "FlyDestinations" in tables:
++        start = _regionmap_table(data, REGION_FLY_POINTER, REGION_FLY_COUNT * 3, "FlyDestinations")
++        writes.append((start, b"".join(bytes(f) for f in tables["FlyDestinations"]), "FlyDestinations"))
++    if "HealLocations" in tables:
++        size = REGION_HEAL_COUNT * 8
++        starts = {_regionmap_table(data, p, size, "HealLocations", minus=8) for p in REGION_HEAL_POINTERS}
++        starts.add(_regionmap_table(data, REGION_HEAL_TABLE_POINTER, size, "HealLocations"))
++        if len(starts) != 1:
++            raise ValueError(f"maps/{REGIONMAP_FILE}: HealLocations の表を指すポインタ（"
++                             + "・".join(f"{ROM_BASE + p:#010x}" for p in REGION_HEAL_POINTERS + (REGION_HEAL_TABLE_POINTER,))
++                             + "）が同じ表を指していないので、書く先を決められません")
++        start = starts.pop()
++        table = bytearray(data[start:start + size])
++        for n, (bank, map_, x, y, unknown) in enumerate(tables["HealLocations"]):
++            struct.pack_into("<BBhh", table, n * 8, bank, map_, x, y)
++            if unknown is not None:
++                struct.pack_into("<H", table, n * 8 + 6, unknown)
++        writes.append((start, bytes(table), "HealLocations"))
++    return writes
++
++
++def _apply_regionmap(data, tables):
++    """Write maps/regionmap.json over the town map tables in place (no table changes size, so no pointer moves).
++    A table that a patch list of the build also writes is an error."""
++    if not tables:
++        return
++    writes = _regionmap_writes(data, tables)
++    regions = _patched_regions()
++    for offset, value, what in writes:
++        for start, end, where in regions:
++            if start < offset + len(value) and offset < end:
++                raise ValueError(f"maps/{REGIONMAP_FILE}: {what}（{ROM_BASE + offset:#010x}-{ROM_BASE + offset + len(value):#010x}）が、"
++                                 f"ビルドが書く {where}（{ROM_BASE + start:#010x}-{ROM_BASE + end:#010x}）と重なります")
++    for offset, value, _ in writes:
++        data[offset:offset + len(value)] = value
++    print(f"Wrote the town map tables from maps/{REGIONMAP_FILE}: {', '.join(w[2] for w in writes)}")
++
++
+ def apply_project(rom, allocation_start, symbols=None):
+     """Apply all map sources to an already built CFRU ROM file; return data end.
+-    maps/rom_erase.json (base ROM ranges ZigzaguMap erases) is applied with or without maps/project.json."""
++    maps/rom_erase.json (base ROM ranges ZigzaguMap erases) and maps/regionmap.json (the town map tables) are applied
++    with or without maps/project.json."""
+     root_dir = Path("maps")
+     manifest_path = root_dir / "project.json"
+     erase = _read_rom_erase(root_dir)
+     trainers = _read_trainers(root_dir)
++    regionmap = _read_regionmap(root_dir)
+     if not manifest_path.exists() and trainers:   # maps/trainers.json without map sources
+         rom.seek(0)
+         data = bytearray(rom.read())
+@@ -682,19 +878,21 @@
+         _erase_rom_ranges(data, erase)
+         alloc = _Allocator(data, allocation_start)
+         _apply_trainers(data, alloc, trainers, root_dir)
++        _apply_regionmap(data, regionmap)
+         _check_erased_rom_ranges(data, erase)
+         rom.seek(0)
+         rom.write(data)
+         rom.flush()
+         return alloc.next
+     if not manifest_path.exists():
+-        if erase:   # maps/rom_erase.json alone: erase the ranges and place no map
++        if erase or regionmap:   # maps/rom_erase.json / regionmap.json alone: change the ROM in place, place no map
+             rom.seek(0)
+             data = bytearray(rom.read())
+             _erase_rom_ranges(data, erase)
+-            for offset, length, _ in erase:
+-                rom.seek(offset)
+-                rom.write(data[offset:offset + length])
++            _apply_regionmap(data, regionmap)
++            _check_erased_rom_ranges(data, erase)
++            rom.seek(0)
++            rom.write(data)
+             rom.flush()
+         return allocation_start
+     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+@@ -715,6 +913,7 @@
+         root = _place_map(data, alloc, root, counts, source, symbols or {}, names, tileset_pointers)
+     _place_day_wild(data, alloc, sources)
+     _apply_trainers(data, alloc, trainers, root_dir)
++    _apply_regionmap(data, regionmap)
+     _check_erased_rom_ranges(data, erase)
+     rom.seek(0)
+     rom.write(data)

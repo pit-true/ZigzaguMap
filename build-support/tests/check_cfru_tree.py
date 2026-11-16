@@ -11,6 +11,10 @@
 3. scripts/map_project.py: maps/trainers.json writes its trainers into gTrainers (*(0x0800F5C0)) with the parties in
    new space and changes nothing else; an empty Trainers list leaves the ROM unchanged; an id above 742 moves the table
    and repoints the words before it that point into its first entry; a bad id, a duplicate or a long name stops the build.
+4. scripts/map_project.py: maps/regionmap.json writes the town map tables it has (Layouts, Positions, Sizes,
+   FlyDestinations, HealLocations) where the pointers in the code point, and changes nothing else; HealLocations
+   without Unknown keep the last 2 bytes; MapVisitFlags / DungeonVisitFlags are not written (a warning); a broken
+   file, a value out of range, heal location pointers that disagree, or a table a patch list writes stops the build.
 Exit code 1 when a check fails.
 """
 import argparse
@@ -210,6 +214,109 @@ def check_trainers(cfru, work, problems):
     print('map_project.py (trainers): checked')
 
 
+REGION_TABLES = {   # pointer -> (table, the value the pointer holds minus the table)
+    0xC5378: (0x3B9018, 0), 0xC5380: (0x3B92AC, 0), 0xC5388: (0x3B9540, 0), 0xC53B0: (0x3B97D4, 0),
+    0xC4F20: (0x3B89E8, 0), 0xC4F1C: (0x3B8D00, 0), 0xC648C: (0x3B9A68, 0),
+    0xC0E74: (0x3B5944, -8), 0xC0E94: (0x3B5944, -8), 0xC0E44: (0x3B5944, 0)}
+
+
+def write_regionmap(source, raw=None):
+    os.makedirs('maps', exist_ok=True)
+    with open('maps/regionmap.json', 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(raw if raw is not None else json.dumps(dict({'Format': 1}, **source), indent=2))
+
+
+def check_regionmap(cfru, work, problems):
+    module = load(cfru / 'scripts' / 'map_project.py', 'zzm_map_project_regionmap')
+    if not hasattr(module, '_apply_regionmap'):
+        problems.append('scripts/map_project.py has no _apply_regionmap (the regionmap patch is not applied)')
+        return
+    for left in ('maps/rom_erase.json', 'maps/trainers.json'):   # from the checks above
+        if os.path.exists(left):
+            os.remove(left)
+    base = bytearray(bytes(range(256)) * (0x2000000 // 256))
+    for at, (table, delta) in REGION_TABLES.items():
+        base[at:at + 4] = (0x08000000 + table + delta).to_bytes(4, 'little')
+    rom = bytes(base)
+
+    def run(data=rom):
+        handle = io.BytesIO(data)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            module.apply_project(handle, 0x1000000, {})
+        return handle.getvalue(), out.getvalue()
+
+    ids = [f'0x{0x58 + i:02X}' for i in range(110)]
+    positions = [{'Id': ids[i], 'X': i - 5, 'Y': i} for i in range(110)]
+    sizes = [{'Id': ids[i], 'Width': i + 1, 'Height': 2} for i in range(110)]
+    fly = [{'Id': ids[i], 'Bank': 3, 'Map': i, 'HealLocation': i % 21} for i in range(108)]
+    heal = [{'Index': i + 1, 'Bank': 3, 'Map': i, 'X': -i, 'Y': 300 + i} for i in range(20)]
+    rows = [' '.join(f'{(x + y) & 0xFF:02X}' for x in range(22)) for y in range(15)]
+    flags = [{'Id': ids[i], 'Flag': None} for i in range(110)]
+    source = {'Layouts': [{'Page': 'sevii45', 'Layer': 'dungeon', 'Rows': rows}], 'Positions': positions, 'Sizes': sizes,
+              'FlyDestinations': fly, 'HealLocations': heal, 'MapVisitFlags': flags}
+    expect = bytearray(rom)
+    expect[0x3B9540 + 330:0x3B9540 + 660] = bytes((x + y) & 0xFF for y in range(15) for x in range(22))
+    for i in range(110):
+        expect[0x3B89E8 + i * 4:0x3B89E8 + i * 4 + 4] = (i - 5).to_bytes(2, 'little', signed=True) + i.to_bytes(2, 'little')
+        expect[0x3B8D00 + i * 4:0x3B8D00 + i * 4 + 4] = (i + 1).to_bytes(2, 'little') + (2).to_bytes(2, 'little')
+    for i in range(108):
+        expect[0x3B9A68 + i * 3:0x3B9A68 + i * 3 + 3] = bytes((3, i, i % 21))
+    for i in range(20):   # the last 2 bytes (Unknown) stay
+        expect[0x3B5944 + i * 8:0x3B5944 + i * 8 + 6] = (bytes((3, i)) + (-i).to_bytes(2, 'little', signed=True)
+                                                          + (300 + i).to_bytes(2, 'little'))
+    out, log = run()
+    if out != rom:
+        problems.append('map_project.py changed the ROM without maps/regionmap.json')
+    write_regionmap(source)
+    out, log = run()
+    if out != bytes(expect):
+        changed = [hex(i) for i in range(len(rom)) if out[i] != expect[i]]
+        problems.append(f'maps/regionmap.json: the tables are written wrong or other bytes changed: {changed[:5]}')
+    if 'MapVisitFlags' not in log:
+        problems.append('maps/regionmap.json: no warning for MapVisitFlags (not imported)')
+    write_regionmap({'HealLocations': [dict(h, Unknown=0x1234) for h in heal]})
+    out, _ = run()
+    if out[0x3B5944 + 6:0x3B5944 + 8] != bytes((0x34, 0x12)):
+        problems.append('maps/regionmap.json: HealLocations Unknown is not written')
+    moved = bytearray(rom)   # a table that CFRU moved: written where the pointer points
+    moved[0xC4F20:0xC4F24] = (0x09100000).to_bytes(4, 'little')
+    write_regionmap({'Positions': positions})
+    out, _ = run(bytes(moved))
+    if out[0x1100000:0x1100004] != expect[0x3B89E8:0x3B89E8 + 4] or out[0x3B89E8:0x3B89E8 + 4] != rom[0x3B89E8:0x3B89E8 + 4]:
+        problems.append('maps/regionmap.json: Positions is not written where the pointer points')
+
+    def must_fail(source, text, raw=None, data=rom, files=None):
+        write_regionmap(source, raw)
+        for path, body in (files or {}).items():
+            pathlib.Path(path).write_text(body, encoding='utf-8')
+        try:
+            run(data)
+            problems.append(f'no error for {text}')
+        except ValueError as e:
+            if text not in str(e):
+                problems.append(f'unexpected error {e} (expected {text})')
+        for path in files or {}:
+            os.remove(path)
+
+    must_fail({}, 'JSON', raw='{"Format": 1, "Positions": [')
+    must_fail({'Format': 2}, 'Format')
+    must_fail({'Labels': []}, 'Labels')
+    must_fail({'Positions': positions[:-1]}, '110')
+    must_fail({'Positions': positions[:3] + [dict(positions[3], X=40000)] + positions[4:]}, 'Positions[3]')
+    must_fail({'Sizes': sizes[:2] + [dict(sizes[2], Id='0x99')] + sizes[3:]}, 'Sizes[2]')
+    must_fail({'FlyDestinations': fly[:7] + [dict(fly[7], HealLocation=256)] + fly[8:]}, 'FlyDestinations[7]')
+    must_fail({'HealLocations': heal[:1] + [dict(heal[1], Index=9)] + heal[2:]}, 'HealLocations[1]')
+    must_fail({'Layouts': [{'Page': 'johto', 'Layer': 'map', 'Rows': rows}]}, 'Layouts[0]')
+    must_fail({'Layouts': [{'Page': 'kanto', 'Layer': 'map', 'Rows': rows[:14] + ['C5 GG']}]}, 'Rows[14]')
+    other = bytearray(rom)
+    other[0xC0E74:0xC0E78] = (0x09000000).to_bytes(4, 'little')
+    must_fail({'HealLocations': heal}, 'HealLocations', data=bytes(other))
+    must_fail({'FlyDestinations': fly}, 'bytereplacement:1', files={'bytereplacement': '083B9A70 01\n'})
+    os.remove('maps/regionmap.json')
+    print('map_project.py (regionmap): checked')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--cfru', required=True, help='the CFRU-JP folder (scripts/string.py, scripts/map_project.py)')
@@ -223,6 +330,7 @@ def main():
         check_strings(cfru, work, problems)
         check_rom_erase(cfru, work, problems)
         check_trainers(cfru, work, problems)
+        check_regionmap(cfru, work, problems)
     finally:
         os.chdir(previous)
         shutil.rmtree(work, ignore_errors=True)
