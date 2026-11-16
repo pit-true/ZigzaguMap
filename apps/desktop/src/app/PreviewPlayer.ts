@@ -1,4 +1,4 @@
-import { actorImagePosition, defaultFacingOf, PLAYER_GRAPHICS, PLAYER_ID, viewportFrame, type MovementDirection, type PlaybackActorState, type PlaybackState, type SceneActor, type SceneView } from "@zigzagumap/core";
+import { actorImagePosition, defaultFacingOf, MOVEMENT_DELTA, PLAYER_GRAPHICS, PLAYER_ID, viewportFrame, type MovementDirection, type PlaybackActorState, type PlaybackState, type SceneActor, type SceneView } from "@zigzagumap/core";
 import type { Actions } from "./Actions";
 import type { EditorState } from "./EditorState";
 import type { ViewAids, AidTab } from "./viewAids";
@@ -21,6 +21,10 @@ interface Layer { readonly view: MapView; readonly canvas: HTMLCanvasElement; re
 const PAD = { left: 8, top: 6, right: 8, bottom: 6 };
 const NO_PAD = { left: 0, top: 0, right: 0, bottom: 0 };
 const DIRECTIONS: readonly MovementDirection[] = ["down", "up", "left", "right"];
+/** 1 マス歩く長さ（ゲームの歩き 16 フレーム）。 */
+const WALK_FRAMES = 16;
+/** 歩きの移動コマンドの番号（walk_down〜walk_right）。絵のコマは共通の部品が選ぶ。 */
+const WALK_ID: Readonly<Record<MovementDirection, number>> = { down: 0x10, up: 0x11, left: 0x12, right: 0x13 };
 
 /** 保存しない仮の主人公。再生も同じ240×160の描画口を使い、終了時に配置を戻せる。 */
 export class PreviewPlayer {
@@ -38,7 +42,9 @@ export class PreviewPlayer {
   private readonly controls = document.createElement("div");
   private readonly gender = document.createElement("select");
   private readonly facing = document.createElement("select");
+  /** 矢印キーで 1 マス歩き終えたとき（ドラッグや置き直しでは呼ばない。踏むスクリプトの再生 #457）。 */
   onStep: ((placement: PlayerPlacement) => void) | null = null;
+  private walking: { from: PlayerPlacement; start: number; raf: number; done: () => void } | null = null;
   onTalk: ((placement: PlayerPlacement) => void) | null = null;
 
   constructor(private readonly state: EditorState, private readonly aids: ViewAids, views: Readonly<Record<AidTab, MapView>>, actions: Actions, private readonly files: FileDialogs) {
@@ -72,14 +78,19 @@ export class PreviewPlayer {
   get player(): PlayerPlacement | null { return this.placement ? { ...this.placement } : null; }
   get frame(): ReturnType<typeof viewportFrame> | null {
     const p = this.placement;
-    return this.playback ? viewportFrame(this.playback.camera) : p ? viewportFrame({ target: PLAYER_ID, x: p.x * 16, y: p.y * 16, shakeX: 0, shakeY: 0 }) : null;
+    if (this.playback) return viewportFrame(this.playback.camera);
+    if (!p) return null;
+    const at = this.walkPixel();
+    return viewportFrame({ target: PLAYER_ID, x: at?.x ?? p.x * 16, y: at?.y ?? p.y * 16, shakeX: 0, shakeY: 0 });
   }
 
   start(): void {
     const map = this.state.map;
     if (this.active || !map || !this.state.session) return;
     this.oldFrame = this.state.settings.data.playerView;
-    this.placement = { x: Math.floor(map.doc.width / 2), y: Math.floor(map.doc.height / 2), facing: "down", gender: "male" };
+    // 男女は再生の帯と同じ個人設定（#457）。
+    const gender = this.state.settings.data.playbackGender === "female" ? "female" : "male";
+    this.placement = { x: Math.floor(map.doc.width / 2), y: Math.floor(map.doc.height / 2), facing: "down", gender };
     this.active = true;
     this.state.settings.update({ playerView: true });
     for (const layer of Object.values(this.aids.layers)) layer.setExternalSight(true);
@@ -93,6 +104,7 @@ export class PreviewPlayer {
 
   stop(quiet = false): void {
     if (!this.active) return;
+    this.endWalk();
     this.active = false; this.playback = null; this.placement = null; this.missingCount = 0;
     this.token++; this.outside = undefined;
     for (const l of this.activeListeners) l(false);
@@ -110,13 +122,61 @@ export class PreviewPlayer {
   setPlayer(patch: Partial<PlayerPlacement>): void {
     if (!this.placement || !this.state.map || this.playback) return;
     const previous = { ...this.placement };
+    this.endWalk();
     const next = { ...this.placement, ...patch };
     next.x = Math.max(0, Math.min(this.state.map.doc.width - 1, Math.floor(next.x)));
     next.y = Math.max(0, Math.min(this.state.map.doc.height - 1, Math.floor(next.y)));
     if (!Number.isFinite(next.x) || !Number.isFinite(next.y) || !DIRECTIONS.includes(next.facing) || !["male", "female"].includes(next.gender)) return;
-    const moved = next.x !== this.placement.x || next.y !== this.placement.y;
     this.placement = next; this.draw();
-    if (moved) { this.follower?.stepped(previous, { ...next }); this.onStep?.({ ...next }); }
+    if (next.x !== previous.x || next.y !== previous.y) this.follower?.stepped(previous, { ...next });
+    if (patch.gender && patch.gender !== this.state.settings.data.playbackGender) this.state.settings.update({ playbackGender: patch.gender });
+  }
+
+  /**
+   * 1 マス歩く（向きを変えて、16 フレームで隣のマスへ）。歩き終えたら onStep を呼ぶ。マップの外へは向きだけ変える。
+   * 歩いている間の矢印キーは無視する。戻り値は歩き終えたとき（歩かなければすぐ）に決まる。
+   */
+  walk(direction: MovementDirection): Promise<void> {
+    const p = this.placement, map = this.state.map;
+    if (!p || !map || this.playback || this.walking || !DIRECTIONS.includes(direction)) return Promise.resolve();
+    const d = MOVEMENT_DELTA[direction];
+    const x = p.x + d.x, y = p.y + d.y;
+    if (x < 0 || y < 0 || x >= map.doc.width || y >= map.doc.height) { this.setPlayer({ facing: direction }); return Promise.resolve(); }
+    return new Promise(resolve => {
+      const from = { ...p, facing: direction };
+      this.placement = { ...p, x, y, facing: direction };
+      this.follower?.stepped(from, { ...this.placement });
+      const tick = (): void => {
+        if (!this.walking) return;
+        if (this.walkFrame() >= WALK_FRAMES - 1) {
+          const w = this.walking;
+          this.walking = null; this.draw();
+          // 踏むスクリプトの再生を始めてから、歩き終えたことにする（自動操作が再生の状態を読めるように）。
+          this.onStep?.({ ...this.placement! }); w.done();
+          return;
+        }
+        this.draw(); this.walking.raf = requestAnimationFrame(tick);
+      };
+      this.walking = { from, start: performance.now(), raf: requestAnimationFrame(tick), done: resolve };
+      this.draw();
+    });
+  }
+
+  /** 向いている方のマスを調べる（Enter・Space。人物・看板のスクリプトの再生 #457）。 */
+  talk(): void { if (this.placement && !this.playback && !this.walking) this.onTalk?.({ ...this.placement }); }
+
+  private walkFrame(): number { return this.walking ? Math.min(WALK_FRAMES - 1, Math.floor((performance.now() - this.walking.start) * 60 / 1000)) : 0; }
+  /** 歩いている途中の画素の位置（歩いていなければ null）。 */
+  private walkPixel(): { x: number; y: number } | null {
+    const w = this.walking;
+    if (!w) return null;
+    const d = MOVEMENT_DELTA[w.from.facing], step = this.walkFrame() + 1;
+    return { x: w.from.x * 16 + d.x * step, y: w.from.y * 16 + d.y * step };
+  }
+  private endWalk(): void {
+    const w = this.walking;
+    if (!w) return;
+    cancelAnimationFrame(w.raf); this.walking = null; this.draw(); w.done();
   }
 
   /**
@@ -200,9 +260,8 @@ export class PreviewPlayer {
       const direction = directions[e.key];
       if (direction) {
         e.preventDefault(); e.stopPropagation();
-        const p = this.placement;
-        this.setPlayer({ facing: direction, x: p.x + (direction === "right" ? 1 : direction === "left" ? -1 : 0), y: p.y + (direction === "down" ? 1 : direction === "up" ? -1 : 0) });
-      } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.onTalk?.({ ...this.placement }); }
+        void this.walk(direction);
+      } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); this.talk(); }
     });
     view.stage.append(shade, canvas, handle);
     return { view, canvas, shade, handle };
@@ -230,7 +289,9 @@ export class PreviewPlayer {
       sprite: "stand", actionFrame: 0, movementId: null, present: true, visible: true, shadow: false, mark: null, elevation, fixedPriority: false, animHold: false,
     });
     const elevation = map.doc.grid.getMovement(p.x, p.y) >> 2;
-    const player = actor(PLAYER_ID, PLAYER_GRAPHICS[p.gender], p.x, p.y, p.facing, elevation > 0 && elevation < 15 ? elevation : 3);
+    const standing = actor(PLAYER_ID, PLAYER_GRAPHICS[p.gender], p.x, p.y, p.facing, elevation > 0 && elevation < 15 ? elevation : 3);
+    const at = this.walkPixel();
+    const player: PlaybackActorState = at ? { ...standing, pixelX: at.x, pixelY: at.y, sprite: "walk", movementId: WALK_ID[p.facing], actionFrame: this.walkFrame() } : standing;
     const actors = this.playback?.actors ?? [
       ...(this.npcActors?.() ?? (map.doc.events?.persons ?? []).map(person => actor(person.localId, person.graphicsId, person.x, person.y, defaultFacingOf(person.movementType), person.elevation))), player,
     ];

@@ -8,18 +8,21 @@
 |---|---|---|
 | `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す |
 | `playback.stop` | なし | 再生を終了し、イベント表示とスクロールを戻す |
-| `playback.state` | なし | `active`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
+| `playback.state` | なし | `active`、始めたラベル `entry`、始まり方 `trigger`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
 | `playback.timeline` | なし | 区間 `segments`、印 `markers`、送り先 `keyFrames` |
 | `playback.seek` | `frame` | 任意のフレームへ移動して一時停止 |
 | `playback.step` | `direction: previous/next`、`singleFrame`（任意） | 動きの前・中・後へ移動。`singleFrame: true` なら1フレーム |
 | `playback.speed` | `value: 0.25/0.5/1/2/4` | 再生速度の変更 |
 | `playback.play` | なし | 再生・一時停止の切り替え。文で止まっていれば続きへ |
 | `playback.answer` | `key`、`taken`（真偽値） | 不明な条件分岐の答えを替え、最初から計算し直す |
+| `playback.player.place` | `x`・`y`、`gender`・`facing`（省略可） | 仮の主人公を置く（「ここに仮の主人公を置く」と同じ。置いただけでは踏むスクリプトを始めない）。返事は `player` |
+| `playback.player.move` | `direction: down/up/left/right` | 仮の主人公を 1 マス歩かせる（矢印キーと同じ）。踏むスクリプトなら再生を始め、準備ができるまで待つ。返事は `player` と `playback`（`playback.state` と同じ） |
+| `playback.player.talk` | なし | 向いている先の人物・看板に話しかける（Enter と同じ）。返事は `player`・`playback`・`status`（何も無いときの知らせ） |
 | `playback.layout` | なし | タイムラインの倍率 `scale`、横のスクロール、箱 `segments`（`left`・`width`・`top`・`active`）、印 `markers`、縦線 `cursor` の位置（画素） |
 | `playback.wheel` | `delta`（負で拡大）、`x`（部品の左端からの画素） | タイムラインの上で Ctrl＋ホイールを回したのと同じ |
 | `playback.choose` | `key`（印の `choice.key`）、`value` | 選択肢の答え（LASTRESULT の値）を替えて計算し直す。今のフレームは保つ |
 
-再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
+再生バーのIDは `playback.bar`、操作は `playback.play`・`stop`・`first`・`previous`・`next`・`seek`・`speed`・`gender`・`facing`（すべて `playback.` を先頭に付ける）です。居ない人物のチェックは `playback.absent.<localId>`。`playback.details` は今のフレームの文や印、`playback.message` はメッセージ本文です。`playback.timeline` はタイムラインの部品、`playback.segment.<番号>` は区間の箱、`playback.marker.<番号>` は全体の印、`playback.condition` は踏むスクリプトの条件、`playback.choice.<印の番号>` は選択肢の答えの欄です。エディタの `editor.playbackHighlights` は、開いているファイルごとの実際の強調範囲（UTF-16の `from`・`to`）を返します。
 
 開発ビルドか、起動引数 `--automation <ポート>` を付けたときだけ、`127.0.0.1:<ポート>` で HTTP の POST を受け付けます（通常の起動では待ち受けません）。
 

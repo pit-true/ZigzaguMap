@@ -13,6 +13,7 @@ import { PLAYER_ID } from "./PlaybackState.js";
  * - 看板: 下から上を向く。看板の向きの条件（`SignEvent.kind`）で上向きが駄目なら、条件に合う側から。
  * - 踏むスクリプト: そのマスの上で下を向く。変数の条件は見ずに始め、条件を返す（A-7）。
  * - マップスクリプト: 仮の主人公の位置。無ければ最初のワープの上。どちらも無ければ (0, 0)。
+ * - 仮の主人公が話しかけた・踏んだときは（`origin`、#457）、看板と踏むスクリプトもその位置と向きから始める。
  * - 1 コマ目の向きは入力（`facing`）で変えられる。
  * - マップの人物は全員居るものとし、`absent` の番号だけ外す（A-6）。人物の自分の動き（移動タイプ）は止め、向きは移動タイプの
  *   基本の向き（`EvObjDefaultSiteTbl`）にする（A-5）。
@@ -49,6 +50,8 @@ export interface StartStateInput {
   readonly gender: PlayerGender;
   /** 仮の主人公。置いていなければ null か省略。 */
   readonly provisionalPlayer?: ProvisionalPlayer | null;
+  /** 仮の主人公が話しかけた・踏んだときの位置と向き（#457）。看板・踏むスクリプトもここから始める。 */
+  readonly origin?: ProvisionalPlayer | null;
   /** 1 コマ目の主人公の向き（帯や矢印キーで変えたとき）。省けば始まり方で決まる向き。 */
   readonly facing?: MovementDirection | null;
   /** 居ないことにする人物（localId）。 */
@@ -114,7 +117,8 @@ function facingToward(from: { x: number; y: number }, to: { x: number; y: number
 export function buildPlaybackStart(input: StartStateInput): StartState {
   const { events, trigger } = input;
   const absent = new Set(input.absent ?? []);
-  const provisional = input.provisionalPlayer ?? null;
+  const origin = input.origin ?? null;
+  const provisional = origin ?? input.provisionalPlayer ?? null;
   let player: ProvisionalPlayer;
   let talker: number | null = null;
   let trapCondition: StartState["trapCondition"] = null;
@@ -130,13 +134,16 @@ export function buildPlaybackStart(input: StartStateInput): StartState {
     }
   } else if (trigger.kind === "sign") {
     const s = events.signs[trigger.index];
-    const facing = s ? signFacing(s) : "up";
-    if (facing !== "up") signSide = facing;
-    const d = MOVEMENT_DELTA[facing];
-    player = { x: (s?.x ?? 0) - d.x, y: (s?.y ?? 0) - d.y, facing };
+    if (origin) player = { ...origin };
+    else {
+      const facing = s ? signFacing(s) : "up";
+      if (facing !== "up") signSide = facing;
+      const d = MOVEMENT_DELTA[facing];
+      player = { x: (s?.x ?? 0) - d.x, y: (s?.y ?? 0) - d.y, facing };
+    }
   } else if (trigger.kind === "trap") {
     const t = events.traps[trigger.index];
-    player = { x: t?.x ?? 0, y: t?.y ?? 0, facing: "down" };
+    player = { x: t?.x ?? 0, y: t?.y ?? 0, facing: origin?.facing ?? "down" };
     if (t) trapCondition = { variable: t.variable, value: t.value };
   } else {
     const w = events.warps[0];

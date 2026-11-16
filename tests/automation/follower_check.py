@@ -6,6 +6,7 @@ import base64
 import hashlib
 import pathlib
 import tempfile
+import time
 
 from phase4_view_check import pixels
 from zz import Zigzagu
@@ -56,14 +57,17 @@ def main():
                 print("OK 既定の種族", s["species"], s["sheet"], "を主人公の後ろに描く")
                 # 直線・曲がり角・戻る動き
                 z.call(dict(cmd="key", id="preview.event.player", key="ArrowDown"))
+                time.sleep(0.5)  # 主人公が 1 マス歩き終えるまで（歩いている間の矢印キーは無視される）
                 mid = z.call(dict(cmd="follower.state"))
                 assert mid["busy"]
                 s = z.call(dict(cmd="follower.advance", frames=20))
                 assert s["position"] == dict(x=10, y=10, facing="down"), s
                 z.call(dict(cmd="key", id="preview.event.player", key="ArrowRight"))
+                time.sleep(0.5)  # 主人公が 1 マス歩き終えるまで（歩いている間の矢印キーは無視される）
                 s = z.call(dict(cmd="follower.advance", frames=20))
                 assert s["position"] == dict(x=10, y=11, facing="down"), s
                 z.call(dict(cmd="key", id="preview.event.player", key="ArrowLeft"))
+                time.sleep(0.5)  # 主人公が 1 マス歩き終えるまで（歩いている間の矢印キーは無視される）
                 s = z.call(dict(cmd="follower.advance", frames=20))
                 assert s["position"] == dict(x=11, y=11, facing="right"), s
                 print("OK 直線・曲がり角・戻る動きで、主人公が居たマスに入る")
