@@ -34,6 +34,7 @@ import { toolCommands } from "./tools";
 import { shortcutCommands } from "./shortcuts";
 import { timeOfDayCommands } from "./timeOfDay";
 import { playbackCommands } from "./playback";
+import { animationCommands } from "./animation";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -76,6 +77,7 @@ const registry: CommandRegistry = new CommandRegistry([
   shortcutCommands,
   timeOfDayCommands,
   playbackCommands,
+  animationCommands,
   { commands: () => registry.names() },
 ]);
 

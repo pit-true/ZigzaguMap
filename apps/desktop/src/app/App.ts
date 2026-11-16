@@ -67,6 +67,7 @@ import { ToolExtras } from "./toolExtras";
 import { ViewAids } from "./viewAids";
 import { PreviewPlayer } from "./PreviewPlayer";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
+import { MapAnimations } from "./animation/MapAnimations";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
@@ -143,6 +144,8 @@ export class App implements ActionTarget {
   readonly aids: ViewAids;
   readonly previewPlayer: PreviewPlayer;
   readonly playback: PlaybackEntry;
+  /** タイルアニメとドア（#473・#474）。既定はオフ。 */
+  readonly mapAnimations: MapAnimations;
   /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
   readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
@@ -282,6 +285,8 @@ export class App implements ActionTarget {
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
     this.playback = new PlaybackEntry(this);
+    this.mapAnimations = new MapAnimations(state);
+    this.mapAnimations.onChange = () => this.previewPlayer.refresh();
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

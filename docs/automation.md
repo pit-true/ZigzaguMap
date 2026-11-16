@@ -517,6 +517,19 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 `actors.render {actors, mapType?}` は `PlaybackActorState` の配列（64件まで）を共通描画部品で240×160の透明なCanvasに描き、`png`（base64）と各人物の `frames` を返します。座標はマップ画素です。`frames` の `reason` は非表示なら `hidden`、画像情報が無ければ `graphics`、アニメーションを読めなければ `animation` です。マップ・ROM・履歴を変えません。
 
+### タイルアニメとドア（#473・#474）
+
+どれもマップ・ROM・履歴を変えません。フレームの数え方は、MapBGanimeMain を呼んだ回数（マップに入った直後が0）です。ドアの命令も同じ数え方で、同じフレームでは命令がタスクより先に動きます。マップやROMを切り替えると止まり、命令も消えます。
+
+- `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用の写しのバイト数。
+- `tileAnim.frame {frame: number | null}`: フレームを渡します。null で止めて元の絵へ戻します。返事の `shown` は各アニメの表示中のコマ（まだ差し替えていなければ null）。
+- `tileAnim.scene {frame?, x?, y?, width?, height?, actors?}`: そのフレームの合成画像（既定は(0,0)から240×160）を `png` で返します。`frame` を渡すとそのフレームに合わせます。
+- `door.list`: 表示中のマップのドアのマス（`x`・`y`・`blockId`・`tall`）。`door.info {x, y}` は1マスの結果で、`reason` は挙動が0x69でなければ `behavior`、表に無いブロックなら `unknownDoor`。
+- `door.run {kind, x, y, frame?}`: `kind` は `open`・`close`（アニメあり。opendoor・closedoor）、`setOpen`・`setClosed`（アニメ無し。opendoor2・closedoor2）。返事の `lastFrame` はタスクが消えるフレーム。動いている間の `open`・`close` は `reason: "busy"` で何もしません。
+- `door.state {frame?}`: そのフレームの描き替えたマス（`at` と8個のタイル指定）、`task`、命令ごとの結果。`door.wait {frame}` は、そのフレームで waitdooranim を実行したときに続けるフレーム。`door.clear` は命令を消します。
+
+`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます。
+
 ### DPE の種族名（#439）
 
 野生タブやトレーナー編集の初回に名前表を読みます。`getField {id: "wild.species.1"}` の `options` が種族数です（ND 970件、Chronos 1573件）。`setField` は従来どおり種族番号を指定します。`tests/realcopy/run.py --species --reuse` で追加種族の選択、JSON出力、開き直し、トレーナーの名前の表示を確認できます。
