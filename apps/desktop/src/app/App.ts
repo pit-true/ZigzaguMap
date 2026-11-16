@@ -295,8 +295,9 @@ export class App implements ActionTarget {
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
     this.playback = new PlaybackEntry(this);
-    this.mapAnimations = new MapAnimations(state);
+    this.mapAnimations = new MapAnimations(state, this.gameClock, this.actions, () => this.previewPlayer.enabled);
     this.mapAnimations.onChange = () => this.previewPlayer.refresh();
+    this.previewPlayer.onPlayback = (playback) => this.mapAnimations.followPlayback(playback?.frame ?? null);
     this.follower = new FollowerEntry(state, this.previewPlayer, this.gameClock);
     this.npcMotion = new NpcMotion(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.previewPlayer, this.gameClock, this.actions, {
       selected: () => {

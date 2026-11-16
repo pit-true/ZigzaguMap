@@ -532,12 +532,15 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 - `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用の写しのバイト数。
 - `tileAnim.frame {frame: number | null}`: フレームを渡します。null で止めて元の絵へ戻します。返事の `shown` は各アニメの表示中のコマ（まだ差し替えていなければ null）。
+- `tileAnim.clock {on?, tick?}`: 表示 > タイルアニメを動かす のオン・オフ（`on`）と、時計の代わりに進める（`tick` フレーム）。返事は `on`・`frame`・購読の有無（`subscribed`）・止めている相手（`holders`。画面が無い間は `hidden`、再生中は `playback`）・時計の `clock`（`running` など）。
 - `tileAnim.scene {frame?, x?, y?, width?, height?, actors?}`: そのフレームの合成画像（既定は(0,0)から240×160）を `png` で返します。`frame` を渡すとそのフレームに合わせます。
 - `door.list`: 表示中のマップのドアのマス（`x`・`y`・`blockId`・`tall`）。`door.info {x, y}` は1マスの結果で、`reason` は挙動が0x69でなければ `behavior`、表に無いブロックなら `unknownDoor`。
 - `door.run {kind, x, y, frame?}`: `kind` は `open`・`close`（アニメあり。opendoor・closedoor）、`setOpen`・`setClosed`（アニメ無し。opendoor2・closedoor2）。返事の `lastFrame` はタスクが消えるフレーム。動いている間の `open`・`close` は `reason: "busy"` で何もしません。
 - `door.state {frame?}`: そのフレームの描き替えたマス（`at` と8個のタイル指定）、`task`、命令ごとの結果。`door.wait {frame}` は、そのフレームで waitdooranim を実行したときに続けるフレーム。`door.clear` は命令を消します。
 
-`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます。
+再生では、ドアの命令がタイムラインの印に入り、waitdoor の印は続きのフレーム（`until`）を持ちます。`playback.layout` の `waits` が帯の位置です。再生中の `door.state` は再生のドアの命令で計算します。
+
+`tests/automation/tile_animation_check.py --rom <BPRJ> --exe <exe> [--project <ND>] [--shots <フォルダ>]` で確かめます（`--project` のときは再生のドアも確かめます）。
 
 ### DPE の種族名（#439）
 

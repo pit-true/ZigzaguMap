@@ -303,6 +303,9 @@ describe("再生の計算（#451）", () => {
     expect(seen).toEqual([1, 0]);
     expect(frameOf(waited, "changeface")).toBe(30);
     expect(waited.markers.filter((m) => m.door).map((m) => m.door!.frame)).toEqual([0, 30]);
+    // 待ちの印は続きのフレームを持つ（タイムラインの帯）。渡さないときは持たない。
+    expect(waited.markers.find((m) => m.kind === "door" && !m.door)!.until).toBe(30);
+    expect(free.markers.find((m) => m.kind === "door" && !m.door)!.until).toBeUndefined();
   });
 
   it("文は長さ 0 の印、打ち切り（60 秒）", () => {

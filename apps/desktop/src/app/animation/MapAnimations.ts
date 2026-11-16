@@ -16,7 +16,10 @@ import {
   type TileAnimationReason,
   type TileAnimationSet,
 } from "@zigzagumap/core";
+import type { Actions } from "../Actions";
 import type { EditorState } from "../EditorState";
+import type { ClockSubscription, GameClock } from "../GameClock";
+import { jaTileAnimation as t } from "../../i18n/ja.tileAnimation";
 import type { OpenMap, ProjectSession } from "../ProjectSession";
 import type { ActiveTint } from "../timeOfDay/activeTint";
 import { setSceneAnimation, type SceneAnimationFrame, type SceneAnimationSource } from "./sceneAnimation";
@@ -30,7 +33,10 @@ interface TilesCache {
 
 /**
  * タイルアニメとドアの状態（Phase6 #473・#474）。フレーム番号を受け取って、240×160 の絵の描き手を返す。
- * 既定はオフ（フレームが null）。時計は持たない（再生・NPC と同じ時計から `setFrame` で受け取る）。
+ * 既定はオフ（フレームが null）。
+ * - 表示 > タイルアニメを動かす: 共通の時計（`GameClock`）を購読し、マップに入ってからのフレームを `setFrame` へ渡す。
+ *   240×160 の絵が出ていない間と再生中は購読を止める（時計は購読がすべて止まると requestAnimationFrame を予約しない）。
+ * - 再生中: 再生のフレームとドアの命令に合わせる（`followPlayback`）。ドアはいつも描き、タイルアニメはメニューがオンのときだけ動かす。
  * マップ・セッションを切り替えたら止めて、絵とキャッシュを捨てる。元のタイルセットとマップは変えない。
  */
 export class MapAnimations implements SceneAnimationSource {
@@ -43,10 +49,92 @@ export class MapAnimations implements SceneAnimationSource {
   private renderer: { readonly key: string; readonly renderer: BlockRenderer } | null = null;
   /** 絵が変わったときに呼ぶ（240×160 の表示を描き直す）。 */
   onChange: (() => void) | null = null;
+  /** メニューの「タイルアニメを動かす」。 */
+  private tilesOn = false;
+  private clockFrame = 0;
+  private subscription: ClockSubscription | null = null;
+  private release: (() => void) | null = null;
+  private playback: { frame: number; doors: readonly DoorEvent[] } | null = null;
 
-  constructor(private readonly state: EditorState) {
+  constructor(private readonly state: EditorState, private readonly clock?: GameClock, actions?: Actions, private readonly shown: () => boolean = () => true) {
     for (const topic of ["session", "map"] as const) state.on(topic, () => this.stop());
     state.on("tiles", () => { this.tiles = null; this.renderer = null; });
+    state.on("view", () => this.updateHold());
+    actions?.register("view.tileAnimation", () => this.setTileAnimation(!this.tilesOn));
+    actions?.registerCheck("view.tileAnimation", () => this.tilesOn);
+  }
+
+  /** メニューの「タイルアニメを動かす」がオンか。 */
+  get tileAnimationOn(): boolean { return this.tilesOn; }
+  /** 時計の購読の様子（自動操作の確かめ用）。 */
+  get clockState(): { readonly subscribed: boolean; readonly holders: readonly string[]; readonly frame: number } {
+    return { subscribed: this.subscription !== null, holders: this.subscription?.holders ?? [], frame: this.clockFrame };
+  }
+
+  /** タイルアニメを時計で動かす・止める。止めると元の絵に戻り、時計の購読もやめる。 */
+  setTileAnimation(on: boolean): void {
+    if (on === this.tilesOn) return;
+    this.tilesOn = on;
+    if (on) {
+      this.clockFrame = 0;
+      if (this.clock) this.subscription = this.clock.subscribe("tileAnim", (frames) => this.tick(frames));
+      this.updateHold();
+      if (!this.playback) this.setFrame(0);
+      this.state.setStatus(this.shown() ? t.started : t.waiting);
+    } else {
+      this.release?.(); this.release = null;
+      this.subscription?.dispose(); this.subscription = null;
+      if (this.playback) this.onChange?.();
+      else this.setFrame(null);
+      this.state.setStatus(t.stopped);
+    }
+  }
+
+  /** 時計から（自動操作で進めるときも）。 */
+  tick(frames: number): void {
+    if (!this.tilesOn || frames <= 0) return;
+    this.clockFrame += Math.floor(frames);
+    if (!this.playback) this.setFrame(this.clockFrame);
+  }
+
+  /** 再生の画面から: 再生のドアの命令（印から作った並び）。 */
+  setPlaybackDoors(doors: readonly DoorEvent[]): void {
+    this.playback = { frame: this.playback?.frame ?? 0, doors };
+  }
+
+  /** 再生の画面から: 再生のフレーム（null で再生の終わり）。描き直しは呼ぶ側（仮の主人公の絵）がする。 */
+  followPlayback(frame: number | null): void {
+    if (frame === null) {
+      if (!this.playback) return;
+      this.playback = null;
+      this.events = [];
+      this.updateHold();
+      if (this.tilesOn) { this.frameValue = this.clockFrame; setSceneAnimation(this); }
+      else this.reset();
+      return;
+    }
+    const doors = this.playback?.doors ?? [];
+    this.playback = { frame, doors };
+    this.updateHold();
+    this.frameValue = Math.max(0, Math.floor(frame));
+    this.events = [...doors];
+    setSceneAnimation(this);
+  }
+
+  /** 再生のドアの待ち（`PlaybackOptions.doorWait`）。表示中のマップのドアの表で計算する。 */
+  doorWaitFor(doors: readonly DoorEvent[], frame: number): number {
+    const session = this.state.session, map = this.state.map;
+    const table = session ? this.table(session) : null;
+    if (!table || !map) return frame + 1;
+    return doorWaitResume(table, this.lookup(map), doors, frame);
+  }
+
+  /** 240×160 の絵が出ていない間と再生中は、時計の購読を止める。 */
+  private updateHold(): void {
+    if (!this.subscription) return;
+    const hold = this.playback !== null || !this.shown();
+    if (hold && !this.release) this.release = this.subscription.hold(this.playback ? "playback" : "hidden");
+    else if (!hold && this.release) { this.release(); this.release = null; }
   }
 
   /** 動かしている（フレームを受け取っている）か。 */
@@ -56,7 +144,7 @@ export class MapAnimations implements SceneAnimationSource {
 
   /** フレーム番号（MapBGanimeMain を呼んだ回数。ドアの命令も同じ数え方）。null で止める。 */
   setFrame(frame: number | null): void {
-    if (frame === null) { this.stop(); return; }
+    if (frame === null) { this.reset(); return; }
     if (!Number.isFinite(frame) || frame < 0) throw new RangeError("frame は 0 以上の数です");
     this.frameValue = Math.floor(frame);
     setSceneAnimation(this);
@@ -124,8 +212,15 @@ export class MapAnimations implements SceneAnimationSource {
     this.onChange?.();
   }
 
-  /** 止めて、元の絵へ戻す。読んだ絵と写しも捨てる。 */
+  /** 止めて、元の絵へ戻す。読んだ絵と写しも捨てる。メニューのオンは残し、次のマップでは 0 から数え直す。 */
   stop(): void {
+    this.playback = null;
+    this.clockFrame = 0;
+    this.updateHold();
+    this.reset();
+  }
+
+  private reset(): void {
     const was = this.frameValue !== null || this.events.length > 0;
     this.frameValue = null;
     this.events = [];
@@ -169,7 +264,8 @@ export class MapAnimations implements SceneAnimationSource {
     const tiles = this.animatedTiles(session, map);
     const doors = this.events.length ? this.doorState(frame) : null;
     tiles.setOverlay(DOOR_TEMP_TILE, doors?.tiles ?? null);
-    const shown = tiles.at(frame);
+    // 再生中でメニューがオフなら、タイルは元の絵のまま（ドアだけ描く）。
+    const shown = tiles.at(this.playback && !this.tilesOn ? 0 : frame);
     const useTint = tint?.tintsMapType(map.doc.header.mapType) ? tint : null;
     const key = `${map.tiles.key}:${shown.key}:${useTint?.generation ?? 0}`;
     if (this.renderer?.key !== key) {

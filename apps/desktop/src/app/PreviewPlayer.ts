@@ -105,6 +105,7 @@ export class PreviewPlayer {
   stop(quiet = false): void {
     if (!this.active) return;
     this.endWalk();
+    if (this.playback) this.onPlayback?.(null);
     this.active = false; this.playback = null; this.placement = null; this.missingCount = 0;
     this.token++; this.outside = undefined;
     for (const l of this.activeListeners) l(false);
@@ -194,8 +195,11 @@ export class PreviewPlayer {
   /** 外から絵だけを描き直す（人物が動いたとき #471、タイルアニメ・ドアのフレームが変わったとき #473・#474）。 */
   refresh(): void { this.draw(); }
 
+  /** 再生の状態を受け取ったとき（描く前）に呼ぶ（タイルアニメとドアを再生のフレームに合わせる。#474）。 */
+  onPlayback: ((state: PlaybackState | null) => void) | null = null;
+
   /** 再生画面から呼ぶ。nullで、再生前の仮の主人公の配置へ戻る。 */
-  setPlayback(state: PlaybackState | null): void { this.playback = state; this.draw(); }
+  setPlayback(state: PlaybackState | null): void { this.playback = state; this.onPlayback?.(state); this.draw(); }
 
   async ready(): Promise<void> {
     let pending: Promise<void>;
