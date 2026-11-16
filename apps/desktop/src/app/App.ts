@@ -66,6 +66,7 @@ import { ToolExtras } from "./toolExtras";
 import { ViewAids } from "./viewAids";
 import { PreviewPlayer } from "./PreviewPlayer";
 import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
+import { MapAnimations } from "./animation/MapAnimations";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
@@ -141,6 +142,8 @@ export class App implements ActionTarget {
   /** Phase5 の表示の補助（カーソルの枠・視界の枠・グリッドの設定・移動許可の数値の欄。#391）。 */
   readonly aids: ViewAids;
   readonly previewPlayer: PreviewPlayer;
+  /** タイルアニメとドア（#473・#474）。既定はオフ。 */
+  readonly mapAnimations: MapAnimations;
   /** ショートカットキーの表と別ウィンドウへの知らせ（Phase5 #392）。 */
   readonly keymap: { sync(): void };
   /** ミキシングバッグ（#236。マップタブ）。 */
@@ -278,6 +281,8 @@ export class App implements ActionTarget {
     this.toolbar.insertAfterSort(this.timeOfDay.select);
     this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
+    this.mapAnimations = new MapAnimations(state);
+    this.mapAnimations.onChange = () => this.previewPlayer.refresh();
     const tabControl = new TabControl(
       [
         { id: "map", title: ja.tabMap, element: mapTab.element },

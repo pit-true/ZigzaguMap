@@ -110,6 +110,9 @@ export class PreviewPlayer {
     if (moved) this.onStep?.({ ...next });
   }
 
+  /** 外から絵だけを描き直す（タイルアニメ・ドアのフレームが変わったとき。#473・#474）。 */
+  refresh(): void { this.draw(); }
+
   /** 再生画面から呼ぶ。nullで、再生前の仮の主人公の配置へ戻る。 */
   setPlayback(state: PlaybackState | null): void { this.playback = state; this.draw(); }
 

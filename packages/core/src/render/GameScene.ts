@@ -15,6 +15,12 @@ export interface SceneActor {
   readonly mark?: RgbaImage | null;
 }
 
+/** マップのブロックの代わりに描くマス（ドアの仮のブロック。#474）。`entries` は 8 個のタイル指定、`mode` は重ね方。 */
+export interface SceneCell {
+  readonly entries: ArrayLike<number>;
+  readonly mode: number;
+}
+
 export interface SceneView {
   readonly x: number;
   readonly y: number;
@@ -29,6 +35,7 @@ export function renderGameScene(
   blockAt: (x: number, y: number) => number | null,
   actors: readonly SceneActor[],
   cfru: boolean,
+  cellAt?: (x: number, y: number) => SceneCell | null,
 ): { readonly image: RgbaImage; readonly unknownBlocks: readonly number[] } {
   if (!Number.isInteger(view.width) || !Number.isInteger(view.height) || view.width < 1 || view.height < 1 || view.width > 4096 || view.height > 4096 || !Number.isFinite(view.x) || !Number.isFinite(view.y)) {
     throw new RangeError("Scene view must have finite coordinates and dimensions from 1 to 4096");
@@ -48,6 +55,12 @@ export function renderGameScene(
     if (plane) {
       for (let y = Math.floor(view.y / 16); y < Math.ceil((view.y + view.height) / 16); y++) {
         for (let x = Math.floor(view.x / 16); x < Math.ceil((view.x + view.width) / 16); x++) {
+          const cell = cellAt?.(x, y);
+          if (cell) {
+            const pixels = renderer.renderGameCell(cell.entries, cell.mode, plane, cfru);
+            if (pixels) blit(image, { width: 16, height: 16, data: pixels }, x * 16 - view.x, y * 16 - view.y);
+            continue;
+          }
           const block = blockAt(x, y);
           if (block === null) continue;
           const pixels = renderer.renderGamePlane(block, plane, cfru);
