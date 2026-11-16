@@ -137,6 +137,7 @@ export class PlacePage {
     this.plan = plan; this.layers = layers;
     this.replace.input.checked = this.options.allowReplace ?? false;
     if (!plan || !layers) return;
+    for (const cell of this.selected) if (cell >= plan.cellBlocks.length || plan.cellBlocks[cell]! < 0) this.selected.delete(cell);
     this.drawSelection();
     const rows = Math.ceil(plan.table.capacity / 8);
     resizePixelCanvas(this.target, 128, rows * 16, 2);
