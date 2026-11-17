@@ -247,6 +247,56 @@ async function editHistoryGoTo(app: App, req: AutomationRequest): Promise<unknow
   return { steps: Math.abs(after - before), ...((await editHistoryState(app)) as object) };
 }
 
+/**
+ * `minimap.state {rebuild?, png?}`: ミニマップの小窓（Phase7 #511）。出しているか `open`、縮小図の大きさ `width`・`height`、
+ * 縮小の割合 `scale`（縮小図の画素 = マップの画素 × scale）、見えている範囲の枠 `frame`（縮小図の画素）、作った回数 `builds`、
+ * 作る時間 `buildMs`、イベントの点の数 `events`、個人設定 `setting`、今のタブのスクロールの位置 `scroll`。`rebuild: true` なら作り直す予約を待たずに
+ * 作り直してから返す。`png: true` なら縮小図の画像（点と枠を含む）を `png`（data URL）で返す。
+ */
+async function minimapState(app: App, req: AutomationRequest): Promise<unknown> {
+  const panel = await app.views.minimap();
+  if (req["rebuild"] === true) panel.rebuild();
+  await new Promise((r) => requestAnimationFrame(() => r(null)));
+  const tab = app.state.tab;
+  const el = tab === "map" || tab === "movement" || tab === "event" ? app.tabs[tab].view.element : null;
+  return {
+    ...panel.snapshot(),
+    setting: app.state.settings.data.minimap,
+    scroll: el ? { left: el.scrollLeft, top: el.scrollTop } : null,
+    ...(req["png"] === true ? { png: panel.toPng() } : {}),
+  };
+}
+
+/** `minimap.click {x, y}`: 縮小図の (x, y) 画素を押す（画面の押下と同じ。その位置を真ん中にスクロールする）。返事は `minimap.state` と同じ。 */
+async function minimapClick(app: App, req: AutomationRequest): Promise<unknown> {
+  const panel = await app.views.minimap();
+  if (!panel.isOpen) throw new Error("ミニマップが開いていません");
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-auto-id="minimap.canvas"]');
+  if (!canvas || canvas.hidden) throw new Error("ミニマップに縮小図が出ていません");
+  const r = canvas.getBoundingClientRect();
+  const init = { clientX: r.left + num(req, "x"), clientY: r.top + num(req, "y"), button: 0, pointerId: 1, bubbles: true };
+  canvas.dispatchEvent(new PointerEvent("pointerdown", init));
+  canvas.dispatchEvent(new PointerEvent("pointerup", init));
+  return minimapState(app, {});
+}
+
+/**
+ * `minimap.town {on}`: 小窓の「タウンマップも出す」のチェックを押したのと同じ（個人設定に残す）。タウンマップを読み込んで描くまで待つ。
+ * 返事は `minimap.state` と同じ（`town` に出しているかと、枠 `frame`・出す範囲 `area`・下の欄の文字 `text`）。
+ */
+async function minimapTown(app: App, req: AutomationRequest): Promise<unknown> {
+  const panel = await app.views.minimap();
+  if (!panel.isOpen) throw new Error("ミニマップが開いていません");
+  const box = document.querySelector<HTMLInputElement>('[data-auto-id="minimap.town"]');
+  const on = req["on"] === true;
+  if (box && box.checked !== on) {
+    box.checked = on;
+    box.dispatchEvent(new Event("change"));
+  }
+  await panel.setTown(on);
+  return minimapState(app, {});
+}
+
 /** 最後に `projectWatch.check` で始めた調べ（自動操作用）。 */
 let watchRun: Promise<unknown> | null = null;
 let watchResult: unknown = null;
@@ -362,6 +412,9 @@ export const viewToolCommands: CommandTable = {
   },
   "mapExport.state": mapExportState,
   "mapExport.run": mapExportRun,
+  "minimap.state": minimapState,
+  "minimap.click": minimapClick,
+  "minimap.town": minimapTown,
   "editHistory.state": editHistoryState,
   "editHistory.goTo": editHistoryGoTo,
   "zoom.state": zoomState,
