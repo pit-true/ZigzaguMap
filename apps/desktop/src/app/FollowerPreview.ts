@@ -190,11 +190,13 @@ async function loadProject(session: ProjectSession): Promise<Project> {
   let promise = projects.get(session);
   if (!promise) {
     promise = (async (): Promise<Project> => {
-      const fs = session.files;
-      const read = async (path: string) => { try { return (await fs.exists(path)) ? await fs.readText(path) : null; } catch { return null; } };
+      // CFRU のソースは直下か cfru/ の下（#543）
+      const cfru = await session.cfruSource();
+      const fs = cfru?.fs ?? null;
+      const read = async (path: string) => { try { return fs && (await fs.exists(path)) ? await fs.readText(path) : null; } catch { return null; } };
       const [source, configH] = await Promise.all([read("src/follower_mon.c"), read("src/config.h")]);
       let dpe: string | null = null, index: FollowerIndex | null = null;
-      try { dpe = session.projectDir ? await dpeDirectoryOf(fs) : null; } catch { dpe = null; }
+      try { dpe = fs ? await dpeDirectoryOf(fs, cfru!.prefix ?? "") : null; } catch { dpe = null; }
       if (dpe !== null) {
         try {
           const [ow32, ow64, pal, header] = await Promise.all([
@@ -207,7 +209,7 @@ async function loadProject(session: ProjectSession): Promise<Project> {
       const status = followerStatus({ project: session.projectDir !== null, followerSource: source, configH, dpe: index !== null, sheets: index?.entries.size ?? 0 });
       const names = new Map<number, string>();
       if (status.enabled) {
-        const species = await loadDpeSpecies(fs);
+        const species = await loadDpeSpecies(fs!, cfru!.prefix ?? "");
         if (species) for (const code of index!.entries.keys()) { const n = species.name(code); if (n) names.set(code, n); }
       }
       return { status, index, dpe, names };

@@ -21,7 +21,7 @@ function assets(session: ProjectSession): Assets {
 /** PNGの読み込みは再生・NPCを始める時だけ行う。描画の関数は同期のままにする。 */
 export async function prepareActorScene(session: ProjectSession): Promise<void> {
   const value = assets(session);
-  value.loading ??= (async () => { value.emotes = session.projectDir ? await ProjectEmotes.read(session.files) : null; value.images.clear(); })();
+  value.loading ??= (async () => { const fs = (await session.cfruSource())?.fs; value.emotes = fs ? await ProjectEmotes.read(fs) : null; value.images.clear(); })();
   await value.loading;
 }
 

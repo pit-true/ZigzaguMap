@@ -1,4 +1,4 @@
-"""CFRU-JP のフォルダを開く（#540）を確かめる。
+"""CFRU-JP のフォルダを開く（#540）と、CFRU のソースの場所（#543 時間帯の色）を確かめる。
 
   python tests/automation/open_folder_check.py --nd <NeoDark-CFRU-main の写し> --chronos <Chronos のルートの写し>
       --rom <素の BPRJ> --work <作業フォルダ> [--exe <zigzagumap.exe>] [--shots <フォルダ>]
@@ -10,7 +10,8 @@
   - `openFolder` で ND・Chronos のルート・Chronos の cfru を開くと、プロジェクトのフォルダとベース ROM が決まり、マップが開ける。
   - メニューから（フォルダのダイアログに答えるだけで）開ける。
   - ベース ROM の候補が複数なら一覧のダイアログ、無ければ ROM を選ぶダイアログ。`openFolder` はエラーで理由を返す。
-  - 開いたフォルダで時間帯を夜にできる（ND・Chronos）。
+  - 時間帯（#543）: ND、Chronos（`openFolder` と、`open` で Chronos のルートをプロジェクトにした形）で夜に変わる。ROM だけなら
+    コンボが使えず、理由を返す。ソースが見つからないフォルダでは、探した場所をエラーに書く。
 """
 from __future__ import annotations
 
@@ -102,6 +103,25 @@ def main() -> int:
                 check(t["ok"] and t["time"] == "night" and t["clock"] == "chronos", f"Chronos の{name}の時間帯は夜に変わる: {t.get('status')}")
                 if shots and name == "ルート":
                     (shots / "chronos_root.png").write_bytes(base64.b64decode(z.call({"cmd": "screenshot"})["png"]))
+
+            # #543: 前の形（Chronos のルートをプロジェクトにした `open`）でも、ソースを cfru/ の下に見つける
+            z.call({"cmd": "open", "rom": str(ch / "base" / "BPRJ0.gba"), "project": str(ch)}, timeout=180)
+            t = night(z)
+            check(t["ok"] and t["time"] == "night" and t["clock"] == "chronos", f"Chronos のルートを open しても夜に変わる: {t.get('status')}")
+
+            # ソースが見つからないフォルダ（ND の親）: 探した場所を出す
+            z.call({"cmd": "open", "rom": str(nd / "BPRJ0.gba"), "project": str(work)}, timeout=180)
+            t = night(z)
+            check(not t["ok"] and t["error"] and "src/config.h" in t["error"] and "cfru/src/config.h" in t["error"] and "探しました" in t["error"],
+                  f"ソースが無いフォルダでは、探した場所を出す: {t.get('error')}")
+
+            # ROM だけ
+            z.call({"cmd": "open", "rom": args.rom}, timeout=180)
+            z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+            st = z.call({"cmd": "view.timeOfDay"})
+            check(st["combo"]["disabled"], "ROM だけのときは時間帯のコンボを使えない")
+            t = z.call({"cmd": "view.timeOfDay", "time": "night"})
+            check(not t["ok"] and t["time"] == "day" and "開くと使えます" in (t["error"] or ""), f"ROM だけのときは理由を返す: {t.get('error')}")
 
             # 候補が複数・無い
             e = error_of(z, {"cmd": "openFolder", "folder": str(many)})
