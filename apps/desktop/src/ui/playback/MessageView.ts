@@ -27,8 +27,9 @@ export async function messageSkin(session: ProjectSession, sign: boolean): Promi
   try {
     const first = rom.u32(o.messageFrameWriter), second = rom.u32(o.messageFrameWriter + 4);
     if (first === 0x4657b5f0 && second === 0x4645464e) style = sign ? "sign" : "vanilla";
-    else if (first === 0xb082b510 && second === 0x94009c02 && await session.files.exists("src/message_box_frame.c")) {
-      const source = (await session.files.readText("src/message_box_frame.c")).replace(/\s+/g, "");
+    else if (first === 0xb082b510 && second === 0x94009c02) {
+      const fs = (await session.cfruSource())?.fs;
+      const source = fs && (await fs.exists("src/message_box_frame.c")) ? (await fs.readText("src/message_box_frame.c")).replace(/\s+/g, "") : "";
       if (source.includes("sLeftTiles[6][2]={{0,1},{3,4},{5,6},{5,6},{7,8},{9,10}}") && source.includes("sRightInnerTiles[6]={12,13,14,14,15,16}") && source.includes("Chronos_FieldTalkWindowWrite")) style = sign ? "sign" : "chronos";
     }
   } catch { return null; }

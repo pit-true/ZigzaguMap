@@ -15,6 +15,7 @@ import {
   type MapId,
 } from "@zigzagumap/core";
 import { jaComposite as t } from "../i18n/ja.composite";
+import { jaCfruFolder } from "../i18n/ja.cfruFolder";
 import { drawEventsOn, placedPerson, type PersonGraphics, type PlacedEvent } from "../ui/map/EventLayer";
 import { personGraphicsId } from "../ui/map/cloneLook";
 import { spriteSourceFor } from "../ui/map/spriteCanvases";
@@ -108,8 +109,10 @@ export class CompositeImage {
       if (!["morning", "day", "evening", "night"].includes(options.time)) throw new Error("時間帯の指定が不正です");
       if (options.time === "day") tint = null;
       else {
-        const fs = session.projectFs();
-        if (!fs) throw new Error("時間帯の色を使うにはプロジェクトを開いてください");
+        const source = await session.cfruSource();
+        if (!source) throw new Error("時間帯の色を使うにはプロジェクトを開いてください");
+        const fs = source.fs;
+        if (!fs) throw new Error(jaCfruFolder.sourceMissing(session.projectDir ?? "", source.searched));
         tint = await (await import("./timeOfDay/dnsTint")).exportTint(fs, options.time);
       }
     }

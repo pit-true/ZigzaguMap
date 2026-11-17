@@ -1,4 +1,4 @@
-/** CFRU-JP のフォルダを開く（#540。ZigzaguMap 独自）の文言。 */
+/** CFRU-JP のフォルダを開く（#540。ZigzaguMap 独自）と、CFRU のソースの場所（#543）の文言。 */
 export const jaCfruFolder = {
   /** ファイル > CFRU-JP のフォルダを開く…（一番上。Ctrl+O）。 */
   menu: "CFRU-JP のフォルダを開く…",
@@ -14,4 +14,7 @@ export const jaCfruFolder = {
   romMissing: (searched: readonly string[]) => `フォルダの中にベース ROM が見つかりません（探した場所: ${searched.join("、")}）`,
   /** 開いたあとのステータスバー。 */
   opened: (project: string, rom: string) => `CFRU-JP のフォルダを開きました: ${project}（ベース ROM: ${rom}）`,
+  /** CFRU のソースが見つからない（#543。どこを探したか）。 */
+  sourceMissing: (root: string, searched: readonly string[]) =>
+    `CFRU のソースが見つかりません（${root} の ${searched.join("・")} を探しました。CFRU-JP のフォルダを開き直してください）`,
 };

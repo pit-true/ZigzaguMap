@@ -1,5 +1,6 @@
 import type { DnsConfig, DnsConfigError, TimeOfDay } from "@zigzagumap/core";
 import { jaTimeOfDay as t } from "../../i18n/ja.timeOfDay";
+import { jaCfruFolder } from "../../i18n/ja.cfruFolder";
 import type { Actions } from "../Actions";
 import type { EditorState } from "../EditorState";
 import type { ProjectSession } from "../ProjectSession";
@@ -17,7 +18,7 @@ export interface TimeOfDayHost {
 }
 
 /** 読み込んだ設定（セッションごと）。 */
-type Loaded = { readonly config: DnsConfig; readonly module: typeof import("./dnsTint") } | { readonly error: DnsConfigError | null };
+type Loaded = { readonly config: DnsConfig; readonly module: typeof import("./dnsTint") } | { readonly error: DnsConfigError | null; readonly text?: string };
 
 /**
  * 時間帯ビューア（Phase6 #434）。表示 > 時間帯とツール欄のコンボで、マップを実機の時間帯の色で見せる。
@@ -57,6 +58,7 @@ export class TimeOfDayView {
       this.syncConfig = null;
       this.lastError = null;
       if (this.current !== "day") this.apply("day", null);
+      this.syncSelect();
     });
     state.on("map", () => {
       this.syncSelect();
@@ -147,8 +149,11 @@ export class TimeOfDayView {
     if (!session) return null;
     if (!this.loaded || this.loaded.session !== session) {
       const value = (async (): Promise<Loaded> => {
-        const fs = session.projectFs();
-        if (!fs) return { error: null };
+        // CFRU のソースは直下か cfru/ の下（#543）。プロジェクトが無ければ使えない理由だけ出す
+        const source = session.cfruSource();
+        if (!source) return { error: null };
+        const { fs, searched } = await source;
+        if (!fs) return { error: { file: searched[0] ?? "src/config.h", message: "" }, text: jaCfruFolder.sourceMissing(session.projectDir ?? "", searched) };
         const module = await import("./dnsTint");
         const r = await module.loadDnsConfig(fs);
         return "config" in r ? { config: r.config, module } : { error: r.error };
@@ -160,7 +165,7 @@ export class TimeOfDayView {
       this.syncConfig = l.config;
       this.lastError = null;
     } else {
-      this.lastError = l.error ? t.unreadable(l.error.file, l.error.line, l.error.message) : t.noProject;
+      this.lastError = l.text ?? (l.error ? t.unreadable(l.error.file, l.error.line, l.error.message) : t.noProjectHint);
       this.state.setStatus(this.lastError, undefined, l.error !== null);
     }
     return l;
@@ -168,6 +173,9 @@ export class TimeOfDayView {
 
   private syncSelect(): void {
     this.select.value = this.current;
-    this.select.disabled = this.state.map === null;
+    // ROM だけのときは、色の表が無いので選べなくし、理由を出す（#543）
+    const project = this.state.session?.projectDir != null;
+    this.select.disabled = this.state.map === null || !project;
+    this.select.title = project || this.state.map === null ? t.comboHint : t.noProjectHint;
   }
 }
