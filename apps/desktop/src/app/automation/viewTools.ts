@@ -372,7 +372,7 @@ async function mapExportState(app: App): Promise<unknown> {
 async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown> {
   const { openMapExport } = await import("../../ui/export/MapExportDialog");
   const d = openMapExport();
-  if (!d) throw new Error("マップの画像の書き出しの窓が開いていません");
+  if (!d) throw new Error("マップの画像の書き出しのウィンドウが開いていません");
   await d.settle();
   const action = req["action"];
   if (action === "save") return d.save();
@@ -405,7 +405,7 @@ async function allSettingsState(): Promise<unknown> {
 async function allSettingsSave(): Promise<unknown> {
   const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
   const d = openAllSettings();
-  if (!d) throw new Error("すべての設定の窓が開いていません");
+  if (!d) throw new Error("すべての設定のウィンドウが開いていません");
   await d.ready;
   const ok = await d.saveProject();
   return { ok, ...((await allSettingsState()) as object) };

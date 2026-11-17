@@ -7,7 +7,7 @@ import { ini } from "./ini";
  */
 export const jaCommands = {
   title: "履歴",
-  menu: "履歴の窓",
+  menu: "履歴のウィンドウ",
   /** いちばん下の行（何もしていない状態）。 */
   initial: "（最初の状態）",
   empty: "まだ操作がありません",

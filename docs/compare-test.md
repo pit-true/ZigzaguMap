@@ -1,6 +1,6 @@
 # 比較テスト
 
-AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の状態（マップ表示領域の画像、入力欄・一覧の値、ダイアログの有無）を比べます（`tests/compare`）。出力まで進めることは確かめますが、出力物の中身は比べません。Windows だけで動きます。
+AdvanceMap 1.92 日本語バージョンと ZigzaguMap に同じ操作をさせ、途中の状態（マップ表示領域の画像、入力欄・一覧の値、ダイアログの有無）を比べます（`tests/compare`）。出力まで進めることは確かめますが、出力物の中身は比べません。Windows だけで動きます。
 
 - AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
@@ -8,7 +8,7 @@ AdvanceMap 1.92 日本語版と ZigzaguMap に同じ操作をさせ、途中の�
 
 ## 準備
 
-1. リポジトリの外に作業フォルダを作り、AdvanceMap 1.92 日本語版のコピーと素の BPRJ のコピーを置きます（AdvanceMap 本体・ROM・画面キャプチャはリポジトリに入れません）。
+1. リポジトリの外に作業フォルダを作り、AdvanceMap 1.92 日本語バージョンのコピーと素の BPRJ のコピーを置きます（AdvanceMap 本体・ROM・画面キャプチャはリポジトリに入れません）。
 2. `pip install -r tools/am-harness/requirements.txt`（Pillow と numpy。仮想環境はリポジトリ外か `.venv`）。
 3. `tests/compare/local.config.example.json` を `tests/compare/local.config.json` にコピーし、パスを直します（`.gitignore` 対象）。環境変数でも上書きできます。
 
@@ -51,9 +51,9 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 {"op": "compareFields", "fields": ["status.left", "title.map", "map.size"]}
 ```
 
-- 別の窓の部品は `screen` に AdvanceMap のフォームのクラス名（`TBlockEditorForm`・`TPalettenForm`・`TBlockdatenAnpassenForm`・`TWeltkarteForm`・`TAnbindungenForm`・`TMapForm`・`TMapEinfuegenForm`・`TMapBankHeaderForm`・`TCreateWildePokemonForm`）で書きます。AdvanceMap では窓をクラス名で探し、ZigzaguMap では別ウィンドウかメインの中のダイアログへ送ります（`lib/screens.py`）。
+- 別のウィンドウの部品は `screen` に AdvanceMap のフォームのクラス名（`TBlockEditorForm`・`TPalettenForm`・`TBlockdatenAnpassenForm`・`TWeltkarteForm`・`TAnbindungenForm`・`TMapForm`・`TMapEinfuegenForm`・`TMapBankHeaderForm`・`TCreateWildePokemonForm`）で書きます。AdvanceMap ではウィンドウをクラス名で探し、ZigzaguMap では別ウィンドウかメインの中のダイアログへ送ります（`lib/screens.py`）。
 - 欄は `field:<部品名>`（値）と `enabled:<部品名>`（押せる・入力できるか）。AdvanceMap に同じ名前の部品が複数あるとき（イベントの各フレームの `Txt_PosX`、野生と場所の設定の `Cbo_Typ` など）は、表示中のもの、その中でフォームが直接持つものを使います。表示していないタブのページの部品は、そのページへ切り替えて読み書きし、元のページへ戻します。
-- コンボの選択は位置（番号）で書きます。入力ダイアログは `answerDialog` の `input`、× は `button: "close"`、ファイルを選ぶダイアログは `answerFile`（結果フォルダの中の名前。`null` で取り消し）。別の窓のメニューは `menu` に `screen` と AdvanceMap の文言の `path`、ZigzaguMap のアクション ID の `zigzagu` を書きます。部品の中のクリックは `clickComp`、部品の画像は `snapshot` の `target: "comp"`、両アプリが書いた画像ファイルは `compareFile` で比べます。
+- コンボの選択は位置（番号）で書きます。入力ダイアログは `answerDialog` の `input`、× は `button: "close"`、ファイルを選ぶダイアログは `answerFile`（結果フォルダの中の名前。`null` で取り消し）。別のウィンドウのメニューは `menu` に `screen` と AdvanceMap の文言の `path`、ZigzaguMap のアクション ID の `zigzagu` を書きます。部品の中のクリックは `clickComp`、部品の画像は `snapshot` の `target: "comp"`、両アプリが書いた画像ファイルは `compareFile` で比べます。
 
 操作の一覧と各アプリでの実現方法は `--list-ops` で出ます（定義は `tests/compare/lib/ops.py`、変換は `lib/drivers.py`）。ZigzaguMap のクリックやドラッグは自動操作の入口の `mouse`（画面と同じ処理を通る）、入力欄とボタンは `setField` / `click` の `field:<AdvanceMap の部品名>`、ダイアログは `dialogs` / `dialog` で行います。
 
@@ -72,7 +72,7 @@ python tests/compare/file_issues.py <結果フォルダ>   # 失敗したシナ�
 
 表示の見え方:
 
-- AdvanceMap は比較のために大きな窓（2400×1600）で動かしているので、スクロールを比べるシナリオは先に `resizeWindow`（`width`・`height`）で両アプリの窓の大きさをそろえます。`scrollView`（`target`、`to`: `end` / `start`）で表示領域のスクロールバーを端へ動かし、`compareFields` の `view.scroll:<target>` で横・縦のスクロールバーが出ていて使えるかを比べます（AdvanceMap は枠のウィンドウの WS_HSCROLL / WS_VSCROLL、ZigzaguMap は自動操作の `view.scroll`）。大きいマップ（3.6）と 2 倍表示で、はみ出した部分までスクロールできることを確かめます（`S56_view_scroll`）。
+- AdvanceMap は比較のために大きなウィンドウ（2400×1600）で動かしているので、スクロールを比べるシナリオは先に `resizeWindow`（`width`・`height`）で両アプリのウィンドウの大きさをそろえます。`scrollView`（`target`、`to`: `end` / `start`）で表示領域のスクロールバーを端へ動かし、`compareFields` の `view.scroll:<target>` で横・縦のスクロールバーが出ていて使えるかを比べます（AdvanceMap は枠のウィンドウの WS_HSCROLL / WS_VSCROLL、ZigzaguMap は自動操作の `view.scroll`）。大きいマップ（3.6）と 2 倍表示で、はみ出した部分までスクロールできることを確かめます（`S56_view_scroll`）。
 - `export` に `dir` を付けると、ZigzaguMap はその名前のフォルダ（結果フォルダの中）へ出力します。`output.files:<dir>` は ZigzaguMap が書いたファイルの一覧で、`only: "zigzagu"` と `expected` で確かめます（`S57_export_to_other_folder`）。
 
 入力欄の値は、全角・半角の空白、16 進の大文字小文字、先頭の `$` や `0x` をそろえてから比べます。
@@ -90,7 +90,7 @@ Phase1 のフィードバック（issue #169〜#181）で AdvanceMap と違う�
 - `summary.md` / `summary.json`: シナリオごとの判定と件数、失敗の中身
 - `<シナリオ>/report.md`: ステップごとの両者の状態、値の対応表、画像のパス
 - `<シナリオ>/<名前>.diff.png`: 左 AdvanceMap、中 ZigzaguMap、右 差分（赤 = 違う画素、黄の枠 = 違うマス）
-- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットと窓全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
+- `<シナリオ>/advancemap/`・`zigzagu/`: 各スナップショットとウィンドウ全体の画像、`steps.json`（AdvanceMap 側の `mutedSounds` は、止めた効果音の関数が呼ばれた回数）
 
 判定は「合格」（比べたものがすべて同じか、シナリオに理由を書いた仕様上の違いだけ）、「失敗」（違う、または ZigzaguMap がエラーを返した）、「未対応」（失敗はないが、比べられない手順がある）、「エラー」（AdvanceMap 側の操作が通らなかった。テスト側の問題）、「保留」（要判断の結論待ちの違いがある）です。
 

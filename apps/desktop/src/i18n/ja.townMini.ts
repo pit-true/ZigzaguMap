@@ -6,7 +6,7 @@ const place = (region: number, name: string | null) => `${hex(region, 2)} ${name
 /** タウンマップの小窓（#306・#386）の文言（ZigzaguMap 独自）。 */
 export const jaTownMini = {
   /** 表示メニューの項目と小窓の題名。 */
-  menu: "タウンマップの小窓",
+  menu: "タウンマップのウィンドウ",
   title: "タウンマップ",
   /** 面（タウンマップNo の 1〜4）。 */
   pages: ["1: カントー", "2: 1〜3のしま", "3: 4〜5のしま", "4: 6〜7のしま"] as readonly string[],
@@ -23,7 +23,7 @@ export const jaTownMini = {
   none: "マップを開いていません",
   /** ROM のデータにも紐づけにも無いとき。 */
   noLink: (region: number | null, name: string | null) =>
-    `紐づけがありません（${region === null ? "地名なし" : `地名 ${place(region, name)}`}）。小窓を右クリックして「ここに紐づける」を選んでください`,
+    `紐づけがありません（${region === null ? "地名なし" : `地名 ${place(region, name)}`}）。ウィンドウを右クリックして「ここに紐づける」を選んでください`,
   /** 右クリックのメニュー。 */
   linkSection: (region: number, name: string | null) => `今の地名（${place(region, name)}）をここに紐づける`,
   linkSectionNone: "今の地名をここに紐づける（今のマップに地名がありません）",
@@ -44,5 +44,5 @@ export const jaTownMini = {
   shortcutMenu: "そのマスに今の地名・今のマップを紐づける、紐づけを外す（ZigzaguMap の画面だけで使う位置）",
   shortcutDragKeys: "右ドラッグ",
   shortcutDrag: "範囲（複数のマス）を選び、離すと紐づけのメニューを出す",
-  shortcutWhere: "タウンマップの小窓",
+  shortcutWhere: "タウンマップのウィンドウ",
 };

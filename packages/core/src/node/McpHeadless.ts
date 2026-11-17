@@ -98,7 +98,7 @@ export async function openHeadlessWorkspace(options: HeadlessOptions): Promise<H
   } catch {
     supported = false;
   }
-  if (!supported) throw new Error(`ファイアレッド日本語版（BPRJ）の ROM ではありません: ${options.rom}`);
+  if (!supported) throw new Error(`ファイアレッド日本語バージョン（BPRJ）の ROM ではありません: ${options.rom}`);
   const projectDir = await realpath(options.project).catch(() => {
     throw new Error(`プロジェクトフォルダがありません: ${options.project}`);
   });

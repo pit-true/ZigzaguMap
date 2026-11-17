@@ -41,7 +41,7 @@ export interface MinimapDeps {
   closed(): void;
   /** 地名の番号から名前（無ければ null）。 */
   regionName(region: number): string | null;
-  /** タウンマップの小窓の紐づけ（小窓を作っていれば）。 */
+  /** タウンマップのウィンドウの紐づけ（ウィンドウを作っていれば）。 */
   townLinks(): TownLinkStore | null;
 }
 
