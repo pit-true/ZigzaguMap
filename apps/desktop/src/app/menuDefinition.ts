@@ -1,6 +1,7 @@
 import { fileNameOf } from "./FileDialogs";
 import type { SettingsData } from "./Settings";
 import { ja } from "../i18n/ja";
+import { jaCfruFolder } from "../i18n/ja.cfruFolder";
 import { jaNeighbors } from "../i18n/ja.neighbors";
 import { jaTimeOfDay } from "../i18n/ja.timeOfDay";
 import { jaComposite } from "../i18n/ja.composite";
@@ -85,8 +86,9 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
       label: ja.menuFile,
       accel: "Z",
       children: [
+        // CFRU-JP のフォルダを開く（#540。一番上。フォルダの中のベース ROM も開く）。「ROM を開く」は AdvanceMap と同じく残す
+        { id: "file.openProject", label: jaCfruFolder.menu, accel: "P" },
         { id: "file.open", label: ja.openRom, accel: "R" },
-        { id: "file.openProject", label: ja.openProject, accel: "P" },
         { id: "file.reload", label: ja.reloadRom, accel: "O" },
         sep,
         { id: "file.export", label: ja.exportMaps, accel: "M" },

@@ -62,7 +62,9 @@ const menu = (id: string, key: KeyChord, areas: readonly KeyArea[] = MAIN): KeyA
 
 /** 表（メニューの順 → メニューに無い操作の順）。 */
 export const KEY_ACTIONS: readonly KeyAction[] = [
-  menu("file.open", c("O")),
+  // #540: Ctrl+O は CFRU-JP のフォルダを開く。ROM を開くは Ctrl+Shift+O へ移した
+  menu("file.openProject", c("O")),
+  menu("file.open", { key: "O", ctrl: true, shift: true }),
   menu("file.reload", k("F5")),
   menu("file.export", c("S"), ANYWHERE),
   menu("view.grid", c("G")),

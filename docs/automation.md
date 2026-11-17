@@ -102,6 +102,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | cmd | 引数 | 動作 |
 |---|---|---|
 | `open` | `rom`、`project`（省略可）、`ask`（省略可） | ROM（とプロジェクトフォルダ）を開く。返事は `state` と同じ。ダイアログは出さない: 開けない（無いフォルダ・ROM でないファイルなど）ときと、未出力の変更やスクリプトエディタの未保存のファイルがある（画面からなら「出力しますか？」などと聞く）ときは、エラーで返し、開いていたものはそのまま残す（#380）。`ask: true` なら画面からと同じくダイアログで聞く（確認のテスト用。答えるまで返事は返らないので、別の接続から `dialog` で答える） |
+| `openFolder` | `folder`、`rom`（省略可）、`ask`（省略可） | CFRU-JP のフォルダを開く（#540。ファイル > CFRU-JP のフォルダを開く… と同じ）。`folder` からプロジェクトのフォルダとベース ROM を見つけて開く。返事は `state` と同じ（`project` が見つけたプロジェクトのフォルダ、`rom` がベース ROM）。ダイアログは出さず、ベース ROM の候補が複数で決められない・1 つも無いときは、候補や探した場所を書いたエラーで返す（`rom` を渡せばそれを使う）。開けないときと未出力の変更の扱いは `open` と同じ |
 | `selectMap` | `bank`、`map` | マップを開く。返事の `switchMs` は切り替えにかかった時間 |
 | `tab` | `name`（`map` / `movement` / `event` / `wild` / `header`） | タブを切り替える |
 | `command` | `name`、`args` | CommandRegistry のコマンドを実行する（例: `{"cmd":"command","name":"paintBlocks","args":{"bank":3,"map":0,"cells":[{"x":5,"y":5,"block":9}]}}`）。`group` の中や `targets` で 2 枚以上のマップを変えるときは、そのマップも先に読み込む。変わったマップには全部未出力の印が付く |

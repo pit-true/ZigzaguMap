@@ -81,6 +81,29 @@ pub fn is_dir(path: String) -> bool {
     std::path::Path::new(&path).is_dir()
 }
 
+/// フォルダの中の 1 つ（`scan_folder` の答え）。
+#[derive(serde::Serialize)]
+pub struct FolderEntry {
+    name: String,
+    dir: bool,
+}
+
+/// フォルダの中の名前と、フォルダかどうか（#540 CFRU-JP のフォルダを開く。ベース ROM を探す）。読むだけで、下の階層へは潜らない。
+/// フォルダでなければ None。
+#[tauri::command]
+pub fn scan_folder(path: String) -> Option<Vec<FolderEntry>> {
+    let entries = std::fs::read_dir(&path).ok()?;
+    Some(
+        entries
+            .filter_map(Result::ok)
+            .map(|e| FolderEntry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                dir: e.file_type().map(|t| t.is_dir()).unwrap_or(false),
+            })
+            .collect(),
+    )
+}
+
 /// 個人設定を読む。無ければ空文字。置き場所はプロファイルで決まる（`--profile`、自動操作なら一時フォルダ）。
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> String {
