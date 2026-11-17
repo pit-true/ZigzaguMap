@@ -208,7 +208,16 @@ function equsOf(text: string): Map<string, string> {
     const line = parseAsmLine(raw, inBlock);
     inBlock = line.endsInBlockComment;
     const equ = asmEquDefinition(line);
-    if (equ && !out.has(equ.name)) out.set(equ.name, equ.value);
+    if (equ && !out.has(equ.name)) out.set(ownString(equ.name), ownString(equ.value));
   }
   return out;
+}
+
+/**
+ * 切り出した文字列を、元の本文から離した写しにする。
+ * V8 は長さ 13 以上の切り出しを元の文字列への参照で持つので、そのまま索引に入れると `.s` の本文が丸ごと残る
+ * （Chronos の attack_anim_table.s の 1.2MB など。#534 でヒープのスナップショットから見つけた）。
+ */
+function ownString(s: string): string {
+  return (" " + s).slice(1);
 }
