@@ -88,6 +88,9 @@ export class MapExtras {
     this.blockUsage = new BlockUsageService(state);
     // ミキシングバッグで描くときの移動許可（#236）
     mapTab.painter.usage = this.blockUsage;
+    // 範囲を動かした跡の移動許可（Phase7 #516）
+    mapTab.painter.select.usage = this.blockUsage;
+    this.tabs.movement.painter.select.usage = this.blockUsage;
     // 画像のコピー（#246）: ツール > マップの画像をコピー／接続している全マップの画像をコピー
     this.composite = new CompositeImage(state);
     for (const whole of [false, true]) {

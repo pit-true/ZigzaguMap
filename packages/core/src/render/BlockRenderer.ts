@@ -5,6 +5,15 @@ import { createImage, writeBgr555, type RgbaImage } from "./color.js";
 
 /** ブロック 1 個の一辺のピクセル数。 */
 export const BLOCK_PIXELS = 16;
+/** 描くレイヤー（Phase7 #513。ビットの組み合わせ）: 下のレイヤー。 */
+export const LAYER_BOTTOM = 1;
+/** 上のレイヤー。 */
+export const LAYER_TOP = 2;
+/** トリプルレイヤーの 3 枚目。 */
+export const LAYER_THIRD = 4;
+/** 全部のレイヤー（既定。今までと同じ絵）。 */
+export const ALL_LAYERS = LAYER_BOTTOM | LAYER_TOP | LAYER_THIRD;
+
 /** ブロック 1 個の RGBA バイト数。 */
 const BLOCK_RGBA_BYTES = BLOCK_PIXELS * BLOCK_PIXELS * 4;
 
@@ -27,11 +36,14 @@ export class BlockRenderer {
   /**
    * `tinted` は、時間帯の色に変えた後の 256 色（BGR555。Phase6 #433）。上のレイヤーを透かす判定は変える前の色で比べる
    * （時間帯の計算は 1 対 1 でなく、別の色が同じ色になることがあるため）。省けば今までと同じ絵になる。
+   * `layers` は描くレイヤー（Phase7 #513。LAYER_BOTTOM などの組み合わせ）。外したレイヤーは描かない（下を外すと背景色の上に上を重ねる）。
+   * 省けば全部で、今までと同じ絵になる。`render`・`blit` だけに適用し、実機の BG の絵（`renderGamePlane` など）には適用しない。
    */
   constructor(
     private readonly primary: Tileset,
     private readonly secondary: Tileset,
     tinted?: ArrayLike<number>,
+    readonly layers: number = ALL_LAYERS,
   ) {
     for (let pal = 0; pal < 16; pal++) {
       const source = pal < PRIMARY_PALETTE_COUNT ? primary.palettes : secondary.palettes;
@@ -133,7 +145,9 @@ export class BlockRenderer {
     const base = (isPrimary ? blockId : blockId - PRIMARY_BLOCK_COUNT) * 8;
     if (base + 8 > defs.length) return out;
 
+    const layers = this.layers;
     for (let layer = 0; layer < 2; layer++) {
+      if ((layers & (layer === 0 ? LAYER_BOTTOM : LAYER_TOP)) === 0) continue;
       for (let part = 0; part < 4; part++) {
         const entry = defs[base + layer * 4 + part]!;
         this.drawTile(out, entry, (part & 1) * 8, (part >> 1) * 8, layer === 0);
@@ -141,7 +155,7 @@ export class BlockRenderer {
     }
     const table = isPrimary ? this.primary : this.secondary;
     const local = base / 8;
-    if (isTripleLayer(localAttribute(table, local))) {
+    if ((layers & LAYER_THIRD) !== 0 && isTripleLayer(localAttribute(table, local))) {
       const third = thirdLayerLocal(table, local);
       if (third !== null) {
         for (let part = 0; part < 4; part++) this.drawTile(out, defs[third * 8 + part]!, (part & 1) * 8, (part >> 1) * 8, false);

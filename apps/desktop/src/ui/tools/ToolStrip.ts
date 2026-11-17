@@ -4,12 +4,12 @@ import { PAINT_TOOLS, brushSetting, currentTool, setBrush, setPaintTool, setSmar
 import { jaTools } from "../../i18n/ja.tools";
 import "../../styles/tools.css";
 
-const LABELS: Readonly<Record<PaintTool, string>> = { pencil: jaTools.pencil, fill: jaTools.fill, shift: jaTools.shift };
-const HINTS: Readonly<Record<PaintTool, string>> = { pencil: jaTools.pencilHint, fill: jaTools.fillHint, shift: jaTools.shiftHint };
+const LABELS: Readonly<Record<PaintTool, string>> = { pencil: jaTools.pencil, fill: jaTools.fill, shift: jaTools.shift, select: jaTools.select };
+const HINTS: Readonly<Record<PaintTool, string>> = { pencil: jaTools.pencilHint, fill: jaTools.fillHint, shift: jaTools.shiftHint, select: jaTools.selectHint };
 
 /**
  * 道具の帯（Phase5 #388。Q1 の推奨）。マップタブと移動エリアタブの右の欄の上に置く（AdvanceMap と比べるマップ表示の領域にはかけない）。
- * 鉛筆・塗り・シフトのボタン（N・B・S でも切り替え）と、マップタブだけスマートパスのチェック（#389）。
+ * 鉛筆・塗り・シフト・選択のボタン（N・B・S・M でも切り替え。選択は Phase7 #516）と、マップタブだけスマートパスのチェック（#389）。
  * 部品の ID は `tools.<タブ>.<道具>`（例: `tools.map.fill`）と `tools.smartPath`。
  * Phase7 #515: 鉛筆のブラシの大きさ（1〜9）と形の欄（`tools.<タブ>.brushSize`・`tools.<タブ>.brushShape`）。両方のタブで同じ値。
  */

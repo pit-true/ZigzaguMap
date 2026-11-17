@@ -130,6 +130,16 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 
+/* 範囲の選択（Phase7 #516）: 点線の枠 */
+.map-select-frame {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 1px dashed #ffffff;
+  outline: 1px dashed #000000;
+  outline-offset: -2px;
+}
+
 /* 円のブラシ（Phase7 #515）: 縁を消し、描くマスの外周を SVG の線で描く */
 .map-cursor-frame.shaped {
   border: none;
