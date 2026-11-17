@@ -23,6 +23,7 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from mcp_client import McpClient  # noqa: E402
 from zz import REPO, Zigzagu  # noqa: E402
 
 failures: list[str] = []
@@ -32,51 +33,6 @@ def check(cond: bool, what: str) -> None:
     print(("OK   " if cond else "失敗 ") + what)
     if not cond:
         failures.append(what)
-
-
-class McpProcess:
-    """MCP サーバーを子プロセスで動かし、1 行 1 通でやり取りする。"""
-
-    def __init__(self, mjs: pathlib.Path, profile: pathlib.Path):
-        self.proc = subprocess.Popen(["node", str(mjs), "--profile", str(profile)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.DEVNULL, encoding="utf-8")
-        self.next = 0
-
-    def request(self, method: str, params: dict | None = None) -> dict:
-        self.next += 1
-        msg = {"jsonrpc": "2.0", "id": self.next, "method": method, **({"params": params} if params is not None else {})}
-        self.proc.stdin.write(json.dumps(msg, ensure_ascii=False) + "\n")
-        self.proc.stdin.flush()
-        line = self.proc.stdout.readline()
-        reply = json.loads(line)
-        assert reply.get("id") == self.next, reply
-        return reply
-
-    def notify(self, method: str) -> None:
-        self.proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": method}) + "\n")
-        self.proc.stdin.flush()
-
-    def call(self, name: str, args: dict | None = None) -> tuple[bool, object]:
-        """道具を呼ぶ。(失敗したか, 中身) を返す。中身は JSON の文字なら読んだ値、画像なら content のまま。"""
-        r = self.request("tools/call", {"name": name, "arguments": args or {}})
-        result = r["result"]
-        content = result["content"]
-        if content and content[0]["type"] == "text":
-            text = content[0]["text"]
-            try:
-                value: object = json.loads(text)
-            except json.JSONDecodeError:
-                value = text
-        else:
-            value = content
-        return bool(result.get("isError")), value
-
-    def close(self) -> None:
-        self.proc.stdin.close()
-        try:
-            self.proc.wait(10)
-        except subprocess.TimeoutExpired:
-            self.proc.kill()
 
 
 def raw_post(port: int, headers: dict[str, str], body: dict) -> int:
@@ -120,7 +76,7 @@ def main() -> int:
     with Zigzagu(a.exe, profile=profile) as z:
         z.call({"cmd": "open", "rom": a.rom, "project": str(project)})
         check(not info_path.exists(), "窓口がオフの間は mcp.json が無い")
-        mcp = McpProcess(mjs, profile)
+        mcp = McpClient(mjs, "--profile", str(profile))
         try:
             init = mcp.request("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "mcp_bridge_check", "version": "1"}})
             check(init["result"]["serverInfo"]["name"] == "zigzagumap", "initialize に答える")

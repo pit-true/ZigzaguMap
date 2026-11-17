@@ -46,6 +46,13 @@ export const pathDrawCommands: CommandTable = {
     return { result, state: panel.state() };
   },
   "pathDraw.state": async app => (await app.playback.existingPathDraw())?.state() ?? { open: false },
+  // 窓を動かす（left・top はメインの画面の中の画素）。返事は pathDraw.state と同じ（position が動かした先）
+  "pathDraw.move": async (app, req) => {
+    const panel = await app.playback.existingPathDraw();
+    if (!panel?.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    panel.moveTo(int(req, "left"), int(req, "top"));
+    return panel.state();
+  },
   "pathDraw.close": async app => { (await app.playback.existingPathDraw())?.close(); return { open: false }; },
   // 1 歩・向きだけ（face: true）・ドラッグと同じくマスまで（to: {x, y}）
   "pathDraw.step": async (app, req) => {

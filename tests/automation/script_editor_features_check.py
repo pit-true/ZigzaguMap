@@ -364,8 +364,17 @@ def main() -> int:
 
         # ---- #520 全ファイル検索（Ctrl+Shift+F） ----
         ed(z, "editor.activate", path=rel)
+        # 直前のホバー（gText_ZzHello）を閉じる。Chronos では出たままだと Ctrl+Shift+F が欄を開かない（#538 で調べる）
+        ed(z, "editor.closeHover")
         ed(z, "editor.key", key="F", ctrl=True, shift=True)
-        check(ed(z, "search.projectState")["open"], "Ctrl+Shift+F で下の欄に全ファイル検索を出す")
+        # 欄は初めて開くときに読み込むので、出るまで少し待つ
+        opened = False
+        for _ in range(30):
+            opened = ed(z, "search.projectState")["open"]
+            if opened:
+                break
+            time.sleep(0.1)
+        check(opened, "Ctrl+Shift+F で下の欄に全ファイル検索を出す" + ("" if opened else f"（開いている窓: {ed(z, 'dialogs')}、{ed(z, 'editor.state').get('active')}）"))
         r = ed(z, "search.project", text="EventScript_ZzSub", wholeWord=True, caseSensitive=False, regexp=False, scope="all")
         lines = {f["path"]: [l["line"] for l in f["lines"]] for f in r["files"]}
         check(list(lines) == [rel] and len(lines[rel]) == 3 and r["error"] is None and not r["truncated"], f"ラベルの名前を探すとファイルごとに一致した行が出る（{lines}）")

@@ -271,7 +271,7 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     check(field(z, "help.doc")["value"] == "README.md", "戻り先のリンクで README へ戻る")
     back_at = z.call({"cmd": "view.scroll", "id": "help.content"})["scrollTop"]
     check(abs(back_at - scrolled) <= 2, f"README の離れたときの位置へ戻る（{scrolled} → {back_at}）")
-    for name in ("guide", "map-editing", "tilesets", "script-editor", "time-and-wild", "reference", "development"):
+    for name in ("guide", "map-editing", "tilesets", "script-editor", "time-and-wild", "reference", "development", "mcp"):
         path = f"docs/{name}.md"
         z.call({"cmd": "click", "id": f"help.link:{path}"})
         check(field(z, "help.doc")["value"] == path, f"分割した文書をヘルプ内で開く: {name}")
@@ -285,6 +285,8 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     time.sleep(0.2)
     check(field(z, "help.doc")["value"] == "shortcuts.md", "ショートカット一覧を開く")
     check(not has_id(z, "help.home"), "メニューから開いた文書には戻り先のリンクを出さない")
+    titles = [d["title"] for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
+    check(titles[-1:] == ["ショートカット一覧"], f"dialogs の題も開いている文書の題（{titles}）")
     save_png(z.call({"cmd": "screenshot"}), shot("09_help_shortcuts.png"))
     z.call({"cmd": "click", "id": "help.close"})
 

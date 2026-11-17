@@ -18,6 +18,8 @@ export interface CoreMcpWorkspaceOptions {
   readonly exportTouchesScripts?: () => boolean;
   /** 道具を動かす前に呼ぶ（使用中の印を読み直す）。 */
   readonly beforeCall?: () => Promise<void>;
+  /** 許可が無いときの案内の文（McpWorkspace の permissionHint。省略で ZigzaguMap の設定を案内する）。 */
+  readonly permissionHint?: (kind: "write" | "export") => string;
 }
 
 /**
@@ -111,5 +113,9 @@ export class CoreMcpWorkspace implements McpWorkspace {
 
   writeBlocked(): string | null {
     return this.options.writeBlocked?.() ?? null;
+  }
+
+  permissionHint(kind: "write" | "export"): string | undefined {
+    return this.options.permissionHint?.(kind);
   }
 }

@@ -65,6 +65,8 @@ export interface McpWorkspace {
   permissions(): McpPermissions;
   /** 書き換えと出力を断る理由（画面なしの形で、ZigzaguMap が同じプロジェクトを開いているときなど）。無ければ null。 */
   writeBlocked(): string | null;
+  /** 許可が無いときに、どうすれば許せるかの文（省略で ZigzaguMap の 設定 > MCP の窓口 の項目を案内する。画面なしの形は起動の引数）。 */
+  permissionHint?(kind: "write" | "export"): string | undefined;
   /** 書き換え・出力をしたことを知らせる（画面のステータスバー）。 */
   notify?(text: string): void;
   /** 道具を動かす前に状態を読み直す（画面なしの形が使用中の印を読む）。 */
@@ -126,8 +128,10 @@ export class McpToolRunner {
     const blocked = this.ws.writeBlocked();
     if (blocked) throw new McpToolError(blocked);
     const p = this.ws.permissions();
-    if (kind === "write" && !p.write) throw new McpToolError(`${KIND_TEXT.write}は許可されていません。ZigzaguMap の 設定 > MCP の窓口 で「AI にマップの書き換えを許す」をオンにしてください。`);
-    if (kind === "export" && !p.export) throw new McpToolError(`${KIND_TEXT.export}は許可されていません。ZigzaguMap の 設定 > MCP の窓口 で「AI に出力を許す」をオンにしてください。`);
+    const hint = (k: "write" | "export"): string =>
+      this.ws.permissionHint?.(k) ?? `ZigzaguMap の 設定 > MCP の窓口 で「${k === "write" ? "AI にマップの書き換えを許す" : "AI に出力を許す"}」をオンにしてください。`;
+    if (kind === "write" && !p.write) throw new McpToolError(`${KIND_TEXT.write}は許可されていません。${hint("write")}`);
+    if (kind === "export" && !p.export) throw new McpToolError(`${KIND_TEXT.export}は許可されていません。${hint("export")}`);
   }
 
   private current(): { id: MapId; doc: MapDocument } {

@@ -64,6 +64,8 @@ export interface PathDrawState {
   readonly target?: PathDrawTarget | null;
   readonly mode?: PathDrawMode;
   readonly label?: string;
+  /** 窓の左上（メインの画面の中の画素）。 */
+  readonly position?: { readonly left: number; readonly top: number };
 }
 
 const ARROWS: Readonly<Record<string, MovementDirection>> = { ArrowDown: "down", ArrowUp: "up", ArrowLeft: "left", ArrowRight: "right" };
@@ -140,6 +142,7 @@ export class PathDrawPanel {
     this.build();
     this.listen();
     this.refresh();
+    this.place();
     const label = this.fields.label;
     label.value = "";
     const frame = this.frame;
@@ -194,7 +197,32 @@ export class PathDrawPanel {
       target: this.target, mode: this.fields.modeReplace.checked ? "replace" : "new", label: this.fields.label.value,
       ops: this.ops.ops, values: this.values, rows: this.ops.ops.map(op => this.rowText(op)), problems: this.problems,
       canUndo: this.ops.canUndo, canRedo: this.ops.canRedo,
+      position: { left: this.frame.box.offsetLeft, top: this.frame.box.offsetTop },
     };
+  }
+
+  /** 窓を動かす（左上の画素。メインの画面からはみ出さないように詰める）。 */
+  moveTo(left: number, top: number): void {
+    const box = this.frame?.box;
+    if (!box) return;
+    const maxLeft = Math.max(0, window.innerWidth - box.offsetWidth), maxTop = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.left = `${Math.round(Math.min(Math.max(0, left), maxLeft))}px`;
+    box.style.top = `${Math.round(Math.min(Math.max(0, top), maxTop))}px`;
+  }
+
+  /**
+   * 初めの位置。ふだんは左のマップ一覧の上（右のイベントの欄を隠さない）。始めの位置のまわり（5 マス）が窓に隠れるときは、
+   * マップの表示の右端に寄せる（1 倍の表示で、マップの左の数マスを隠しがちだったため）。
+   */
+  private place(): void {
+    const box = this.frame?.box, view = this.host;
+    if (!box || !view) return;
+    const area = view.element.getBoundingClientRect(), stage = view.stage.getBoundingClientRect();
+    const size = view.cellSize, origin = view.originPx;
+    const cx = stage.left + origin.x + (this.start.x + 0.5) * size, cy = stage.top + origin.y + (this.start.y + 0.5) * size;
+    const r = box.getBoundingClientRect(), pad = size * 5;
+    const hides = cx + pad > r.left && cx - pad < r.right && cy + pad > r.top && cy - pad < r.bottom;
+    if (hides) this.moveTo(area.right - r.width - 20, r.top);
   }
 
   /** 1 歩（向きだけなら face）。 */

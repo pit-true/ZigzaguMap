@@ -242,7 +242,10 @@ def check_clock(z, frame, still):
 
 
 def check_playback_doors(z, x, y, scene, shots, project):
-    """再生の opendoor・waitdoor（0xAE）・closedoor: 20 フレームの待ちとタイムラインの帯、再生のフレームのドアの絵。"""
+    """再生の opendoor・waitdoor（0xAE）・closedoor: 21 フレームの待ちとタイムラインの帯、再生のフレームのドアの絵。
+
+    ドアのタスクは 20 フレームで消え、その次のフレームで waitdoor が終わりに気づき、続きはさらに次のフレーム（#493 で ROM の VM_Control と照合）。
+    """
     # 本文を足すのはプロジェクトのスクリプトのファイル（エディタの未保存の本文だけを変え、ファイルには書かない）。
     folder = pathlib.Path(project) / "assembly" / "overworld_scripts"
     path = sorted(p.relative_to(project).as_posix() for p in folder.glob("*.s"))[0]
@@ -266,16 +269,16 @@ def check_playback_doors(z, x, y, scene, shots, project):
         opened = next(m for m in doors if m.get("door") and m["door"]["kind"] == "open")
         start = opened["frame"]
         waits = [m for m in doors if not m.get("door")]
-        assert [w["until"] for w in waits] == [start + 20, start + 40], doors
+        assert [w["until"] for w in waits] == [start + 21, start + 42], doors
         closed = next(m for m in doors if m.get("door") and m["door"]["kind"] == "close")
-        assert closed["frame"] == start + 20, closed
-        assert timeline["lastFrame"] >= start + 40, timeline["lastFrame"]
+        assert closed["frame"] == start + 21, closed
+        assert timeline["lastFrame"] >= start + 42, timeline["lastFrame"]
         layout = z.call(dict(cmd="playback.layout"))
-        assert [(w["start"], w["until"]) for w in layout["waits"]] == [(start, start + 20), (start + 20, start + 40)], layout["waits"]
+        assert [(w["start"], w["until"]) for w in layout["waits"]] == [(start, start + 21), (start + 21, start + 42)], layout["waits"]
         assert all(w["width"] > 0 for w in layout["waits"])
         cell = dict(x=x * 16, y=y * 16, w=16, h=16)
         images = []
-        for f in (start, start + 10, start + 19, start + 30, start + 40):
+        for f in (start, start + 10, start + 19, start + 30, start + 42):
             z.call(dict(cmd="playback.seek", frame=f))
             state = z.call(dict(cmd="door.state", frame=f))
             images.append((f, scene(None, **cell)[0], state["cells"]))
@@ -290,7 +293,7 @@ def check_playback_doors(z, x, y, scene, shots, project):
         assert z.call(dict(cmd="tileAnim.info"))["frame"] is None
     finally:
         z.call(dict(cmd="editor.setText", text=text, window="script-editor"))
-    print(f"OK 再生のドア: waitdoor（0xAE）が 20 フレーム待ち、タイムラインに帯、シークした所のドアの絵（{x},{y}）")
+    print(f"OK 再生のドア: waitdoor（0xAE）が 21 フレーム待ち、タイムラインに帯、シークした所のドアの絵（{x},{y}）")
 
 
 if __name__ == "__main__":

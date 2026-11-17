@@ -159,6 +159,7 @@ export class EventTab {
       selectMany: (refs) => this.selectMany(refs),
       remove: () => this.removeSelected(),
       ...(host.notGlobal ? { notGlobal: (labels: readonly string[]) => host.notGlobal!(labels) } : {}),
+      changed: () => { if (this.state.map) this.refresh(); },
     });
     this.noEvents = document.createElement("div");
     this.noEvents.className = "event-none-label";
@@ -340,9 +341,11 @@ export class EventTab {
     this.sorry.hidden = count > 0;
     if (doc && count > 0) this.showPanel(doc);
     this.manager.show(this.counts(), resetManager);
-    const hasEvents = !!doc && hasAnyEvent(doc);
-    this.view.element.hidden = !!doc && !hasEvents;
-    this.noEvents.hidden = !doc || hasEvents;
+    // イベントの無いマップは AdvanceMap と同じく「イベントが存在しません」だけを出す。ただしコピーしたイベントがある間は、
+    // 貼る所が要るのでマップの絵を出す（Ctrl+V の影と右クリックの「ここに貼り付け」「ここに○○を追加」が使える。#536）
+    const showMap = !!doc && (hasAnyEvent(doc) || this.clipboard.count > 0);
+    this.view.element.hidden = !!doc && !showMap;
+    this.noEvents.hidden = !doc || showMap;
     this.placed = this.placeEvents();
     this.labels.showWarn();
     this.draw();

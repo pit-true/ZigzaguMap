@@ -17,6 +17,7 @@
   python tests/realcopy/run.py --tileimport --reuse           # 画像からタイルとブロックを作る（lib/tileimport.py。Phase6 #443）
   python tests/realcopy/run.py --phase5                        # Phase5 の全体の往復テスト（lib/phase5.py。#406）
   python tests/realcopy/run.py --phase6 --reuse                # Phase6 の全体の往復テスト（lib/phase6.py。#493）
+  python tests/realcopy/run.py --phase7 --reuse                # Phase7 の全体の往復テスト（lib/phase7.py。#534。先に pnpm --filter @zigzagumap/mcp build）
   python tests/realcopy/run.py --pathdraw --reuse              # 道をなぞって .s に書き、写しでビルドする（lib/pathdraw.py。Phase7 #518）
   python tests/realcopy/run.py --regionmap --reuse             # タウンマップ（mapsegionmap.json）の出力・ビルド・開き直し（lib/regionmap.py。#119）
   オプション: --exe <zigzagumap.exe>、--config <設定ファイル>、--timeout <ビルドの秒>
@@ -52,6 +53,7 @@ from lib.swap import swap_one  # noqa: E402
 from lib.newtileset import newtileset_one  # noqa: E402
 from lib.phase5 import phase5_one  # noqa: E402
 from lib.phase6 import phase6_one  # noqa: E402
+from lib.phase7 import phase7_one  # noqa: E402
 from lib.tileimport import tileimport_one  # noqa: E402
 from lib.wildtime import wildtime_one  # noqa: E402
 from lib.species import species_one  # noqa: E402
@@ -238,6 +240,8 @@ def phase4_fixture(cfg, name: str, args, log_dir: pathlib.Path, kind: str) -> tu
             phase5_one(fx, z, check, log, args.timeout, log_dir / f"phase5-{name}")
         elif kind == "phase6":
             phase6_one(fx, z, check, log, args.timeout, log_dir / f"phase6-{name}")
+        elif kind == "phase7":
+            phase7_one(fx, z, check, log, args.timeout, log_dir / f"phase7-{name}")
         elif kind == "pathdraw":
             pathdraw_one(fx, z, check, log, args.timeout, log_dir / f"pathdraw-{name}")
         elif kind == "regionmap":
@@ -269,6 +273,7 @@ def main() -> int:
     ap.add_argument("--species", action="store_true", help="DPEの追加種族の表示とJSON往復の確認")
     ap.add_argument("--phase5", action="store_true", help="Phase5 の全体の往復テスト（塗りつぶし・シフト・リサイズ・入れ替え・イベント・新しいタイルセットを出力して開き直し、ビルドする）")
     ap.add_argument("--phase6", action="store_true", help="Phase6 の全体の往復テスト（時間帯別の野生・画像からのタイルセットの取り込み・タイムラインの編集の .s の書き戻しを出力して開き直し、ビルドする）")
+    ap.add_argument("--phase7", action="store_true", help="Phase7 の全体の往復テスト（大きいブラシ・範囲の移動・なぞった道の .s への書き込み・別のマップへの貼り付け・MCP からの書き換えと出力をして開き直し、ビルドする）")
     ap.add_argument("--pathdraw", action="store_true", help="道をなぞる窓で .s の移動データを置き換え・足して出力し、写しでビルドする（#518）")
     ap.add_argument("--regionmap", action="store_true", help="タウンマップ（maps\regionmap.json）を出力してビルドし、ROM の表と開き直しを確かめる")
     ap.add_argument("--only", choices=sorted(fixtures.FIXTURES), action="append")
@@ -280,8 +285,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.all:
         args.smoke = args.link = args.delete = True
-    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.species, args.phase5, args.phase6, args.regionmap, args.pathdraw]):
-        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --swap か --maplist か --newtileset か --tileimport か --wildtime か --phase5 か --phase6 か --regionmap か --pathdraw か --all を付けてください")
+    if not any([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.species, args.phase5, args.phase6, args.phase7, args.regionmap, args.pathdraw]):
+        ap.error("--smoke か --link か --delete か --connection か --template か --transplant か --triple か --swap か --maplist か --newtileset か --tileimport か --wildtime か --phase5 か --phase6 か --phase7 か --regionmap か --pathdraw か --all を付けてください")
     if args.transplant and not args.source_rom:
         ap.error("--transplant には --source-rom（取り込む元の ROM）が要ります")
     cfg = config.load(args.config, args.exe)
@@ -315,13 +320,14 @@ def main() -> int:
     runs += [(n, "species") for n in names if args.species]
     runs += [(n, "phase5") for n in names if args.phase5]
     runs += [(n, "phase6") for n in names if args.phase6]
+    runs += [(n, "phase7") for n in names if args.phase7]
     runs += [(n, "regionmap") for n in names if args.regionmap]
     runs += [(n, "pathdraw") for n in names if args.pathdraw]
     for name, kind in runs:
-        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.species, args.phase5, args.phase6, args.regionmap, args.pathdraw]) == 1 else f"{name} ({kind})"
+        key = name if sum([args.smoke, args.link, args.delete, args.connection, args.template, args.transplant, args.triple, args.swap, args.maplist, args.newtileset, args.tileimport, args.wildtime, args.species, args.phase5, args.phase6, args.phase7, args.regionmap, args.pathdraw]) == 1 else f"{name} ({kind})"
         print(f"\n== {key}")
         try:
-            if kind in ("transplant", "triple", "swap", "maplist", "newtileset", "tileimport", "wildtime", "species", "phase5", "phase6", "regionmap", "pathdraw"):
+            if kind in ("transplant", "triple", "swap", "maplist", "newtileset", "tileimport", "wildtime", "species", "phase5", "phase6", "phase7", "regionmap", "pathdraw"):
                 ok, lines = phase4_fixture(cfg, name, args, log_dir, kind)
             else:
                 run = {"link": link_fixture, "delete": delete_fixture, "smoke": smoke_one, "connection": connection_fixture, "template": template_fixture}[kind]

@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import pathlib
@@ -161,3 +162,11 @@ def wait_editor(z: Zigzagu, timeout: float = 30) -> None:
             if time.monotonic() >= deadline:
                 raise
             time.sleep(0.2)
+
+
+def shot(z: Zigzagu, shots: pathlib.Path | None, name: str) -> None:
+    """メインのウィンドウの画面を撮って shots に置く（shots が None なら撮らない）。"""
+    if not shots:
+        return
+    png = z.call({"cmd": "screenshot"})
+    (shots / name).write_bytes(base64.b64decode(png if isinstance(png, str) else png["png"]))
