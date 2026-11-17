@@ -4,11 +4,13 @@ Claude Code や Claude Desktop などの AI のアプリから、ZigzaguMap の�
 
 MCP サーバーは exe の外にある 1 つのファイル `zigzagumap-mcp.mjs` で、Node.js 22 以降で動きます。AI のアプリが子プロセスとして起動し、標準入出力（stdio）でやり取りします。MCP サーバー自身はネットワークで待ち受けません。
 
-[しくみ](#しくみ) / [準備](#準備) / [AI のアプリに登録する](#ai-のアプリに登録する) / [許可](#許可) / [道具の一覧](#道具の一覧) / [安全のための作り](#安全のための作り) / [開発](#開発)
+[しくみ](#しくみ) / [準備](#準備) / [AI のアプリに登録する](#ai-のアプリに登録する) / [許可](#許可) / [画面なしで使う](#画面なしで使う) / [道具の一覧](#道具の一覧) / [安全のための作り](#安全のための作り) / [開発](#開発)
 
 ## しくみ
 
-開いている ZigzaguMap につないで使います。AI が行った書き換えは画面にすぐ出て、ZigzaguMap の「元に戻す」（Ctrl+Z）でも戻せます。出力するまでファイルは変わりません。
+使い方は 2 つあります。ふだんは開いている ZigzaguMap につなぐ形を使います。ZigzaguMap を閉じたまま AI に直させたいときは、[画面なしで使う](#画面なしで使う)形にします。
+
+開いている ZigzaguMap につなぐ形では、AI が行った書き換えは画面にすぐ出て、ZigzaguMap の「元に戻す」（Ctrl+Z）でも戻せます。出力するまでファイルは変わりません。
 
 ```
 AI のアプリ ─stdio─ zigzagumap-mcp.mjs ─127.0.0.1（合言葉つき）─ ZigzaguMap
@@ -67,6 +69,21 @@ ZigzaguMap を `--profile <フォルダ>` で起動しているときは、MCP �
 
 許していない道具を呼ぶと、どの項目をオンにすればよいかを書いた文が返ります。
 
+## 画面なしで使う
+
+`--rom` と `--project` を付けると、ZigzaguMap を起動せずに、MCP サーバーの中でベース ROM とプロジェクトフォルダを開きます。道具は同じです。
+
+```sh
+claude mcp add zigzagumap-nd -- node C:\tools\zigzagumap-mcp.mjs --rom D:\rom\BPRJ.gba --project D:\NeoDark-CFRU-main --allow-write --allow-export
+```
+
+- 書き換えと出力は、`--allow-write`（書き換え）と `--allow-export`（`maps\` への出力）を付けたときだけ使えます。付けなければ読むだけです。
+- 書き換えは MCP サーバーの中に持ち、`project_export` で `maps\` に書きます。ZigzaguMap の ファイル > 出力 と同じファイルになります。出力していない変更は、MCP サーバーを止めると消えます。
+- ZigzaguMap が同じプロジェクトフォルダを開いている間は、書き換えと出力を断ります（両方で書くと食い違うため）。読むだけの道具は使えます。そのときは開いている ZigzaguMap につなぐ形を使ってください。
+- ZigzaguMap はプロジェクトフォルダを開いている間、一時フォルダの `zigzagumap-in-use\<プロセス ID>.json` に印を置きます。MCP サーバーは道具を呼ぶたびにそれを読みます。落ちたときに残った印は、そのプロセスが終わっていれば数えません。
+- 画像（`map_image`）も MCP サーバーの中で描きます（Canvas は使いません）。
+- 読み書きできるのは `--project` のフォルダの中だけです。ROM は読むだけです。
+
 ## 道具の一覧
 
 名前は、利用者のスクリプトの `zz` API の名前の `.` を `_` にしたものです（`map.setBlock` → `map_setBlock`）。`map_` で始まる道具は、開いているマップを読み書きします。先に `map_open` で開きます。座標はマスの単位で、左上が (0, 0) です。
@@ -113,11 +130,13 @@ ZigzaguMap を `--profile <フォルダ>` で起動しているときは、MCP �
 - 書き換えは操作の履歴に積むので、画面の Ctrl+Z で戻せます。`edit_undo` は AI が行った書き換えだけを戻し、利用者の操作は戻しません。
 - 書き換えと出力をしたときは、ステータスバーに `MCP: 道具の名前` を出します。
 - ZigzaguMap を 2 つ開いて両方で窓口を開くと、`mcp.json` は後から開いたほうになります。
+- 画面なしの形もネットワークを使いません。書き換えと出力は起動の引数で許したときだけで、ZigzaguMap が同じプロジェクトを開いている間はしません。
 
 ## 開発
 
 - 道具の定義（名前・説明・引数の型・許可の区切り）は `packages/core/src/mcp/tools.ts`、道具の中身は `McpToolRunner.ts`、JSON-RPC の受け答えは `McpServer.ts` にあります。道具の中身は `McpWorkspace` を通して読み書きし、開いている ZigzaguMap では `apps/desktop/src/app/mcp/AppMcpWorkspace.ts` がそれに当たります。
+- 画面なしの形は `packages/core/src/node/McpHeadless.ts`（ROM とプロジェクトを開く、使用中の印を読む）と `packages/core/src/mcp/CoreMcpWorkspace.ts`。使用中の印を書くのは `apps/desktop/src-tauri/src/in_use.rs`。
 - MCP サーバーの本体は `tools/mcp/src/`（つなぐ処理は `bridge.ts`）。`pnpm --filter @zigzagumap/mcp build` で core といっしょに 1 つのファイルにまとめます。依存は Node の組み込みだけで、MCP の SDK は使っていません。
 - ZigzaguMap の窓口は `apps/desktop/src-tauri/src/mcp_bridge.rs`（待ち受けと合言葉の確かめ）と `apps/desktop/src/app/mcp/`（設定と道具の実行）です。
 - MCP の版は 2026-07-28（毎回の頼みに `_meta` で版を付ける形）と、それより前の `initialize` で始める形（2024-11-05〜2025-11-25）の両方に答えます。
-- テスト: `packages/core/test/mcp.test.ts`（道具の定義と `zz` API の対応、引数の確かめ、読み書き・元に戻す・許可の無い操作の拒否、JSON-RPC）、`tools/mcp/test/bridge.test.ts`（つなぐ処理と stdio）、`tests/automation/mcp_bridge_check.py`（exe と MCP サーバーを動かして通しで確かめる）。
+- テスト: `packages/core/test/mcp.test.ts`（道具の定義と `zz` API の対応、引数の確かめ、読み書き・元に戻す・許可の無い操作の拒否、JSON-RPC）、`tools/mcp/test/bridge.test.ts`（つなぐ処理と stdio）、`tests/automation/mcp_bridge_check.py`（exe と MCP サーバーを動かして通しで確かめる）、`packages/core/test/mcpHeadless.test.ts` と `tests/automation/mcp_headless_check.py`（画面なしの形。素の ROM と ND の写しで描いて出力し、ZigzaguMap で開いて同じか、使用中の間は断るか）。

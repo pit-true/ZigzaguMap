@@ -102,8 +102,12 @@ describe("stdio", () => {
   });
 
   it("引数", () => {
-    expect(parseArgs([])).toEqual({ profile: null });
-    expect(parseArgs(["--profile", "D:\\p"])).toEqual({ profile: "D:\\p" });
+    const none = { profile: null, rom: null, project: null, allowWrite: false, allowExport: false };
+    expect(parseArgs([])).toEqual(none);
+    expect(parseArgs(["--profile", "D:\\p"])).toEqual({ ...none, profile: "D:\\p" });
+    expect(parseArgs(["--rom", "a.gba", "--project", "p", "--allow-write"])).toEqual({ ...none, rom: "a.gba", project: "p", allowWrite: true });
+    expect(() => parseArgs(["--rom", "a.gba"])).toThrow("両方");
+    expect(() => parseArgs(["--allow-write"])).toThrow("画面なしの形");
     expect(() => parseArgs(["--port", "1"])).toThrow("知らない引数");
     expect(() => parseArgs(["--profile"])).toThrow("値を書いて");
   });

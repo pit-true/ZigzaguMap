@@ -24,6 +24,7 @@ import { toImageData } from "../canvas";
 import { showContextMenu, type ContextMenuItem } from "../ContextMenu";
 import { createDialog, type DialogFrame } from "../Dialog";
 import { TownLinkStore, type TownLinkPlace } from "./TownLinkStore";
+import { findTownFrame, type TownFrame, type TownFrameSource } from "./townFrame";
 
 /** タウンマップの読み込み結果（小窓を出している間だけ持つ）。 */
 interface TownData {
@@ -54,17 +55,10 @@ const FRAME_COLOR = "#ff0000";
 /** 自分で紐づけた枠の色（ROM のデータの赤と見分ける。黒い縁取りを付け、明るい地図の上でも見えるようにする）。 */
 const LINK_COLOR = "#00e0ff";
 
-/** 枠をどこから出したか（`map` = マップ単位の紐づけ、`section` = 地名の紐づけ、`rom` = ROM のデータ）。 */
-export type TownFrameSource = "map" | "section" | "rom";
+export type { TownFrame, TownFrameSource } from "./townFrame";
 
 /** 紐づけの単位（`section` = 地名、`map` = 今のマップだけ）。 */
 export type TownLinkScope = "section" | "map";
-
-/** 今のマップの位置（面とマス）と、どこから出したか。 */
-export interface TownFrame {
-  readonly rect: TownLinkRect;
-  readonly source: TownFrameSource;
-}
 
 /**
  * タウンマップの小窓（#306。Bochi の TownMap）。メインの画面に浮かぶ小さな窓に、タウンマップを縮小して出し、
@@ -160,19 +154,7 @@ export class TownMiniView {
 
   /** 今のマップの位置（面は問わない）。マップ単位の紐づけ → 地名の紐づけ → ROM のデータ の順に引き、どれにも無ければ null。 */
   currentFrame(): TownFrame | null {
-    const key = this.mapKey;
-    const byMap = key !== null ? this.store.links.maps.get(key) : undefined;
-    if (byMap) return { rect: byMap, source: "map" };
-    const region = this.linkRegion;
-    if (region === null) return null;
-    const bySection = this.store.links.sections.get(region);
-    if (bySection) return { rect: bySection, source: "section" };
-    const doc = this.document();
-    const at = doc?.find(region);
-    if (!doc || !at) return null;
-    const s = doc.section(region);
-    const size = s && s.width > 0 && s.height > 0 ? { x: s.x, y: s.y, width: s.width, height: s.height } : { x: at.x, y: at.y, width: 1, height: 1 };
-    return { rect: { page: at.page, ...size }, source: "rom" };
+    return findTownFrame(this.store.links, this.mapKey, this.linkRegion, this.document());
   }
 
   /** 今のマップの枠（タウンマップのマス。面が違うか、どこにも無ければ null）。 */
@@ -207,6 +189,7 @@ export class TownMiniView {
     await this.saveLinks(next);
     this.state.setStatus(t.linked(what, rect.page, rect.x, rect.y, rect.width, rect.height));
     this.follow();
+    this.state.emit("view"); // ミニマップのタウンマップの拡大も描き直す（#511）
   }
 
   /** 今の地名（`section`）か今のマップ（`map`）の紐づけを外し、すぐ保存する。外したかを返す（無ければ false）。 */
@@ -234,6 +217,7 @@ export class TownMiniView {
     await this.saveLinks(next);
     this.state.setStatus(t.unlinked(what));
     this.follow();
+    this.state.emit("view"); // ミニマップのタウンマップの拡大も描き直す（#511）
     return true;
   }
 

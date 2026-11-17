@@ -4,6 +4,7 @@ mod automation;
 mod capture;
 mod clipboard;
 mod files;
+mod in_use;
 mod mcp_bridge;
 mod offscreen;
 mod pick;
@@ -190,6 +191,8 @@ pub fn run() {
             process::kill_all(handle.state::<Arc<Processes>>().inner());
             // MCP の窓口を閉じ、mcp.json を消す（#521）
             handle.state::<Arc<McpBridge>>().shutdown();
+            // 使用中の印を消す（#522）
+            in_use::clear();
             handle.state::<Profile>().cleanup();
         }
     });
