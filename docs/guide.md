@@ -549,7 +549,7 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 | `Sizes` | 同じ 110 件。`Id`、`Width`、`Height` | u16[n][2]: 0x3B8D00（0xC4F1C） |
 | `FlyDestinations` | 地名 0x58〜0xC3 の全 108 件。`Id`、`Bank`、`Map`、`HealLocation`（0 なら飛び先を使わずマップの真ん中へ） | u8[108][3]: 0x3B9A68（0xC648C、FlyDestination） |
 | `HealLocations` | 飛び先 1〜20 の全件。`Index`、`Bank`、`Map`、`X`、`Y`、`Unknown`（末尾 2 バイト。AdvanceMap の「不明:」。無い古いファイルはベース ROM の値）。イベントタブのフライトポジション（AdvanceMap の FlugposHeader の表）と同じ表 | 8 バイト × 20: 0x3B5944（0xC0E94 の値 + 8、GetWarpPosByNo。0xC0E44 も同じ表を指す） |
-| `MapVisitFlags` / `DungeonVisitFlags` | 地名 0x58〜0xC5 の全 110 件。`Id`、`Flag`（`"0x0890"`、無ければ null） | 表ではなく GetMapState（0x0C47C0）/ GetCaveState（0x0C4A5C）の switch 文。取り込むには表を引く命令への書き換えが要る |
+| `MapVisitFlags` / `DungeonVisitFlags` | 地名 0x58〜0xC5 の全 110 件。`Id`、`Flag`（`"0x0890"`、無ければ null） | 素の ROM では表ではなく GetMapState（0x0C47C0）/ GetCaveState（0x0C4A5C）の switch 文。Chronos は表引きに置き換えていて、フックの直後（0x0C47C8 / 0x0C4A64）のポインタが表を指す（#499）。ZigzaguMap はフックがあれば表から、無ければ switch 文から読む |
 
 名前は `regionmap.json` には書かず、ほかのマップ名の変更と同じく、その地名番号を使うマップの `maps\BB\MM.json` に入ります。地図の絵（タイル・パレット・タイルマップ）は読むだけで編集しません。
 
@@ -557,8 +557,9 @@ AdvanceMap の「保存」は、ZigzaguMap では編集中の状態への確定�
 
 ND と Chronos のビルド（`map_project.py`）が `maps\regionmap.json` を読み、ROM の表へ書きます（#119）。出力してからビルドするだけで、ほかの手順は要りません。ほかの CFRU-JP のプロジェクトは、build-support のパッチ（`map_project-regionmap-*.patch`。「[ビルド側の変更（build-support）](script-editor.md#ビルド側の変更build-support)」）を当てると同じように使えます。
 
-- 書くのは、ファイルにある表（`Layouts`・`Positions`・`Sizes`・`FlyDestinations`・`HealLocations`）だけです。表の大きさは変わらないので、ROM の表をその場で書き換えます。ファイルが無ければ、ビルドの ROM は何も変わりません。
-- 人ID（`MapVisitFlags`・`DungeonVisitFlags`）は、まだ ROM へ取り込みません（#499 で判断待ち）。書かれていると、ビルドのログに「未対応のキーです」と注意が出ます。ほかの表は書かれ、ビルドは続きます。
+- 書くのは、ファイルにある表（`Layouts`・`Positions`・`Sizes`・`FlyDestinations`・`HealLocations`、Chronos は人ID も）だけです。表の大きさは変わらないので、ROM の表をその場で書き換えます。ファイルが無ければ、ビルドの ROM は何も変わりません。
+- 人ID（`MapVisitFlags`・`DungeonVisitFlags`）は、Chronos だけがゲームに反映します（#499。Chronos は訪問フラグを表から引くように変えてあります）。ND は反映せず、書かれているとビルドのログに「未対応のキーです」と注意が出ます（ほかの表は書かれ、ビルドは続きます）。ワールドマップエディターは、開いているプロジェクトが対応していなければ、人ID の欄の下に「人ID: このプロジェクトでは、ゲームに反映されません」と出します。
+- 4ばんどうろのポケモンセンター（0x63）は、人ID を変えても、空を飛ぶが使えない間はタウンマップに出ません（ゲームの元の条件を残しています）。
 - ファイルが壊れているときや、値が範囲の外のときは、ビルドが止まります。止まったときのメッセージに、どのキーの何番目のどの値が悪いかが出ます。
 - できた ROM をそのまま開くと、ワールドマップエディターに同じ値が出ます。
 - `python tests/realcopy/run.py --regionmap --reuse` で、ND・Chronos の写しで、ワールドマップエディターでの変更・出力・ビルド・できた ROM の表・開き直しを確かめられます。

@@ -229,7 +229,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `state` | | 読み込んだか、面、選んでいるマス、両レイヤーの値、マスの値、地名の位置と行き先、メインで開いているマップ、履歴の有無 |
+| `state` | | 読み込んだか、面、選んでいるマス、両レイヤーの値、マスの値、地名の位置と行き先、メインで開いているマップ、履歴の有無、開いているプロジェクトのビルドが人ID をゲームに反映するか `visitFlagsInGame`（#499。ROM だけなら null）、人ID の注意（`Lbl_FlagNotInGame`）を出しているか `flagNoteShown` |
 | `fields` / `getField` | `id`（getField） | 部品の値（`value`・`checked`・`text`・`enabled`、コンボは `index` と `count`） |
 | `setField` | `id`、`value` | 入力欄は文字列、チェックは true/false、コンボは番号か文字列。input と change を起こす |
 | `click` | `id` | ボタンを押す。返事は開いているダイアログ |
