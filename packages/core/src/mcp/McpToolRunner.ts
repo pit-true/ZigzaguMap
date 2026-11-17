@@ -67,6 +67,8 @@ export interface McpWorkspace {
   writeBlocked(): string | null;
   /** 書き換え・出力をしたことを知らせる（画面のステータスバー）。 */
   notify?(text: string): void;
+  /** 道具を動かす前に状態を読み直す（画面なしの形が使用中の印を読む）。 */
+  refresh?(): Promise<void>;
 }
 
 /** 道具の返事の中身 1 つ（MCP の TextContent・ImageContent）。 */
@@ -105,6 +107,7 @@ export class McpToolRunner {
     try {
       const argError = checkMcpArguments(tool, args);
       if (argError) throw new McpToolError(`${name}: ${argError}`);
+      await this.ws.refresh?.();
       const notReady = this.ws.notReady();
       if (notReady) throw new McpToolError(notReady);
       if (tool.kind !== "read") this.checkAllowed(tool.kind);
