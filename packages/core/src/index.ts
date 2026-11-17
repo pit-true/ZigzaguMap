@@ -421,6 +421,8 @@ export { SetEventFieldsCommand, type SetEventFieldsArgs } from "./command/comman
 export { SetEventCountsCommand, type SetEventCountsArgs } from "./command/commands/event/SetEventCountsCommand.js";
 export { SetItemBallCommand, newItemBallId, type SetItemBallArgs } from "./command/commands/event/SetItemBallCommand.js";
 export { DuplicateEventCommand, type DuplicateEventArgs } from "./command/commands/event/DuplicateEventCommand.js";
+export { PasteEventCommand, type PasteEventArgs } from "./command/commands/event/PasteEventCommand.js";
+export * from "./event/EventPaste.js";
 export { SetFlyPositionCommand, type SetFlyPositionArgs } from "./command/commands/fly/SetFlyPositionCommand.js";
 export { HEADER_FIELD_NAMES } from "./command/commands/header/headerFields.js";
 export { SetHeaderFieldsCommand, type SetHeaderFieldsArgs } from "./command/commands/header/SetHeaderFieldsCommand.js";
@@ -573,6 +575,7 @@ export {
 export { evaluateCExpression, preprocessC, readCArray, readCEnum, stripCComments, type CInit, type CInitItem, type CInitList, type CSource } from "./dns/cTable.js";
 
 export * from "./script/movement/MovementEdit.js";
+export * from "./script/search/ProjectSearch.js";
 
 export { DpeSpecies } from "./name/DpeSpecies.js";
 

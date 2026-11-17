@@ -89,6 +89,12 @@ export class ScriptHost {
   /** エディタからの要求の答え方（種類ごとに 1 つ）。 */
   private readonly requestHandlers: MessageHandlers<ScriptEditorRequestMap> = {
     playback: async request => { await this.app.playback.start({ label: request.label }); return null; },
+    pathDraw: async request => {
+      await this.app.playback.drawPathFromLine(normalizeScriptPath(request.path), request.line);
+      // メインの窓を前に出す（自動操作のときは操作を奪わないよう出さない）
+      if (!this.app.automation) await getCurrentWindow().setFocus().catch(() => undefined);
+      return null;
+    },
     hello: () => {
       this.ready = true;
       this.opened = true;

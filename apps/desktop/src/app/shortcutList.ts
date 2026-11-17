@@ -58,6 +58,9 @@ function otherKeys(): ShortcutRow[] {
     { keys: "Shift＋ドラッグ（空いた所から）", action: jaEventMulti.shortcutRect, where: jaEventMulti.shortcutWhere },
     { keys: "ドラッグ（選んだイベントの上で）", action: jaEventMulti.shortcutGroupDrag, where: jaEventMulti.shortcutWhere },
     tableRow("event.duplicate"),
+    tableRow("event.copy"),
+    tableRow("event.cut"),
+    tableRow("event.paste"),
     // ルーラー（Phase5 #400。ui/event/RulerLayer.ts）
     { keys: "Shift＋右ドラッグ", action: jaEventLimit.shortcutRuler, where: jaEventLimit.shortcutWhere },
     { keys: jaMapFind.mouseBack, action: jaMapFind.shortcutBack, where: ja.shortcuts.mainWindow },
@@ -153,6 +156,7 @@ function scriptEditorKeys(): ShortcutRow[] {
     ["Alt+←", s.back],
     ["Ctrl+F", s.find],
     ["Ctrl+H", s.replace],
+    ["Ctrl+Shift+F", s.projectSearch],
     ["F3、Shift+F3", s.findNext],
     ["Ctrl+D", s.nextOccurrence],
     ["Ctrl+Shift+L", s.allOccurrences],

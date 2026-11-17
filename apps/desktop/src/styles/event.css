@@ -154,3 +154,6 @@
 .status-warn.event-limit {
   color: var(--error-text);
 }
+
+/* イベントの貼り付けの影（Phase7 #519） */
+.map-stage canvas.event-paste-ghost { position: absolute; z-index: 28; pointer-events: none; image-rendering: auto; }

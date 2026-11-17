@@ -3,6 +3,7 @@ import type { App } from "./App";
 import type { PlayerPlacement } from "./PreviewPlayer";
 import type { PlaybackController, PlaybackRequest } from "../ui/playback/PlaybackController";
 import type { PathDrawPanel } from "../ui/playback/PathDrawPanel";
+
 import { inputDialog } from "../ui/InputDialog";
 import { jaPlayback as t } from "../i18n/ja.playback";
 import { errorText } from "../util/errors";
@@ -42,6 +43,21 @@ export class PlaybackEntry {
   pathDraw(): Promise<PathDrawPanel> {
     return this.pathLoaded ??= import("../ui/playback/PathDrawPanel").then(module => new module.PathDrawPanel(this.app));
   }
+  /** イベントタブの人物の右クリック「ここから道をなぞる…」（#518。新しいラベルとして作る）。 */
+  async drawPathFrom(personIndex: number): Promise<void> {
+    const person = this.app.state.map?.doc.events?.persons[personIndex];
+    if (!person) throw new Error(t.noMap);
+    (await this.pathDraw()).open({ actor: person.localId });
+  }
+
+  /**
+   * スクリプトエディタの `applymovement` の行の右クリック「道をなぞって作り直す…」（#518）。その移動データを置き換える先にし、
+   * 動かす人物は行の 1 つ目の引数（このマップの人物でなければ主人公）。
+   */
+  async drawPathFromLine(path: string, line: number): Promise<void> {
+    await (await this.pathDraw()).openFromLine(path, line);
+  }
+
   /** 読み込み済みの道をなぞる窓。読み込む前は null。 */
   async existingPathDraw(): Promise<PathDrawPanel | null> { return this.pathLoaded ? this.pathLoaded : null; }
   async existing(): Promise<PlaybackController | null> { return this.loaded ? this.loaded : null; }

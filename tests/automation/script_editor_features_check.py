@@ -362,6 +362,40 @@ def main() -> int:
         ed(z, "editor.setText", text=feature_str.read_text(encoding="utf-8"))
         ed(z, "editor.save")
 
+        # ---- #520 全ファイル検索（Ctrl+Shift+F） ----
+        ed(z, "editor.activate", path=rel)
+        ed(z, "editor.key", key="F", ctrl=True, shift=True)
+        check(ed(z, "search.projectState")["open"], "Ctrl+Shift+F で下の欄に全ファイル検索を出す")
+        r = ed(z, "search.project", text="EventScript_ZzSub", wholeWord=True, caseSensitive=False, regexp=False, scope="all")
+        lines = {f["path"]: [l["line"] for l in f["lines"]] for f in r["files"]}
+        check(list(lines) == [rel] and len(lines[rel]) == 3 and r["error"] is None and not r["truncated"], f"ラベルの名前を探すとファイルごとに一致した行が出る（{lines}）")
+        first = r["files"][0]["lines"][0]
+        check(first["text"][first["ranges"][0][0]:first["ranges"][0][1]] == "EventScript_ZzSub", "一致した所の位置を返す")
+        print(f"全ファイル検索 1 回: {r['ms']} ms（{r['scanned']} ファイル）")
+        r = ed(z, "search.project", text="gText_ZzHello", wholeWord=True)
+        check({rel, "strings/zz_feature.string"} <= {f["path"] for f in r["files"]}, ".s と .string の両方を探す")
+        r = ed(z, "search.project", scope="string")
+        check([f["path"] for f in r["files"]] == ["strings/zz_feature.string"], "「.string だけ」に絞る")
+        r = ed(z, "search.project", text="(", regexp=True, scope="all")
+        check(r["error"] is not None and r["files"] == [], f"正しくない正規表現は結果なしで知らせる（{r['error']}）")
+        # 未保存の本文で探す
+        ed(z, "editor.activate", path=rel)
+        saved = ed(z, "editor.text", path=rel)["text"]
+        ed(z, "editor.setText", text=saved + "@ ZzUnsavedMarker\n")
+        r = ed(z, "search.project", text="ZzUnsavedMarker", regexp=False)
+        check([f["path"] for f in r["files"]] == [rel] and "ZzUnsavedMarker" not in (proj / rel).read_text(encoding="utf-8"), "開いているタブの未保存の本文で探す")
+        ed(z, "editor.setText", text=saved)
+        ed(z, "editor.save")
+        # 結果を押すとそのファイルのその行を開く
+        ed(z, "editor.activate", path="strings/zz_feature.string")
+        r = ed(z, "search.project", text="EventScript_ZzSub", wholeWord=True)
+        target = r["files"][0]["lines"][1]
+        d = ed(z, "click", id="search.result.1")
+        check(d["active"] == rel and d["cursor"]["line"] == target["line"], f"結果を押すとそのファイルのその行を開く（{d['active']} {d['cursor']}）")
+        shot(z, shots, f"{a.name}-project-search.png")
+        ed(z, "click", id="se.bottom.build")
+        check(not ed(z, "search.projectState")["open"], "下の欄のタブでビルドの欄へ切り替える")
+
         # ---- 補完の候補のテーマ（暗い）と、ウィンドウを閉じる ----
         ed(z, "editor.theme", theme="lightPlus")
         settings = profile / "settings.json"

@@ -1,4 +1,4 @@
-"""タイムラインの編集と .s の移動データへの書き戻しを確かめる（#458）。
+"""タイムラインの編集と .s の移動データへの書き戻しを確かめる（#458）。道をなぞって .s に書く窓（#518）も確かめる。
 
 プロジェクトの写しを作業フォルダに作り（元のフォルダには書かない）、確かめ用の .s を足してから再生し、箱を編集する。
 開いていないとき、エディタで開いているとき、未保存の変更があるとき、外で変わっていたとき、共用のラベル、
@@ -224,7 +224,107 @@ def main():
             wait_disk(disk, outside)
             print("OK 右クリックのメニュー、Alt＋矢印、Delete、ドラッグの並べ替えで書き換え、4 回の元に戻すで戻る")
             z.call(dict(cmd="playback.stop"))
+            path_draw(z, project, disk, history)
     print("OK 終了")
+
+
+def path_draw(z, project, disk, history):
+    """道をなぞって .s に書く（#518）: 人物から新しいラベル、エディタの行から置き換え、共用の写し、再生の帯から。"""
+    (project / SCRIPT).write_bytes(SOURCE.encode("utf-8"))
+    key = lambda k, **m: z.call(dict(cmd="key", key=k, **m))  # noqa: E731
+
+    # 1. 人物の右クリックから 3 歩なぞり、新しいラベルで足す → Ctrl+Z で消える
+    # 写しの 3.0 のイベントは ROM のアドレスのまま（maps\scripts.json も無い）なので、人 0 にラベルを付けて足す先の .s を決める
+    z.call(dict(cmd="script.setLabel", target="person", index=0, label="ZzEditMain"))
+    person = z.call(dict(cmd="event.state"))["events"]["persons"][0]
+    s = z.call(dict(cmd="pathDraw.open", **{"from": "person", "index": 0}))
+    assert s["actor"] == person["localId"] and s["target"] is None and s["mode"] == "new" and s["label"].startswith("Move_"), (s, person["localId"])
+    for _ in range(3):
+        key("ArrowUp")
+    h0 = history()
+    done = z.call(dict(cmd="pathDraw.apply"))["result"]
+    label, path = done["label"], project / done["changed"][0]
+    assert label == s["label"] and len(done["changed"]) == 1, done
+    text = path.read_bytes().decode("utf-8")
+    line = f"{label}: .byte walk_up, walk_up, walk_up, end_m"
+    assert line in text, text[-300:]
+    assert history() == h0 + 1
+    z.call(dict(cmd="undo"))
+    wait_until(lambda: line not in path.read_bytes().decode("utf-8"))
+    assert path.read_bytes().decode("utf-8").rstrip() == text.replace(line, "").rstrip(), "元に戻すで足した行が消えない"
+    print(f"OK 人物から 3 歩なぞって新しいラベル {label} を {done['changed'][0]} に足し、Ctrl+Z で消える")
+
+    # 1b. 画面の入口: 人物の右クリックの「ここから道をなぞる…」と、再生の帯の「道をなぞる…」
+    z.call(dict(cmd="pathDraw.close"))
+    z.call(dict(cmd="mouse", target="event", cell=[person["x"], person["y"]], action="rightClick"))
+    z.call(dict(cmd="contextMenu.press", id="drawPath"))
+    wait_until(lambda: z.call(dict(cmd="pathDraw.state")).get("actor") == person["localId"])
+    z.call(dict(cmd="playback.start", label="ZzEditMain"))
+    z.call(dict(cmd="playback.seek", frame=5))
+    z.call(dict(cmd="click", id="playback.pathDraw"))
+    wait_until(lambda: (z.call(dict(cmd="pathDraw.state")).get("target") or {}).get("label") == "ZzEdit_Walk")
+    z.call(dict(cmd="playback.stop"))
+    z.call(dict(cmd="pathDraw.close"))
+    z.call(dict(cmd="script.open", path=SCRIPT))
+    wait_editor(z)
+    z.call(dict(cmd="editor.activate", path=SCRIPT, **W))
+    menu = z.call(dict(cmd="editor.contextMenu", line=2, column=3, press="pathDraw", **W))
+    assert [i["id"] for i in menu["items"]] == ["pathDraw"], menu
+    wait_until(lambda: (z.call(dict(cmd="pathDraw.state")).get("target") or {}).get("label") == "ZzEdit_Walk")
+    z.call(dict(cmd="editor.closeTab", path=SCRIPT, **W))
+    print("OK 人物の右クリック・再生の帯・エディタの applymovement の行の右クリックの 3 つの入口で窓が開く")
+
+    # 2. エディタの applymovement の行から: その移動データを置き換える
+    s = z.call(dict(cmd="pathDraw.open", **{"from": "line", "path": SCRIPT, "line": 1}))
+    assert s["target"] == dict(commandPath=SCRIPT, commandLine=1, label="ZzEdit_Walk") and s["actor"] == 255 and s["mode"] == "replace", s
+    key("ArrowRight"); key("ArrowRight")
+    z.call(dict(cmd="pathDraw.apply"))
+    replaced = SOURCE.replace("ZzEdit_Walk: .byte walk_up, walk_up, walk_left, end_m", "ZzEdit_Walk: .byte walk_right, walk_right, end_m")
+    wait_disk(disk, replaced)
+    z.call(dict(cmd="undo"))
+    wait_disk(disk, SOURCE)
+    print("OK エディタの applymovement の行から開き、移動データを置き換え（コメントは保つ）、Ctrl+Z で戻る")
+
+    # 3. 共用の移動データ: このスクリプトだけ付け替える
+    z.call(dict(cmd="pathDraw.open", **{"from": "line", "path": SCRIPT, "line": 3}))
+    key("ArrowLeft")
+    done = z.call(dict(cmd="pathDraw.apply", shared="copy"))["result"]
+    assert done["newLabel"] == "ZzEdit_Shared_2", done
+    text = disk()
+    assert "\tapplymovement 0xFF ZzEdit_Shared_2\n" in text and "ZzEditOther:\n\tapplymovement 0xFF ZzEdit_Shared\n" in text, text
+    assert "ZzEdit_Shared_2: .byte walk_left, end_m" in text, text
+    z.call(dict(cmd="undo"))
+    wait_disk(disk, SOURCE)
+    print("OK 共用の移動データは写して、このスクリプトの applymovement だけ付け替える")
+
+    # 4. 再生の帯から: 今動いている applymovement の移動データを置き換え、書いた後の再生で同じ道を歩く
+    z.call(dict(cmd="playback.start", label="ZzEditMain"))
+    z.call(dict(cmd="playback.seek", frame=20))
+    s = z.call(dict(cmd="pathDraw.open", **{"from": "playback"}))
+    assert s["target"]["label"] == "ZzEdit_Walk" and s["actor"] == 255, s
+    start = s["start"]
+    key("ArrowDown"); key("ArrowRight", ctrl=True); key("ArrowRight")
+    end = z.call(dict(cmd="pathDraw.state"))["end"]
+    z.call(dict(cmd="pathDraw.apply"))
+    wait_disk(disk, SOURCE.replace("walk_up, walk_up, walk_left, end_m", "walk_down, look_right, walk_right, end_m"))
+    z.call(dict(cmd="playback.settled"))
+    timeline = z.call(dict(cmd="playback.timeline"))
+    walks = [seg for seg in timeline["segments"] if seg["movementLabel"] == "ZzEdit_Walk"]
+    assert (walks[0]["fromX"], walks[0]["fromY"]) == (start["x"], start["y"]), (walks[0], start)
+    assert (walks[-1]["toX"], walks[-1]["toY"]) == (end["x"], end["y"]), (walks[-1], end)
+    z.call(dict(cmd="undo"))
+    wait_disk(disk, SOURCE)
+    z.call(dict(cmd="pathDraw.close"))
+    z.call(dict(cmd="playback.stop"))
+    print("OK 再生の帯から開き、今の applymovement を置き換え、計算し直した再生でなぞった道を歩く")
+
+
+def wait_until(ok, timeout=10):
+    end = time.monotonic() + timeout
+    while not ok():
+        if time.monotonic() > end:
+            raise AssertionError("待っても変わらない")
+        time.sleep(0.1)
 
 
 def wait_disk(disk, want, timeout=10):

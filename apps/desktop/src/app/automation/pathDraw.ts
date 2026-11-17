@@ -15,11 +15,35 @@ function point(value: unknown): PathPoint | undefined {
 
 /** 道をなぞる窓（#517）。 */
 export const pathDrawCommands: CommandTable = {
+  // from: 省略でそのまま開く / playback（再生の帯の「道をなぞる…」）/ person（人の番号 index の右クリック）/
+  // line（スクリプトエディタの applymovement の行。path と 0 始まりの line）
   "pathDraw.open": async (app, req) => {
     const panel = await app.playback.pathDraw();
-    const start = point(req["start"]);
-    panel.open({ ...(typeof req["actor"] === "number" ? { actor: int(req, "actor") } : {}), ...(start ? { start } : {}) });
+    const from = req["from"];
+    if (from === "playback") {
+      const controller = await app.playback.existing();
+      if (!controller?.active) throw new Error("再生していません。");
+      await controller.openPathDraw();
+    } else if (from === "person") await app.playback.drawPathFrom(int(req, "index"));
+    else if (from === "line") await app.playback.drawPathFromLine(str(req, "path"), int(req, "line"));
+    else {
+      const start = point(req["start"]);
+      panel.open({ ...(typeof req["actor"] === "number" ? { actor: int(req, "actor") } : {}), ...(start ? { start } : {}) });
+    }
+    await panel.ready();
     return panel.state();
+  },
+  // 「ここで使う」（mode: replace / new、label、shared: rewrite / copy。省略で窓の選択）。返事は result と state
+  "pathDraw.apply": async (app, req) => {
+    const panel = await app.playback.pathDraw();
+    if (!panel.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    const mode = req["mode"], shared = req["shared"];
+    if (mode !== undefined && mode !== "replace" && mode !== "new") throw new Error("mode は replace / new のいずれかです。");
+    if (shared !== undefined && shared !== "rewrite" && shared !== "copy") throw new Error("shared は rewrite / copy のいずれかです。");
+    const result = await panel.apply({ ...(mode ? { mode } : {}), ...(typeof req["label"] === "string" ? { label: req["label"] } : {}), ...(shared ? { shared } : {}) });
+    const controller = await app.playback.existing();
+    if (controller?.active) await controller.settled();
+    return { result, state: panel.state() };
   },
   "pathDraw.state": async app => (await app.playback.existingPathDraw())?.state() ?? { open: false },
   "pathDraw.close": async app => { (await app.playback.existingPathDraw())?.close(); return { open: false }; },
