@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -16,7 +17,14 @@ export function defaultInUseDir(): string {
 
 /** 比べるためにパスをそろえる（`\\?\` を外し、区切りと大文字小文字と末尾の区切りをそろえる）。 */
 export function normalizeProjectPath(p: string): string {
-  return resolve(p.replace(/^\\\\\?\\/, "")).replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
+  let full = resolve(p.replace(/^\\\\\?\\/, ""));
+  try {
+    // 短い名前（RUNNER~1 など）や別名を、実際のパスにそろえる（Rust の canonicalize と同じ向き）
+    full = realpathSync.native(full);
+  } catch {
+    // 無いフォルダはそのまま比べる
+  }
+  return full.replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
 }
 
 function alive(pid: number): boolean {
