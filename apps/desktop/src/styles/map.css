@@ -141,6 +141,29 @@
   image-rendering: pixelated;
 }
 
+/* 重み（Phase7 #515）: ブロックの右下に小さく出す */
+.mixing-bag-item {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.mixing-bag-item canvas {
+  display: block;
+}
+
+.mixing-bag-weight {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 1px;
+  font-size: 9px;
+  line-height: 9px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
 /* 仮の主人公と実機の240×160の枠。画面は1枚だけ持ち、マップ全体のCanvasを増やさない。 */
 .actor-preview-image { position: absolute; z-index: 25; pointer-events: none; image-rendering: pixelated; will-change: transform; }
 .actor-preview-shade { position: absolute; z-index: 24; pointer-events: none; outline: 1px solid #ffe000; box-shadow: 0 0 0 10000px #0008; }

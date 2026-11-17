@@ -59,6 +59,8 @@ pub fn project_set_root(root: State<'_, ProjectRoot>, path: Option<String>) -> R
     };
     let shown = next.as_ref().map(|d| display_path(d));
     *root.0.lock().map_err(|e| e.to_string())? = next;
+    // 画面なしの MCP サーバーが見る「使用中」の印（#522）
+    crate::in_use::mark(shown.as_deref());
     Ok(shown)
 }
 

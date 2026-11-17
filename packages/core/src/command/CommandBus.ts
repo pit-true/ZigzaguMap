@@ -78,6 +78,11 @@ export class CommandBus {
     return this.done[this.done.length - 1] ?? null;
   }
 
+  /** 次にやり直すコマンド（無ければ null。MCP の edit_redo が自分の書き換えか確かめるのに使う。#521）。 */
+  get nextRedo(): Command | null {
+    return this.undone[this.undone.length - 1] ?? null;
+  }
+
   /** アンドゥできるか。 */
   get canUndo(): boolean {
     return this.done.length > 0;

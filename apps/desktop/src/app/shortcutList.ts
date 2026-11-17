@@ -79,6 +79,7 @@ function otherKeys(): ShortcutRow[] {
     // ミキシングバッグ（Phase3 #236。ui/map/BlockPaletteView.ts・MixingBagView.ts）
     { keys: "Ctrl＋左クリック", action: jaPaint.shortcutBag, where: jaPaint.shortcutBagWhere },
     { keys: "Ctrl＋クリック", action: jaPaint.shortcutBagClear, where: jaPaint.shortcutBagClearWhere },
+    { keys: jaPaint.shortcutBagWeightKeys, action: jaPaint.shortcutBagWeight, where: jaPaint.shortcutBagWeightWhere },
     // 矩形の選択（移動許可も拾う。#225）と、Ctrl を押している間の表示（#238。ui/map/ctrlPeek.ts）
     { keys: "Ctrl＋右ドラッグ", action: jaPaint.shortcutPick, where: jaPaint.shortcutPickWhere },
     // ブロックパレットの矩形の選択（Phase3。3 層の扱いは Phase4 #300。ui/map/BlockPaletteView.ts）
@@ -91,6 +92,8 @@ function otherKeys(): ShortcutRow[] {
     tableRow("tool.pencil"),
     tableRow("tool.fill"),
     tableRow("tool.shift"),
+    tableRow("tool.brushSmaller"),
+    tableRow("tool.brushLarger"),
     { keys: jaTools.shortcutMagicKeys, action: jaTools.shortcutMagic, where: jaTools.shortcutMagicWhere },
     { keys: jaTools.shortcutLineKeys, action: jaTools.shortcutLine, where: jaTools.shortcutToolWhere },
     { keys: keyText("drag.cancel"), action: jaTools.shortcutShiftCancel, where: jaTools.shortcutShiftCancelWhere },

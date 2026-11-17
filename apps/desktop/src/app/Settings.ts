@@ -140,6 +140,10 @@ export interface SettingsData {
   paintTool: string;
   /** スマートパス（マップタブの道具の帯。選択がちょうど 3×3 のとき周りに合わせて描く。Phase5 #389。既定オフ）。 */
   smartPath: boolean;
+  /** 鉛筆のブラシの大きさ（1〜9。マップタブと移動エリアタブの道具の帯、`[` `]`。1 ブロックを選んでいるときだけ使う。Phase7 #515。既定 1）。 */
+  brushSize: number;
+  /** 鉛筆のブラシの形（`square`・`circle`。Phase7 #515。既定は正方形）。 */
+  brushShape: string;
   /** カーソルの枠（表示メニュー。C。Phase5 #391。既定オフ）。 */
   cursorFrame: boolean;
   /** プレイヤーの視界の枠（表示メニュー。V。Phase5 #391。既定オフ）。 */
@@ -152,6 +156,19 @@ export interface SettingsData {
    * 既定と違う操作だけを残す（空の配列はキーを外した操作）。読むときは `app/keymap.ts` の resolveKeymap で確かめる。
    */
   shortcuts: Record<string, string[]>;
+  /**
+   * ミニマップの小窓（表示メニュー。既定オフ。Phase7 #511）。出すか `show`、窓の左上の位置（null なら右上）、
+   * タウンマップの現在地のまわりの拡大も出すか `town`（小窓の中のチェック。既定オフ）。
+   */
+  minimap: { show: boolean; left: number | null; top: number | null; town?: boolean };
+  /** MCP の窓口を開く（設定 > MCP の窓口。Phase7 #521。既定オフ）。オンの間だけ 127.0.0.1 で待ち受け、AppData に mcp.json を書く。 */
+  mcpBridge: boolean;
+  /** MCP から開いているマップの書き換えを許す（既定オフ。書き換えは「元に戻す」に乗る）。 */
+  mcpAllowWrite: boolean;
+  /** MCP から maps\ への出力を許す（既定オフ）。 */
+  mcpAllowExport: boolean;
+  /** MCP の出力が .s・eventscripts などスクリプトのファイルも書くときに許す（既定オフ）。 */
+  mcpAllowScripts: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -210,11 +227,18 @@ export const DEFAULT_SETTINGS: SettingsData = {
   mapZoom: { map: 0, movement: 0, event: 0 },
   paintTool: "pencil",
   smartPath: false,
+  brushSize: 1,
+  brushShape: "square",
   cursorFrame: false,
   playerView: false,
   playbackGender: "male",
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
+  minimap: { show: false, left: null, top: null, town: false },
+  mcpBridge: false,
+  mcpAllowWrite: false,
+  mcpAllowExport: false,
+  mcpAllowScripts: false,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

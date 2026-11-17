@@ -4,14 +4,14 @@ import { ToolStrip } from "../ui/tools/ToolStrip";
 import type { MapTab } from "../ui/tabs/MapTab";
 import type { MovementTab } from "../ui/tabs/MovementTab";
 import type { EditorState } from "./EditorState";
-import { PAINT_TOOLS, setPaintTool } from "./paintTool";
+import { PAINT_TOOLS, brushSetting, setBrush, setPaintTool } from "./paintTool";
 import { matchesKey } from "./keymap";
 import type { EdgeResize } from "../ui/connection/EdgeResize";
 import type { ResizePlan } from "../ui/resize/ResizeDialog";
 
 /**
  * Phase5 の列 1（描く道具と表示）で足したもの。App が作ってマップタブと移動エリアタブへ取り付ける（機能ごとに部品を分ける）。
- * - 道具の帯（#388）と、N・B・S のキーでの切り替え。
+ * - 道具の帯（#388）と、N・B・S のキーでの切り替え。`[` `]` でブラシの大きさ（Phase7 #515）。
  * - 対話式リサイズの窓（#390）。場所の設定タブのかんたん表示のボタンと、辺のつまみの右クリックから開く（窓のコードは初めて開くときに読み込む）。
  */
 export class ToolExtras {
@@ -34,12 +34,26 @@ export class ToolExtras {
     document.addEventListener("keydown", (e) => {
       if (e.defaultPrevented || e.metaKey || e.repeat) return;
       if ((state.tab !== "map" && state.tab !== "movement") || !state.map || modalOpen() || isTyping(e.target)) return;
+      const step = matchesKey("tool.brushSmaller", e) ? -1 : matchesKey("tool.brushLarger", e) ? 1 : 0;
+      if (step !== 0) {
+        e.preventDefault();
+        this.stepBrush(step);
+        return;
+      }
       const tool = PAINT_TOOLS.find((t) => matchesKey(t.keyAction, e));
       if (!tool) return;
       e.preventDefault();
       setPaintTool(this.state, tool.id);
       this.state.setStatus(jaTools.toolChanged(jaTools.toolNames[tool.id] ?? tool.id));
     });
+  }
+
+  /** ブラシの大きさを 1 つ変えて、ステータスバーに出す（`[` `]`）。 */
+  stepBrush(step: number): void {
+    const now = brushSetting(this.state);
+    setBrush(this.state, { size: now.size + step });
+    const b = brushSetting(this.state);
+    this.state.setStatus(jaTools.brushChanged(b.size, b.shape));
   }
 
   /** 大きさと位置を変える窓を開く。 */

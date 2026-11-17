@@ -305,6 +305,28 @@ export class MapView {
     return out.toDataURL("image/png");
   }
 
+  /**
+   * 今見えている範囲（主マップの左上が原点のマス。小数を含む。主マップの外にはみ出すこともある）。ミニマップの枠（Phase7 #511）。
+   */
+  visibleCells(): { x: number; y: number; width: number; height: number } {
+    const size = this.screenCellSize;
+    const m = this.margins;
+    return {
+      x: this.element.scrollLeft / size - m.left,
+      y: this.element.scrollTop / size - m.top,
+      width: this.element.clientWidth / size,
+      height: this.element.clientHeight / size,
+    };
+  }
+
+  /** マス (x, y)（小数も可。主マップの左上が原点）が表示の真ん中に来るようにスクロールする（ミニマップを押したとき。#511）。 */
+  centerOn(x: number, y: number): void {
+    const size = this.screenCellSize;
+    const m = this.margins;
+    this.element.scrollLeft = Math.max(0, (x + m.left) * size - this.element.clientWidth / 2);
+    this.element.scrollTop = Math.max(0, (y + m.top) * size - this.element.clientHeight / 2);
+  }
+
   private layout(): void {
     const w = this.image ? this.image.image.width : 0;
     const h = this.image ? this.image.image.height : 0;
