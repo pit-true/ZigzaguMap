@@ -156,6 +156,11 @@ export interface SettingsData {
    * 既定と違う操作だけを残す（空の配列はキーを外した操作）。読むときは `app/keymap.ts` の resolveKeymap で確かめる。
    */
   shortcuts: Record<string, string[]>;
+  /**
+   * ミニマップの小窓（表示メニュー。既定オフ。Phase7 #511）。出すか `show`、窓の左上の位置（null なら右上）、
+   * タウンマップの現在地のまわりの拡大も出すか `town`（小窓の中のチェック。既定オフ）。
+   */
+  minimap: { show: boolean; left: number | null; top: number | null; town?: boolean };
   /** MCP の窓口を開く（設定 > MCP の窓口。Phase7 #521。既定オフ）。オンの間だけ 127.0.0.1 で待ち受け、AppData に mcp.json を書く。 */
   mcpBridge: boolean;
   /** MCP から開いているマップの書き換えを許す（既定オフ。書き換えは「元に戻す」に乗る）。 */
@@ -229,6 +234,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   playbackGender: "male",
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
+  minimap: { show: false, left: null, top: null, town: false },
   mcpBridge: false,
   mcpAllowWrite: false,
   mcpAllowExport: false,

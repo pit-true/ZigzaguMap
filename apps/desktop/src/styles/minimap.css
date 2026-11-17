@@ -1,0 +1,43 @@
+/* ミニマップの小窓（Phase7 #511）。 */
+.minimap-panel .dialog-body {
+  padding: 4px;
+}
+
+.minimap-stage {
+  position: relative;
+  min-width: 120px;
+  min-height: 40px;
+  line-height: 0;
+}
+
+.minimap-canvas {
+  display: block;
+  cursor: crosshair;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+.minimap-note {
+  color: var(--gray-text);
+  font-size: 11px;
+  line-height: normal;
+  padding: 4px;
+}
+
+.minimap-town-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+  font-size: 12px;
+}
+
+.minimap-town {
+  padding-top: 4px;
+  line-height: 0;
+}
+
+.minimap-town-canvas {
+  display: block;
+  image-rendering: pixelated;
+}

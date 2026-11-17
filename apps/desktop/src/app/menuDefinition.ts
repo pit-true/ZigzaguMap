@@ -29,6 +29,7 @@ import { WEATHER_PICK_IDS } from "./weather/WeatherEntry";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaMinimap } from "../i18n/ja.minimap";
 import { jaSettingsWindow } from "../i18n/ja.settingsWindow";
 import { jaProjectWatch } from "../i18n/ja.projectWatch";
 import { jaMapExport } from "../i18n/ja.mapExport";
@@ -161,6 +162,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         // 履歴の窓（Phase5 #402。ZigzaguMap 独自）
         { id: "view.history", label: jaCommands.menu, enable: "rom" },
+        // ミニマップの小窓（Phase7 #511。ZigzaguMap 独自。既定オフ）
+        { id: "view.minimap", label: jaMinimap.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
