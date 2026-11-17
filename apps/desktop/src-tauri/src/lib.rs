@@ -149,6 +149,7 @@ pub fn run() {
             system::file_exists,
             system::exe_path,
             system::open_url,
+            system::reveal_file,
             system::desktop_dir,
             system::create_shortcut,
             system::register_context_menu,

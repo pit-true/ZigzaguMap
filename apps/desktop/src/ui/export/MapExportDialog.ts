@@ -4,7 +4,8 @@ import { jaTimeOfDay } from "../../i18n/ja.timeOfDay";
 import { errorText } from "../../util/errors";
 import type { EditorState } from "../../app/EditorState";
 import { canvasPng, release, writeClipboard, type CompositeImage, type CompositeOptions } from "../../app/CompositeImage";
-import { encodeDib } from "../../app/ImageExport";
+import { encodeDib, exportBaseName } from "../../app/ImageExport";
+import type { TileAnimGifResult } from "../../app/animation/TileAnimGif";
 import { folderOf, writeFile, type FileDialogs } from "../../app/FileDialogs";
 import type { Timelapse } from "../../app/Timelapse";
 import { jaMapExport as t } from "../../i18n/ja.mapExport";
@@ -19,6 +20,8 @@ export interface MapExportHost {
   readonly files: FileDialogs;
   readonly composite: CompositeImage;
   readonly timelapse: Timelapse;
+  /** 書き出したあとにステータスバーへ「フォルダを開く」を出す（Phase7 #514）。 */
+  readonly showFolder?: (path: string) => void;
 }
 
 /** 窓の選択（自動操作の `mapExport.state` にも出す）。 */
@@ -33,7 +36,7 @@ export interface MapExportChoice {
   grid: boolean;
   border: boolean;
   neighbors: boolean;
-  format: "png" | "bmp";
+  format: "png" | "bmp" | "gif-anim";
   delayMs: number;
   skip: number;
 }
@@ -88,6 +91,8 @@ export class MapExportDialog {
   private readonly preview: HTMLCanvasElement;
   private readonly sizeLabel: HTMLElement;
   private readonly fields = new Map<keyof MapExportChoice, HTMLInputElement>();
+  private copyButton: HTMLButtonElement | null = null;
+  private gifNote: HTMLElement | null = null;
   /** 最後に作ったプレビューの大きさ（自動操作用）。 */
   last: { width: number; height: number; maps: number; scale: number } | null = null;
   private rendering: Promise<void> = Promise.resolve();
@@ -180,8 +185,14 @@ export class MapExportDialog {
         check("border", t.border),
         check("neighbors", t.neighbors),
       ),
-      group(t.format, radio("format", "png", t.png, "png"), radio("format", "bmp", t.bmp, "bmp")),
+      group(t.format, radio("format", "png", t.png, "png"), radio("format", "bmp", t.bmp, "bmp"), radio("format", "gif-anim", t.gifAnim, "gifAnim")),
     );
+    const gifNote = document.createElement("div");
+    gifNote.className = "map-export-note";
+    gifNote.textContent = t.gifAnimNote;
+    gifNote.hidden = true;
+    left.append(gifNote);
+    this.gifNote = gifNote;
     const note = document.createElement("div");
     note.className = "map-export-note";
     note.textContent = t.timelapseNote;
@@ -196,6 +207,7 @@ export class MapExportDialog {
     main.append(left, right);
     const save = autoId(dialogButton(t.save, () => void this.save()), "mapExport.save");
     const copy = autoId(dialogButton(t.copy, () => void this.copy()), "mapExport.copy");
+    this.copyButton = copy;
     const close = dialogButton(t.close, () => this.close());
     const buttons = dialogButtonRow(save, copy, close);
     body.append(main, buttons);
@@ -227,8 +239,9 @@ export class MapExportDialog {
     if (current === this) current = null;
   }
 
-  /** ファイルに保存する。保存したパス（取りやめたら null）。 */
+  /** ファイルに保存する。保存したパス（取りやめたら null）。アニメ（GIF）の形式なら `saveAnimation` と同じ。 */
   async save(): Promise<string | null> {
+    if (this.choice.format === "gif-anim") return (await this.saveAnimation())?.path ?? null;
     const png = this.choice.format === "png";
     const r = await this.host.composite.render({ ...compositeOptionsOf(this.choice, this.host.state.settings.data.gridStyle), ask: true });
     if (!r) return null;
@@ -250,6 +263,7 @@ export class MapExportDialog {
       await writeFile(path, data);
       settings.update({ imageDir: folderOf(path) });
       this.host.state.setStatus(t.saved(path));
+      this.host.showFolder?.(path);
       return path;
     } finally {
       release(r.canvas);
@@ -267,6 +281,37 @@ export class MapExportDialog {
     } finally {
       release(r.canvas);
     }
+  }
+
+  /**
+   * タイルアニメの GIF を保存する（Phase7 #514）。範囲・含めるもの・時間帯は上の選択と同じ。動くタイルが無ければ
+   * 「動くタイルがありません」を出して作らない（null）。保存したパスと GIF の中身（取りやめたら null）。
+   */
+  async saveAnimation(): Promise<(Omit<TileAnimGifResult, "gif"> & { path: string; bytes: number }) | null> {
+    const { state, files } = this.host;
+    const { TileAnimGif } = await import("../../app/animation/TileAnimGif");
+    const maker = new TileAnimGif(state, this.host.composite);
+    const r = await maker.render(compositeOptionsOf(this.choice, state.settings.data.gridStyle));
+    if (r === "none") {
+      state.setStatus(t.gifAnimNone, undefined, true);
+      return null;
+    }
+    if (!r) return null;
+    const settings = state.settings;
+    let path = await files.saveFile({
+      title: t.gifAnim,
+      filters: [{ name: t.gifFilter, extensions: ["gif"] }],
+      directory: settings.data.imageDir,
+      fileName: `${this.baseName()}.gif`,
+    });
+    if (!path) return null;
+    if (!/\.[^\\/.]+$/.test(path)) path += ".gif";
+    await writeFile(path, r.gif);
+    settings.update({ imageDir: folderOf(path) });
+    state.setStatus(t.gifAnimSaved(r.frames, r.durationCs / 100, path) + (r.complete ? "" : t.gifAnimCut));
+    this.host.showFolder?.(path);
+    const { gif, ...rest } = r;
+    return { ...rest, path, bytes: gif.length };
   }
 
   /** タイムラプスの GIF を保存する。保存したパスとコマの数（取りやめた・変更が無ければ null）。 */
@@ -290,20 +335,24 @@ export class MapExportDialog {
     await writeFile(path, r.gif);
     settings.update({ imageDir: folderOf(path) });
     state.setStatus(t.timelapseSaved(r.frames, path));
+    this.host.showFolder?.(path);
     this.changed();
     return { path, frames: r.frames, width: r.width, height: r.height };
   }
 
-  /** ファイル名の初めの値（`map_3_0`）。 */
+  /** ファイル名の初めの値（マップの番号と日時。`3.0_2026-11-17_18-30-45`。#514）。 */
   private baseName(): string {
-    const id = this.host.state.map?.id;
-    return id ? `map_${id.bank}_${id.map}` : "map";
+    return exportBaseName(this.host.state.map?.id ?? null, new Date());
   }
 
   /** 選択が変わった: 「隣のマップの帯」は「このマップ」のときだけ押せる。プレビューを作り直す。 */
   private changed(): void {
     const neighbors = this.fields.get("neighbors");
     if (neighbors) neighbors.disabled = this.choice.whole;
+    // アニメ（GIF）はクリップボードへ渡せない
+    const anim = this.choice.format === "gif-anim";
+    if (this.copyButton) this.copyButton.disabled = anim;
+    if (this.gifNote) this.gifNote.hidden = !anim;
     this.rendering = this.rendering.then(() => this.renderPreview()).catch((e: unknown) => { this.sizeLabel.textContent = errorText(e); });
   }
 

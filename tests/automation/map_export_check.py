@@ -4,6 +4,9 @@
 
 - ファイル > マップの画像を書き出す… で窓が開き、プレビューの大きさが選択に合う（このマップ・周りの境界・全マップ）。
 - PNG と BMP をファイルに書け、画像の大きさが合う。グリッド（表示 > グリッドの設定 の形）を重ねられる。つなぎ合わせ（全マップ）もファイルに書ける。
+- アニメ（GIF。Phase7 #514）: 3.0（海と花のある外のタイルセット）で、コマの数・長さ（1 周 640 フレーム = 10.67 秒）・大きさが合い、
+  コマはどれも 2/100 秒以上。動くタイルの無い屋内（4.1）では作らず「動くタイルがありません」。
+  名前の既定はマップの番号と日時、書いたあとにステータスバーの「フォルダを開く」が出る。
 - 3.0 を 100×75（幅 100 での最大）に広げて 12 回描き、タイムラプスの GIF を書く。GIF のコマの数と大きさが合い、作る前と後の JavaScript のヒープを出す。
 """
 from __future__ import annotations
@@ -66,6 +69,37 @@ def gif_info(data: bytes) -> tuple[int, int, int]:
     return w, h, frames
 
 
+def gif_delays(data: bytes) -> list[int]:
+    """GIF のコマごとの長さ（1/100 秒。グラフィック制御拡張の値）。"""
+    out = []
+    p = 13
+    if data[10] & 0x80:
+        p += 3 * (1 << ((data[10] & 7) + 1))
+    while p < len(data):
+        b = data[p]
+        if b == 0x3B:
+            break
+        if b == 0x21:
+            if data[p + 1] == 0xF9:
+                out.append(struct.unpack("<H", data[p + 4:p + 6])[0])
+            p += 2
+            while data[p]:
+                p += data[p] + 1
+            p += 1
+        elif b == 0x2C:
+            flags = data[p + 9]
+            p += 10
+            if flags & 0x80:
+                p += 3 * (1 << ((flags & 7) + 1))
+            p += 1
+            while data[p]:
+                p += data[p] + 1
+            p += 1
+        else:
+            raise ValueError(f"知らないブロック {b:#x}")
+    return out
+
+
 def run(z: Zigzagu, action: str, path: pathlib.Path | None):
     if path:
         z.call({"cmd": "queuePath", "path": str(path)})
@@ -96,6 +130,40 @@ def main() -> int:
         check(st["open"] and st["choice"]["format"] == "png", "窓が開き、形式の初めは PNG")
         check(st["last"]["width"] == w * 16 and st["last"]["height"] == h * 16, f"このマップのプレビューの大きさ（{st['last']}）")
         shot(z, shots, "export_map.png")
+
+        # アニメ（GIF。#514）
+        z.call({"cmd": "setField", "id": "mapExport.gifAnim", "value": True})
+        st = z.call({"cmd": "mapExport.state"})
+        check(st["choice"]["format"] == "gif-anim", "形式でアニメ（GIF）を選べる")
+        r = run(z, "gif-anim", work / "anim.gif")
+        data = (work / "anim.gif").read_bytes() if r else b""
+        info = gif_info(data) if data else None
+        delays = gif_delays(data) if data else []
+        check(bool(r) and r["complete"] and info == (w * 16, h * 16, r["frames"]), f"アニメの GIF を書け、大きさとコマの数が合う（{info}、{len(data)} バイト）")
+        check(sum(delays) == 1067 and r and r["durationCs"] == 1067, f"1 回分は外のタイルセットの周期 640 フレーム（{sum(delays)}/100 秒）")
+        check(len(delays) >= 40 and all(d >= 2 for d in delays), f"コマは池の海のタイルの周期ごと以上で、どれも 2/100 秒以上（{len(delays)} コマ、{sorted(set(delays))}）")
+        try:
+            from PIL import Image, ImageSequence
+            frames = [f.convert("RGB").tobytes() for f in ImageSequence.Iterator(Image.open(work / "anim.gif"))]
+            check(all(a != b for a, b in zip(frames, frames[1:])), "続くコマは必ず絵が違う（同じ絵は前のコマを延ばす）")
+        except ImportError:
+            print("     （Pillow が無いので、続くコマの絵の比べは省く）")
+        print(f"     アニメの GIF: {r and r['frames']} コマ、1 コマの画像 {r and r['frameBytes']} バイト、ヒープの増え方 {r and r['heapGrowthMb']} MB")
+        st = z.call({"cmd": "mapExport.state"})
+        check(st["folder"] == str(work / "anim.gif") and z.call({"cmd": "getField", "id": "status.openFolder"}).get("visible") is True, f"書いたあとに「フォルダを開く」を出す（{st['folder']}）")
+        z.call({"cmd": "click", "id": "status.openFolder"})
+        z.call({"cmd": "setField", "id": "mapExport.png", "value": True})
+        z.call({"cmd": "dialog", "press": "close"})
+        z.call({"cmd": "selectMap", "bank": 4, "map": 1})
+        z.call({"cmd": "action", "id": "image.export"})
+        z.call({"cmd": "setField", "id": "mapExport.gifAnim", "value": True})
+        r = run(z, "gif-anim", None)  # 保存先を聞く前にやめる（保存先は渡さない）
+        status = z.call({"cmd": "state"})["status"]
+        check(r is None and "動くタイルがありません" in str(status), f"動くタイルの無いマップでは作らない（{status}）")
+        z.call({"cmd": "setField", "id": "mapExport.png", "value": True})
+        z.call({"cmd": "dialog", "press": "close"})
+        z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+        z.call({"cmd": "action", "id": "image.export"})
 
         # グリッド（#391 の形。ここでは 2 マスごとの赤い線）
         z.call({"cmd": "setting", "key": "gridStyle", "value": {"width": 2, "height": 2, "offsetX": 0, "offsetY": 0, "color": "#ff0000", "line": "solid"}})

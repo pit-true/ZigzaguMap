@@ -30,6 +30,7 @@ import type { EditorState } from "./EditorState";
 import type { MapExtras } from "./mapExtras";
 import { SeamWarnings } from "./neighbors/SeamWarnings";
 import { LayerToggles } from "./LayerToggles";
+import { FolderNotice } from "../ui/export/FolderNotice";
 
 /** ViewFeatures が使う画面の部品（App が渡す）。 */
 export interface ViewFeatureParts {
@@ -82,6 +83,8 @@ export class ViewFeatures {
   private minimapCreated: MinimapPanel | null = null;
   /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
   readonly userScripts: UserScriptHost;
+  /** 書き出したあとの「フォルダを開く」（Phase7 #514。初めて書き出したときに作る）。 */
+  private folderNoticeValue: FolderNotice | null = null;
   /** レイヤーごとの表示（Phase7 #513。表示 > レイヤーの表示）。 */
   readonly layers: LayerToggles;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
@@ -124,7 +127,7 @@ export class ViewFeatures {
     actions.register("image.export", async () => {
       if (!state.map) return;
       const { MapExportDialog } = await import("../ui/export/MapExportDialog");
-      new MapExportDialog({ state, files: parts.files, composite: extras.composite, timelapse: this.timelapse });
+      new MapExportDialog({ state, files: parts.files, composite: extras.composite, timelapse: this.timelapse, showFolder: (path) => this.folderNotice().show(path) });
     });
     // 履歴の窓（Phase5 #402。表示 > 履歴の窓、Ctrl+E）
     actions.registerCheck("view.history", () => this.historyCreated?.isOpen ?? false);
@@ -211,6 +214,15 @@ export class ViewFeatures {
   /** 履歴の窓（作っていなければ null。自動操作用）。 */
   historyIfCreated(): HistoryPanel | null {
     return this.historyCreated;
+  }
+
+  /** 書き出したあとの「フォルダを開く」（作っていなければ作ってステータスバーに置く。#514）。 */
+  folderNotice(): FolderNotice {
+    if (!this.folderNoticeValue) {
+      this.folderNoticeValue = new FolderNotice(this.parts.state);
+      this.parts.statusBar.addSlot(this.folderNoticeValue.element);
+    }
+    return this.folderNoticeValue;
   }
 
   /** ミニマップの小窓（作っていなければ作る。#511）。 */

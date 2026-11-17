@@ -88,3 +88,10 @@ export function encodeDib(image: RgbaImage): Uint8Array {
   }
   return out;
 }
+
+/** 書き出しの名前の既定（マップの番号と日時。`3.0_2026-11-17_18-30-45`。Phase7 #514。マップが無ければ `map_` と日時）。 */
+export function exportBaseName(id: { bank: number; map: number } | null, at: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}_${p(at.getHours())}-${p(at.getMinutes())}-${p(at.getSeconds())}`;
+  return id ? `${id.bank}.${id.map}_${stamp}` : `map_${stamp}`;
+}
