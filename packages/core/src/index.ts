@@ -25,6 +25,7 @@ export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
 export { floodRegion, matchingCells, patternCells, type FillMatch, type FillPattern, type FillPoint, type FillSource, type PatternCell } from "./map/fill.js";
 export { LineLock, type LineAxis } from "./map/lineLock.js";
+export { clampRegionMove, clipRegion, planRegionMove, widenForTriple, type RegionCell, type RegionFill, type RegionRect } from "./map/moveRegion.js";
 export { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE, brushShapeCells, brushOffsets, brushStart, clampBrushSize, pickWeighted, toBrushShape, type BrushOffset, type BrushShape } from "./map/brushShape.js";
 export { TilesetTable } from "./map/TilesetTable.js";
 export { LayoutSharing } from "./map/LayoutSharing.js";

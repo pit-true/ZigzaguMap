@@ -452,9 +452,11 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`）、鉛筆のブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今使うか `brushActive`（`map`・`movement`。#515） |
-| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）、`brushSize`（1〜9）、`brushShape`（`square` / `circle`）。どれも省略可 | 道具・スマートパス・ブラシを変える（帯のボタンと欄、N・B・S・`[` `]` と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
+| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift` / `select`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`）、鉛筆のブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今使うか `brushActive`（`map`・`movement`。#515） |
+| `tool.set` | `tool`（`pencil` / `fill` / `shift` / `select`）、`smartPath`（true / false）、`brushSize`（1〜9）、`brushShape`（`square` / `circle`）。どれも省略可 | 道具・スマートパス・ブラシを変える（帯のボタンと欄、N・B・S・M・`[` `]` と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
 | `tool.fill` | `cell`（`[x, y]`。主マップの左上が原点。隣の帯の上も指せる）、`magic`（true でマジック塗り）、`tab`（`map` / `movement`。省略で表示中のタブ） | 塗りつぶしを 1 回行う（道具の設定は変えない）。返事の `count` は塗ったマスの数と、`selection` と同じもの |
+| `select.state` | `tab`（`map` / `movement`。省略で表示中のタブ） | 範囲の選択（#516）。今の選択 `rect`（`[x, y, 幅, 高さ]`。無ければ null） |
+| `select.move` | `rect`（`[x, y, 幅, 高さ]`）、`dx`、`dy`、`tab` | 矩形を選んで `dx`・`dy` だけ動かす（選択の道具でドラッグして離したのと同じ 1 回の操作。マップの端で止める）。道具の設定は変えない。返事は動かした量 `moved`（`[dx, dy]`。動かなければ null）、動かした後の選択 `rect` と、`selection` と同じもの |
 | `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
 | `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズの窓の OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
 | `tool.resizeDialog` | | 対話式リサイズの窓「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |

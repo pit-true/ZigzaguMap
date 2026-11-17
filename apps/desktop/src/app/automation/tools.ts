@@ -6,7 +6,7 @@ import { describeSelection } from "./status";
 
 /**
  * 描く道具（Phase5 列 1）。
- * - `tool.state`: 今の道具 `tool`（`pencil` / `fill` / `shift`）、スマートパス `smartPath`（設定）と、今の選択で使えるか `smartPathReady`、
+ * - `tool.state`: 今の道具 `tool`（`pencil` / `fill` / `shift` / `select`）、スマートパス `smartPath`（設定）と、今の選択で使えるか `smartPathReady`、
  *   帯のボタンの状態 `buttons`（`tools.map.<道具>` の押されているもの）。
  *   ブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今のタブで使うか `brushActive`（`map` / `movement`。Phase7 #515）。
  * - `tool.set {tool?, smartPath?, brushSize?, brushShape?}`: 道具・スマートパス・ブラシを変える（帯のボタン・欄・N・B・S・`[` `]` と同じ。
@@ -17,6 +17,9 @@ import { describeSelection } from "./status";
  * - `tool.resize {left, right, up, down, fill?}`: 4 辺を広げる・縮める（対話式リサイズの窓の OK と同じ。`fill` は `edge`（既定）/ `border` /
  *   `selection`）。返事の `done` は実行できたか（できなければエラーのダイアログが出たまま返る）、`width`・`height` は変えたあとの大きさ。
  * - `tool.resizeDialog`: 対話式リサイズの窓を開いてすぐ返す（部品は `resize.width` など。`setField` で入れ、`dialog` の `press: "ok"` で実行）。
+ * - `select.state {tab?}`: 範囲の選択（Phase7 #516）。今の選択 `rect`（`[x, y, 幅, 高さ]`。無ければ null）。
+ * - `select.move {rect: [x, y, 幅, 高さ], dx, dy, tab?}`: 矩形を選んで `dx`・`dy` だけ動かす（ドラッグで動かして離したのと同じ 1 回の操作。
+ *   端で止める）。返事の `moved` は動かした量（`[dx, dy]`。動かなければ null）と、動かした後の選択 `rect`。道具の設定は変えない。
  * - `view.aids`: 表示の補助（#391）。`cursorFrame`・`playerView`（個人設定）、グリッドの形 `gridStyle`（確かめて直した値）と表示 `grid`、
  *   タブごとの枠 `layers`（`map` / `movement` / `event` の `cell`（マウスのマス）・`cursor`・`sight`（マスの矩形。出していなければ null））、
  *   移動許可の数値の欄の文字 `movementValue`。
@@ -75,6 +78,33 @@ async function fill(app: App, req: AutomationRequest): Promise<unknown> {
   return { count, ...describeSelection(app) };
 }
 
+function selectTool(app: App, req: AutomationRequest) {
+  const tab = optStr(req, "tab") ?? (app.state.tab === "movement" ? "movement" : "map");
+  if (tab === "movement") return { tool: app.tools.movementTab.painter.select, cells: app.tools.movementTab.painter.cells };
+  if (tab === "map") return { tool: app.tools.mapTab.painter.select, cells: app.tools.mapTab.painter.cells };
+  throw new Error(`tab は map / movement です: ${tab}`);
+}
+
+function rectArray(r: { x: number; y: number; width: number; height: number } | null): number[] | null {
+  return r ? [r.x, r.y, r.width, r.height] : null;
+}
+
+function selectState(app: App, req: AutomationRequest): unknown {
+  return { rect: rectArray(selectTool(app, req).tool.rect) };
+}
+
+async function selectMove(app: App, req: AutomationRequest): Promise<unknown> {
+  const { tool, cells } = selectTool(app, req);
+  const r = req["rect"];
+  if (!Array.isArray(r) || r.length !== 4 || !r.every((v) => Number.isInteger(v))) throw new Error("rect は [x, y, 幅, 高さ] で指定してください");
+  const [x, y, width, height] = r as number[];
+  if (!tool.select({ x: x!, y: y!, width: width!, height: height! })) throw new Error("rect がマップの中にありません");
+  const moved = tool.rect ? tool.moveRegion(tool.rect, int(req, "dx"), int(req, "dy")) : null;
+  await cells.settle();
+  await settle();
+  return { moved: moved ? [moved.dx, moved.dy] : null, rect: rectArray(tool.rect), ...describeSelection(app) };
+}
+
 async function shift(app: App, req: AutomationRequest): Promise<unknown> {
   app.tools.mapTab.painter.shift.run(int(req, "dx"), int(req, "dy"));
   await settle();
@@ -118,5 +148,7 @@ export const toolCommands: CommandTable = {
   "tool.shift": shift,
   "tool.resize": resize,
   "tool.resizeDialog": resizeDialog,
+  "select.state": selectState,
+  "select.move": selectMove,
   "view.aids": aids,
 };
