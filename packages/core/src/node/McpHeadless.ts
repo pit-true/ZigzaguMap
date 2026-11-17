@@ -119,6 +119,8 @@ export async function openHeadlessWorkspace(options: HeadlessOptions): Promise<H
   const workspace = await CoreMcpWorkspace.create(project, {
     permissions: options.permissions,
     writeBlocked: () => blocked,
+    // 画面なしの形は起動の引数で許す（docs/mcp.md の「画面なしで使う」）
+    permissionHint: (kind) => `MCP サーバーの起動の引数に ${kind === "write" ? "--allow-write" : "--allow-export"} を付けてください。`,
     beforeCall: refresh,
     speciesNames: async () => {
       if (!species) {

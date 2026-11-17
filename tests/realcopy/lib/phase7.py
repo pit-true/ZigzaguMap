@@ -63,7 +63,8 @@ def _person_label(z: Zigzagu, bank: int, map: int, index: int) -> str | None:
     return next((l["label"] for l in labels if l["index"] == index), None)
 
 
-def _free_cell(events: dict, w: int, h: int) -> tuple[int, int]:
+def _free_cell(events: dict | None, w: int, h: int) -> tuple[int, int]:
+    events = events or {}
     used = {(e["x"], e["y"]) for kind in ("persons", "warps", "traps", "signs") for e in events.get(kind, [])}
     for y in range(2, h - 2):
         for x in range(2, w - 2):
@@ -133,7 +134,7 @@ def _paste_edit(z: Zigzagu, check, log) -> dict:
     st = z.call({"cmd": "event.state"})
     m = z.call({"cmd": "state"})["map"]
     x, y = _free_cell(st["events"], m["width"], m["height"])
-    count = len(st["events"]["persons"])
+    count = len((st["events"] or {}).get("persons", []))  # ND の 3.1 はイベントが無い（#536 の貼り付け先にもなる）
     r = z.call({"cmd": "event.paste", "x": x, "y": y})
     persons = z.call({"cmd": "event.state"})["events"]["persons"]
     check(r["ok"] is True and len(persons) == count + 1, f"3.1 の ({x},{y}) へ貼る（{r['status']}）")

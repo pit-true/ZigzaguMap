@@ -57,8 +57,8 @@ describe("画面なしの形（#522）", () => {
     const { workspace } = await openHeadlessWorkspace({ rom, project, permissions: { write: false, export: false, scripts: false }, inUseDir: inUse });
     const runner = new McpToolRunner(workspace);
     await runner.call("map_open", { bank: 0, map: 0 });
-    expect(text(await runner.call("map_setBlock", { x: 0, y: 0, block: 3 }))).toContain("許可されていません");
-    expect(text(await runner.call("project_export", {}))).toContain("許可されていません");
+    expect(text(await runner.call("map_setBlock", { x: 0, y: 0, block: 3 }))).toContain("--allow-write を付けてください");
+    expect(text(await runner.call("project_export", {}))).toContain("--allow-export を付けてください");
   });
 
   it("ZigzaguMap が同じプロジェクトを開いている間は書き換えを断り、終われば書ける", async () => {
