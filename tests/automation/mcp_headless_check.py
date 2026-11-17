@@ -20,6 +20,7 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from mcp_client import McpClient  # noqa: E402
 from zz import REPO, Zigzagu, copy_project  # noqa: E402
 
 failures: list[str] = []
@@ -31,47 +32,14 @@ def check(cond: bool, what: str) -> None:
         failures.append(what)
 
 
-class Headless:
+class Headless(McpClient):
     """画面なしの MCP サーバー（前の版の initialize で始める）。"""
 
     def __init__(self, mjs: pathlib.Path, rom: str, project: pathlib.Path, *flags: str):
         t0 = time.time()
-        self.proc = subprocess.Popen(["node", str(mjs), "--rom", rom, "--project", str(project), *flags], stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
-        self.next = 0
-        self.request("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "mcp_headless_check", "version": "1"}})
+        super().__init__(mjs, "--rom", rom, "--project", str(project), *flags)
+        self.initialize("mcp_headless_check")
         self.ready_ms = round((time.time() - t0) * 1000)
-        self.stdin_write({"jsonrpc": "2.0", "method": "notifications/initialized"})
-
-    def stdin_write(self, msg: dict) -> None:
-        self.proc.stdin.write(json.dumps(msg, ensure_ascii=False) + "\n")
-        self.proc.stdin.flush()
-
-    def request(self, method: str, params: dict) -> dict:
-        self.next += 1
-        self.stdin_write({"jsonrpc": "2.0", "id": self.next, "method": method, "params": params})
-        line = self.proc.stdout.readline()
-        if not line:
-            raise RuntimeError("MCP サーバーが終わりました: " + self.proc.stderr.read())
-        return json.loads(line)
-
-    def call(self, name: str, args: dict | None = None) -> tuple[bool, object]:
-        result = self.request("tools/call", {"name": name, "arguments": args or {}})["result"]
-        content = result["content"]
-        if content[0]["type"] != "text":
-            return bool(result.get("isError")), content
-        try:
-            return bool(result.get("isError")), json.loads(content[0]["text"])
-        except json.JSONDecodeError:
-            return bool(result.get("isError")), content[0]["text"]
-
-    def close(self) -> str:
-        self.proc.stdin.close()
-        try:
-            self.proc.wait(15)
-        except subprocess.TimeoutExpired:
-            self.proc.kill()
-        return self.proc.stderr.read()
 
 
 def paint_and_export(h: Headless, bank: int, map_: int, label: str) -> tuple[list[int], object] | None:

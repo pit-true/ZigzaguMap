@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from zz import Zigzagu  # noqa: E402
+from zz import Zigzagu, shot  # noqa: E402
 
 failures: list[str] = []
 
@@ -29,13 +29,6 @@ def check(cond: bool, what: str) -> None:
     print(("OK   " if cond else "失敗 ") + what)
     if not cond:
         failures.append(what)
-
-
-def shot(z: Zigzagu, shots: pathlib.Path | None, name: str) -> None:
-    if not shots:
-        return
-    png = z.call({"cmd": "screenshot"})
-    (shots / name).write_bytes(base64.b64decode(png if isinstance(png, str) else png["png"]))
 
 
 def gif_info(data: bytes) -> tuple[int, int, int]:
