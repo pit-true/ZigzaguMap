@@ -9,6 +9,8 @@ import scriptsDoc from "../../../../../docs/script-editor.md?raw";
 import timeDoc from "../../../../../docs/time-and-wild.md?raw";
 import referenceDoc from "../../../../../docs/reference.md?raw";
 import developmentDoc from "../../../../../docs/development.md?raw";
+import mcpDoc from "../../../../../docs/mcp.md?raw";
+import specDoc from "../../../../../docs/SPEC.md?raw";
 import buildSupportDoc from "../../../../../build-support/README.md?raw";
 import readme from "../../../../../README.md?raw";
 import { shortcutMarkdown } from "../../app/shortcutList";
@@ -79,7 +81,7 @@ export function openEula(): Promise<void> {
 /** ショートカット一覧の文書の名前（ヘルプの中だけの文書）。 */
 export const SHORTCUTS_DOC = "shortcuts.md";
 
-/** ヘルプの中で開ける文書（README からリンクしているもの）。 */
+/** ヘルプの中で開ける文書（docs の全部と、README からリンクしているもの。漏れは test/helpDocs.test.ts が見つける）。 */
 const DOCS = {
   "README.md": readme,
   "docs/automation.md": automationDoc,
@@ -91,6 +93,8 @@ const DOCS = {
   "docs/time-and-wild.md": timeDoc,
   "docs/reference.md": referenceDoc,
   "docs/development.md": developmentDoc,
+  "docs/mcp.md": mcpDoc,
+  "docs/SPEC.md": specDoc,
   "build-support/README.md": buildSupportDoc,
   LICENSE: license,
   // 開くたびに今のキーで作る（設定 > ショートカットの変更… で変えたキーを出す。#392）
