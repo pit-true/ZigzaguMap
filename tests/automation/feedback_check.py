@@ -285,7 +285,7 @@ def run(z: Zigzagu, rom: str, project_dir: str, shots: pathlib.Path | None) -> N
     time.sleep(0.2)
     check(field(z, "help.doc")["value"] == "shortcuts.md", "ショートカット一覧を開く")
     check(not has_id(z, "help.home"), "メニューから開いた文書には戻り先のリンクを出さない")
-    titles = [d["title"] for d in z.call({"cmd": "dialogs"}) if d.get("kind") == "app"]
+    titles = [d["title"] for d in z.call({"cmd": "dialogs"})["dialogs"] if d.get("kind") == "app"]
     check(titles[-1:] == ["ショートカット一覧"], f"dialogs の題も開いている文書の題（{titles}）")
     save_png(z.call({"cmd": "screenshot"}), shot("09_help_shortcuts.png"))
     z.call({"cmd": "click", "id": "help.close"})

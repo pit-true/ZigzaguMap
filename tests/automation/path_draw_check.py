@@ -39,6 +39,14 @@ def main():
             assert s["rows"] == [] and s["values"] == []
             print("OK 人物から開くと、人物の位置から始まり、命令は空")
 
+            # 窓を動かす（pathDraw.move）。画面の外へは出さない
+            moved = z.call(dict(cmd="pathDraw.move", left=150, top=200))["position"]
+            assert moved == {"left": 150, "top": 200}, moved
+            far = z.call(dict(cmd="pathDraw.move", left=99999, top=-50))["position"]
+            assert far["left"] < 99999 and far["top"] == 0, far
+            z.call(dict(cmd="pathDraw.move", left=s["position"]["left"], top=s["position"]["top"]))
+            print(f"OK pathDraw.move で窓を動かし、画面の外へは出さない（初めの位置 {s['position']}）")
+
             # 2. 矢印キーで 3 歩 → 一覧が 3 つ
             for _ in range(3):
                 key("ArrowUp")
