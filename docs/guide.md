@@ -444,7 +444,6 @@ AdvanceMap 1.92 日本語版に合わせています。文言は、AdvanceMap 1.
 | 履歴の窓（Ctrl+E） | ZigzaguMap 独自（Phase5）。元に戻す・やり直すの履歴の一覧を小窓に出す（「[履歴の窓](map-editing.md#履歴の窓402)」） |
 | レイヤーの表示 > 下のレイヤー／上のレイヤー／トリプルレイヤーの 3 枚目 | ZigzaguMap 独自（Phase7。起動したときは全部オン）。外したレイヤーを描かずにマップを描く（「[レイヤーごとの表示](map-editing.md#レイヤーごとの表示513)」） |
 | ミニマップ | ZigzaguMap 独自（Phase7。既定オフ）。マップ全体の縮小図と見えている範囲の枠を小窓に出し、押すとその場所へスクロールする（「[ミニマップ](map-editing.md#ミニマップ511)」） |
-| パレットのタイルセット 1・2 の境目 | ZigzaguMap 独自（Phase4。既定オン）。ブロックパレットの境目に線と「TS2 0x280〜」の見出し |
 | マップ一覧にサムネイルを出す | ZigzaguMap 独自（Phase4。既定オフ）。マップ一覧の各マップの横に縮小を出す（「[マップ一覧のサムネイル](tilesets.md#マップ一覧のサムネイル)」） |
 | 移動エリアの設定の透明度 の窓の「イベントの濃さ」 | ZigzaguMap 独自（Phase4。既定 100%）。イベントタブのイベントの印の濃さ（10〜100%） |
 
@@ -502,7 +501,6 @@ AdvanceMap にあった「言語」（画面は日本語だけ）、「スクリ
 | `hiddenEventKinds`、`eventOpacity` | 表示 > イベントの種類 で隠す種類（`person`・`sign`・`trap`・`warp`）、イベントの濃さ（0.1〜1） | 空、1 |
 | `showTownMap` | 表示 > タウンマップの小窓 | false |
 | `townLinks` | タウンマップの小窓で自分で紐づけた位置（ROM（小文字のパス）ごと。ROM だけを開いているとき。形は `zigzagumap.json` の `"townMap"` と同じ） | 空 |
-| `paletteBoundary` | 表示 > パレットのタイルセット 1・2 の境目 | true |
 | `treeThumbnails` | 表示 > マップ一覧にサムネイルを出す | false |
 | `mapZoom` | Ctrl＋ホイールで決めたタブごとの倍率（`map`・`movement`・`event`。1〜8、0 なら表示 > マップの表示サイズ の「拡大表示」に従う） | すべて 0 |
 | `paintTool`、`smartPath` | 道具の帯の道具（`pencil` = 鉛筆、`fill` = 塗りつぶし、`shift` = マップシフト）、スマートパス（Phase5） | `pencil`、false |

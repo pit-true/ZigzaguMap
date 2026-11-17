@@ -772,9 +772,6 @@ class ZigzaguDriver(Driver):
                 self.call({"cmd": "setting", "key": "usageMarks", "value": False})
                 # 人を動かしても隣のマップにクローンを作らない（AdvanceMap に無い。Phase3 #242）
                 self.call({"cmd": "setting", "key": "showClones", "value": False})
-                # ブロックパレットの TS1 と TS2 の境目の線と見出しを描かない（AdvanceMap に無い。Phase4 #308。
-                # tests/automation/phase4_view_check.py で確かめる）
-                self.call({"cmd": "setting", "key": "paletteBoundary", "value": False})
                 return
             except Exception as e:  # noqa: BLE001
                 last = e

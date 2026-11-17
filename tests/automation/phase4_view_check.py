@@ -419,13 +419,18 @@ def check_palette(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
             break
     r2 = z.call({"cmd": "recent.state"})["blocks"]
     check(0x280 not in r2 and 3 in r2, f"組が変わると使えないもの（副）を消す（{[hex(b) for b in r2]}）")
-    # TS1 と TS2 の境目
+    # TS1 と TS2 の境目の線と見出しは出さない（#545）。メニューの項目も無く、個人設定に古い値が残っていても絵は変わらない
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
-    on = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
-    z.call({"cmd": "menu.run", "id": "view.paletteBoundary"})
-    off = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
-    check(cell_rgba(on, 0, 80) != cell_rgba(off, 0, 80) and cell_rgba(on, 0, 40) == cell_rgba(off, 0, 40), "境目の線と見出しが出て、表示メニューで消せる")
-    z.call({"cmd": "menu.run", "id": "view.paletteBoundary"})
+    ids = {i["id"] for i in z.call({"cmd": "menu.list"}) if i.get("id")}
+    check("view.paletteBoundary" not in ids, "表示メニューに境目の項目が無い")
+    plain = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
+    z.call({"cmd": "setting", "key": "paletteBoundary", "value": True})
+    # 拡大を 2 回切り替えて描き直させる
+    z.call({"cmd": "menu.run", "id": "zoom.palette"})
+    z.call({"cmd": "menu.run", "id": "zoom.palette"})
+    old = pixels(png_bytes(z.call({"cmd": "canvasPng", "target": "palette"})))
+    z.call({"cmd": "setting", "key": "paletteBoundary", "value": False})
+    check(plain == old, "古い設定が残っていても境目の線と見出しを描かない")
     z.call({"cmd": "scroll", "target": "palette", "y": 80 * 16 - 60})
     shot(z, shots, "view_palette_boundary.png")
     # 移動許可の説明
