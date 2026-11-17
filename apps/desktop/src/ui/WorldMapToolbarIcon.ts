@@ -1,5 +1,6 @@
 import { readRegionMapIcon } from "@zigzagumap/core";
 import type { EditorState } from "../app/EditorState";
+import { pixelIconHtml } from "./icons";
 import { worldMapIconFromTownMap } from "./toolbarPixelArt";
 
 /** 差し替える相手（ツールバー）。 */
@@ -13,7 +14,7 @@ export type WorldMapIconSource = "rom" | "fallback";
 /**
  * ツールバーのワールドマップエディタのアイコン（#541）。ROM を開いたら、その ROM のタウンマップ（カントーの面）から
  * マサラタウンのあたりを切り出した絵に差し替え、閉じたり読めなかったりしたら自作の絵に戻す。
- * - ROM を開く処理を待たせないよう、読むのは手の空いたとき。切り出した絵は SVG の文字列としてツールバーに持つだけで、ファイルには書かない。
+ * - ROM を開く処理を待たせないよう、読むのは手の空いたとき。切り出した絵は PNG の data URL としてツールバーに持つだけで、ファイルには書かない。
  */
 export class WorldMapToolbarIcon {
   private current: WorldMapIconSource = "fallback";
@@ -45,7 +46,7 @@ export class WorldMapToolbarIcon {
     const run = this.idle().then(() => {
       if (this.state.session !== session) return;
       const image = readRegionMapIcon(session.project.rom, session.project.game.code);
-      this.show(image ? worldMapIconFromTownMap(image) : null);
+      this.show(image ? pixelIconHtml(worldMapIconFromTownMap(image)) : null);
     });
     this.pending = run;
     void run.finally(() => {

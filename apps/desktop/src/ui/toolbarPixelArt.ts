@@ -1,4 +1,4 @@
-import { gridFromRgba, gridFromRows, overlayGrid, pixelIconSvg, type PixelGrid } from "./pixelIcon";
+import { gridFromRgba, gridFromRows, overlayGrid, pixelIconPixels, type IconPixels, type PixelGrid } from "./pixelIcon";
 
 /**
  * ツールバーのドット絵のアイコン（#541）: 新規マップの作成・新規マップの挿入・ワールドマップエディタ。
@@ -99,11 +99,11 @@ const BLANK = gridFromRows(Array.from({ length: 15 }, () => "".padEnd(15, ".")),
 const rows = (r: readonly string[]): PixelGrid => gridFromRows(r, PIXEL_COLORS);
 
 /** 新規マップの作成（札の左上に星）。 */
-export const NEW_MAP_ICON = pixelIconSvg(overlayGrid(overlayGrid(BLANK, rows(MAP_CARD), 3, 3), rows(STAR), 0, 0), "newMap");
+export const NEW_MAP_ICON = pixelIconPixels(overlayGrid(overlayGrid(BLANK, rows(MAP_CARD), 3, 3), rows(STAR), 0, 0));
 /** 新規マップの挿入（札の左から矢印）。 */
-export const INSERT_MAP_ICON = pixelIconSvg(overlayGrid(overlayGrid(BLANK, rows(MAP_CARD), 3, 3), rows(ARROW), 0, 5), "insertMap");
+export const INSERT_MAP_ICON = pixelIconPixels(overlayGrid(overlayGrid(BLANK, rows(MAP_CARD), 3, 3), rows(ARROW), 0, 5));
 /** ワールドマップエディタ（ROM を開く前・読めないとき）。 */
-export const WORLD_MAP_FALLBACK_ICON = pixelIconSvg(rows(WORLD_FALLBACK), "worldMap");
+export const WORLD_MAP_FALLBACK_ICON = pixelIconPixels(rows(WORLD_FALLBACK));
 
 /** 輪郭の札（15×15。角は透明）。 */
 const FRAME = rows([
@@ -113,6 +113,6 @@ const FRAME = rows([
 ]);
 
 /** ROM のタウンマップから切り出した 13×13 の画素に輪郭を付けて、ワールドマップエディタのアイコンにする。 */
-export function worldMapIconFromTownMap(image: { readonly width: number; readonly height: number; readonly data: ArrayLike<number> }): string {
-  return pixelIconSvg(overlayGrid(FRAME, gridFromRgba(image), 1, 1), "worldMap");
+export function worldMapIconFromTownMap(image: { readonly width: number; readonly height: number; readonly data: ArrayLike<number> }): IconPixels {
+  return pixelIconPixels(overlayGrid(FRAME, gridFromRgba(image), 1, 1));
 }

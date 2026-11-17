@@ -68,15 +68,15 @@ def main() -> int:
         with Zigzagu(pathlib.Path(a.exe) if a.exe else None, profile=profile) as z:
             st = z.call({"cmd": "toolbar.icons", "wait": True})
             check(st["worldMap"] == "fallback", f"ROM を開く前のワールドマップの絵は自作の絵: {st['worldMap']}")
-            check(all(st["sizes"].get(k, 0) > 0 for k in ("newMap", "insertMap", "worldMap")), "3 つのボタンに絵がある")
-            norom = st["sizes"]
+            check(all(st["keys"].get(k) for k in ("newMap", "insertMap", "worldMap")), "3 つのボタンに絵がある")
+            norom = st["keys"]
             both_themes(z, shots, "toolbar_norom")
 
             z.call({"cmd": "open", "rom": str(rom)})
             st = z.call({"cmd": "toolbar.icons", "wait": True})
             check(st["worldMap"] == "rom", f"ROM を開くと ROM のタウンマップから切り出した絵: {st['worldMap']}")
-            check(st["sizes"]["worldMap"] != norom["worldMap"], "ワールドマップの絵が変わる")
-            check(st["sizes"]["newMap"] == norom["newMap"] and st["sizes"]["insertMap"] == norom["insertMap"], "新規マップの作成・挿入の絵は変わらない")
+            check(st["keys"]["worldMap"] != norom["worldMap"], "ワールドマップの絵が変わる")
+            check(st["keys"]["newMap"] == norom["newMap"] and st["keys"]["insertMap"] == norom["insertMap"], "新規マップの作成・挿入の絵は変わらない")
             both_themes(z, shots, "toolbar_rom")
 
             if a.project:
