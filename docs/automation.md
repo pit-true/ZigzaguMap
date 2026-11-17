@@ -153,6 +153,9 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `event.selectMany` | `items`（`[{"kind": "person", "index": 0}, ...]`） | イベントを複数選ぶ（Phase5 #399。Shift＋クリックで足したのと同じ。最後のものを欄に出す）。2 つ以上なら `event.state` の `selected` に全部が出る。返事は選択と `selected` |
 | `event.duplicate` | | 選んでいるイベントを複製する（Ctrl+D と同じ。#399）。返事は `ok`・`status`・写しの `selected`・`counts` |
+| `event.copy` | | 選んでいるイベントをコピーする（Ctrl+C と同じ。#519）。返事は `count`・`clipboard`（`source`・`items`（`kind`・`x`・`y`・`label`）・`pasting`）・`status` |
+| `event.cut` | | コピーしてから消す（Ctrl+X と同じ）。削除の確認のダイアログを出したまま返す。返事は `count`・`clipboard`・`dialogs` |
+| `event.paste` | `x`・`y`（省略可） | `x`・`y` があれば、そのマスを左上にして貼る（右クリックの「ここに貼り付け」と同じ）。無ければ影をマウスに付けて待つ（Ctrl+V と同じ。左クリックで置き、Esc で取りやめ）。返事は `ok`（置けたか。待つときは null）・`status`・`selected`・`counts`・`clipboard`。影の Canvas は `event.pasteGhost` |
 | `event.deleteSelected` | `confirm`（省略で true） | 選んでいるイベントをまとめて削除する（Delete キーと同じ。#399。確認は 1 回）。`confirm` の扱いと返事は `event.delete` と同じ |
 | `contextMenu.state` | | 開いている右クリックのメニュー（`items`: `id`・`label`・`enabled`）。無ければ null。イベントタブのマップは `mouse` の `rightClick` で開く（項目 `delete`「イベントを削除」と `openScript`「スクリプトを開く」、マップの中のマスでは `add.person`・`add.sign`・`add.trap`・`add.warp`「ここに○○を追加」と、プロジェクトフォルダがあれば `add.itemBall`「ここに落とし物を追加」。#304） |
 | `contextMenu.press` | `id`（項目の `id` か文字列） | メニューの項目を押す。返事は開いているダイアログとステータスバー |

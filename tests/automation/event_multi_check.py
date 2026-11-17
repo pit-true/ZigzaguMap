@@ -6,6 +6,8 @@
   1 回の元に戻すで戻る。Ctrl+D で写しを末尾に足し（欄は同じ、人の番号は足した位置）、1 回で消える。Shift＋ドラッグの矩形で選べる。
   Delete の確認は 1 回で、キャンセルなら何も変わらず、消すと 1 回で戻る。空いた所を押すと複数の選択をやめ、1 つだけのときの
   クリックとドラッグは今までと同じ。複製と移動を出力して読み直すと同じになる（--work の写しに出力する。ROM には書かない）。
+- コピーと別のマップへの貼り付け（Phase7 #519）: 3.0 の看板と人を 3.1 へ貼ると、互いの位置を保って置き、人のラベルも同じになる。
+  はみ出し・重なりは全部を断る。1 回で戻る。Ctrl+V の影と Esc。出力して読み直すと同じ。
 """
 from __future__ import annotations
 
@@ -196,10 +198,92 @@ def main() -> int:
         z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
         z.call({"cmd": "tab", "name": "event"})
         check(z.call({"cmd": "event.state"})["events"] == edited, "出力して読み直すと同じイベントになる")
+        paste_check(z, args.rom, work, shots)
     if not args.work:
         shutil.rmtree(work, ignore_errors=True)
     print(f"\n失敗 {len(failures)} 件" if failures else "\nすべて OK")
     return 1 if failures else 0
+
+
+def free_cell(st: dict, w: int, h: int, offsets: list[tuple[int, int]]) -> tuple[int, int]:
+    """offsets を足したマスがどれもマップの中で、イベントの無い位置。"""
+    used = {(e["x"], e["y"]) for kind in lists(st).values() for e in kind}
+    for y in range(h):
+        for x in range(w):
+            cells = [(x + dx, y + dy) for dx, dy in offsets]
+            if all(0 <= cx < w and 0 <= cy < h and (cx, cy) not in used for cx, cy in cells):
+                return x, y
+    raise AssertionError("空いたマスが無い")
+
+
+def paste_check(z: Zigzagu, rom: str, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    """11. コピーと別のマップへの貼り付け（Phase7 #519）。3.0 の看板と人を 3.1 へ貼り、出力して読み直す。"""
+    z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
+    z.call({"cmd": "tab", "name": "event"})
+    src = z.call({"cmd": "event.state"})
+    # 人 0 にラベルを付けて写す（貼った先でも同じラベルを指す。#507 の Q10）
+    z.call({"cmd": "script.setLabel", "target": "person", "index": 0, "label": "ZzPaste_Npc", "kind": "npc"})
+    z.call({"cmd": "event.selectMany", "items": [{"kind": "sign", "index": 0}, {"kind": "person", "index": 0}]})
+    r = z.call({"cmd": "event.copy"})
+    check(r["count"] == 2 and r["clipboard"]["items"][1]["label"] == "ZzPaste_Npc", f"看板と人をコピーする（{r['status']}）")
+    s0, p0 = src["events"]["signs"][0], src["events"]["persons"][0]
+    left, top = min(s0["x"], p0["x"]), min(s0["y"], p0["y"])
+    offsets = [(s0["x"] - left, s0["y"] - top), (p0["x"] - left, p0["y"] - top)]
+
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    dst = z.call({"cmd": "event.state"})
+    m = z.call({"cmd": "state"})["map"]
+    w, h = m["width"], m["height"]
+    before = dst["events"]
+    hist = z.call({"cmd": "state"})["history"]
+    # マップの外・重なりは全部を断る
+    r = z.call({"cmd": "event.paste", "x": w - 1, "y": h - 1})
+    check(r["ok"] is False and "マップの外" in r["status"] and z.call({"cmd": "event.state"})["events"] == before, f"はみ出すときは全部を貼らない（{r['status']}）")
+    # 写した人が 3.1 の人に重なる位置（看板はマップの中に収まる位置）
+    spots = [(e["x"] - offsets[1][0], e["y"] - offsets[1][1]) for e in before["persons"]]
+    spots = [(sx, sy) for sx, sy in spots if sx >= 0 and sy >= 0 and sx + offsets[0][0] < w and sy + offsets[0][1] < h
+             and not any((e["x"], e["y"]) == (sx + offsets[0][0], sy + offsets[0][1]) for e in before["signs"])]
+    check(len(spots) > 0, "重なりを確かめる位置がある")
+    if spots:
+        r = z.call({"cmd": "event.paste", "x": spots[0][0], "y": spots[0][1]})
+        check(r["ok"] is False and "同じ種類" in r["status"] and z.call({"cmd": "event.state"})["events"] == before, f"同じ種類のイベントに重なるときは全部を貼らない（{r['status']}）")
+    x, y = free_cell(dst, w, h, offsets)
+    r = z.call({"cmd": "event.paste", "x": x, "y": y})
+    after = z.call({"cmd": "event.state"})["events"]
+    sign, person = after["signs"][-1], after["persons"][-1]
+    check(r["ok"] is True and len(after["signs"]) == len(before["signs"]) + 1 and len(after["persons"]) == len(before["persons"]) + 1, f"別のマップへ 2 つ貼る（{r['status']}）")
+    check((sign["x"], sign["y"]) == (x + offsets[0][0], y + offsets[0][1]) and (person["x"], person["y"]) == (x + offsets[1][0], y + offsets[1][1]), "互いの位置を保って置く")
+    check({k: v for k, v in person.items() if k not in ("x", "y", "localId")} == {k: v for k, v in p0.items() if k not in ("x", "y", "localId")} and person["localId"] == len(after["persons"]),
+          "人の欄を全部写し、人の番号は足した位置の番号")
+    labels = z.call({"cmd": "script.labels", "bank": 3, "map": 1})
+    check(any(l["index"] == len(after["persons"]) - 1 and l["label"] == "ZzPaste_Npc" for l in labels["person"]), f"貼った人のスクリプトは同じラベル（{labels['person']}）")
+    check(z.call({"cmd": "state"})["history"] == hist + 1, "1 回の貼り付けは 1 つの操作")
+    z.call({"cmd": "undo"})
+    check(z.call({"cmd": "event.state"})["events"] == before, "1 回の元に戻すで 2 つとも消える")
+    # Ctrl+V で影を付け、クリックで置く。Esc で取りやめ
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    check(z.call({"cmd": "event.state"}) is not None and z.call({"cmd": "event.paste", "x": -999, "y": -999})["clipboard"]["pasting"] is False, "座標を渡すと影を外す")
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    z.call({"cmd": "mouse", "target": "event", "action": "hover", "cell": [x, y]})
+    shot(z, shots, "paste-ghost.png")
+    z.call({"cmd": "key", "key": "Escape"})
+    check(z.call({"cmd": "event.state"})["events"] == before, "Esc で取りやめると何も置かない")
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    z.call({"cmd": "mouse", "target": "event", "action": "click", "cell": [x, y]})
+    pasted = z.call({"cmd": "event.state"})["events"]
+    check(len(pasted["signs"]) == len(before["signs"]) + 1 and (pasted["signs"][-1]["x"], pasted["signs"][-1]["y"]) == (x + offsets[0][0], y + offsets[0][1]), "Ctrl+V の影をクリックで置く")
+    # 出力して読み直すと同じ。ラベルも残る
+    z.call({"cmd": "export", "dir": str(work)})
+    z.call({"cmd": "open", "rom": rom, "project": str(work)})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
+    z.call({"cmd": "tab", "name": "event"})
+    check(z.call({"cmd": "event.state"})["events"] == pasted, "貼り付けを出力して読み直すと同じイベントになる")
+    labels = z.call({"cmd": "script.labels", "bank": 3, "map": 1})
+    check(any(l["label"] == "ZzPaste_Npc" for l in labels["person"]), "読み直しても貼った人のラベルが残る（eventscripts の 3.1 の行）")
+    eventscripts = (work / "eventscripts").read_text(encoding="utf-8") if (work / "eventscripts").exists() else ""
+    check(" 3 1 " in eventscripts and "ZzPaste_Npc" in eventscripts, "eventscripts に 3.1 の行がある")
+    # ROM を開き直すとクリップボードは消える
+    check(z.call({"cmd": "event.paste", "x": 0, "y": 0})["clipboard"]["items"] == [], "ROM を開き直すとクリップボードは空")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,7 @@ export const jaCommands = {
     createWorkMap: "作業用のマップの作成",
     disconnectMaps: "マップの接続の解除",
     duplicateEvent: "イベントの複製",
+    pasteEvent: "イベントの貼り付け",
     fillLayout: "配置を埋める",
     group: "まとめた操作",
     insertMap: "マップの追加",

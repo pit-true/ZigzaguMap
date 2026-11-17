@@ -49,6 +49,7 @@ import { jaEventMulti } from "../../i18n/ja.eventMulti";
 import { jaEventLimit } from "../../i18n/ja.eventLimit";
 import { jaPlayback } from "../../i18n/ja.playback";
 import { jaPathDraw } from "../../i18n/ja.pathDraw";
+import { EventClipboard } from "./EventClipboard";
 import { Ruler } from "./RulerLayer";
 
 /** タブの外の機能（App が渡す）。 */
@@ -67,6 +68,8 @@ export interface EventTabHost {
   placeTemplate?(x: number, y: number): void;
   /** 「ここに仮の主人公を置く」（#457。保存しない）。 */
   placePlayer?(x: number, y: number): void;
+  /** `.global` でないラベル（#519。別のマップへ貼ったときに知らせる）。 */
+  notGlobal?(labels: readonly string[]): Promise<string[]>;
   /** 「ここから道をなぞる…」（#518。人の番号）。 */
   drawPath?(index: number): void;
   /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
@@ -95,6 +98,8 @@ export class EventTab {
   readonly element: HTMLElement;
   readonly view: MapView;
   readonly editor: EventEditor;
+  /** コピー・切り取り・貼り付け（Phase7 #519）。 */
+  readonly clipboard: EventClipboard;
   private readonly noEvents: HTMLElement;
   private readonly common: EventCommonPanel;
   private readonly manager: EventManagerPanel;
@@ -148,6 +153,13 @@ export class EventTab {
     this.element = document.createElement("div");
     this.element.className = "event-tab";
     this.view = new MapView("event-tab-view");
+    this.clipboard = new EventClipboard({
+      state, view: this.view, editor: this.editor,
+      selected: () => this.selectedEvents(),
+      selectMany: (refs) => this.selectMany(refs),
+      remove: () => this.removeSelected(),
+      ...(host.notGlobal ? { notGlobal: (labels: readonly string[]) => host.notGlobal!(labels) } : {}),
+    });
     this.noEvents = document.createElement("div");
     this.noEvents.className = "event-none-label";
     this.noEvents.textContent = ja.event.noEventsInMap;
@@ -665,6 +677,8 @@ export class EventTab {
       // 「ここに人を追加」など（#304）
       ...this.quickAdd.items(cell.x, cell.y),
       ...(this.host.placePlayer && this.state.session ? [{ id: "placePlayer", label: jaPlayback.placePlayer, run: () => this.host.placePlayer?.(cell.x, cell.y) }] : []),
+      // 「ここに貼り付け」（#519。押したマスを左上にして置く。コピーしたものがあるときだけ）
+      ...(this.clipboard.count > 0 ? [{ id: "paste", label: jaEventMulti.menuPaste, run: () => void this.clipboard.pasteAt(cell.x, cell.y) }] : []),
     ];
     if (!hit) {
       if (templates.length > 0) showContextMenu(x, y, templates);
@@ -696,6 +710,8 @@ export class EventTab {
       { id: "playScript", label: jaPlayback.menu, enabled: scriptKind !== null && !signItem && (this.state.session?.projectDir != null || this.romScriptOf(scriptKind, index)), run: () => scriptKind && this.host.playScript?.(scriptKind, index) },
       ...(kind === "person" && !many && this.host.drawPath ? [{ id: "drawPath", label: jaPathDraw.menuPerson, run: () => this.host.drawPath?.(index) }] : []),
       { id: "duplicate", label: jaEventMulti.menuDuplicate, enabled: kind !== "fly" || many, run: () => void this.duplicateSelected() },
+      { id: "copy", label: jaEventMulti.menuCopy, enabled: kind !== "fly" || many, run: () => void this.clipboard.copy() },
+      { id: "cut", label: jaEventMulti.menuCut, enabled: kind !== "fly" || many, run: () => void this.clipboard.cut() },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),
       // 「トレーナーを編集」（#274。人だけ。trainers.json を書くのでプロジェクトフォルダがあるときだけ。クローンは参照先を直す）

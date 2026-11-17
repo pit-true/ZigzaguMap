@@ -35,6 +35,14 @@ export function installShortcuts(app: App): void {
       app.duplicateSelectedEvents();
       return;
     }
+    // Ctrl+C・X・V: イベントタブのコピー・切り取り・貼り付け（Phase7 #519）
+    for (const action of ["copy", "cut", "paste"] as const) {
+      if (matchesKey(`event.${action}`, e) && app.state.tab === "event" && openDialogs.length === 0) {
+        e.preventDefault();
+        app.eventClipboard(action);
+        return;
+      }
+    }
     // スクリプトの操作（Phase5 #405。ツール > スクリプト の N 番目）
     for (let n = 1; n <= SCRIPT_KEY_SLOTS; n++) {
       if (matchesKey(`scripts.run.${n}`, e) && openDialogs.length === 0) {
