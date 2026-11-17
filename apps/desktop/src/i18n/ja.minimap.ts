@@ -1,8 +1,8 @@
 import { hex } from "./ja";
 
-/** ミニマップの小窓の文言（Phase7 #511。ZigzaguMap 独自）。 */
+/** ミニマップのウィンドウの文言（Phase7 #511、#542。ZigzaguMap 独自）。 */
 export const jaMinimap = {
-  /** 表示メニューの項目と小窓の題名。 */
+  /** 表示メニューの項目とウィンドウの題名。 */
   menu: "ミニマップ",
   title: "ミニマップ",
   /** マップを出すタブでないとき。 */
