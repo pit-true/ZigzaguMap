@@ -88,7 +88,7 @@ export class McpServer {
         return errorResponse(id, -32602, `_meta に ${CAPABILITIES_KEY} がありません`);
       }
     } else if (this.legacyVersion === null && method !== "ping") {
-      return errorResponse(id, -32602, `_meta に ${VERSION_KEY} がありません（前の版の形なら、先に initialize を送ってください）`);
+      return errorResponse(id, -32602, `_meta に ${VERSION_KEY} がありません（前のバージョンの形なら、先に initialize を送ってください）`);
     }
     const result = (body: Record<string, unknown>) => ({ jsonrpc: "2.0", id, result: modern ? { resultType: "complete", ...body, _meta: { [SERVER_INFO_KEY]: MCP_SERVER_INFO } } : body });
     switch (method) {

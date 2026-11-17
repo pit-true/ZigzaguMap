@@ -8,11 +8,11 @@ ZigzaguMap が書くファイルを CFRU-JP のビルドで使うための、ビ
 |---|---|---|
 | `patches/string-multiline.patch` | `scripts/string.py`（ND と Chronos の `cfru` で同じファイル） | `.string` の 1 つの文字列を複数の行で書けるようにする |
 | `patches/map_project-rom-erase-nd.patch` | ND の `scripts/map_project.py` | `maps/rom_erase.json` の範囲を 0xFF で埋める |
-| `patches/map_project-rom-erase-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（Chronos の版に合わせたもの。改行は CRLF のまま） |
+| `patches/map_project-rom-erase-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（Chronos のバージョンに合わせたもの。改行は CRLF のまま） |
 | `patches/map_project-trainers-nd.patch` | ND の `scripts/map_project.py`（rom-erase のパッチを当てたあと） | `maps/trainers.json` のトレーナーを ROM のトレーナーの表へ書く（#245） |
 | `patches/map_project-trainers-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（改行は CRLF のまま） |
 | `patches/map_project-pillow-nd.patch`、`patches/map_project-pillow-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py` | `maps/tilesets/*/tiles.png` を読むときに、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow の読み込みが失敗するのを避ける（#314・#317。改行は CRLF のまま） |
-| `patches/map_project-regionmap-nd.patch`、`patches/map_project-regionmap-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py`（trainers のパッチのあと） | `maps/regionmap.json` のタウンマップの表を ROM の表へ上書きする（#119。Chronos の版は改行が CRLF のまま） |
+| `patches/map_project-regionmap-nd.patch`、`patches/map_project-regionmap-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py`（trainers のパッチのあと） | `maps/regionmap.json` のタウンマップの表を ROM の表へ上書きする（#119。Chronos のバージョンは改行が CRLF のまま） |
 | `patches/map_project-visitflags-chronos.patch` | Chronos の `cfru`（`hooks`・`repoints`・`src/town_map_flags.c`・`scripts/map_project.py`。regionmap のパッチのあと） | タウンマップの訪問フラグ（人ID）を表引きにするフックと、`maps/regionmap.json` の `MapVisitFlags`・`DungeonVisitFlags` の取り込み（#499。Chronos だけ。改行は CRLF のまま） |
 | `tests/check_cfru_tree.py` | | パッチを当てたフォルダを確かめる（読むだけ。一時フォルダで動かす） |
 
@@ -76,7 +76,7 @@ ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の
 - ファイルが無いか `Trainers` が空なら何もしません。このときの ROM は、パッチを当てる前とバイト単位で同じです。
 - 書く時点は `_place_day_wild` のあと（マップのデータを置いたあと、`rom_erase.json` の確かめの前）です。`maps/project.json` が無くても、`trainers.json` があれば書きます（そのときは `allocation_start` から空き領域を使い、使い終わりを返します）。
 - 表は `*(0x0800F5C0)`（CFRU の `gTrainers`）です。`Id` の行（`表 + Id × 0x20`）の 0x20 バイトを書きます: 手持ちの形式、クラス、BGM と性別、絵、名前（`charmap.tbl` で変える。5 バイト + 0xFF で埋める）、持ち物 4 つ、ダブルバトル、AI、手持ちの数、手持ちへのポインタ。手持ちは空き領域に置きます（1 匹 8 バイト、技ありの形式は 16 バイト）。
-- `Id` が 743 以上なら、表（743 件）と足りない分の行（0 番の行の写し）を空き領域へ写し、ROM の先頭から元の表の前までの 4 バイト境界の語のうち、元の表の先頭の 1 件（0x20 バイト）の中を指すものを、新しい表の同じ位置へ付け替えます（素の FR の JP 版で 24 か所。`0xF5C0` のポインタ、`gTrainers`・`gTrainers + 4`・`gTrainers + 0xA` のリテラル）。表より後ろの、たまたま同じ値に見えるデータは触りません。付け替えた数をビルドのログに出します。
+- `Id` が 743 以上なら、表（743 件）と足りない分の行（0 番の行の写し）を空き領域へ写し、ROM の先頭から元の表の前までの 4 バイト境界の語のうち、元の表の先頭の 1 件（0x20 バイト）の中を指すものを、新しい表の同じ位置へ付け替えます（素の FR の JP バージョンで 24 か所。`0xF5C0` のポインタ、`gTrainers`・`gTrainers + 4`・`gTrainers + 0xA` のリテラル）。表より後ろの、たまたま同じ値に見えるデータは触りません。付け替えた数をビルドのログに出します。
 - 次のときはビルドを止めます（`ValueError`）: 形が違う（`Format` が 1 でない、`Trainers` が配列でない）、`Id` が 1〜767 でないか重なる、`Party` が 1〜6 匹でない、名前が `charmap.tbl` で変えられないか 5 バイトを超える。
 - 768 から先の番号は使えません。戦ったかどうかのフラグ（`0x500 + 番号`）が、0x800 からのシステムのフラグと重なるためです。
 

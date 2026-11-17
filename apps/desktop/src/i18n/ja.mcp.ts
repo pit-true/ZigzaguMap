@@ -11,5 +11,5 @@ export const jaMcp = {
   openFailed: (reason: string) => `MCP の窓口を開けません: ${reason}`,
   noRom: "ROM を開いていません。ZigzaguMap で ROM を開いてください。",
   noProject: "プロジェクトフォルダを開いていません。出力先は ZigzaguMap のファイル > 出力先を指定して出力 で決めてください。",
-  unknownTool: (name: string) => `この ZigzaguMap には道具 ${name} がありません（MCP サーバーと ZigzaguMap の版が違うかもしれません）`,
+  unknownTool: (name: string) => `この ZigzaguMap には道具 ${name} がありません（MCP サーバーと ZigzaguMap のバージョンが違うかもしれません）`,
 } as const;
