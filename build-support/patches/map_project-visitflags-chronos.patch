@@ -1,0 +1,192 @@
+--- a/hooks
++++ b/hooks
+@@ -330,6 +330,11 @@
+ UpdateFoughtRoamerHPStatus 814270C 1
+ SetFoughtRoamerInactive 8142740 1
+ 
++##Town map visit flags (src/town_map_flags.c, docs/MAP_PROJECT.md): FR(J) GetMapState / GetCaveState
++##(switch statements) -> tables. r1: the functions take the map section in r0. The table pointers are in repoints.
++TownMap_GetMapState 080C47C0 1
++TownMap_GetCaveState 080C4A5C 1
++
+ ##Save Expansion Hooks
+ SaveWriteToFlash 80DA7B8 2
+ HandleWriteSector 80DA858 2
+--- a/repoints
++++ b/repoints
+@@ -378,6 +378,10 @@
+ ##(Overworld_GetMapHeaderByGroupAndId). gMapLayouts[21] (layout id 22, NULL in FR(J)) -> the room's layout.
+ ##my_pc.c pc_menu (0x083C83C0, 3 rows) -> 5 rows (+ decorate, cancel): the literals in MyPC_MenuInit / MyPC_MenuMain.
+ gSecretBaseRoom_MapGroups 08054B0C
++##Town map visit flags (src/town_map_flags.c): the table pointers right after the hooks of GetMapState / GetCaveState,
++##inside the old functions. scripts/map_project.py (maps/regionmap.json) and ZigzaguMap read the tables through them.
++gTownMapVisitFlags 080C47C8
++gTownMapCaveVisitFlags 080C4A64
+ gSecretBaseRoom_Layout 08312C90
+ gSecretBaseRoom_PcMenu 080EC7B8
+ gSecretBaseRoom_PcMenu 080EC860
+--- a/scripts/map_project.py
++++ b/scripts/map_project.py
+@@ -771,9 +771,13 @@
+ REGION_SECTION_COUNT = 110              # map sections 0x58-0xC5
+ REGION_FLY_COUNT = 108                  # map sections 0x58-0xC3
+ REGION_HEAL_COUNT = 20                  # heal locations 1-20, 8 bytes each
+-# Visit flags are switch statements in GetMapState / GetCaveState, not tables: not imported (ZigzaguMap #499).
+-REGIONMAP_PENDING = ("MapVisitFlags", "DungeonVisitFlags")
+-REGIONMAP_TABLES = ("Layouts", "Positions", "Sizes", "FlyDestinations", "HealLocations") + REGIONMAP_PENDING
++# Visit flags: FR's GetMapState / GetCaveState are replaced by src/town_map_flags.c (hooks), which reads u16 tables
++# (map sections 0x58-0xC5, 0xFFFF = no flag) through the pointers right after the hooks (repoints). ZigzaguMap #499.
++REGION_FLAG_TABLES = {"MapVisitFlags": (0xC47C0, 0xC47C8), "DungeonVisitFlags": (0xC4A5C, 0xC4A64)}  # hook, pointer
++REGION_FLAG_HOOK = bytes((0x00, 0x49, 0x08, 0x47))   # ldr r1, [pc, #0]; bx r1 (insert.py Hook with r1)
++REGION_FLAG_MAX = 0x8FF                 # FLAGS_COUNT 288 bytes: flags 0x001-0x8FF
++REGION_NO_FLAG = 0xFFFF
++REGIONMAP_TABLES = ("Layouts", "Positions", "Sizes", "FlyDestinations", "HealLocations") + tuple(REGION_FLAG_TABLES)
+ 
+ 
+ def _regionmap_int(item, key, low, high, where):
+@@ -883,10 +887,29 @@
+                          _regionmap_int(e, "X", -0x8000, 0x7FFF, where), _regionmap_int(e, "Y", -0x8000, 0x7FFF, where),
+                          unknown))
+         tables["HealLocations"] = heal
+-    for key in REGIONMAP_PENDING:
+-        if key in source:
+-            print(f"注意: maps/{REGIONMAP_FILE} の {key} は未対応のキーです。訪問フラグ（人ID）は ROM へ取り込みません"
+-                  f"（ZigzaguMap #499）")
++    for key in REGION_FLAG_TABLES:
++        items = _regionmap_list(source, key, REGION_SECTION_COUNT)
++        if items is None:
++            continue
++        flags = []
++        for n, e in enumerate(items):
++            value = e.get("Flag")
++            where = f"maps/{REGIONMAP_FILE}: {key}[{n}]（Id {e['Id']}）の Flag"
++            if value is None:
++                flags.append(REGION_NO_FLAG)
++                continue
++            try:
++                flag = int(value, 16) if isinstance(value, str) and value[:2].lower() == "0x" and len(value) <= 6 else None
++            except ValueError:
++                flag = None
++            if flag is None:
++                raise ValueError(f"{where} は \"0x0890\" の形の 16 進か null にしてください（値: {value!r}）")
++            if not 1 <= flag <= REGION_FLAG_MAX:
++                raise ValueError(f"{where} は 0x0001 から 0x{REGION_FLAG_MAX:04X} までにしてください（値: {value!r}）")
++            if n == REGION_SECTION_COUNT - 1:
++                raise ValueError(f"{where}: 0xC5 は「未設定」の場所なので、フラグは null にしてください（値: {value!r}）")
++            flags.append(flag)
++        tables[key] = flags
+     return tables
+ 
+ 
+@@ -931,6 +954,14 @@
+             if unknown is not None:
+                 struct.pack_into("<H", table, n * 8 + 6, unknown)
+         writes.append((start, bytes(table), "HealLocations"))
++    for key, (hook, pointer) in REGION_FLAG_TABLES.items():
++        if key not in tables:
++            continue
++        if bytes(data[hook:hook + 4]) != REGION_FLAG_HOOK:
++            raise ValueError(f"maps/{REGIONMAP_FILE}: {key} を書く先の表がありません（{ROM_BASE + hook:#010x} に "
++                             f"src/town_map_flags.c のフックがありません。hooks を確かめてください）")
++        start = _regionmap_table(data, pointer, REGION_SECTION_COUNT * 2, key)
++        writes.append((start, struct.pack(f"<{REGION_SECTION_COUNT}H", *tables[key]), key))
+     return writes
+ 
+ 
+--- /dev/null
++++ b/src/town_map_flags.c
+@@ -0,0 +1,94 @@
++#include "defines.h"
++#include "../include/event_data.h"
++#include "../include/region_map.h"
++
++/*
++Town map visit flags (docs/MAP_PROJECT.md, ZigzaguMap #499).
++
++FR's GetMapState (0x080C47C0) and GetCaveState (0x080C4A5C) are switch statements that ask a flag for each map
++section. They are replaced here by tables of u16 flags for the sections 0x58-0xC5, so that maps/regionmap.json
++(MapVisitFlags / DungeonVisitFlags, written by ZigzaguMap) can change them: scripts/map_project.py writes the
++tables. The code reads each table through a pointer put right after the hook (repoints 080C47C8 / 080C4A64,
++inside the old functions), and map_project.py and ZigzaguMap find the tables through the same pointers.
++
++The values the functions return are the same as FR's for every section while the tables hold FR's flags
++(checked by tools/check_town_map_flags.py):
++	0xC5 (no section): SPACE; a section without a flag (0xFFFF) or outside 0x58-0xC5: ROAD;
++	otherwise ARRIVE when the flag is set, NOARRIVE when it is not.
++	The Route 4 Pokemon Center (0x63) is SPACE while Fly cannot be used (GetRegionMapPermission(3)) before its flag
++	is asked, as in FR. The condition stays when its flag is changed.
++*/
++
++#define TOWN_MAP_SECTION_FIRST 0x58
++#define TOWN_MAP_SECTION_NONE 0xC5
++#define TOWN_MAP_SECTION_COUNT (TOWN_MAP_SECTION_NONE - TOWN_MAP_SECTION_FIRST + 1)
++#define TOWN_MAP_NO_FLAG 0xFFFF
++#define TOWN_MAP_ROUTE4_POKECENTER 0x63
++#define REGION_MAP_PERMISSION_FLY 3
++
++enum
++{
++	TOWN_MAP_STATE_SPACE,
++	TOWN_MAP_STATE_ROAD,
++	TOWN_MAP_STATE_ARRIVE,
++	TOWN_MAP_STATE_NOARRIVE,
++};
++
++u8 __attribute__((long_call)) GetRegionMapPermission(u8 permission);
++
++#define TOWN_MAP_FLAG_POINTER ((const u16* const*) 0x080C47C8)
++#define TOWN_MAP_CAVE_FLAG_POINTER ((const u16* const*) 0x080C4A64)
++
++// FR's flags (0xFFFF: none). Index = map section - 0x58.
++const u16 gTownMapVisitFlags[TOWN_MAP_SECTION_COUNT] =
++{
++	[0x58 - 0x58] = 0x890, 0x891, 0x892, 0x893, 0x894, 0x895, 0x896, 0x897, 0x898, 0x899, 0x89A, // 0x58-0x62
++	[0x63 - 0x58] = 0x8A2, 0x8A3,                                                                 // 0x63-0x64
++	[0x65 - 0x58 ... 0x8E - 0x58] = TOWN_MAP_NO_FLAG,
++	[0x8F - 0x58] = 0x89B, 0x89C, 0x89D, 0x89E, 0x89F, 0x8A0, 0x8A1,                              // 0x8F-0x95
++	[0x96 - 0x58 ... 0xC5 - 0x58] = TOWN_MAP_NO_FLAG,
++};
++
++const u16 gTownMapCaveVisitFlags[TOWN_MAP_SECTION_COUNT] =
++{
++	[0x58 - 0x58 ... 0x7D - 0x58] = TOWN_MAP_NO_FLAG,
++	[0x7E - 0x58] = 0x8A4, 0x8A5, 0x8A6, 0x8A7, 0x8A8, 0x8A9, 0x8AA, 0x8AB, 0x8AC,               // 0x7E-0x86
++	                0x8AD, 0x8AE, 0x8AF, 0x8B0, 0x8B1, 0x8B2, 0x8B3, 0x8B4,                       // 0x87-0x8E
++	[0x8F - 0x58 ... 0xAD - 0x58] = TOWN_MAP_NO_FLAG,
++	[0xAE - 0x58] = 0x8B5, 0x8B6, 0x8B7, 0x8B8, 0x8B9, 0x8BA, 0x8BB, 0x8BC, 0x8BD,               // 0xAE-0xB6
++	                0x8BE, 0x8BF, 0x8C0, 0x8C1, 0x8C2,                                            // 0xB7-0xBB
++	[0xBC - 0x58 ... 0xC5 - 0x58] = TOWN_MAP_NO_FLAG,
++};
++
++static u8 TownMapFlagState(const u16* flags, u8 mapSec)
++{
++	u16 flag;
++
++	if (mapSec == TOWN_MAP_SECTION_NONE)
++		return TOWN_MAP_STATE_SPACE;
++	if (mapSec < TOWN_MAP_SECTION_FIRST || mapSec > TOWN_MAP_SECTION_NONE)
++		return TOWN_MAP_STATE_ROAD;
++
++	flag = flags[mapSec - TOWN_MAP_SECTION_FIRST];
++	if (flag == TOWN_MAP_NO_FLAG)
++		return TOWN_MAP_STATE_ROAD;
++
++	return FlagGet(flag) ? TOWN_MAP_STATE_ARRIVE : TOWN_MAP_STATE_NOARRIVE;
++}
++
++//hooks: 080C47C0 (r1)
++u8 TownMap_GetMapState(u8 mapSec)
++{
++	if (mapSec == TOWN_MAP_ROUTE4_POKECENTER
++	&&  (*TOWN_MAP_FLAG_POINTER)[mapSec - TOWN_MAP_SECTION_FIRST] != TOWN_MAP_NO_FLAG
++	&&  !GetRegionMapPermission(REGION_MAP_PERMISSION_FLY))
++		return TOWN_MAP_STATE_SPACE;
++
++	return TownMapFlagState(*TOWN_MAP_FLAG_POINTER, mapSec);
++}
++
++//hooks: 080C4A5C (r1)
++u8 TownMap_GetCaveState(u8 mapSec)
++{
++	return TownMapFlagState(*TOWN_MAP_CAVE_FLAG_POINTER, mapSec);
++}

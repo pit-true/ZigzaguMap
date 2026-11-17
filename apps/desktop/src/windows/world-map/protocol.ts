@@ -10,6 +10,8 @@ export interface WorldMapState {
   readonly names: (string | null)[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
+  /** 開いているプロジェクトのビルドが人ID（訪問フラグ）を ROM へ書くか（#499。Chronos だけ）。ROM だけなら null。 */
+  readonly visitFlagsInGame: boolean | null;
 }
 
 /** メインウィンドウで開いているマップ。 */

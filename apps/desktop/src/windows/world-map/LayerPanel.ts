@@ -104,6 +104,14 @@ export class LayerPanel {
     });
   }
 
+  /** 人ID の欄の注意（ゲームに反映されないとき。null で消す）。欄とボタンの説明に出す。 */
+  setFlagNote(note: string | null): void {
+    for (const el of [this.flagEdit, this.flagButton]) {
+      if (note) el.title = note;
+      else el.removeAttribute("title");
+    }
+  }
+
   /** 地名の名前を一覧に入れ直す（名前を変えたとき）。 */
   setNames(names: readonly (string | null)[]): void {
     const items = names.slice(0, MAPSEC_NAMED_COUNT).map((n) => n ?? "");

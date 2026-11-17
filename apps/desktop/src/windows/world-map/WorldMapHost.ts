@@ -113,7 +113,13 @@ export class WorldMapHost {
       const raw = ctx.mapName(MAPSEC_FIRST + i);
       names.push(raw ? session.project.textCodec.decode(raw) : null);
     }
-    return { snapshot: region.document.snapshot(), names, canUndo: session.bus.canUndo, canRedo: session.bus.canRedo };
+    return {
+      snapshot: region.document.snapshot(),
+      names,
+      canUndo: session.bus.canUndo,
+      canRedo: session.bus.canRedo,
+      visitFlagsInGame: region.visitFlagsInGame,
+    };
   }
 
   private current(): WorldMapCurrent | null {

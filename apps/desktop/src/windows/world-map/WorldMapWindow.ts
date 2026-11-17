@@ -48,6 +48,9 @@ export class WorldMapWindow {
   private readonly editLayerCheck: HTMLInputElement;
   private readonly flyCheck: HTMLInputElement;
   private readonly topCheck: HTMLInputElement;
+  /** 人ID がゲームに反映されないときの注意（#499）。 */
+  private readonly flagNote: HTMLSpanElement;
+  private visitFlagsInGame: boolean | null = null;
 
   private doc: RegionMapDocument | null = null;
   private names: (string | null)[] = [];
@@ -81,6 +84,9 @@ export class WorldMapWindow {
     button(root, [8, 264, 241, 25], jaWorldMap.changeRoutine, "Cmd_FlagRoutine", () => void this.changeRoutine());
     button(root, [8, 288, 121, 25], jaWorldMap.reload, "Cmd_RePaint", () => void this.reload());
     button(root, [128, 288, 121, 25], jaWorldMap.saveMap, "Cmd_MapSpeichern", () => void this.saveMap());
+    this.flagNote = label(root, [8, 318, 241, 17], jaWorldMap.flagNotInGame, "Lbl_FlagNotInGame");
+    this.flagNote.classList.add("wm-note");
+    this.flagNote.hidden = true;
     const credit = label(root, [6, 342, 149, 13], jaWorldMap.credit, "Lbl_By");
     credit.classList.add("wm-link");
 
@@ -136,6 +142,11 @@ export class WorldMapWindow {
     this.names = state.names;
     this.canUndo = state.canUndo;
     this.canRedo = state.canRedo;
+    // プロジェクトが対応していなければ欄の下に出す。ROM だけ（出力しない）のときは欄の説明だけにする（AdvanceMap と同じ画面のまま）。
+    this.visitFlagsInGame = state.visitFlagsInGame;
+    this.flagNote.hidden = state.visitFlagsInGame !== false;
+    this.base.setFlagNote(state.visitFlagsInGame === true ? null : jaWorldMap.flagNotInGame);
+    this.top.setFlagNote(state.visitFlagsInGame === true ? null : jaWorldMap.flagNotInGame);
     this.base.setNames(state.names);
     this.top.setNames(state.names);
     if (refresh) {
@@ -368,6 +379,8 @@ export class WorldMapWindow {
       fly: doc ? doc.flyDestination(this.base.value) : null,
       canUndo: this.canUndo,
       canRedo: this.canRedo,
+      visitFlagsInGame: this.visitFlagsInGame,
+      flagNoteShown: !this.flagNote.hidden,
     };
   }
 }
