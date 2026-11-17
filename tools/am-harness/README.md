@@ -21,7 +21,7 @@ AdvanceMap を「見えない別デスクトップ」で起動し、ウィンド
 
 ## 準備
 
-AdvanceMap 本体・ROM・スクリーンショットはリポジトリに入れない。リポジトリの外に作業フォルダ（以下 `<work>`）を作り、そこに AdvanceMap 1.92 日本語版のコピー（`<work>\am192`）と素の BPRJ（`<work>\rom\BPRJ_orig.gba`）を置く。元の AdvanceMap や元の ROM は直接使わない。
+AdvanceMap 本体・ROM・スクリーンショットはリポジトリに入れない。リポジトリの外に作業フォルダ（以下 `<work>`）を作り、そこに AdvanceMap 1.92 日本語バージョンのコピー（`<work>\am192`）と素の BPRJ（`<work>\rom\BPRJ_orig.gba`）を置く。元の AdvanceMap や元の ROM は直接使わない。
 
 ```
 pip install -r tools\am-harness\requirements.txt      # Pillow と numpy（仮想環境はリポジトリ外か .gitignore 対象の .venv）

@@ -36,7 +36,7 @@ export const pathDrawCommands: CommandTable = {
   // 「ここで使う」（mode: replace / new、label、shared: rewrite / copy。省略で窓の選択）。返事は result と state
   "pathDraw.apply": async (app, req) => {
     const panel = await app.playback.pathDraw();
-    if (!panel.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    if (!panel.isOpen) throw new Error("道をなぞるウィンドウが開いていません。");
     const mode = req["mode"], shared = req["shared"];
     if (mode !== undefined && mode !== "replace" && mode !== "new") throw new Error("mode は replace / new のいずれかです。");
     if (shared !== undefined && shared !== "rewrite" && shared !== "copy") throw new Error("shared は rewrite / copy のいずれかです。");
@@ -49,7 +49,7 @@ export const pathDrawCommands: CommandTable = {
   // 窓を動かす（left・top はメインの画面の中の画素）。返事は pathDraw.state と同じ（position が動かした先）
   "pathDraw.move": async (app, req) => {
     const panel = await app.playback.existingPathDraw();
-    if (!panel?.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    if (!panel?.isOpen) throw new Error("道をなぞるウィンドウが開いていません。");
     panel.moveTo(int(req, "left"), int(req, "top"));
     return panel.state();
   },
@@ -57,14 +57,14 @@ export const pathDrawCommands: CommandTable = {
   // 1 歩・向きだけ（face: true）・ドラッグと同じくマスまで（to: {x, y}）
   "pathDraw.step": async (app, req) => {
     const panel = await app.playback.pathDraw();
-    if (!panel.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    if (!panel.isOpen) throw new Error("道をなぞるウィンドウが開いていません。");
     if (req["to"]) { const to = req["to"] as Record<string, unknown>; panel.stepTo(Number(to["x"]), Number(to["y"])); }
     else panel.step(direction(req["direction"]), req["face"] === true);
     return panel.state();
   },
   "pathDraw.edit": async (app, req) => {
     const panel = await app.playback.pathDraw();
-    if (!panel.isOpen) throw new Error("道をなぞる窓が開いていません。");
+    if (!panel.isOpen) throw new Error("道をなぞるウィンドウが開いていません。");
     const action = str(req, "action");
     if (action === "undo") panel.undo();
     else if (action === "redo") panel.redo();

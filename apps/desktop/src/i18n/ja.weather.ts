@@ -16,7 +16,7 @@ export const jaWeather = {
   stopped: "天候の表示をやめました。",
   cannot: (name: string, reason: string) => `この天候はプレビューできません（${name}: ${reason}）`,
   reasons: {
-    drought: "FR 日本語版ではマップに入ると処理が終わらず止まり、色も変わりません",
+    drought: "FR 日本語バージョンではマップに入ると処理が終わらず止まり、色も変わりません",
     graphics: "ROM から天候の絵を読めません",
     rom: "この ROM の天候の表を読めません",
   },

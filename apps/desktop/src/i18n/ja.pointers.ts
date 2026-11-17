@@ -79,7 +79,7 @@ export const jaPointers = {
   shortcutRow: "人・看板・スクリプトタイルのスクリプトの行なら、イベントタブでそのイベントを選ぶ",
   shortcutCopyKeys: "行の右クリック",
   shortcutCopy: "値・バイト列・置き場所をクリップボードへコピーする（参照元の結果の行は置き場所と値）",
-  shortcutWhere: "ポインタ一覧の窓の一覧",
+  shortcutWhere: "ポインタ一覧のウィンドウの一覧",
   shortcutSearch: "参照元を探す（「探す」と同じ）",
-  shortcutSearchWhere: "ポインタ一覧の窓のアドレスの欄",
+  shortcutSearchWhere: "ポインタ一覧のウィンドウのアドレスの欄",
 };
