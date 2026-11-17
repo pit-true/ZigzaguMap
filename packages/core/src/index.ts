@@ -195,6 +195,19 @@ export {
 export { MapSourceConverter } from "./project/MapSourceConverter.js";
 export { PROJECT_MANIFEST_FORMAT, ProjectManifestJson, type ProjectManifest } from "./project/ProjectManifest.js";
 export { MemoryProjectFs, readTextIfExists, type ProjectFs } from "./project/ProjectFs.js";
+export {
+  BASE_ROM_NAME,
+  CFRU_MARKER,
+  CFRU_SOURCE_DIRS,
+  locateCfruFolder,
+  locateCfruSource,
+  subProjectFs,
+  type BaseRomChoice,
+  type CfruFolderLocation,
+  type CfruSourceLocation,
+  type FolderEntry,
+  type FolderReader,
+} from "./project/CfruFolder.js";
 export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSource } from "./project/TilesetSource.js";
 export { decodeIndexedPng, decodeRgbaPng, type IndexedImage, type RgbaPng } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
