@@ -15,7 +15,6 @@ import { togglePatch, type ZoomTab } from "./mapZoom";
 import type { MovementTab } from "../ui/tabs/MovementTab";
 import { RecentBlocksView } from "../ui/map/RecentBlocks";
 import { blockInfoSource, blockInfoText } from "../ui/map/blockInfo";
-import { drawPaletteBoundary } from "../ui/map/paletteBoundary";
 import { movementInfo } from "./data/movementInfo";
 import { jaMovementInfo } from "../i18n/ja.movementInfo";
 import { hex } from "../i18n/ja";
@@ -163,15 +162,6 @@ export class ViewFeatures {
     palette.hoverListeners.push((block) => {
       const tiles = state.map?.tiles;
       state.setStatusInfo(block !== null && tiles ? blockInfoText(blockInfoSource(tiles), block) : "");
-    });
-    palette.addLayer("grid", (c, g) => {
-      if (state.settings.data.paletteBoundary) drawPaletteBoundary(c, g.size, g.width);
-    });
-    let boundary = state.settings.data.paletteBoundary;
-    state.on("view", () => {
-      if (state.settings.data.paletteBoundary === boundary) return;
-      boundary = state.settings.data.paletteBoundary;
-      palette.refresh();
     });
     this.recent = new RecentBlocksView(state, () => palette.scrollToSelection());
     mapTab.insertSide(this.recent.element);

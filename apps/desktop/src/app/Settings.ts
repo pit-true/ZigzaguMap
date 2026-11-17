@@ -130,8 +130,6 @@ export interface SettingsData {
    * 読み書きは core の `readTownLinks`・`writeTownLinks`）。プロジェクトフォルダを開いていないときだけ使う。
    */
   townLinks: Record<string, unknown>;
-  /** ブロックパレットのタイルセット 1・2 の境目に線と「TS2 0x280〜」の見出しを出す（表示メニュー。既定オン。#308）。 */
-  paletteBoundary: boolean;
   /** マップ一覧にマップの縮小（48px）を出す（表示メニュー。既定オフ。#315・Q13）。 */
   treeThumbnails: boolean;
   /** Ctrl＋ホイールで決めたタブごとの表示倍率（1〜8。0 なら「拡大表示」のチェックに従う。#316）。 */
@@ -223,7 +221,6 @@ export const DEFAULT_SETTINGS: SettingsData = {
   eventOpacity: 1,
   showTownMap: false,
   townLinks: {},
-  paletteBoundary: true,
   treeThumbnails: false,
   mapZoom: { map: 0, movement: 0, event: 0 },
   paintTool: "pencil",
