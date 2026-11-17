@@ -197,7 +197,7 @@ export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSo
 export { decodeIndexedPng, decodeRgbaPng, type IndexedImage, type RgbaPng } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
-export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
+export { crc32, encodeIndexedPng, encodeRgbPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
 export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock, itemBallLabel } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
@@ -571,3 +571,21 @@ export { evaluateCExpression, preprocessC, readCArray, readCEnum, stripCComments
 export * from "./script/movement/MovementEdit.js";
 
 export { DpeSpecies } from "./name/DpeSpecies.js";
+
+// MCP サーバー（Phase7 #521・#522）
+export {
+  MCP_MAX_BLOCK,
+  MCP_MAX_CELLS,
+  MCP_MAX_MOVEMENT,
+  MCP_TOOLS,
+  checkMcpArguments,
+  mcpTool,
+  mcpToolNameOf,
+  type McpInputSchema,
+  type McpPropertySchema,
+  type McpToolDefinition,
+  type McpToolKind,
+} from "./mcp/tools.js";
+export { McpToolError, McpToolRunner, type McpContent, type McpMapEntry, type McpPermissions, type McpToolResult, type McpWorkspace } from "./mcp/McpToolRunner.js";
+export { MCP_INSTRUCTIONS, MCP_LEGACY_VERSIONS, MCP_MODERN_VERSIONS, MCP_SERVER_INFO, McpServer, toolList, type McpCallTool } from "./mcp/McpServer.js";
+export { CoreMcpWorkspace, type CoreMcpWorkspaceOptions } from "./mcp/CoreMcpWorkspace.js";

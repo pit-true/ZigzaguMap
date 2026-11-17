@@ -152,6 +152,14 @@ export interface SettingsData {
    * 既定と違う操作だけを残す（空の配列はキーを外した操作）。読むときは `app/keymap.ts` の resolveKeymap で確かめる。
    */
   shortcuts: Record<string, string[]>;
+  /** MCP の窓口を開く（設定 > MCP の窓口。Phase7 #521。既定オフ）。オンの間だけ 127.0.0.1 で待ち受け、AppData に mcp.json を書く。 */
+  mcpBridge: boolean;
+  /** MCP から開いているマップの書き換えを許す（既定オフ。書き換えは「元に戻す」に乗る）。 */
+  mcpAllowWrite: boolean;
+  /** MCP から maps\ への出力を許す（既定オフ）。 */
+  mcpAllowExport: boolean;
+  /** MCP の出力が .s・eventscripts などスクリプトのファイルも書くときに許す（既定オフ）。 */
+  mcpAllowScripts: boolean;
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -215,6 +223,10 @@ export const DEFAULT_SETTINGS: SettingsData = {
   playbackGender: "male",
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
+  mcpBridge: false,
+  mcpAllowWrite: false,
+  mcpAllowExport: false,
+  mcpAllowScripts: false,
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

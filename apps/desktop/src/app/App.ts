@@ -73,6 +73,7 @@ import { TimeOfDayView } from "./timeOfDay/TimeOfDayView";
 import { MapAnimations } from "./animation/MapAnimations";
 import { WeatherEntry } from "./weather/WeatherEntry";
 import { takeStartupPrefetch, type StartupArgs } from "./startupPrefetch";
+import { McpBridgeControl } from "./mcp/McpBridgeControl";
 import { ScriptEditorEntry } from "./ScriptEditorEntry";
 
 /** アプリ全体。画面部品を組み立て、ROM・マップの読み込み、出力、終了を受け持つ。 */
@@ -166,6 +167,8 @@ export class App implements ActionTarget {
   readonly views: ViewFeatures;
   /** 時間帯ビューア（Phase6 #434。表示 > 時間帯とツール欄のコンボ）。 */
   readonly timeOfDay: TimeOfDayView;
+  /** 設定 > MCP の窓口（Phase7 #521）。窓口の中身はオンにしたときに読み込む。 */
+  readonly mcp: McpBridgeControl;
   /** 画面のテーマ（個人設定 `theme`）。変われば道具のウィンドウへも送る。 */
   private readonly theme: { sync(): void };
 
@@ -195,6 +198,7 @@ export class App implements ActionTarget {
     this.prompts = new SettingPrompts(state, (patch) => this.changeSetting(patch));
     this.actions = new Actions(state, this);
     this.scriptEditor = new ScriptEditorEntry(this);
+    this.mcp = new McpBridgeControl(this);
     // 表示 > イベントの種類（#304）
     registerEventKindActions(this.actions, state, (patch) => this.changeSetting(patch));
     this.newMaps = new NewMapController({
@@ -415,6 +419,8 @@ export class App implements ActionTarget {
     if (args.automation) await (await import("./automation")).startAutomation(this);
     else await keepWindowPlacement(this.state.settings);
     timings.mark("started");
+    // MCP の窓口（#521）。設定でオンにしているときだけ開く（起動の時間に入れないよう待たない）
+    void this.mcp.startIfEnabled();
     // 起動引数の ROM は、--project が無ければ記録済みの組のフォルダで開く（ダイアログは出さない）
     if (args.rom) {
       // 先に読んだバイト列は、対応している ROM のときだけ使う（違えば読み直して、いつもどおりエラーを出す）

@@ -58,6 +58,7 @@ ROMやプロジェクトフォルダのドラッグ＆ドロップでも開け�
 | 出力するファイル、表示と操作の細かな仕様 | [仕様と出力形式](docs/reference.md) |
 | ビルド、テスト、構成、性能の記録 | [開発ガイド](docs/development.md) |
 | 自動操作の命令 | [自動操作](docs/automation.md) |
+| AI のアプリ（Claude Code など）から使う | [MCP サーバー](docs/mcp.md) |
 | 表示と操作の比較検証 | [比較テスト](docs/compare-test.md) |
 
 操作ガイドと機能別の文書は、アプリのヘルプ > Read meからも開けます。
