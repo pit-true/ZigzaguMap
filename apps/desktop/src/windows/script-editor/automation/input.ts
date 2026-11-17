@@ -6,6 +6,7 @@ import { EditorSelection } from "@codemirror/state";
 import type { Command } from "@codemirror/view";
 import { settle, str } from "../../../app/automation/registry";
 import type { ScriptEditorWindow } from "../ScriptEditorWindow";
+import { openContextMenu } from "../../../ui/ContextMenu";
 import { describe, describeSelection, needPos, positionOf, requireActive, type EditorCommandTable, type Req } from "./common";
 
 /** `editor.command` で呼べる CodeMirror の命令。 */
@@ -61,6 +62,23 @@ export const inputCommands: EditorCommandTable = {
     return { done, text: w.view.state.doc.toString(), selection: describeSelection(w.view.state) };
   },
 
+  // 本文の位置で右クリックし、出たメニューの項目を返す（#518。press があればその項目を押す）
+  "editor.contextMenu": async (w, req) => {
+    const p = needPos(w, req);
+    const c = w.view.coordsAtPos(p);
+    if (!c) throw new Error("その位置は画面に出ていません");
+    w.view.dom.dispatchEvent(new MouseEvent("contextmenu", { clientX: c.left + 1, clientY: (c.top + c.bottom) / 2, button: 2, bubbles: true, cancelable: true, view: window }));
+    const menu = openContextMenu();
+    const items = menu ? menu.items.map(i => ({ id: i.id, label: i.label, enabled: i.enabled !== false })) : null;
+    const press = req["press"];
+    if (menu && typeof press === "string") {
+      const item = menu.items.find(i => i.id === press);
+      if (!item) throw new Error(`メニューの項目がありません: ${press}`);
+      menu.close(); item.run();
+      await settle(100);
+    }
+    return { items };
+  },
   "editor.mouse": async (w, req) => {
     // 本文の位置でマウスを押す（Ctrl+クリックの定義へ移動・カーソルを足す、Alt+ドラッグの矩形選択）。toLine があればドラッグ
     const p = needPos(w, req);

@@ -48,6 +48,7 @@ import { duplicatePlan, groupDragStart, groupMoveCommand, type GroupDragStart } 
 import { jaEventMulti } from "../../i18n/ja.eventMulti";
 import { jaEventLimit } from "../../i18n/ja.eventLimit";
 import { jaPlayback } from "../../i18n/ja.playback";
+import { jaPathDraw } from "../../i18n/ja.pathDraw";
 import { Ruler } from "./RulerLayer";
 
 /** タブの外の機能（App が渡す）。 */
@@ -66,6 +67,8 @@ export interface EventTabHost {
   placeTemplate?(x: number, y: number): void;
   /** 「ここに仮の主人公を置く」（#457。保存しない）。 */
   placePlayer?(x: number, y: number): void;
+  /** 「ここから道をなぞる…」（#518。人の番号）。 */
+  drawPath?(index: number): void;
   /** ひな形を置けるか（プロジェクトフォルダを開いているとき）。 */
   canPlaceTemplate?(): boolean;
   /** スクリプトの要約（#226。ホバーの吹き出し）。 */
@@ -691,6 +694,7 @@ export class EventTab {
       },
       // 素の ROM でも、スクリプトが ROM のアドレスのままのイベントは再生できる（#459）
       { id: "playScript", label: jaPlayback.menu, enabled: scriptKind !== null && !signItem && (this.state.session?.projectDir != null || this.romScriptOf(scriptKind, index)), run: () => scriptKind && this.host.playScript?.(scriptKind, index) },
+      ...(kind === "person" && !many && this.host.drawPath ? [{ id: "drawPath", label: jaPathDraw.menuPerson, run: () => this.host.drawPath?.(index) }] : []),
       { id: "duplicate", label: jaEventMulti.menuDuplicate, enabled: kind !== "fly" || many, run: () => void this.duplicateSelected() },
       // 「行き先のマップを作る」（#241。ワープだけ）
       ...(kind === "warp" && this.host.createWarpMap ? [{ id: "createWarpMap", label: jaWarpMap.menu, run: () => this.host.createWarpMap?.(index) }] : []),

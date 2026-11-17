@@ -13,3 +13,6 @@
 .path-draw-hint { margin: 0; color: var(--gray-text); font-size: 11px; }
 .map-stage canvas.path-draw-overlay { position: absolute; z-index: 27; pointer-events: none; image-rendering: auto; }
 .path-drawing .map-stage { cursor: crosshair; }
+.path-draw-write { margin: 0; padding: 4px; border: 1px solid var(--field-border); display: flex; flex-direction: column; gap: 3px; }
+.path-draw-mode { display: flex; gap: 4px; align-items: center; }
+.path-draw-label { flex: 1; min-width: 0; }

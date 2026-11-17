@@ -1,5 +1,6 @@
 import type { MovementDirection, PlayerGender } from "@zigzagumap/core";
 import { jaPlayback as t } from "../../i18n/ja.playback";
+import { jaPathDraw } from "../../i18n/ja.pathDraw";
 
 export interface PlaybackBarActions {
   toggle(): void;
@@ -8,6 +9,8 @@ export interface PlaybackBarActions {
   step(direction: -1 | 1): void;
   speed(value: number): void;
   startState(gender: PlayerGender, facing: MovementDirection, absent: readonly number[]): void;
+  /** 「道をなぞる…」（#518）。 */
+  pathDraw(): void;
 }
 
 /** マップの下に置く再生の操作。時計とスクリプトの計算は持たない。 */
@@ -35,6 +38,7 @@ export class PlaybackBar {
     this.play = button("play", t.play, () => actions.toggle());
     button("next", t.next, () => actions.step(1));
     button("stop", t.stop, () => actions.stop());
+    button("pathDraw", jaPathDraw.menuPlayback, () => actions.pathDraw());
     const speed = document.createElement("select"); speed.title = t.speed; speed.dataset["autoId"] = "playback.speed";
     for (const value of [0.25, 0.5, 1, 2, 4]) speed.add(new Option(`${value}×`, String(value)));
     speed.value = "1"; speed.addEventListener("change", () => actions.speed(Number(speed.value)));

@@ -1,4 +1,4 @@
-import { buildPlaybackStart, CHOICE_CANCEL, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackChoiceMark, type PlaybackMarker, type PlaybackTrigger, type PlayerGender, type ProvisionalPlayer, type Timeline } from "@zigzagumap/core";
+import { buildPlaybackStart, CHOICE_CANCEL, PLAYER_ID, type PathPoint, PlaybackAnimation, simulatePlayback, type MovementDirection, type PlaybackChoiceMark, type PlaybackMarker, type PlaybackTrigger, type PlayerGender, type ProvisionalPlayer, type Timeline } from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import type { OpenMap } from "../../app/ProjectSession";
 import { prepareActorScene } from "../../app/ActorScene";
@@ -11,7 +11,8 @@ import { PlaybackProjectData } from "./PlaybackProject";
 import { PlaybackClock } from "./PlaybackClock";
 import { PlaybackBar } from "./PlaybackBar";
 import { TimelineView } from "./TimelineView";
-import { TimelineEditor } from "./TimelineEditor";
+import { sameBlock, TimelineEditor } from "./TimelineEditor";
+import type { PathDrawTarget } from "./PathDrawWriter";
 import { isScriptSourcePath } from "@zigzagumap/core";
 import type { PlaybackHighlightSpan } from "../../windows/script-editor/protocol";
 import { MessageRenderer, messageSkin } from "./MessageView";
@@ -74,6 +75,7 @@ export class PlaybackController {
         this.app.state.settings.update({ playbackGender: gender });
         this.calculate();
       },
+      pathDraw: () => { void this.openPathDraw().catch(error => this.app.state.setStatus(errorText(error), undefined, true)); },
     });
     this.timelineView = new TimelineView(frame => this.seek(frame), source => { void this.app.scriptHost().then(host => host.openFile(source.path, source.line + 1)).catch(error => this.app.state.setStatus(errorText(error), undefined, true)); });
     this.bar.element.append(this.timelineView.element);
@@ -199,6 +201,31 @@ export class PlaybackController {
     this.time = null;
     this.highlightKey = "";
     void this.app.scriptHostIfLoaded().then(host => host?.playbackHighlight([])).catch(() => undefined);
+  }
+
+  /**
+   * 「道をなぞる…」（#518）。今のフレームで動いている `applymovement` があれば、その人物の動き始めの位置から、その移動データを
+   * 置き換える先にして開く。無ければ今のフレームの主人公の位置から、新しいラベルとして開く。ほかの人物の位置は今のフレームのもの。
+   */
+  async openPathDraw(): Promise<void> {
+    const clock = this.clock, timeline = this.timeline, animation = this.animation;
+    if (!clock || !timeline || !animation) throw new Error(t.noSegment);
+    this.pause();
+    const frame = clock.frame, now = animation.stateAt(frame);
+    const segment = timeline.segments.find(s => s.start <= frame && frame <= s.end && s.movementPath !== null && s.step !== null) ?? null;
+    let actor = PLAYER_ID, start: PathPoint | null = null, target: PathDrawTarget | null = null;
+    if (segment) {
+      actor = segment.actor;
+      const first = timeline.segments.filter(s => sameBlock(s, segment)).reduce((a, b) => (b.start < a.start ? b : a));
+      const before = animation.stateAt(Math.max(0, first.start - 1)).actors.find(a => a.id === actor);
+      start = { x: first.fromX, y: first.fromY, facing: before?.facing ?? "down" };
+      target = { commandPath: segment.command.path, commandLine: segment.command.line, label: segment.movementLabel };
+    } else {
+      const player = now.actors.find(a => a.id === PLAYER_ID);
+      if (player) start = { x: player.tileX, y: player.tileY, facing: player.facing };
+    }
+    const occupied = now.actors.filter(a => a.present && a.id !== actor && a.graphicsId >= 0).map(a => ({ x: a.tileX, y: a.tileY }));
+    (await this.app.playback.pathDraw()).open({ actor, ...(start ? { start } : {}), occupied, target });
   }
 
   seek(frame: number): void { this.pause(); this.clock?.seek(frame); this.consumed.clear(); this.draw(); }

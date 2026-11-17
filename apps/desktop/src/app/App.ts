@@ -264,6 +264,7 @@ export class App implements ActionTarget {
       placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       placePlayer: (x, y) => this.playback.placePlayer(x, y),
+      drawPath: (index) => void this.playback.drawPathFrom(index).catch(error => state.setStatus(errorText(error), undefined, true)),
       placeItemBall: (x, y) => void events.placeItemBall(x, y),
       summaries: () => events.eventSummaries(),
     });

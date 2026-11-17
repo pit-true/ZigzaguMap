@@ -3,9 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { EditorSelection, EditorState, type Extension, type TransactionSpec } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
-import { indexAsmFile, planStringBodyEdit } from "@zigzagumap/core";
+import { indexAsmFile, planStringBodyEdit, readApplyMovementLine } from "@zigzagumap/core";
 import { showContextMenu } from "../../ui/ContextMenu";
 import { jaPlayback } from "../../i18n/ja.playback";
+import { jaPathDraw } from "../../i18n/ja.pathDraw";
 import { ja } from "../../i18n/ja";
 import { jaScriptEditor as t } from "../../i18n/ja.scriptEditor";
 import { jaScriptEditorAssist as ta } from "../../i18n/ja.scriptEditorAssist";
@@ -133,9 +134,14 @@ export class ScriptEditorWindow {
       if (pos === null) return;
       const line = this.view.state.doc.lineAt(pos), column = pos - line.from;
       const label = indexAsmFile(tab.path, this.view.state.doc.toString()).labels.find(label => label.line === line.number && column >= label.column && column <= label.column + label.name.length);
-      if (!label) return;
+      // applymovement の行は「道をなぞって作り直す…」（#518。メインの窓に開く）
+      const path = tab.path, movement = readApplyMovementLine(line.text) !== null;
+      if (!label && !movement) return;
       event.preventDefault();
-      showContextMenu(event.clientX, event.clientY, [{ id: "playScript", label: jaPlayback.menu, run: () => { void this.client.request({ type: "playback", label: label.name }).catch(error => this.setMessage(errorText(error))); } }]);
+      showContextMenu(event.clientX, event.clientY, [
+        ...(label ? [{ id: "playScript", label: jaPlayback.menu, run: () => { void this.client.request({ type: "playback", label: label.name }).catch(error => this.setMessage(errorText(error))); } }] : []),
+        ...(movement ? [{ id: "pathDraw", label: jaPathDraw.menuEditor, run: () => { void this.client.request({ type: "pathDraw", path, line: line.number - 1 }).catch(error => this.setMessage(errorText(error))); } }] : []),
+      ]);
     });
     body.append(this.empty);
     const bar = document.createElement("div");
