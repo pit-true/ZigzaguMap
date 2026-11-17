@@ -10,8 +10,8 @@
 
 WindowsとWebView2が必要です。配布物は `zigzagumap.exe` 1つで、インストールは不要です。ROMは同梱していません。
 
-1. `zigzagumap.exe` を起動し、ファイル > ROMを開く（Ctrl+O）でBPRJのROMを選びます。
-2. 続けてCFRU-JPのプロジェクトフォルダを選びます。キャンセルするとROMだけで開けます。
+1. `zigzagumap.exe` を起動し、ファイル > CFRU-JP のフォルダを開く（Ctrl+O）でCFRU-JPのフォルダを選びます。フォルダの中のベースROM（`BPRJ0.gba`）も自動で読み込みます。
+2. ROMだけで使うときは、ファイル > ROMを開く（Ctrl+Shift+O）でBPRJのROMを選びます。
 3. 左の一覧でマップをダブルクリックし、各タブで編集します。
 4. ファイル > 出力（Ctrl+S）で変更を書き出します。ROMだけで開いた場合は、出力先のフォルダを選びます。
 
@@ -33,7 +33,8 @@ ROMやプロジェクトフォルダのドラッグ＆ドロップでも開け�
 
 | 操作 | キー |
 |---|---|
-| ROMを開く | Ctrl+O |
+| CFRU-JP のフォルダを開く | Ctrl+O |
+| ROMを開く | Ctrl+Shift+O |
 | 出力 | Ctrl+S |
 | 元に戻す／やり直す | Ctrl+Z／Ctrl+Y |
 | マップを指定して開く | Ctrl+M |

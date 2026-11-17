@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MapId } from "@zigzagumap/core";
+import { locateCfruFolder, type CfruFolderLocation, type FolderEntry, type MapId } from "@zigzagumap/core";
 import { ja } from "../i18n/ja";
+import { jaCfruFolder } from "../i18n/ja.cfruFolder";
+import { choiceDialog } from "../ui/ChoiceDialog";
 import { showError } from "../ui/MessageBox";
 import { errorText } from "../util/errors";
 import { TAB_ORDER, type EditorState, type TabId } from "./EditorState";
@@ -70,30 +72,60 @@ export class SessionOpener {
     return this.host.state.settings.data.recent.find((r) => r.rom.toLowerCase() === rom.toLowerCase())?.project ?? null;
   }
 
-  /** ファイル > プロジェクトフォルダを開く。 */
+  /** ファイル > CFRU-JP のフォルダを開く…（#540。一番上の項目、Ctrl+O）。 */
   async openProjectDialog(): Promise<void> {
-    const folder = await this.host.files.folder(ja.projectFolderTitle);
-    if (!folder) return;
-    await this.openFolder(folder);
+    const folder = await this.host.files.folder(jaCfruFolder.folderTitle);
+    if (folder) await this.openCfruFolder(folder);
   }
 
-  /** プロジェクトフォルダを開く。ベース ROM は、開いている ROM か、最近開いたものの組から選ぶ。無ければ選ばせる。 */
-  private async openFolder(folder: string): Promise<void> {
-    const state = this.host.state;
-    const known = state.settings.data.recent.find((r) => r.project?.toLowerCase() === folder.toLowerCase());
-    let rom = state.session?.romPath ?? known?.rom ?? null;
-    if (!rom) {
-      state.setStatus(ja.needRomForProject);
-      rom = await this.host.files.rom();
+  /**
+   * CFRU-JP のフォルダを開く（#540）。選んだフォルダからプロジェクトのフォルダ（`src\config.h` がある所。Chronos のルートなら `cfru`）と
+   * 中のベース ROM を見つけ、両方を開く。ROM が 1 つに決まらなければ候補から選ばせ、無ければ ROM を選ばせる。
+   * `rom` を渡せばその ROM を使う。`quiet`（自動操作の `openFolder`）はダイアログを出さず、決められないときは例外にする。
+   */
+  async openCfruFolder(folder: string, options: { quiet?: boolean; rom?: string } = {}): Promise<void> {
+    const quiet = options.quiet ?? false;
+    const found = await locateCfruFolder(folder, { list: (path) => invoke<FolderEntry[] | null>("scan_folder", { path }) });
+    const rom = options.rom ?? (await this.chooseBaseRom(found, quiet));
+    if (!rom) return;
+    await this.openSession(rom, found.projectDir, { quiet });
+    const session = this.host.state.session;
+    if (session && session.romPath === rom && session.projectDir !== null) this.host.state.setStatus(jaCfruFolder.opened(session.projectDir, rom));
+  }
+
+  /** 見つけたベース ROM の候補から 1 つに決める（決められなければ、最近開いたものの組、選ばせる、の順。やめたら null）。 */
+  private async chooseBaseRom(found: CfruFolderLocation, quiet: boolean): Promise<string | null> {
+    const choice = found.rom;
+    if (choice.kind === "found") return choice.path;
+    const paired = this.pairedRom(found.projectDir);
+    if (choice.kind === "choose") {
+      const known = paired && choice.candidates.find((c) => c.toLowerCase() === paired.toLowerCase());
+      if (known) return known;
+      if (quiet) throw new Error(jaCfruFolder.romAmbiguous(choice.candidates));
+      const index = await choiceDialog(jaCfruFolder.chooseTitle, jaCfruFolder.choosePrompt(found.projectDir), choice.candidates);
+      return index === null ? null : (choice.candidates[index] ?? null);
     }
-    if (rom) await this.openSession(rom, folder);
+    if (paired) return paired;
+    if (quiet) throw new Error(jaCfruFolder.romMissing(choice.searched));
+    const state = this.host.state;
+    const before = state.status;
+    state.setStatus(jaCfruFolder.romNotFound(choice.searched));
+    const rom = await this.host.files.rom();
+    if (!rom) state.setStatus(before.left, before.right, before.error);
+    return rom;
   }
 
-  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダならプロジェクト、.gba なら ROM。 */
+  /** 最近開いたものに記録した、そのプロジェクトのフォルダと組の ROM（無ければ null）。 */
+  private pairedRom(project: string): string | null {
+    const key = project.replace(/[\\/]+$/, "").toLowerCase();
+    return this.host.state.settings.data.recent.find((r) => r.project?.replace(/[\\/]+$/, "").toLowerCase() === key)?.rom ?? null;
+  }
+
+  /** ドラッグ＆ドロップされたもの（先頭の 1 つ）を開く。フォルダなら CFRU-JP のフォルダ（中のベース ROM も開く）、.gba なら ROM。 */
   async drop(paths: readonly string[]): Promise<void> {
     const path = paths[0];
     if (path === undefined) return;
-    if (await invoke<boolean>("is_dir", { path })) await this.openFolder(path);
+    if (await invoke<boolean>("is_dir", { path })) await this.openCfruFolder(path);
     else if (path.toLowerCase().endsWith(".gba")) await this.openRomAskingFolder(path);
     else this.host.state.setStatus(ja.unsupportedFile, undefined, true);
   }

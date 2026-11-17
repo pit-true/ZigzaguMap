@@ -82,6 +82,12 @@ export const coreCommands: CommandTable = {
     await app.opener.openSession(str(req, "rom"), typeof req["project"] === "string" ? req["project"] : null, { quiet: req["ask"] !== true });
     return describeState(app);
   },
+  openFolder: async (app, req) => {
+    // CFRU-JP のフォルダを開く（#540）。ファイル > CFRU-JP のフォルダを開く… と同じ動きを、ダイアログを出さずに行う。
+    // ベース ROM が 1 つに決まらない・無いときはエラー（`rom` で渡せばそれを使う）
+    await app.opener.openCfruFolder(str(req, "folder"), { quiet: req["ask"] !== true, ...(typeof req["rom"] === "string" ? { rom: req["rom"] } : {}) });
+    return describeState(app);
+  },
   selectMap: async (app, req) => {
     const id = { bank: int(req, "bank"), map: int(req, "map") };
     if (!app.state.session?.catalog.has(id)) throw new Error(`マップ ${id.bank}.${id.map} はありません`);
