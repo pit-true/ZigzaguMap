@@ -116,6 +116,7 @@ export const jaScriptEditorAssist = {
     cycleTab: "タブを切り替える",
     find: "検索",
     replace: "置換",
+    projectSearch: "全ファイル検索（下の欄。.s と .string を全部探す）",
     findNext: "次・前の一致へ",
     nextOccurrence: "同じ文字列を選択に足す（複数カーソル）",
     allOccurrences: "同じ文字列をすべて選ぶ",

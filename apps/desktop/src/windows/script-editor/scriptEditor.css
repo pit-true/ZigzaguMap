@@ -326,3 +326,21 @@
 }
 .cm-playback-line { background: #ffc10722; }
 .cm-playback-value { background: #ffc10755; outline: 1px solid #ad8500; }
+
+/* 下の欄のタブ（ビルドと全ファイル検索。#520） */
+.se-bottom-tabs { display: flex; flex: none; gap: 2px; padding: 2px 4px 0; border-top: 1px solid var(--border); background: var(--face); }
+.se-bottom-tabs button { height: 22px; padding: 0 10px; border-bottom: none; }
+.se-bottom-tabs button.active { background: var(--window); font-weight: bold; }
+
+/* 全ファイル検索の欄（ProjectSearch.ts。#520） */
+.se-search { display: flex; flex: none; flex-direction: column; height: 34%; min-height: 120px; background: var(--face); }
+.se-search-bar { flex-wrap: wrap; }
+.se-search-input { flex: 1 1 200px; min-width: 120px; height: 22px; }
+.se-search-input.invalid { background: var(--error-back, #ffd8d8); outline: 1px solid var(--error-text); }
+.se-search-option { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.se-search-results { flex: 1; min-height: 0; overflow: auto; background: var(--window); color: var(--text); font: 12px Consolas, "MS Gothic", monospace; }
+.se-search-file { padding: 2px 6px; font-weight: bold; background: var(--face); position: sticky; top: 0; }
+.se-search-line { display: flex; gap: 8px; padding: 0 6px 0 18px; white-space: pre; cursor: pointer; }
+.se-search-line:hover { background: var(--hot); }
+.se-search-no { flex: none; min-width: 4em; text-align: right; color: var(--gray-text); }
+.se-search-text mark { background: #ffe066; color: #000; }
