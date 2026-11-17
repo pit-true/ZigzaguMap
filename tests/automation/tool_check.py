@@ -18,6 +18,9 @@
   - brush: ブラシの大きさと形・ミキシングバッグの重み（Phase7 #515）。] [ で大きさを変え、3×3 の正方形で 9 マス・円で 5 マス変わり、
     1 回で戻る。ドラッグ・Shift の直線もブラシの幅で 1 回の操作。スタンプは今のまま。隣の帯の上でも描ける。カーソルの枠は形に合わせる。
     移動エリアでも使える。袋の重みで出る割合が変わる（ホイールと数字キーで変わる）。出力して読み直すと同じ。
+  - select: 範囲を選んで動かす道具（Phase7 #516）。M で選択の道具。左ドラッグで選び、範囲の中のドラッグでブロックと移動許可を動かす
+    （跡は選んでいるブロック、イベントは動かさない、端で止める）。1 回で戻る。Esc・範囲の外のクリック・道具の切り替えで外す。
+    帯の上では選べない。移動エリアタブでも同じ。出力して読み直すと同じ。
   - shortcuts: ショートカットの変更（#392）。窓でキーを変えるとすぐ使え、前のキーは効かなくなる。重なると聞き、答えた方に残る。
     同じプロフィールで起動し直しても残り、既定に戻せる。
 """
@@ -637,6 +640,110 @@ def check_brush_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> No
     check(z.call({"cmd": "bag.state"})["blocks"] == [], "袋の中身と重みは残さない")
 
 
+
+def moved_grid(cells: list[int], w: int, rect: tuple[int, int, int, int], dx: int, dy: int, fill_block: int) -> list[int]:
+    """範囲を動かした答え（跡は fill_block、移動許可はそのマスの今の値）。"""
+    x0, y0, rw, rh = rect
+    out = list(cells)
+    for y in range(y0, y0 + rh):
+        for x in range(x0, x0 + rw):
+            inside = x0 + dx <= x < x0 + dx + rw and y0 + dy <= y < y0 + dy + rh
+            if not inside:
+                out[y * w + x] = (cells[y * w + x] & ~0x3FF) | fill_block
+    for y in range(y0, y0 + rh):
+        for x in range(x0, x0 + rw):
+            out[(y + dy) * w + x + dx] = cells[y * w + x]
+    return out
+
+
+def check_select(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    z.call({"cmd": "setting", "key": "autoMovement", "value": False})
+    base = z.call({"cmd": "cells"})
+    w, h, cells = base["width"], base["height"], base["cells"]
+    events = z.call({"cmd": "event.state"})
+    z.call({"cmd": "key", "key": "m"})
+    st = z.call({"cmd": "tool.state"})
+    check(st["tool"] == "select" and st["buttons"] == ["select"], f"M で選択の道具になり、帯のボタンも変わる（{st['tool']}）")
+    z.call({"cmd": "selectBlock", "block": 0x0D})
+    hist = history(z)
+    # 左ドラッグで矩形を選ぶ（履歴に入れない）
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [4, 3], "to": [8, 7], "steps": 4})
+    sel = z.call({"cmd": "select.state"})
+    check(sel["rect"] == [4, 3, 5, 5], f"左ドラッグで矩形を選ぶ（{sel['rect']}）")
+    check(history(z) == hist and z.call({"cmd": "cells"})["cells"] == cells, "選ぶだけでは何も変わらず、履歴にも入らない")
+    status = z.call({"cmd": "state"})["status"]["left"]
+    check("5×5" in status, f"ステータスバーに選んだ大きさ（{status}）")
+    # 範囲の中をドラッグして動かす（下見を見てから離す）
+    z.call({"cmd": "mouse", "target": "map", "action": "down", "cell": [6, 5]})
+    z.call({"cmd": "mouse", "target": "map", "action": "move", "button": "left", "cell": [8, 8]})
+    z.call({"cmd": "mouse", "target": "map", "action": "move", "button": "left", "cell": [9, 11]})
+    screenshot(z, shots, "tool_select_preview.png")
+    check(z.call({"cmd": "cells"})["cells"] == cells, "ドラッグの間は書かない（下見だけ）")
+    z.call({"cmd": "mouse", "target": "map", "action": "up", "cell": [9, 11]})
+    after = z.call({"cmd": "cells"})["cells"]
+    expect = moved_grid(cells, w, (4, 3, 5, 5), 3, 6, 0x0D)
+    check(after == expect, "ブロックと移動許可が動き、跡は選んでいるブロックで埋まる（移動許可はそのマスの今の値）")
+    check(history(z) == hist + 1, "1 回の移動は 1 回の操作")
+    check(z.call({"cmd": "select.state"})["rect"] == [7, 9, 5, 5], "選択も動かした先に付いていく")
+    check(z.call({"cmd": "event.state"}).get("events") == events.get("events"), "イベントは動かさない")
+    canvas(z, shots, "tool_select_moved.png", "map")
+    screenshot(z, shots, "tool_select_moved_window.png")
+    z.call({"cmd": "undo"})
+    check(z.call({"cmd": "cells"})["cells"] == cells, "1 回の Ctrl+Z で戻る")
+    z.call({"cmd": "redo"})
+    check(z.call({"cmd": "cells"})["cells"] == expect, "やり直すと同じ")
+    z.call({"cmd": "undo"})
+    # Esc で選択を外す
+    z.call({"cmd": "key", "key": "Escape"})
+    check(z.call({"cmd": "select.state"})["rect"] is None, "Esc で選択を外す")
+    # 範囲の外のクリックで外す
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [2, 2], "to": [4, 4], "steps": 2})
+    check(z.call({"cmd": "select.state"})["rect"] == [2, 2, 3, 3], "選び直せる")
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [15, 15]})
+    check(z.call({"cmd": "select.state"})["rect"] is None and history(z) == hist, "範囲の外のクリックで外す（何も書かない）")
+    # 隣の帯の上では選べない
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [5, -2], "to": [8, 1], "steps": 3})
+    check(z.call({"cmd": "select.state"})["rect"] is None, "隣の帯の上からは選べない")
+    # 端で止める
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [1, 2], "to": [3, 4], "steps": 2})
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [2, 3], "to": [-4, 3], "steps": 3})
+    after = z.call({"cmd": "cells"})["cells"]
+    check(after == moved_grid(cells, w, (1, 2, 3, 3), -1, 0, 0x0D) and z.call({"cmd": "select.state"})["rect"] == [0, 2, 3, 3], "マップの外へははみ出さない（左端で止める）")
+    z.call({"cmd": "undo"})
+    r = z.call({"cmd": "select.move", "rect": [0, 0, 3, 3], "dx": 100, "dy": 0})
+    check(r["moved"] == [w - 3, 0], f"自動操作の select.move も端で止める（{r['moved']}）")
+    z.call({"cmd": "undo"})
+    # ドラッグ中の Esc はドラッグだけやめる
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [4, 3], "to": [8, 7], "steps": 2})
+    z.call({"cmd": "mouse", "target": "map", "action": "down", "cell": [5, 4]})
+    z.call({"cmd": "mouse", "target": "map", "action": "move", "button": "left", "cell": [10, 10]})
+    z.call({"cmd": "key", "key": "Escape"})
+    z.call({"cmd": "mouse", "target": "map", "action": "up", "cell": [10, 10]})
+    check(z.call({"cmd": "cells"})["cells"] == cells and history(z) == hist, "ドラッグ中の Esc でやめると何も変わらない")
+    check(z.call({"cmd": "select.state"})["rect"] == [4, 3, 5, 5], "ドラッグをやめても選択は残る")
+    # 道具を変えると外す。鉛筆の Ctrl＋左ドラッグは今のまま
+    z.call({"cmd": "key", "key": "n"})
+    check(z.call({"cmd": "select.state"})["rect"] is None, "道具を変えると選択を外す")
+    z.call({"cmd": "key", "key": "m"})
+    # 移動エリアタブでも（ブロックと移動許可を一緒に）
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "mouse", "target": "movement", "action": "drag", "cell": [4, 3], "to": [8, 7], "steps": 2})
+    z.call({"cmd": "mouse", "target": "movement", "action": "drag", "cell": [6, 5], "to": [9, 11], "steps": 4})
+    after = z.call({"cmd": "cells"})["cells"]
+    check(after == expect, "移動エリアタブでも同じに動く")
+    canvas(z, shots, "tool_select_movement.png", "movement")
+    painted = after
+    # 出力して読み直す
+    out = ctx["work"] / "select_export"
+    out.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "export", "dir": str(out)})
+    z.call({"cmd": "open", "rom": ctx["rom"], "project": str(out)})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    check(z.call({"cmd": "cells"})["cells"] == painted, "出力して読み直すと動かした配置になる")
+
+
 def shortcut_set(z: Zigzagu, action: str, n: int, key: str, **mods) -> dict:
     slot = f"shortcuts.{action}.{n}"
     z.call({"cmd": "click", "id": slot})
@@ -713,6 +820,7 @@ CHECKS = {
     "resize": check_resize,
     "view": check_view,
     "brush": check_brush,
+    "select": check_select,
     "shortcuts": check_shortcuts,
 }
 
