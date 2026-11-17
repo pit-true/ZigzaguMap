@@ -4,6 +4,8 @@ mod automation;
 mod capture;
 mod clipboard;
 mod files;
+mod in_use;
+mod mcp_bridge;
 mod offscreen;
 mod pick;
 mod process;
@@ -18,6 +20,7 @@ use serde::Serialize;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use automation::Automation;
+use mcp_bridge::McpBridge;
 use process::Processes;
 use profile::Profile;
 use project_fs::ProjectRoot;
@@ -106,6 +109,7 @@ pub fn run() {
         .manage(automation)
         .manage(ProjectRoot::default())
         .manage(Arc::new(Processes::default()))
+        .manage(Arc::new(McpBridge::default()))
         .setup(|app| {
             let args = app.state::<StartupArgs>().inner().clone();
             let profile = app.state::<Profile>().inner().clone();
@@ -174,6 +178,10 @@ pub fn run() {
             pick::cursor_color,
             pick::window_pixel,
             automation::automation_capture,
+            mcp_bridge::mcp_bridge_start,
+            mcp_bridge::mcp_bridge_stop,
+            mcp_bridge::mcp_bridge_port,
+            mcp_bridge::mcp_bridge_reply,
             clipboard::clipboard_write_image,
         ])
         .build(tauri::generate_context!())
@@ -181,6 +189,10 @@ pub fn run() {
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {
             process::kill_all(handle.state::<Arc<Processes>>().inner());
+            // MCP の窓口を閉じ、mcp.json を消す（#521）
+            handle.state::<Arc<McpBridge>>().shutdown();
+            // 使用中の印を消す（#522）
+            in_use::clear();
             handle.state::<Profile>().cleanup();
         }
     });

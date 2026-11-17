@@ -108,6 +108,8 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   { id: "tool.pencil", defaults: [k("N")], areas: ["map", "movement"], label: jaTools.shortcutPencil, where: jaTools.shortcutToolWhere },
   { id: "tool.fill", defaults: [k("B")], areas: ["map", "movement"], label: jaTools.shortcutFill, where: jaTools.shortcutToolWhere },
   { id: "tool.shift", defaults: [k("S")], areas: ["map", "movement"], label: jaTools.shortcutShift, where: jaTools.shortcutToolWhere },
+  { id: "tool.brushSmaller", defaults: [k("[")], areas: ["map", "movement"], label: jaTools.shortcutBrushSmaller, where: jaTools.shortcutToolWhere },
+  { id: "tool.brushLarger", defaults: [k("]")], areas: ["map", "movement"], label: jaTools.shortcutBrushLarger, where: jaTools.shortcutToolWhere },
   // スクリプトが登録した操作（Phase5 #405。ツール > スクリプト の上から N 番目。既定のキーは無し）
   ...Array.from({ length: SCRIPT_KEY_SLOTS }, (_, i): KeyAction => ({
     id: `scripts.run.${i + 1}`,

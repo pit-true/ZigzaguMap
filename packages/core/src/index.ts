@@ -25,6 +25,7 @@ export { MapLoader } from "./map/MapLoader.js";
 export { BlockGrid } from "./map/BlockGrid.js";
 export { floodRegion, matchingCells, patternCells, type FillMatch, type FillPattern, type FillPoint, type FillSource, type PatternCell } from "./map/fill.js";
 export { LineLock, type LineAxis } from "./map/lineLock.js";
+export { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE, brushShapeCells, brushOffsets, brushStart, clampBrushSize, pickWeighted, toBrushShape, type BrushOffset, type BrushShape } from "./map/brushShape.js";
 export { TilesetTable } from "./map/TilesetTable.js";
 export { LayoutSharing } from "./map/LayoutSharing.js";
 export { BlockUsage, layoutOf, type UsageLayout } from "./map/BlockUsage.js";
@@ -197,7 +198,7 @@ export { TILESET_SOURCE_FORMAT, TilesetSourceJson, pixelsToTiles, type TilesetSo
 export { decodeIndexedPng, decodeRgbaPng, type IndexedImage, type RgbaPng } from "./project/png/PngDecoder.js";
 export { inflateRaw, inflateZlib, type InflateFunction } from "./project/png/inflate.js";
 export { deflateZlib, type DeflateFunction } from "./project/png/deflate.js";
-export { crc32, encodeIndexedPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
+export { crc32, encodeIndexedPng, encodeRgbPng, type IndexedImageInput } from "./project/png/PngEncoder.js";
 export { HiddenItemSourceError, buildHiddenItemSource, hiddenItemBlock, itemBallLabel } from "./project/HiddenItemSource.js";
 export * from "./project/paths.js";
 export { CfruProject, type MapLoadResult, type SaveResult } from "./project/CfruProject.js";
@@ -369,6 +370,7 @@ export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
 export { BLOCK_PIXELS, BlockRenderer, renderBlocks } from "./render/BlockRenderer.js";
 export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
 export { THUMBNAIL_SIZE, blockAverageColors, renderThumbnail } from "./render/MapThumbnail.js";
+export { downscaleImage, downscaleSize } from "./render/ImageDownscale.js";
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";
@@ -574,3 +576,21 @@ export * from "./script/movement/MovementEdit.js";
 export * from "./script/search/ProjectSearch.js";
 
 export { DpeSpecies } from "./name/DpeSpecies.js";
+
+// MCP サーバー（Phase7 #521・#522）
+export {
+  MCP_MAX_BLOCK,
+  MCP_MAX_CELLS,
+  MCP_MAX_MOVEMENT,
+  MCP_TOOLS,
+  checkMcpArguments,
+  mcpTool,
+  mcpToolNameOf,
+  type McpInputSchema,
+  type McpPropertySchema,
+  type McpToolDefinition,
+  type McpToolKind,
+} from "./mcp/tools.js";
+export { McpToolError, McpToolRunner, type McpContent, type McpMapEntry, type McpPermissions, type McpToolResult, type McpWorkspace } from "./mcp/McpToolRunner.js";
+export { MCP_INSTRUCTIONS, MCP_LEGACY_VERSIONS, MCP_MODERN_VERSIONS, MCP_SERVER_INFO, McpServer, toolList, type McpCallTool } from "./mcp/McpServer.js";
+export { CoreMcpWorkspace, type CoreMcpWorkspaceOptions } from "./mcp/CoreMcpWorkspace.js";

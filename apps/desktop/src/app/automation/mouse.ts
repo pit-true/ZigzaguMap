@@ -14,7 +14,7 @@ import { describeSelection } from "./status";
  * - 位置: `cell: [x, y]`（マス。マスの中央を押す）か `px: [x, y]`（部品の左上からの表示上の画素）。古い形の `x`・`y`（マス）も読む。
  *   マップのタブ（map / movement / event）の `cell` は主マップの左上が原点で、負の値や大きさを超える値で隣のマップの帯の上を指せる（Phase3）。
  * - action: `click` / `dblclick` / `rightClick` / `drag`（`to` / `toPx` まで `steps` 回（既定 8）に分けて動かす）/ `hover` /
- *   `down` / `move` / `up`（1 つずつ送る）。
+ *   `down` / `move` / `up`（1 つずつ送る）/ `wheel`（ホイール。`delta` が負なら奥へ回す。既定 -1。Phase7 #515）。
  * - button: `left`（既定）/ `right`（`drag` と `down`・`up` で使う）/ `middle` / `back`・`forward`（サイドボタン。`click` で
  *   マップの履歴を戻る・進む。#237）。ctrl・shift・alt: 修飾キー。
  * 返事は選択中のブロック・移動許可・イベントとステータスバー。
@@ -156,6 +156,10 @@ class MouseSender {
     else if (button === 2) this.el.dispatchEvent(new MouseEvent("contextmenu", i));
   }
 
+  wheel(x: number, y: number, delta: number): void {
+    this.el.dispatchEvent(new WheelEvent("wheel", { ...this.init(x, y, 0, 0), deltaY: delta * 100 }));
+  }
+
   dblclick(x: number, y: number): void {
     this.down(x, y, 0, 1);
     this.up(x, y, 0, 1);
@@ -226,8 +230,12 @@ async function mouse(app: App, req: AutomationRequest): Promise<unknown> {
     case "up":
       m.up(x, y, buttonOf(req, 0));
       break;
+    case "wheel":
+      m.move(x, y, 0);
+      m.wheel(x, y, typeof req["delta"] === "number" ? req["delta"] : -1);
+      break;
     default:
-      throw new Error(`action は click / dblclick / rightClick / drag / hover / down / move / up のどれかです: ${action}`);
+      throw new Error(`action は click / dblclick / rightClick / drag / hover / down / move / up / wheel のどれかです: ${action}`);
   }
   await settle();
   return describeSelection(app);

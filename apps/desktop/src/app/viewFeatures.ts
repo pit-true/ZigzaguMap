@@ -1,6 +1,8 @@
 import { SeamNotice } from "../ui/connection/SeamNotice";
 import type { TownMiniView } from "../ui/view/TownMiniView";
 import type { HistoryPanel } from "../ui/history/HistoryPanel";
+import type { MinimapPanel } from "../ui/minimap/MinimapPanel";
+import type { MapView } from "../ui/map/MapView";
 import type { PointerDialog } from "../ui/pointer/PointerDialog";
 import type { EventTab } from "../ui/event/EventTab";
 import type { MapTab } from "../ui/tabs/MapTab";
@@ -74,6 +76,9 @@ export class ViewFeatures {
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
+  /** ミニマップの小窓（Phase7 #511。初めて出すときに読み込む）。 */
+  private minimapValue: Promise<MinimapPanel> | null = null;
+  private minimapCreated: MinimapPanel | null = null;
   /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
   readonly userScripts: UserScriptHost;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
@@ -121,6 +126,12 @@ export class ViewFeatures {
       if (panel.isOpen) panel.close();
       else panel.open();
       state.emit("view");
+    });
+    // ミニマップの小窓（Phase7 #511。表示 > ミニマップ。既定オフ。前回出していたら ROM を開いたときに出す）
+    actions.registerCheck("view.minimap", () => this.minimapCreated?.isOpen ?? false);
+    actions.register("view.minimap", () => this.setMinimap(!(this.minimapCreated?.isOpen ?? false)));
+    state.on("session", () => {
+      if (state.session && state.settings.data.minimap.show && !this.minimapCreated?.isOpen) void this.setMinimap(true);
     });
     // マップの拡大（#316）。メニューの「拡大表示」を押したら、Ctrl＋ホイールで決めた倍率は忘れて 1 倍・2 倍に戻す
     this.zoom = {
@@ -193,6 +204,41 @@ export class ViewFeatures {
   /** 履歴の窓（作っていなければ null。自動操作用）。 */
   historyIfCreated(): HistoryPanel | null {
     return this.historyCreated;
+  }
+
+  /** ミニマップの小窓（作っていなければ作る。#511）。 */
+  minimap(): Promise<MinimapPanel> {
+    const { state, mapTab, movementTab, eventTab } = this.parts;
+    const views: Partial<Record<string, MapView>> = { map: mapTab.view, movement: movementTab.view, event: eventTab.view };
+    return (this.minimapValue ??= import("../ui/minimap/MinimapPanel").then(
+      ({ MinimapPanel }) =>
+        (this.minimapCreated = new MinimapPanel(state, {
+          activeView: () => views[state.tab] ?? null,
+          views: () => [mapTab.view, movementTab.view, eventTab.view],
+          closed: () => {
+            state.settings.update({ minimap: { ...state.settings.data.minimap, show: false } });
+            state.emit("view");
+          },
+          moved: (left, top) => state.settings.update({ minimap: { ...state.settings.data.minimap, left, top } }),
+          townShown: () => state.settings.data.minimap.town === true,
+          setTownShown: (town) => state.settings.update({ minimap: { ...state.settings.data.minimap, town } }),
+          regionName: (region) => state.session?.catalog.regionNames.find(([id]) => id === region)?.[1] ?? null,
+          townLinks: () => this.townCreated?.store ?? null,
+        })),
+    ));
+  }
+
+  /** ミニマップの小窓を出す・隠す（個人設定に残す。#511）。 */
+  async setMinimap(show: boolean): Promise<void> {
+    const state = this.parts.state;
+    const saved = state.settings.data.minimap;
+    state.settings.update({ minimap: { ...saved, show } });
+    if (show) {
+      if (state.session) (await this.minimap()).open(saved.left, saved.top);
+    } else if (this.minimapValue) {
+      (await this.minimapValue).close();
+    }
+    state.emit("view");
   }
 
   /** ポインタ一覧と参照元の検索の窓（作っていなければ作る）。 */
