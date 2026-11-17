@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { townZoomArea } from "../src/ui/minimap/TownZoom";
+import { townZoomArea } from "../src/windows/minimap/TownZoom";
 
 const frame = (x: number, y: number, width = 1, height = 1, page = 0) => ({ rect: { page, x, y, width, height }, source: "rom" as const });
 

@@ -14,7 +14,7 @@ const DEFAULT_CELL = { x: 4, y: 11 };
 
 /**
  * アイコンに切り出す範囲（カントーの面の画素）。`cell` は最初の地名（マサラタウン、0x58）のマス。
- * 位置はタウンマップの小さなウィンドウと同じく、マス (x, y) の左上を (32 + x×8, 32 + y×8) とする。絵の外にはみ出さないように寄せる。
+ * 位置はタウンマップのウィンドウと同じく、マス (x, y) の左上を (32 + x×8, 32 + y×8) とする。絵の外にはみ出さないように寄せる。
  */
 export function regionIconArea(cell: { x: number; y: number }): { left: number; top: number; size: number } {
   const inside = cell.x >= 0 && cell.y >= 0 && cell.x < REGION_MAP_WIDTH && cell.y < REGION_MAP_HEIGHT;
@@ -29,7 +29,7 @@ export function regionIconArea(cell: { x: number; y: number }): { left: number; 
 
 /**
  * ROM のタウンマップ（カントーの面）から、マサラタウンのあたりの 13×13 の画素を切り出す（ツールバーのワールドマップエディタのアイコン用。#541）。
- * 絵とマスの位置は、ワールドマップエディタ・タウンマップの小さなウィンドウと同じ表（パレット・タイル・タイルマップ・位置の表）から読む。
+ * 絵とマスの位置は、ワールドマップエディタ・タウンマップのウィンドウと同じ表（パレット・タイル・タイルマップ・位置の表）から読む。
  * 対応していないゲームか、読めなければ null。切り出した画素はメモリに持つだけで、ファイルには書かない。
  */
 export function readRegionMapIcon(rom: Rom, gameCode: string): RgbaImage | null {

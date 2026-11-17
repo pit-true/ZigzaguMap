@@ -60,8 +60,9 @@ export class NpcRanges {
     if (!session || !this.state.map) return;
     const token = ++this.token;
     let configH: string | null = null;
-    if (session.projectDir) {
-      try { configH = (await session.files.exists("src/config.h")) ? await session.files.readText("src/config.h") : null; }
+    const fs = (await session.cfruSource())?.fs;
+    if (fs) {
+      try { configH = (await fs.exists("src/config.h")) ? await fs.readText("src/config.h") : null; }
       catch { configH = null; }
     }
     if (token !== this.token) return;

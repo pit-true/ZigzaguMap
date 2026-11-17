@@ -141,6 +141,7 @@ pub fn run() {
             files::read_rom,
             files::read_rom_part,
             files::is_dir,
+            files::scan_folder,
             files::load_settings,
             files::save_settings,
             system::pick_save_file,

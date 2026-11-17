@@ -8,6 +8,7 @@ export const jaTimeOfDay = {
   shown: (name: string, hour: number) => `時間帯: ${name}（${hour} 時の色）`,
   day: "時間帯: 昼（元の色）",
   notTinted: "このマップは時間帯で色が変わりません（屋内・地下・秘密基地など）",
-  noProject: "時間帯の色は、プロジェクトフォルダ（CFRU）を開いているときだけ見られます",
+  /** ROM だけのとき（#543。コンボの説明と、切り替えようとしたときのステータスバー）。 */
+  noProjectHint: "時間帯の色は、CFRU-JP のフォルダ（プロジェクトのフォルダ）を開くと使えます",
   unreadable: (file: string, line: number | undefined, message: string) => `時間帯の色を読めません: ${file}${line !== undefined ? ` ${line} 行目` : ""}（${message}）`,
 };

@@ -20,6 +20,9 @@ import {
   withEventLabels,
   withScriptsTable,
   withTrainers,
+  locateCfruSource,
+  subProjectFs,
+  type ProjectFs,
   type DpeSpecies,
   type CommandRegistry,
   type EventLabelSavePlan,
@@ -42,6 +45,16 @@ export interface OpenMap {
   readonly id: MapId;
   readonly doc: MapDocument;
   readonly tiles: TilesetView;
+}
+
+/** CFRU のソースの場所（#543。`ProjectSession.cfruSource`）。 */
+export interface CfruSource {
+  /** ソースを根にした ProjectFs（見つからなければ null）。 */
+  readonly fs: ProjectFs | null;
+  /** プロジェクトのフォルダからの相対（"" か "cfru/"。見つからなければ null）。 */
+  readonly prefix: string | null;
+  /** 探した目印のパス（プロジェクトのフォルダからの相対）。 */
+  readonly searched: readonly string[];
 }
 
 /** 対応していない ROM（ゲームコードが BPRJ でない、小さすぎる）。 */
@@ -215,7 +228,8 @@ export class ProjectSession {
     this.speciesLoading ??= (async () => {
       if (!this.projectDir) return;
       const { loadDpeSpecies } = await import("./DpeSpeciesLoader");
-      this.dpeSpecies = await loadDpeSpecies(this.fs);
+      const source = await this.cfruSource();
+      this.dpeSpecies = await loadDpeSpecies(source?.fs ?? this.fs, source?.prefix ?? "");
     })();
     await this.speciesLoading;
   }
@@ -404,6 +418,23 @@ export class ProjectSession {
   /** プロジェクトフォルダのファイルの読み書き（ひな形を書くときなど）。 */
   get files(): TauriProjectFs {
     return this.fs;
+  }
+
+  private sourceValue: Promise<CfruSource> | null = null;
+
+  /**
+   * CFRU のソース（`src/config.h`・`include/new/dns_data.h` など）を読むための場所（#543）。プロジェクトのフォルダの直下か、
+   * Chronos のルートを開いたときの `cfru/` の下。初めて使うときに探して覚える。プロジェクトのフォルダが無ければ null。
+   * 見つからなければ `fs` は null で、`searched` に探した場所が入る（エラーの文に使う）。
+   */
+  cfruSource(): Promise<CfruSource> | null {
+    if (!this.fs.root) return null;
+    this.sourceValue ??= locateCfruSource(this.fs).then((location) => ({
+      fs: location.prefix === null ? null : subProjectFs(this.fs, location.prefix),
+      prefix: location.prefix,
+      searched: location.searched,
+    }));
+    return this.sourceValue;
   }
 
   /** 別のものを開くのに失敗したあと、Rust 側のフォルダの許可をこのセッションのものに戻す。 */

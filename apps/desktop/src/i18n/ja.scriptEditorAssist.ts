@@ -95,13 +95,13 @@ export const jaScriptEditorAssist = {
   // ---- 保存時の幅検査（#197） ----
   widthCheck: {
     running: "幅検査を実行しています…",
-    ok: "幅検査: すべての行が窓に収まりました",
+    ok: "幅検査: すべての行がウィンドウに収まりました",
     errors: (count: number) => `幅検査: ${count} 件の問題があります（波線を出しました）`,
     failed: (error: string) => `幅検査を実行できませんでした: ${error}`,
     registered: (count: number, path: string) => `幅検査の登録に ${count} 件を足しました（${path}）`,
     removed: (count: number, path: string) => `幅検査の登録から ${count} 件を消しました（${path}）`,
     logTitle: (path: string) => `保存時の幅検査: ${path}`,
-    unresolvedReason: (labels: string) => `ZigzaguMap が自動で登録しました。${labels} に入る値の種類が分からないため、窓の幅は検査していません`,
+    unresolvedReason: (labels: string) => `ZigzaguMap が自動で登録しました。${labels} に入る値の種類が分からないため、ウィンドウの幅は検査していません`,
   },
 
   // ---- 保存 ----

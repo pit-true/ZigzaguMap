@@ -249,52 +249,42 @@ async function editHistoryGoTo(app: App, req: AutomationRequest): Promise<unknow
 }
 
 /**
- * `minimap.state {rebuild?, png?}`: ミニマップの小窓（Phase7 #511）。出しているか `open`、縮小図の大きさ `width`・`height`、
- * 縮小の割合 `scale`（縮小図の画素 = マップの画素 × scale）、見えている範囲の枠 `frame`（縮小図の画素）、作った回数 `builds`、
- * 作る時間 `buildMs`、イベントの点の数 `events`、個人設定 `setting`、今のタブのスクロールの位置 `scroll`。`rebuild: true` なら作り直す予約を待たずに
- * 作り直してから返す。`png: true` なら縮小図の画像（点と枠を含む）を `png`（data URL）で返す。
+ * `minimap.state {rebuild?}`: ミニマップ（Phase7 #511、#542 から別ウィンドウ）のメイン側の状態。ウィンドウを開いているか `open`、
+ * ウィンドウの準備ができたか `ready`、縮小図の大きさ `width`・`height`、縮小の割合 `scale`（縮小図の画素 = マップの画素 × scale）、
+ * 見えている範囲の枠 `frame`（縮小図の画素）、作った回数 `builds`、作る時間 `buildMs`、最後に送った縮小図の大きさ `sentBytes`、
+ * タウンマップの拡大 `town`、個人設定 `setting`、今のタブのスクロールの位置 `scroll`。`rebuild: true` なら作り直す予約を待たずに
+ * 作り直して送ってから返す。ウィンドウの中の絵は `window: "minimap"` の `state`・`canvasPng` で見る。
  */
 async function minimapState(app: App, req: AutomationRequest): Promise<unknown> {
-  const panel = await app.views.minimap();
-  if (req["rebuild"] === true) panel.rebuild();
+  const host = await app.views.minimap();
+  if (req["rebuild"] === true) host.rebuild();
   await new Promise((r) => requestAnimationFrame(() => r(null)));
   const tab = app.state.tab;
   const el = tab === "map" || tab === "movement" || tab === "event" ? app.tabs[tab].view.element : null;
   return {
-    ...panel.snapshot(),
+    ...host.snapshot(),
     setting: app.state.settings.data.minimap,
+    placement: app.state.settings.data.toolWindows["minimap"] ?? null,
     scroll: el ? { left: el.scrollLeft, top: el.scrollTop } : null,
-    ...(req["png"] === true ? { png: panel.toPng() } : {}),
   };
 }
 
-/** `minimap.click {x, y}`: 縮小図の (x, y) 画素を押す（画面の押下と同じ。その位置を真ん中にスクロールする）。返事は `minimap.state` と同じ。 */
+/** `minimap.click {x, y}`: 縮小図の (x, y) 画素を押したのと同じ（その位置を真ん中にスクロールする）。返事は `minimap.state` と同じ。 */
 async function minimapClick(app: App, req: AutomationRequest): Promise<unknown> {
-  const panel = await app.views.minimap();
-  if (!panel.isOpen) throw new Error("ミニマップが開いていません");
-  const canvas = document.querySelector<HTMLCanvasElement>('[data-auto-id="minimap.canvas"]');
-  if (!canvas || canvas.hidden) throw new Error("ミニマップに縮小図が出ていません");
-  const r = canvas.getBoundingClientRect();
-  const init = { clientX: r.left + num(req, "x"), clientY: r.top + num(req, "y"), button: 0, pointerId: 1, bubbles: true };
-  canvas.dispatchEvent(new PointerEvent("pointerdown", init));
-  canvas.dispatchEvent(new PointerEvent("pointerup", init));
+  const host = await app.views.minimap();
+  if (!host.isOpen) throw new Error("ミニマップが開いていません");
+  if (!host.press(num(req, "x"), num(req, "y"))) throw new Error("ミニマップに縮小図が出ていません");
   return minimapState(app, {});
 }
 
 /**
- * `minimap.town {on}`: 小窓の「タウンマップも出す」のチェックを押したのと同じ（個人設定に残す）。タウンマップを読み込んで描くまで待つ。
- * 返事は `minimap.state` と同じ（`town` に出しているかと、枠 `frame`・出す範囲 `area`・下の欄の文字 `text`）。
+ * `minimap.town {on}`: ウィンドウの「タウンマップも出す」の印を変えたのと同じ（個人設定に残し、ウィンドウの印も合わせる）。
+ * タウンマップを読み込んで送るまで待つ。返事は `minimap.state` と同じ（`town` に枠 `frame`・出す範囲 `area`・下の欄の文字 `text`）。
  */
 async function minimapTown(app: App, req: AutomationRequest): Promise<unknown> {
-  const panel = await app.views.minimap();
-  if (!panel.isOpen) throw new Error("ミニマップが開いていません");
-  const box = document.querySelector<HTMLInputElement>('[data-auto-id="minimap.town"]');
-  const on = req["on"] === true;
-  if (box && box.checked !== on) {
-    box.checked = on;
-    box.dispatchEvent(new Event("change"));
-  }
-  await panel.setTown(on);
+  const host = await app.views.minimap();
+  if (!host.isOpen) throw new Error("ミニマップが開いていません");
+  await host.setTown(req["on"] === true);
   return minimapState(app, {});
 }
 
@@ -382,7 +372,7 @@ async function mapExportState(app: App): Promise<unknown> {
 async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown> {
   const { openMapExport } = await import("../../ui/export/MapExportDialog");
   const d = openMapExport();
-  if (!d) throw new Error("マップの画像の書き出しの窓が開いていません");
+  if (!d) throw new Error("マップの画像の書き出しのウィンドウが開いていません");
   await d.settle();
   const action = req["action"];
   if (action === "save") return d.save();
@@ -415,7 +405,7 @@ async function allSettingsState(): Promise<unknown> {
 async function allSettingsSave(): Promise<unknown> {
   const { openAllSettings } = await import("../../ui/settings/AllSettingsDialog");
   const d = openAllSettings();
-  if (!d) throw new Error("すべての設定の窓が開いていません");
+  if (!d) throw new Error("すべての設定のウィンドウが開いていません");
   await d.ready;
   const ok = await d.saveProject();
   return { ok, ...((await allSettingsState()) as object) };

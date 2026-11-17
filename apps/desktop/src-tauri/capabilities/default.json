@@ -11,7 +11,8 @@
     "transplant",
     "tile-import",
     "script-editor",
-    "map-assist"
+    "map-assist",
+    "minimap"
   ],
   "permissions": [
     "core:default",
