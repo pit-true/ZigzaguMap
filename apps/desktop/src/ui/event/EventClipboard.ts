@@ -44,6 +44,8 @@ export interface EventClipboardHost {
   remove(): void;
   /** `.global` でないラベル（別の .s から見えない）。分からなければ空。 */
   notGlobal?(labels: readonly string[]): Promise<string[]>;
+  /** コピーしたものが変わった（空になった）とき。イベントの無いマップでもマップの絵を出すかを決め直す（#536）。 */
+  changed?(): void;
 }
 
 const LABEL_TARGET = { person: "person", sign: "sign", trap: "tile" } as const;
@@ -63,7 +65,7 @@ export class EventClipboard {
   constructor(private readonly host: EventClipboardHost) {
     this.ghost.className = "event-paste-ghost";
     this.ghost.dataset["autoId"] = "event.pasteGhost";
-    host.state.on("session", () => { this.cancel(true); this.items = []; this.source = null; });
+    host.state.on("session", () => { this.cancel(true); this.items = []; this.source = null; host.changed?.(); });
     host.state.on("map", () => this.cancel(true));
     host.state.on("tab", () => this.cancel(true));
   }
@@ -95,7 +97,9 @@ export class EventClipboard {
       this.host.state.setStatus(t.nothingToCopy, undefined, true);
       return 0;
     }
+    const was = this.items.length;
     this.items = items; this.source = map.id;
+    if (was === 0) this.host.changed?.();
     const text = t.copied(items.length, `${map.id.bank}.${map.id.map}`);
     this.host.state.setStatus(skipped > 0 ? text + t.copySkipped(skipped) : text);
     return items.length;

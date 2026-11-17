@@ -209,6 +209,34 @@ def free_cell(st: dict, w: int, h: int, offsets: list[tuple[int, int]]) -> tuple
     raise AssertionError("空いたマスが無い")
 
 
+def has_events(ev: dict | None) -> bool:
+    return bool(ev) and any(ev.get(k) for k in ("persons", "warps", "traps", "signs"))
+
+
+def empty_map_paste(z: Zigzagu) -> None:
+    """#536: イベントの無いマップ（素の FR の 3.11 など）は「イベントが存在しません」だけだが、コピーしたものがある間はマップを出して貼れる。"""
+    empty = None
+    for m in range(0, 60):
+        try:
+            z.call({"cmd": "selectMap", "bank": 3, "map": m})
+        except Exception:  # noqa: BLE001
+            break
+        if not has_events(z.call({"cmd": "event.state"})["events"]):
+            empty = m
+            break
+    check(empty is not None, f"イベントの無いマップがある（3.{empty}）")
+    if empty is None:
+        return
+    view = z.call({"cmd": "getField", "id": "event-tab-view"})
+    check(view["visible"], "コピーしたものがある間は、イベントの無いマップでもマップの絵を出す")
+    z.call({"cmd": "key", "key": "v", "ctrl": True})
+    z.call({"cmd": "mouse", "target": "event", "action": "click", "cell": [1, 1]})
+    ev = z.call({"cmd": "event.state"})["events"]
+    check(has_events(ev), f"イベントの無いマップへ Ctrl+V の影をクリックで貼る（3.{empty}）")
+    z.call({"cmd": "undo"})
+    check(not has_events(z.call({"cmd": "event.state"})["events"]), "元に戻すと、また何も無いマップ")
+
+
 def paste_check(z: Zigzagu, rom: str, work: pathlib.Path, shots: pathlib.Path | None) -> None:
     """11. コピーと別のマップへの貼り付け（Phase7 #519）。3.0 の看板と人を 3.1 へ貼り、出力して読み直す。"""
     z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
@@ -265,6 +293,8 @@ def paste_check(z: Zigzagu, rom: str, work: pathlib.Path, shots: pathlib.Path | 
     z.call({"cmd": "mouse", "target": "event", "action": "click", "cell": [x, y]})
     pasted = z.call({"cmd": "event.state"})["events"]
     check(len(pasted["signs"]) == len(before["signs"]) + 1 and (pasted["signs"][-1]["x"], pasted["signs"][-1]["y"]) == (x + offsets[0][0], y + offsets[0][1]), "Ctrl+V の影をクリックで置く")
+    empty_map_paste(z)
+    z.call({"cmd": "selectMap", "bank": 3, "map": 1})
     # 出力して読み直すと同じ。ラベルも残る
     z.call({"cmd": "export", "dir": str(work)})
     z.call({"cmd": "open", "rom": rom, "project": str(work)})
