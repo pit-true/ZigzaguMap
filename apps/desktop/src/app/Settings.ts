@@ -152,6 +152,11 @@ export interface SettingsData {
    * 既定と違う操作だけを残す（空の配列はキーを外した操作）。読むときは `app/keymap.ts` の resolveKeymap で確かめる。
    */
   shortcuts: Record<string, string[]>;
+  /**
+   * ミニマップの小窓（表示メニュー。既定オフ。Phase7 #511）。出すか `show`、窓の左上の位置（null なら右上）、
+   * タウンマップの現在地のまわりの拡大も出すか `town`（小窓の中のチェック。既定オフ）。
+   */
+  minimap: { show: boolean; left: number | null; top: number | null; town?: boolean };
 }
 
 /** 既定値（AdvanceMap の初期状態に合わせる）。 */
@@ -215,6 +220,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   playbackGender: "male",
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
+  minimap: { show: false, left: null, top: null, town: false },
 };
 
 /** 個人設定の読み書き。書き込みは少し待ってまとめる。 */

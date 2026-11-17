@@ -130,6 +130,9 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `tree.rightClick` | `key`、`text`、または `bank` と `map` | マップの項目を右クリックしてメニューを出す（Phase5 #401）。項目は `contextMenu.state` で読み、`contextMenu.press` の `id`（`tree.open`・`tree.copyName`・`tree.copyId`・`tree.duplicate`）で押す。返事はその項目（`tree.list` と同じ形） |
 | `clipboard.last` | | 最後にコピーした文字（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
 | `editHistory.state` | | 履歴の窓（Phase5 #402。窓を作っていなければ作るが、開きはしない）。`open`（出しているか）、`position`（今の位置。実行済みの操作の数）、`rows`（新しい順。`position`（押したときに移る位置）・`text`・`current`・`redo`（やり直せる分）。最後が「（最初の状態）」で `position` 0）。開く・閉じるは `action` の `view.history` |
+| `minimap.state` | `rebuild`（true で作り直しを待たずに作る）、`png`（true で縮小図の画像も返す） | ミニマップの小窓（Phase7 #511。窓を作っていなければ作るが、開きはしない）。`open`、縮小図の大きさ `width`・`height`、縮小の割合 `scale`（縮小図の画素 = マップの画素 × scale）、見えている範囲の枠 `frame`（縮小図の画素。マップを出すタブでなければ null）、作った回数 `builds`（開いてから）、作る時間 `buildMs`、イベントの点の数 `events`、個人設定 `setting`（`show`・`left`・`top`）、今のタブのスクロールの位置 `scroll`、`png`（data URL）。開く・閉じるは `action` の `view.minimap` |
+| `minimap.town` | `on`（true / false） | 小窓の「タウンマップも出す」の印を変える（個人設定に残す）。読み込んで描くまで待つ。返事は `minimap.state` と同じで、`town` は出していれば `loaded`・`frame`（今のマップの位置。`rect`（`page`・`x`・`y`・`width`・`height`）と出どころ `source`（`map`・`section`・`rom`））・`area`（出す範囲のマスと倍率 `scale`）・`text`（下の欄の文字）、出していなければ null |
+| `minimap.click` | `x`、`y`（縮小図の画素） | 縮小図を押す（その位置を表示の真ん中にスクロールする）。返事は `minimap.state` と同じ |
 | `editHistory.goTo` | `position` | 履歴の窓の行を押す（窓を出していれば画面の行を押し、出していなければ同じ処理を呼ぶ）。その位置まで戻す・進める。返事は `editHistory.state` と同じものと、動かした回数 `steps` |
 | `allSettings.state` | | すべての設定の窓（Phase5 #404。`action` の `opt.allSettings` で開く）。`open`、チェックの欄の状態 `checks`（アクション ID → チェック）、プロジェクトの欄の値 `project`、最後の保存の結果 `message`。欄は `allSettings.<アクション ID>`（`setField` に true / false、窓を開く項目は `click`）、プロジェクトの欄は `allSettings.project.<outputRom / labelTemplate / useGlobal / lineMaxChars / linesPerPage>` |
 | `allSettings.save` | | プロジェクトの欄を zigzagumap.json に保存して終わるまで待つ。返事は `ok` と `allSettings.state` |
