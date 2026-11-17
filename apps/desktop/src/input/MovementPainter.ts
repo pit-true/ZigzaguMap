@@ -1,6 +1,6 @@
-import { PaintMovementCommand } from "@zigzagumap/core";
+import { PaintMovementCommand, brushShapeCells } from "@zigzagumap/core";
 import type { EditorState } from "../app/EditorState";
-import { currentTool, pressKind, type PressKind } from "../app/paintTool";
+import { brushSetting, currentTool, pressKind, type Brush, type PressKind } from "../app/paintTool";
 import { ja } from "../i18n/ja";
 import type { Cell, MapView } from "../ui/map/MapView";
 import { attachCellPointer } from "./CellPointer";
@@ -26,6 +26,7 @@ export function movementName(value: number): string {
  * Phase5: 道具が塗りつぶしなら左クリックで塗りつぶし（移動許可だけで「同じ」を見る。Q2）、Ctrl＋クリックでマジック塗り。
  * シフトなら左ドラッグでマップシフト（ブロックと一緒に動く）。鉛筆で Shift を押しながら描くと直線（#389）。
  * ここはマウスの振り分けと鉛筆・拾う・座標の表示。矩形塗りは tools/MovementRectTool、押したときの振り分けは app/paintTool の pressKind。
+ * Phase7 #515: 鉛筆のブラシの大きさ（2〜9）と形も使う（移動許可はいつも 1 つなので、大きさを変えればいつも効く）。
  */
 export class MovementPainter {
   /** 画面のマスとマップのマスの対応（隣の帯は App が `cells.neighbors` を入れる）。 */
@@ -38,6 +39,8 @@ export class MovementPainter {
   private readonly line = new LineGuide();
   /** 押したときに決めた操作（離すまで変えない）。 */
   private press: PressKind = null;
+  /** ブラシで、この押下の間に書いたマス（`x,y`）。 */
+  private readonly stroke = new Set<string>();
 
   constructor(
     view: MapView,
@@ -95,8 +98,24 @@ export class MovementPainter {
     );
   }
 
+  /** 今の鉛筆のブラシ（大きさ 2 以上のとき。カーソルの枠にも使う）。 */
+  currentBrush(): Brush | null {
+    const brush = brushSetting(this.state);
+    return currentTool(this.state) === "pencil" && brush.size > 1 ? brush : null;
+  }
+
   private paint(cell: Cell, merge: boolean): void {
-    this.write([{ x: cell.x, y: cell.y, movement: this.state.movement }], true, merge);
+    const brush = brushSetting(this.state);
+    if (brush.size <= 1) return this.write([{ x: cell.x, y: cell.y, movement: this.state.movement }], true, merge);
+    if (!merge) this.stroke.clear();
+    const list: { x: number; y: number; movement: number }[] = [];
+    for (const c of brushShapeCells(cell.x, cell.y, brush.size, brush.shape)) {
+      const key = `${c.x},${c.y}`;
+      if (this.stroke.has(key)) continue;
+      this.stroke.add(key);
+      list.push({ x: c.x, y: c.y, movement: this.state.movement });
+    }
+    if (list.length > 0) this.write(list, true, merge);
   }
 
   /** 塗りつぶし（`magic` ならマジック塗り）。移動許可だけで「同じ」を見て、選択中の値を書く（1 回の操作）。 */

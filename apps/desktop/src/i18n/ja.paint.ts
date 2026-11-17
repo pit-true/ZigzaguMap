@@ -18,7 +18,10 @@ export const jaPaint = {
   shortcutDragWhere: "マップタブのマップ（矩形塗りは移動エリアタブでも）",
   /** ミキシングバッグ（#236）。 */
   bagLabel: (n: number) => `ミキシングバッグ（${n} 個）`,
-  bagHint: "Ctrl＋パレットの左クリックで出し入れ。袋の中のブロックを選んで描くと、袋の中から乱数で選んで描く。Ctrl＋クリックで空にする",
+  bagHint: "Ctrl＋パレットの左クリックで出し入れ。袋の中のブロックを選んで描くと、袋の中から乱数で選んで描く（右下の数が大きいブロックほど多く出る）。Ctrl＋クリックで空にする",
+  /** 重み（Phase7 #515）。 */
+  bagItemHint: (block: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")}。ホイールか数字キー（1〜9）で重みを変える`,
+  bagWeight: (block: number, weight: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")} の重み: ${weight}`,
   bagAdded: (block: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")} を袋に入れました`,
   bagRemoved: (block: number) => `ブロック ${block.toString(16).toUpperCase().padStart(3, "0")} を袋から出しました`,
   bagCleared: "袋を空にしました",
@@ -26,6 +29,9 @@ export const jaPaint = {
   shortcutBagWhere: "マップタブのブロックパレット",
   shortcutBagClear: "ミキシングバッグを空にする",
   shortcutBagClearWhere: "マップタブのミキシングバッグ",
+  shortcutBagWeightKeys: "ホイール、1〜9",
+  shortcutBagWeight: "ミキシングバッグのブロックの重みを変える",
+  shortcutBagWeightWhere: "マップタブのミキシングバッグのブロックの上",
   /** ショートカット一覧の、矩形の選択と Ctrl を押している間の表示（#225・#238）。 */
   shortcutPick: "矩形を選ぶ（ブロックと移動許可を拾う。隣の帯の上でも）",
   shortcutPickWhere: "マップタブのマップ",

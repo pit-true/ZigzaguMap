@@ -1,4 +1,5 @@
-import { CursorLayer } from "../ui/map/CursorLayer";
+import { brushOffsets, brushStart } from "@zigzagumap/core";
+import { CursorLayer, type CursorShape } from "../ui/map/CursorLayer";
 import { normalizeGridStyle, type GridStyle } from "../ui/map/gridStyle";
 import type { MapView } from "../ui/map/MapView";
 import { MovementValueField } from "../ui/map/MovementValueField";
@@ -6,7 +7,7 @@ import type { MovementTab } from "../ui/tabs/MovementTab";
 import { jaTools } from "../i18n/ja.tools";
 import type { Actions } from "./Actions";
 import type { EditorState } from "./EditorState";
-import { currentTool } from "./paintTool";
+import { currentTool, type Brush } from "./paintTool";
 import type { SettingsData } from "./Settings";
 
 /** 表示の補助を付けるタブ。 */
@@ -18,6 +19,7 @@ export type AidTab = "map" | "movement" | "event";
  * - グリッドの設定（表示 > グリッドの設定…）: 3 つのタブの MapView のグリッドの形。窓のコードは初めて開くときに読み込む。
  * - 移動許可の数値の欄（移動エリアタブのパレットの上）。
  * 設定は個人設定（`cursorFrame`・`playerView`・`gridStyle`）に残す。既定はどれもオフか今の見た目。
+ * Phase7 #515: 鉛筆のブラシ（大きさ 2 以上）を使うときは、カーソルの枠をブラシの範囲と形にする（`brushes` がタブの今のブラシを返す）。
  */
 export class ViewAids {
   readonly layers: Readonly<Record<AidTab, CursorLayer>>;
@@ -29,16 +31,23 @@ export class ViewAids {
     views: Readonly<Record<AidTab, MapView>>,
     movementTab: MovementTab,
     actions: Actions,
+    brushes: { readonly map: () => Brush | null; readonly movement: () => Brush | null } = { map: () => null, movement: () => null },
   ) {
     this.views = views;
-    // マップタブは鉛筆のとき選択（スタンプ）の大きさ、ほかは 1 マス
-    const mapSize = (): { width: number; height: number } => {
+    // マップタブは鉛筆のとき選択（スタンプ）の大きさ（ブラシならその範囲と形）、ほかは 1 マス
+    const mapSize = (): CursorShape => {
+      const brush = brushes.map();
+      if (brush) return brushShape(brush);
       const s = state.selection;
       return currentTool(state) === "pencil" ? { width: s.width, height: s.height } : { width: 1, height: 1 };
     };
+    const movementSize = (): CursorShape => {
+      const brush = brushes.movement();
+      return brush ? brushShape(brush) : { width: 1, height: 1 };
+    };
     this.layers = {
       map: new CursorLayer(views.map, mapSize),
-      movement: new CursorLayer(views.movement),
+      movement: new CursorLayer(views.movement, movementSize),
       event: new CursorLayer(views.event),
     };
     this.movementValue = new MovementValueField(state, () => movementTab.palette.showSelection(state.movement, true));
@@ -91,4 +100,11 @@ export class ViewAids {
   private redraw(): void {
     for (const l of Object.values(this.layers)) l.redraw();
   }
+}
+
+/** ブラシの範囲と形の枠（真ん中をマウスのマスに置く）。 */
+function brushShape(brush: Brush): CursorShape {
+  const start = brushStart(brush.size);
+  const cells = brushOffsets(brush.size, brush.shape).map((o) => ({ dx: o.dx - start, dy: o.dy - start }));
+  return { width: brush.size, height: brush.size, offsetX: start, offsetY: start, cells };
 }

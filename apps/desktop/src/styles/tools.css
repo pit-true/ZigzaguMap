@@ -38,6 +38,29 @@
   white-space: nowrap;
 }
 
+/* 鉛筆のブラシの大きさと形（Phase7 #515）。移動エリアタブの細い欄では縦に並べる */
+.tool-strip-brush {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.tool-strip-brush select {
+  min-width: 0;
+  flex: 1 1 0;
+  font: inherit;
+}
+
+.tool-strip-map .tool-strip-brush select:first-of-type {
+  flex: none;
+}
+
+.tool-strip-movement .tool-strip-brush {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 /* 選択が 3×3 でないとき（使えない）。ほかの部品の無効の文字と同じ色にして、黒と見分けられるようにする（#406） */
 .tool-strip-smart.unavailable {
   color: var(--disabled-text);
@@ -105,6 +128,35 @@
 .map-cursor-frame {
   border: 1px solid #ffffff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+/* 円のブラシ（Phase7 #515）: 縁を消し、描くマスの外周を SVG の線で描く */
+.map-cursor-frame.shaped {
+  border: none;
+  box-shadow: none;
+}
+
+.map-cursor-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.map-cursor-outline path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-cursor-outline .shadow {
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 3px;
+}
+
+.map-cursor-outline .line {
+  stroke: #ffffff;
+  stroke-width: 1px;
 }
 
 .map-sight-frame {

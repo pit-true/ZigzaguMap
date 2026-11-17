@@ -1,4 +1,4 @@
-import { formatHex } from "@zigzagumap/core";
+import { brushShapeCells, formatHex } from "@zigzagumap/core";
 import type { BlockUsageService } from "../app/BlockUsageService";
 import type { BlockSelection } from "../app/EditorState";
 import type { EditorState } from "../app/EditorState";
@@ -14,7 +14,7 @@ import { usableSelection } from "./paintCommands";
 import { tileRect, type CellRect, type FillCell } from "./paintPlans";
 import { PreviewCanvas } from "./PreviewCanvas";
 import { tripleStatusSuffix } from "./tripleRules";
-import { currentTool, pressKind, type PressKind } from "../app/paintTool";
+import { brushFor, currentTool, pressKind, type Brush, type PressKind } from "../app/paintTool";
 import { BlockFillTool } from "./tools/FillTool";
 import { LineGuide } from "./tools/LineGuide";
 import { ShiftTool } from "./tools/ShiftTool";
@@ -46,6 +46,10 @@ import { SmartPathTool } from "./tools/SmartPathTool";
  * - シフト: 左ドラッグでマップシフト（tools/ShiftTool）。Ctrl＋左ドラッグの矩形塗りと Alt＋左ドラッグの入れ替えはそのまま。
  * - 直線: 鉛筆（とスマートパス・オートペン）で Shift を押しながら描くと、横か縦に固定する（tools/LineGuide）。
  * - スマートパス: 帯のチェックがオンで選択が 3×3 なら、鉛筆と塗りつぶしをこれで描く（tools/SmartPathTool）。オートペンが先。
+ *
+ * Phase7 #515: 鉛筆のブラシの大きさ（2〜9）と形（正方形・円）。1 ブロックを選んでいて、オートペンが受けないときだけ、
+ * カーソルのマスを真ん中にした形のマスへ描く（Shift の直線もその幅）。袋を使う選択なら、マスごとに袋から重みで選ぶ。
+ * 1 回のドラッグの中で描いたマスは描き直さない（袋の絵がドラッグの間に変わらないように）。大きさ 1 は今までと同じ。
  */
 export class BlockPainter {
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
@@ -72,6 +76,8 @@ export class BlockPainter {
   private readonly line = new LineGuide();
   /** 押したときに決めた操作（離すまで変えない）。 */
   private press: PressKind = null;
+  /** ブラシで、この押下の間に描いたマス（`x,y`）。 */
+  private readonly stroke = new Set<string>();
 
   constructor(
     private readonly view: MapView,
@@ -154,8 +160,34 @@ export class BlockPainter {
     return this.state.selection.width === 1 && this.state.selection.height === 1;
   }
 
+  /** 今の鉛筆のブラシ（大きさ 2 以上で、1 ブロックを選んでいて、オートペンが受けないとき。カーソルの枠にも使う）。 */
+  currentBrush(): Brush | null {
+    if (currentTool(this.state) !== "pencil" || this.autoPen?.partForSelection()) return null;
+    return brushFor(this.state, this.state.selection);
+  }
+
   private paint(cell: Cell, merge: boolean): void {
+    const brush = brushFor(this.state, this.state.selection);
+    if (brush) return this.paintBrush(cell, brush, merge);
     this.paintSelection(cell, this.state.selection, merge);
+  }
+
+  /** ブラシの形のマスへ 1 ブロックを置く（`merge` でなければ新しい押下。描いたマスの記録をやり直す）。 */
+  private paintBrush(cell: Cell, brush: Brush, merge: boolean): void {
+    if (!merge) this.stroke.clear();
+    const sel = usableSelection(this.state.selection);
+    const block = sel.blocks[0] ?? 0;
+    const movement = sel.movements?.[0];
+    const list: FillCell[] = [];
+    for (const c of brushShapeCells(cell.x, cell.y, brush.size, brush.shape)) {
+      const key = `${c.x},${c.y}`;
+      if (this.stroke.has(key)) continue;
+      this.stroke.add(key);
+      list.push(movement === undefined ? { x: c.x, y: c.y, block } : { x: c.x, y: c.y, block, movement });
+    }
+    if (list.length === 0) return;
+    if (this.bag?.appliesTo(this.state.selection)) return this.writer.write(this.fromBag(list), true, merge, true);
+    this.writer.write(list, true, merge);
   }
 
   /** 選択（複数ブロックなら左上を `cell`）を置く。移動許可を持つ選択は、設定がオンなら移動許可ごと置く。 */
