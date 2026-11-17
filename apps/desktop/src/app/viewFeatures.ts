@@ -77,7 +77,7 @@ export class ViewFeatures {
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
-  /** ミニマップの別ウィンドウの窓口（Phase7 #511、#542。初めて出すときに読み込む）。 */
+  /** ミニマップの別ウィンドウの受け手（Phase7 #511、#542。初めて出すときに読み込む）。 */
   private minimapValue: Promise<MinimapHost> | null = null;
   private minimapCreated: MinimapHost | null = null;
   /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
@@ -215,7 +215,7 @@ export class ViewFeatures {
     return this.folderNoticeValue;
   }
 
-  /** ミニマップの別ウィンドウの窓口（作っていなければ作る。#511、#542）。 */
+  /** ミニマップの別ウィンドウの受け手（作っていなければ作る。#511、#542）。 */
   minimap(): Promise<MinimapHost> {
     const { state, mapTab, movementTab, eventTab } = this.parts;
     const views: Partial<Record<string, MapView>> = { map: mapTab.view, movement: movementTab.view, event: eventTab.view };

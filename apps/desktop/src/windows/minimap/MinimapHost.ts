@@ -74,7 +74,7 @@ interface PlacementEvent extends WindowPlacement {
 }
 
 /**
- * メインウィンドウ側の、ミニマップ（別ウィンドウ。Phase7 #511 を #542 で別ウィンドウにした）の窓口。
+ * メインウィンドウ側の、ミニマップ（別ウィンドウ。Phase7 #511 を #542 で別ウィンドウにした）の受け手。
  * 表示 > ミニマップ を初めて選んだときに読み込む。
  *
  * - 縮小図はメインのマップの画像（MapImage）から縮めて作り（長い辺 200 画素まで）、マップを切り替えたとき・描いたとき
@@ -84,7 +84,7 @@ interface PlacementEvent extends WindowPlacement {
  * - ウィンドウの位置と大きさは個人設定の `toolWindows`（スクリプトエディタと同じ）に残す。
  */
 export class MinimapHost {
-  /** 窓口を作る（イベントの受け付けを始める）。 */
+  /** 受け手を作る（イベントの受け付けを始める）。 */
   static async create(deps: MinimapDeps): Promise<MinimapHost> {
     const host = new MinimapHost(deps);
     await host.start();
