@@ -2,6 +2,7 @@ import { MOVEMENT_DELTA, signAllows, type MovementDirection } from "@zigzagumap/
 import type { App } from "./App";
 import type { PlayerPlacement } from "./PreviewPlayer";
 import type { PlaybackController, PlaybackRequest } from "../ui/playback/PlaybackController";
+import type { PathDrawPanel } from "../ui/playback/PathDrawPanel";
 import { inputDialog } from "../ui/InputDialog";
 import { jaPlayback as t } from "../i18n/ja.playback";
 import { errorText } from "../util/errors";
@@ -35,6 +36,14 @@ export class PlaybackEntry {
   /** 読み込み済みの再生（天候の印を読む #498）。読み込む前は null。 */
   controller: PlaybackController | null = null;
   async start(request: PlaybackRequest): Promise<void> { await (await this.get()).start(request); }
+
+  private pathLoaded: Promise<PathDrawPanel> | null = null;
+  /** 道をなぞる窓（#517）。開くときに初めて読み込む。 */
+  pathDraw(): Promise<PathDrawPanel> {
+    return this.pathLoaded ??= import("../ui/playback/PathDrawPanel").then(module => new module.PathDrawPanel(this.app));
+  }
+  /** 読み込み済みの道をなぞる窓。読み込む前は null。 */
+  async existingPathDraw(): Promise<PathDrawPanel | null> { return this.pathLoaded ? this.pathLoaded : null; }
   async existing(): Promise<PlaybackController | null> { return this.loaded ? this.loaded : null; }
   /** 仮の主人公の踏む・話しかけるで始めた再生の準備が済むまで待つ。 */
   settled(): Promise<void> { return this.triggered; }

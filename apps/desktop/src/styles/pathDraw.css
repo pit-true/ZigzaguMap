@@ -1,0 +1,15 @@
+/* 道をなぞる窓（#517）。 */
+.path-draw .dialog-body { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.path-draw-row { display: flex; gap: 4px; align-items: center; }
+.path-draw-row > span:first-child { width: 7em; flex: none; }
+.path-draw-row select { min-width: 0; flex: 1; }
+.path-draw-number { width: 4.5em; }
+.path-draw-list { margin: 0; padding: 2px 2px 2px 2.6em; height: 160px; overflow-y: auto; border: 1px solid var(--field-border); background: var(--window); }
+.path-draw-list li { white-space: nowrap; }
+.path-draw-list li.empty { list-style: none; margin-left: -2.4em; color: var(--gray-text); }
+.path-draw-list li.blocked { color: #d00000; }
+.path-draw-warning { margin: 0; color: #d00000; }
+.path-draw-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+.path-draw-hint { margin: 0; color: var(--gray-text); font-size: 11px; }
+.map-stage canvas.path-draw-overlay { position: absolute; z-index: 27; pointer-events: none; image-rendering: auto; }
+.path-drawing .map-stage { cursor: crosshair; }
