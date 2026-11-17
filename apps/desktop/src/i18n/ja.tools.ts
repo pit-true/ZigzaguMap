@@ -21,6 +21,13 @@ export const jaTools = {
   smartPathNeeds3x3: "スマートパスは、選択がちょうど 3×3 のときだけ使えます",
   smartPathOn: "スマートパス: オン",
   smartPathOff: "スマートパス: オフ",
+  /** ブラシの大きさと形（Phase7 #515）。 */
+  brushLabel: "ブラシ",
+  brushSizeHint: "鉛筆のブラシの大きさ（[ で小さく、] で大きく）。1 ブロックか移動許可 1 つを選んでいるときだけ、カーソルのマスを真ん中にして N×N に描く",
+  brushShapeHint: "鉛筆のブラシの形（正方形・円）",
+  brushSizeOption: (n: number) => `${n}×${n}`,
+  brushShapes: { square: "□ 正方形", circle: "○ 円" } as Record<string, string>,
+  brushChanged: (n: number, shape: string) => `ブラシ ${n}×${n}${shape === "circle" ? "（円）" : ""}`,
   /** マップシフト（#390）。 */
   shifting: (dx: number, dy: number) => `マップシフト: 横 ${signed(dx)}、縦 ${signed(dy)}（離すとずらす。Esc でやめる）`,
   shifted: (dx: number, dy: number) => `マップシフト: 横 ${signed(dx)}、縦 ${signed(dy)} ずらしました`,
@@ -67,6 +74,8 @@ export const jaTools = {
   shortcutFill: "道具を塗りつぶしにする",
   shortcutShift: "道具をマップシフトにする",
   shortcutToolWhere: "マップタブ・移動エリアタブ",
+  shortcutBrushSmaller: "鉛筆のブラシを 1 つ小さくする",
+  shortcutBrushLarger: "鉛筆のブラシを 1 つ大きくする",
   shortcutMagicKeys: "Ctrl＋クリック",
   shortcutMagic: "マジック塗り（マップの中の同じマスを全部置き換える）",
   shortcutMagicWhere: "塗りつぶしの道具のとき",

@@ -33,4 +33,30 @@ describe("ミキシングバッグ（#236）", () => {
       expect(v).toBeLessThan(1);
     }
   });
+
+  it("重みが全部 1 なら重みを付ける前と同じ並び（#515）", () => {
+    const bag = new MixingBag();
+    bag.set([4, 5, 6], 9);
+    const r = seededRandom(9);
+    for (let i = 0; i < 40; i++) expect(bag.pick()).toBe([4, 5, 6][Math.floor(r() * 3)]);
+  });
+
+  it("重みで選ぶ割合が変わる。重みは 1〜9 に収め、袋から出すと消える（#515）", () => {
+    const bag = new MixingBag();
+    bag.set([1, 2], 3, [1, 9]);
+    expect(bag.weightOf(2)).toBe(9);
+    const picks = Array.from({ length: 2000 }, () => bag.pick());
+    const twos = picks.filter((b) => b === 2).length / picks.length;
+    expect(twos).toBeGreaterThan(0.85);
+    expect(twos).toBeLessThan(0.95);
+    expect(bag.setWeight(1, 20)).toBe(true);
+    expect(bag.weightOf(1)).toBe(9);
+    expect(bag.setWeight(1, 9)).toBe(false);
+    expect(bag.setWeight(7, 3)).toBe(false);
+    bag.toggle(2);
+    bag.toggle(2);
+    expect(bag.weightOf(2)).toBe(1);
+    bag.clear();
+    expect(bag.weightOf(1)).toBe(1);
+  });
 });

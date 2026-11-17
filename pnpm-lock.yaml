@@ -225,6 +225,22 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.8(@types/node@26.6.6))
 
+  tools/mcp:
+    dependencies:
+      '@zigzagumap/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      vite:
+        specifier: ^8.3.8
+        version: 8.3.8(@types/node@26.6.6)
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.8(@types/node@26.6.6))
+
 packages:
 
   '@codemirror/autocomplete@6.20.4':

@@ -53,6 +53,42 @@ export function encodeIndexedPng(image: IndexedImageInput, depth: 1 | 2 | 4 | 8 
   return out;
 }
 
+/** 色の種類: RGB（1 ピクセル 3 バイト）。 */
+const COLOR_RGB = 2;
+
+/**
+ * RGBA の画像を、透明度を捨てた RGB の PNG にする（MCP の map_image 用。#521）。フィルターは使わない。
+ * `rgba` は幅×高さ×4 バイト。
+ */
+export function encodeRgbPng(width: number, height: number, rgba: ArrayLike<number>, deflate: DeflateFunction = deflateZlib): Uint8Array {
+  if (rgba.length !== width * height * 4) throw new RangeError("画像の大きさとピクセル数が合いません");
+  const stride = width * 3;
+  const raw = new Uint8Array((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    let at = y * (stride + 1) + 1;
+    let from = y * width * 4;
+    for (let x = 0; x < width; x++, from += 4) {
+      raw[at++] = rgba[from]!;
+      raw[at++] = rgba[from + 1]!;
+      raw[at++] = rgba[from + 2]!;
+    }
+  }
+  const ihdr = new Uint8Array(13);
+  writeBE32(ihdr, 0, width);
+  writeBE32(ihdr, 4, height);
+  ihdr[8] = 8;
+  ihdr[9] = COLOR_RGB;
+  const chunks = [chunk("IHDR", ihdr), chunk("IDAT", deflate(raw)), chunk("IEND", new Uint8Array(0))];
+  const out = new Uint8Array(PNG_SIGNATURE.length + chunks.reduce((n, c) => n + c.length, 0));
+  out.set(PNG_SIGNATURE, 0);
+  let at = PNG_SIGNATURE.length;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
+}
+
 function chunk(type: string, data: Uint8Array): Uint8Array {
   const out = new Uint8Array(12 + data.length);
   writeBE32(out, 0, data.length);

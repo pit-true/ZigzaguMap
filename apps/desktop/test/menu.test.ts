@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildMenu, flattenMenu, type MenuItem } from "../src/app/menuDefinition";
 import { ja } from "../src/i18n/ja";
+import { jaMcp } from "../src/i18n/ja.mcp";
+import { DEFAULT_SETTINGS } from "../src/app/Settings";
 
 const ids = (items: readonly MenuItem[]): string[] => flattenMenu(items).flatMap((i) => (i.id ? [i.id] : []));
 
@@ -19,7 +21,13 @@ describe("メニューの構成（Phase1 のフィードバック）", () => {
       expect(view).toContain(id);
       expect(settings).not.toContain(id);
     }
-    expect(settings).toEqual(["opt.rememberLast", "opt.autoSearch", "opt.backupOnOpen", "opt.romShortcut", "opt.contextMenu", "opt.alignConnections", "opt.rememberRomProject", "opt.watchProject", "scripts.manage", "recent.max", "recent.clear", "recent.showPath", "theme.light", "theme.dark", "opt.shortcuts", "opt.allSettings"]);
+    expect(settings).toEqual(["opt.rememberLast", "opt.autoSearch", "opt.backupOnOpen", "opt.romShortcut", "opt.contextMenu", "opt.alignConnections", "opt.rememberRomProject", "opt.watchProject", "scripts.manage", "mcp.bridge", "mcp.allowWrite", "mcp.allowExport", "mcp.allowScripts", "recent.max", "recent.clear", "recent.showPath", "theme.light", "theme.dark", "opt.shortcuts", "opt.allSettings"]);
+  });
+
+  it("設定 > MCP の窓口（#521）: 窓口を開くと、許可 3 つ。既定はどれもオフ", () => {
+    const mcp = menu[2]!.children!.find((i) => i.label === jaMcp.menu);
+    expect(mcp?.children?.filter((i) => i.id).map((i) => i.id)).toEqual(["mcp.bridge", "mcp.allowWrite", "mcp.allowExport", "mcp.allowScripts"]);
+    expect([DEFAULT_SETTINGS.mcpBridge, DEFAULT_SETTINGS.mcpAllowWrite, DEFAULT_SETTINGS.mcpAllowExport, DEFAULT_SETTINGS.mcpAllowScripts]).toEqual([false, false, false, false]);
   });
 
   it("設定 > テーマに明るい標準色とダークがある（Phase2。画面全体の配色なので設定に置く）", () => {
