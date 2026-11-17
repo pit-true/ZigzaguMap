@@ -56,6 +56,8 @@ type NoArgs = Record<never, never>;
  */
 export interface ScriptEditorRequestMap {
   playback: MessageSpec<{ readonly label: string }, null>;
+  /** `applymovement` の行（0 始まり）から道をなぞる窓を開く（#518）。 */
+  pathDraw: MessageSpec<{ readonly path: string; readonly line: number }, null>;
   /** 準備ができた。返事は、開くのを待っているファイル（ScriptEditorHello）。 */
   hello: MessageSpec<NoArgs, ScriptEditorHello>;
   /** ファイルを保存した（メインはラベルの索引のそのファイルの分を読み直す）。 */

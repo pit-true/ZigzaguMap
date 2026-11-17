@@ -2,3 +2,4 @@
 export * from "./MovementActionTable.js";
 export * from "./MovementBlock.js";
 export * from "./PathToMovement.js";
+export * from "./MovementAppend.js";

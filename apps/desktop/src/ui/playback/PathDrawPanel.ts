@@ -3,6 +3,8 @@ import {
   defaultFacingOf,
   movementAction,
   movementName,
+  movementTextTools,
+  readApplyMovementLine,
   PATH_DEFAULT_WALK,
   PATH_WAIT_MAX,
   PathOps,
@@ -29,6 +31,9 @@ import { actorSpriteSourceFor } from "../map/spriteCanvases";
 import { createDialog, handleDialogKeys, pressable, type DialogFrame } from "../Dialog";
 import { jaPathDraw as t } from "../../i18n/ja.pathDraw";
 import { jaPlayback } from "../../i18n/ja.playback";
+import { errorText } from "../../util/errors";
+import { PlaybackProjectData } from "./PlaybackProject";
+import { suggestPathLabel, writePath, type PathDrawMode, type PathDrawResult, type PathDrawTarget } from "./PathDrawWriter";
 import "../../styles/pathDraw.css";
 
 /** 窓を開くときの指定。 */
@@ -39,6 +44,8 @@ export interface PathDrawOptions {
   readonly start?: PathPoint;
   /** ほかの人物の居るマス（再生の途中から開いたとき）。省けばマップのイベントの位置。 */
   readonly occupied?: readonly { readonly x: number; readonly y: number }[];
+  /** 置き換える先の `applymovement`（再生の途中・エディタの行から開いたとき。#518）。省けば新しいラベルで足す。 */
+  readonly target?: PathDrawTarget | null;
 }
 
 /** 自動操作に返す窓の様子。 */
@@ -54,6 +61,9 @@ export interface PathDrawState {
   readonly problems?: readonly PathProblem[];
   readonly canUndo?: boolean;
   readonly canRedo?: boolean;
+  readonly target?: PathDrawTarget | null;
+  readonly mode?: PathDrawMode;
+  readonly label?: string;
 }
 
 const ARROWS: Readonly<Record<string, MovementDirection>> = { ArrowDown: "down", ArrowUp: "up", ArrowLeft: "left", ArrowRight: "right" };
@@ -61,7 +71,7 @@ const ARROWS: Readonly<Record<string, MovementDirection>> = { ArrowDown: "down",
 /**
  * 道をなぞって移動データを作る窓（#517）。メインの画面に浮かぶ小窓と、マップの上の下見（道の線・向きの矢印・終わりの位置の
  * 薄い人物）を持つ。開いている間だけ、マップの左ドラッグと矢印キーを受ける。閉じると重ね描きと受け口を外す。
- * `.s` への書き込みは #518。
+ * 「ここで使う」で `.s` に書く（置き換えるか新しいラベルで足す。#518）。
  */
 export class PathDrawPanel {
   private frame: DialogFrame | null = null;
@@ -87,7 +97,15 @@ export class PathDrawPanel {
     undo: document.createElement("button"),
     redo: document.createElement("button"),
     clear: document.createElement("button"),
+    modeReplace: document.createElement("input"),
+    modeNew: document.createElement("input"),
+    replaceText: document.createElement("span"),
+    label: document.createElement("input"),
+    use: document.createElement("button"),
   };
+  private target: PathDrawTarget | null = null;
+  private writing: Promise<unknown> = Promise.resolve();
+  private suggesting: Promise<unknown> = Promise.resolve();
   /** 閉じたとき（書き込みの入口 #518 が使う）。 */
   onClose: (() => void) | null = null;
   private readonly unlisten: (() => void)[] = [];
@@ -112,15 +130,51 @@ export class PathDrawPanel {
     if (!map) throw new Error(t.noMap);
     const persons = map.doc.events?.persons ?? [];
     const actor = options.actor ?? PLAYER_ID;
-    if (actor !== PLAYER_ID && !persons.some(p => p.localId === actor)) throw new Error(t.noActor(actor));
+    if (actor !== PLAYER_ID && !options.start && !persons.some(p => p.localId === actor)) throw new Error(t.noActor(actor));
     this.close();
     this.actor = actor;
     this.occupiedOverride = options.occupied ?? null;
     this.start = options.start ?? this.defaultStart(actor);
+    this.target = options.target ?? null;
     this.ops.reset();
     this.build();
     this.listen();
     this.refresh();
+    const label = this.fields.label;
+    label.value = "";
+    const frame = this.frame;
+    this.suggesting = suggestPathLabel(this.app, actor).then(name => { if (this.frame === frame && label.value === "") label.value = name; }).catch(() => undefined);
+  }
+
+  /**
+   * スクリプトの `applymovement` の行（0 始まり）から開く（#518）。その移動データを置き換える先にし、動かす人物は行の 1 つ目の
+   * 引数（このマップの人物でなければ主人公）。
+   */
+  async openFromLine(path: string, line: number): Promise<void> {
+    const map = this.app.state.map;
+    if (!map) throw new Error(t.noMap);
+    const loaded = await this.app.scripts.files.read(path);
+    const parsed = loaded ? readApplyMovementLine(loaded.text.split(/\r?\n/)[line] ?? "") : null;
+    if (!parsed) throw new Error(t.notApplyMovement);
+    const data = await PlaybackProjectData.load(this.app);
+    const value = movementTextTools(data.project).resolve(parsed.actor);
+    const actor = value !== null && (map.doc.events?.persons ?? []).some(p => p.localId === value) ? value : PLAYER_ID;
+    this.open({ actor, target: { commandPath: path, commandLine: line, label: parsed.label } });
+  }
+
+  /** 書き込みの名前の案を待つ（自動操作）。 */
+  async ready(): Promise<void> {
+    await this.suggesting;
+    await this.writing.catch(() => undefined);
+  }
+
+  /** 「ここで使う」。mode・label を省けば窓の選択。 */
+  apply(options: { mode?: PathDrawMode; label?: string; shared?: "rewrite" | "copy" } = {}): Promise<PathDrawResult | null> {
+    const mode = options.mode ?? (this.fields.modeReplace.checked ? "replace" : "new");
+    const label = options.label ?? this.fields.label.value;
+    const run = writePath(this.app, this.values, { mode, target: this.target, label, actor: this.actor, ...(options.shared ? { shared: options.shared } : {}) });
+    this.writing = run.catch(() => undefined);
+    return run;
   }
 
   close(): void {
@@ -137,6 +191,7 @@ export class PathDrawPanel {
     const trace = tracePath(this.start, this.ops.ops);
     return {
       open: true, actor: this.actor, start: this.start, end: trace.end, speed: this.speed,
+      target: this.target, mode: this.fields.modeReplace.checked ? "replace" : "new", label: this.fields.label.value,
       ops: this.ops.ops, values: this.values, rows: this.ops.ops.map(op => this.rowText(op)), problems: this.problems,
       canUndo: this.ops.canUndo, canRedo: this.ops.canRedo,
     };
@@ -182,6 +237,8 @@ export class PathDrawPanel {
     const f = this.fields, map = this.app.state.map!;
     f.actor.replaceChildren(new Option(t.player, String(PLAYER_ID)));
     (map.doc.events?.persons ?? []).forEach((p, i) => f.actor.add(new Option(jaPlayback.personName(i + 1, p.localId), String(p.localId))));
+    // 再生の途中から開いた、マップのイベントに無い人物（連れ歩きなど）
+    if (![...f.actor.options].some(o => o.value === String(this.actor))) f.actor.add(new Option(jaPlayback.personName(null, this.actor), String(this.actor)));
     f.actor.dataset["autoId"] = "pathDraw.actor";
     f.actor.onchange = () => this.setActor(Number(f.actor.value));
     for (const [input, id] of [[f.x, "x"], [f.y, "y"]] as const) {
@@ -205,6 +262,22 @@ export class PathDrawPanel {
     f.warning.className = "path-draw-warning"; f.warning.dataset["autoId"] = "pathDraw.warning";
     f.count.dataset["autoId"] = "pathDraw.count";
     const hint = document.createElement("p"); hint.className = "path-draw-hint"; hint.textContent = t.hint;
+    // 書き込み（#518）
+    for (const [radio, id] of [[f.modeReplace, "modeReplace"], [f.modeNew, "modeNew"]] as const) {
+      radio.type = "radio"; radio.name = "path-draw-mode"; radio.dataset["autoId"] = `pathDraw.${id}`;
+    }
+    f.modeReplace.disabled = this.target === null;
+    f.modeReplace.checked = this.target !== null; f.modeNew.checked = this.target === null;
+    f.replaceText.textContent = this.target ? t.modeReplace(this.target.label) : t.modeReplaceNone;
+    f.label.type = "text"; f.label.className = "path-draw-label"; f.label.dataset["autoId"] = "pathDraw.label"; f.label.spellcheck = false;
+    f.label.addEventListener("focus", () => { f.modeNew.checked = true; });
+    f.use = button(t.use, "pathDraw.apply", () => {
+      void this.apply().catch(error => this.app.state.setStatus(errorText(error), undefined, true));
+    });
+    const replaceRow = document.createElement("label"); replaceRow.className = "path-draw-mode"; replaceRow.append(f.modeReplace, f.replaceText);
+    const newRow = document.createElement("label"); newRow.className = "path-draw-mode"; newRow.append(f.modeNew, t.modeNew, f.label);
+    const write = document.createElement("fieldset"); write.className = "path-draw-write";
+    write.append(replaceRow, newRow, buttons(f.use));
     frame.body.append(
       row(t.actor, f.actor),
       row(t.start, f.x, f.y, f.facing),
@@ -212,6 +285,7 @@ export class PathDrawPanel {
       row(t.wait, f.wait, addWait),
       f.list, f.count, f.warning,
       buttons(f.undo, f.redo, f.clear),
+      write,
       hint,
     );
     handleDialogKeys(frame, null, e => this.key(e));
@@ -220,6 +294,7 @@ export class PathDrawPanel {
       { label: t.redo, aliases: ["redo"], run: () => this.redo() },
       { label: t.clear, aliases: ["clear"], run: () => this.clear() },
       { label: t.close, aliases: ["close"], run: () => this.close() },
+      { label: t.use, aliases: ["apply"], run: () => { void this.apply().catch(error => this.app.state.setStatus(errorText(error), undefined, true)); } },
     ]) });
   }
 
@@ -246,6 +321,7 @@ export class PathDrawPanel {
     f.count.textContent = t.count(this.values.length);
     f.warning.textContent = bad.size ? t.blocked(bad.size) : "";
     f.warning.hidden = bad.size === 0;
+    f.use.disabled = this.ops.ops.length === 0;
     f.undo.disabled = !this.ops.canUndo; f.redo.disabled = !this.ops.canRedo; f.clear.disabled = !this.ops.canUndo;
     this.draw();
   }
