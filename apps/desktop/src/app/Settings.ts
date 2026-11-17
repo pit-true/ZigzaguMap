@@ -140,6 +140,10 @@ export interface SettingsData {
   paintTool: string;
   /** スマートパス（マップタブの道具の帯。選択がちょうど 3×3 のとき周りに合わせて描く。Phase5 #389。既定オフ）。 */
   smartPath: boolean;
+  /** 鉛筆のブラシの大きさ（1〜9。マップタブと移動エリアタブの道具の帯、`[` `]`。1 ブロックを選んでいるときだけ使う。Phase7 #515。既定 1）。 */
+  brushSize: number;
+  /** 鉛筆のブラシの形（`square`・`circle`。Phase7 #515。既定は正方形）。 */
+  brushShape: string;
   /** カーソルの枠（表示メニュー。C。Phase5 #391。既定オフ）。 */
   cursorFrame: boolean;
   /** プレイヤーの視界の枠（表示メニュー。V。Phase5 #391。既定オフ）。 */
@@ -210,6 +214,8 @@ export const DEFAULT_SETTINGS: SettingsData = {
   mapZoom: { map: 0, movement: 0, event: 0 },
   paintTool: "pencil",
   smartPath: false,
+  brushSize: 1,
+  brushShape: "square",
   cursorFrame: false,
   playerView: false,
   playbackGender: "male",

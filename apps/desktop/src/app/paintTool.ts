@@ -1,4 +1,5 @@
-import type { EditorState } from "./EditorState";
+import { clampBrushSize, toBrushShape, type BrushShape } from "@zigzagumap/core";
+import type { BlockSelection, EditorState } from "./EditorState";
 
 /**
  * 描く道具（Phase5 #388。Q1 の推奨）。マップタブと移動エリアタブの左ボタンで何をするかを決める。
@@ -58,4 +59,35 @@ export function setSmartPath(state: EditorState, on: boolean): void {
   if (state.settings.data.smartPath === on) return;
   state.settings.update({ smartPath: on });
   state.emit("tool");
+}
+
+/** 鉛筆のブラシ（Phase7 #515。Q7 の推奨）。大きさ 1〜9 と形（正方形・円）。個人設定 `brushSize`・`brushShape` に覚える。 */
+export interface Brush {
+  readonly size: number;
+  readonly shape: BrushShape;
+}
+
+/** 個人設定のブラシ（確かめて直した値）。 */
+export function brushSetting(state: EditorState): Brush {
+  return { size: clampBrushSize(state.settings.data.brushSize), shape: toBrushShape(state.settings.data.brushShape) };
+}
+
+/** ブラシを変えて個人設定に覚える（同じなら何もしない。変えたら true）。 */
+export function setBrush(state: EditorState, patch: { size?: number; shape?: BrushShape }): boolean {
+  const now = brushSetting(state);
+  const size = patch.size === undefined ? now.size : clampBrushSize(patch.size);
+  const shape = patch.shape === undefined ? now.shape : toBrushShape(patch.shape);
+  if (size === now.size && shape === now.shape) return false;
+  state.settings.update({ brushSize: size, brushShape: shape });
+  state.emit("tool");
+  return true;
+}
+
+/**
+ * 鉛筆のブラシを使う選択か（1 ブロック。移動許可を持っていてもよい）。スタンプ（複数選択）は今のまま 1 回だけ置く。
+ * 大きさ 1 なら null（今までと同じ描き方）。
+ */
+export function brushFor(state: EditorState, s: BlockSelection): Brush | null {
+  const brush = brushSetting(state);
+  return brush.size > 1 && s.width === 1 && s.height === 1 ? brush : null;
 }

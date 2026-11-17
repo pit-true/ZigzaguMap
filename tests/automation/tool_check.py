@@ -15,6 +15,9 @@
     1 回で戻る。上限を超えると実行しない。出力して読み直すと同じになる。
   - view: 表示の補助（#391）。カーソルの枠（C）・プレイヤーの視界の枠（V）・グリッドの設定・移動許可の数値の欄。既定はどれもオフか
     今の見た目で、切り替えは同じプロフィールで起動し直しても残る。
+  - brush: ブラシの大きさと形・ミキシングバッグの重み（Phase7 #515）。] [ で大きさを変え、3×3 の正方形で 9 マス・円で 5 マス変わり、
+    1 回で戻る。ドラッグ・Shift の直線もブラシの幅で 1 回の操作。スタンプは今のまま。隣の帯の上でも描ける。カーソルの枠は形に合わせる。
+    移動エリアでも使える。袋の重みで出る割合が変わる（ホイールと数字キーで変わる）。出力して読み直すと同じ。
   - shortcuts: ショートカットの変更（#392）。窓でキーを変えるとすぐ使え、前のキーは効かなくなる。重なると聞き、答えた方に残る。
     同じプロフィールで起動し直しても残り、既定に戻せる。
 """
@@ -499,6 +502,141 @@ def check_view_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> Non
     check(a["cursorFrame"] and a["playerView"] and a["gridStyle"]["width"] == 2 and a["gridStyle"]["line"] == "dashed", "切り替えとグリッドの形は起動し直しても残る")
 
 
+
+def check_brush(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    z.call({"cmd": "tab", "name": "map"})
+    base = z.call({"cmd": "cells"})
+    w, cells = base["width"], base["cells"]
+    st = z.call({"cmd": "tool.state"})
+    check(st["brushSize"] == 1 and st["brushShape"] == "square" and st["brushActive"] == {"map": False, "movement": False}, f"既定のブラシは 1×1 の正方形（{st['brushSize']} {st['brushShape']}）")
+    z.call({"cmd": "key", "key": "["})
+    check(z.call({"cmd": "tool.state"})["brushSize"] == 1, "[ で 1 より小さくならない")
+    z.call({"cmd": "key", "key": "]"})
+    z.call({"cmd": "key", "key": "]"})
+    st = z.call({"cmd": "tool.state"})
+    status = z.call({"cmd": "state"})["status"]["left"]
+    check(st["brushSize"] == 3 and "ブラシ 3×3" in status, f"] で大きくなり、ステータスバーに出す（{status}）")
+    field = z.call({"cmd": "getField", "id": "tools.map.brushSize"})
+    check(str(field.get("value")) in ("3", "2", "3×3"), f"帯の欄も 3×3 になる（{field}）")
+    z.call({"cmd": "selectBlock", "block": 0x0D})
+    check(z.call({"cmd": "tool.state"})["brushActive"]["map"] is True, "1 ブロックを選ぶとブラシを使う")
+    # 正方形 3×3: カーソルのマスを真ん中に 9 マス、1 回の操作
+    hist = history(z)
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    square = {(x, y) for x in range(9, 12) for y in range(9, 12)}
+    check(all(block(after[y * w + x]) == 0x0D for x, y in square) and changed(cells, after, w) <= square, "3×3 の正方形でカーソルのまわり 9 マスに描く")
+    check(all(movement(after[y * w + x]) == movement(cells[y * w + x]) for x, y in square), "移動許可は今のまま（移動許可を持たない選択）")
+    check(history(z) == hist + 1, "1 回のクリックは 1 回の操作")
+    canvas(z, shots, "tool_brush_square.png", "map")
+    z.call({"cmd": "undo"})
+    check(z.call({"cmd": "cells"})["cells"] == cells, "1 回の Ctrl+Z で戻る")
+    # ドラッグ: 通ったマスを真ん中にした帯、1 回の操作
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "cell": [5, 5], "to": [9, 5], "steps": 4})
+    after = z.call({"cmd": "cells"})["cells"]
+    band = {(x, y) for x in range(4, 11) for y in range(4, 7)}
+    check(all(block(after[y * w + x]) == 0x0D for x, y in band) and changed(cells, after, w) <= band, "ドラッグはブラシの幅で描く")
+    check(history(z) == hist + 1, "1 回のドラッグは 1 回の操作")
+    z.call({"cmd": "undo"})
+    # Shift の直線もブラシの幅
+    z.call({"cmd": "mouse", "target": "map", "action": "drag", "shift": True, "cell": [3, 3], "to": [9, 6], "steps": 6})
+    after = z.call({"cmd": "cells"})["cells"]
+    line = {(x, y) for x in range(2, 11) for y in range(2, 5)}
+    check(changed(cells, after, w) <= line and all(block(after[y * w + x]) == 0x0D for x, y in line), "Shift の直線もブラシの幅（3 行）")
+    check(history(z) == hist + 1, "直線も 1 回の操作")
+    z.call({"cmd": "undo"})
+    # 円 3: 十字の 5 マス。カーソルの枠も形に合わせる
+    z.call({"cmd": "tool.set", "brushShape": "circle"})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    plus = {(10, 10), (9, 10), (11, 10), (10, 9), (10, 11)}
+    check(changed(cells, after, w) <= plus and all(block(after[y * w + x]) == 0x0D for x, y in plus), "3 の円は十字の 5 マス")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "key", "key": "c"})
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [10, 10]})
+    layer = z.call({"cmd": "view.aids"})["layers"]["map"]
+    check(layer["cursor"] == {"x": 9, "y": 9, "width": 3, "height": 3} and layer["cursorCells"] == 5, f"カーソルの枠はブラシの範囲と形（{layer['cursor']}、{layer['cursorCells']} マス）")
+    screenshot(z, shots, "tool_brush_cursor.png")
+    # スタンプ（複数選択）は今のまま 1 回だけ置く
+    z.call({"cmd": "selectBlock", "blocks": [0x0D, 0x0E, 0x0F, 0x10], "width": 2})
+    check(z.call({"cmd": "tool.state"})["brushActive"]["map"] is False, "スタンプのときはブラシを使わない")
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    check(changed(cells, after, w) <= {(10, 10), (11, 10), (10, 11), (11, 11)}, "スタンプは押したマスを左上に 1 回だけ置く")
+    z.call({"cmd": "mouse", "target": "map", "action": "hover", "cell": [10, 10]})
+    check(z.call({"cmd": "view.aids"})["layers"]["map"]["cursor"] == {"x": 10, "y": 10, "width": 2, "height": 2}, "スタンプのときの枠は今のまま")
+    z.call({"cmd": "undo"})
+    # 隣の帯の上（上の 1 番道路 3.19）: 主マップの 0 行と帯の両方に描き、1 回で戻る
+    z.call({"cmd": "tool.set", "brushShape": "square"})
+    z.call({"cmd": "selectBlock", "block": 0x0D})
+    route = z.call({"cmd": "cells", "bank": 3, "map": 19})
+    hist = history(z)
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [5, -1]})
+    after = z.call({"cmd": "cells"})["cells"]
+    route2 = z.call({"cmd": "cells", "bank": 3, "map": 19})
+    check(route2["cells"] != route["cells"] and changed(cells, after, w) <= {(4, 0), (5, 0), (6, 0)} and block(after[5]) == 0x0D, "隣の帯の上でもブラシで描ける（主マップの端もまとめて）")
+    check(history(z) == hist + 1, "2 枚にまたがっても 1 回の操作")
+    z.call({"cmd": "undo"})
+    check(z.call({"cmd": "cells"})["cells"] == cells and z.call({"cmd": "cells", "bank": 3, "map": 19})["cells"] == route["cells"], "1 回で両方戻る")
+    # 移動エリアタブ: 移動許可を 3×3 に書く
+    z.call({"cmd": "tab", "name": "movement"})
+    z.call({"cmd": "selectMovement", "value": 0x01})
+    check(z.call({"cmd": "tool.state"})["brushActive"]["movement"] is True, "移動エリアタブでもブラシを使う")
+    z.call({"cmd": "mouse", "target": "movement", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    check(changed(cells, after, w) <= square and all(movement(after[y * w + x]) == 1 and block(after[y * w + x]) == block(cells[y * w + x]) for x, y in square), "移動エリアでも 3×3 に移動許可だけ書く")
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "tab", "name": "map"})
+    # ミキシングバッグの重み: 9×9 の正方形（81 マス）で割合を見る
+    z.call({"cmd": "tool.set", "brushSize": 9})
+    grass = [0x0D, 0x0E]
+    r = z.call({"cmd": "bag.set", "blocks": grass, "seed": 11, "weights": [1, 9]})
+    check(r["weights"] == [1, 9], f"重みを決められる（{r['weights']}）")
+    z.call({"cmd": "selectBlock", "block": 0x0D})
+    hist = history(z)
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    area = [(x, y) for x in range(6, 15) for y in range(6, 15)]
+    heavy = sum(1 for x, y in area if block(after[y * w + x]) == 0x0E)
+    light = sum(1 for x, y in area if block(after[y * w + x]) == 0x0D)
+    check(heavy + light == 81 and heavy > light * 3, f"重み 9 のブロックが多く出る（0x00E {heavy} / 0x00D {light}）")
+    check(history(z) == hist + 1, "袋のブラシも 1 回の操作")
+    canvas(z, shots, "tool_brush_bag.png", "map")
+    painted = after
+    z.call({"cmd": "undo"})
+    z.call({"cmd": "redo"})
+    check(z.call({"cmd": "cells"})["cells"] == painted, "やり直すと同じ絵（選んだ結果は操作に残る）")
+    z.call({"cmd": "undo"})
+    # 袋の欄のホイールと数字キーで重みを変える
+    z.call({"cmd": "mouse", "id": f"map.bag.{0x0D}", "action": "wheel", "px": [8, 8], "delta": -1})
+    check(z.call({"cmd": "bag.state"})["weights"] == [2, 9], "ホイールを奥へ回すと重みが 1 増える")
+    z.call({"cmd": "mouse", "id": f"map.bag.{0x0E}", "action": "hover", "px": [8, 8]})
+    z.call({"cmd": "key", "key": "1"})
+    check(z.call({"cmd": "bag.state"})["weights"] == [2, 1], "乗せて数字キーを押すとその重みになる")
+    screenshot(z, shots, "tool_brush_bag_weights.png")
+    z.call({"cmd": "bag.weight", "block": 0x0D, "weight": 9})
+    z.call({"cmd": "mouse", "target": "map", "action": "click", "cell": [10, 10]})
+    after = z.call({"cmd": "cells"})["cells"]
+    heavy = sum(1 for x, y in area if block(after[y * w + x]) == 0x0D)
+    light = sum(1 for x, y in area if block(after[y * w + x]) == 0x0E)
+    check(heavy > light * 3, f"重みを入れ替えると割合も入れ替わる（0x00D {heavy} / 0x00E {light}）")
+    painted = after
+    # 出力して読み直す
+    out = ctx["work"] / "brush_export"
+    out.mkdir(parents=True, exist_ok=True)
+    z.call({"cmd": "export", "dir": str(out)})
+    z.call({"cmd": "open", "rom": ctx["rom"], "project": str(out)})
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    check(z.call({"cmd": "cells"})["cells"] == painted, "出力して読み直すと描いた配置になる")
+
+
+def check_brush_persist(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
+    st = z.call({"cmd": "tool.state"})
+    check(st["brushSize"] == 9 and st["brushShape"] == "square", f"ブラシの大きさと形は起動し直しても残る（{st['brushSize']}）")
+    check(z.call({"cmd": "bag.state"})["blocks"] == [], "袋の中身と重みは残さない")
+
+
 def shortcut_set(z: Zigzagu, action: str, n: int, key: str, **mods) -> dict:
     slot = f"shortcuts.{action}.{n}"
     z.call({"cmd": "click", "id": slot})
@@ -574,12 +712,14 @@ CHECKS = {
     "shift": check_shift,
     "resize": check_resize,
     "view": check_view,
+    "brush": check_brush,
     "shortcuts": check_shortcuts,
 }
 
 # 同じプロフィールで起動し直して確かめるもの
 PERSIST = {
     "view": check_view_persist,
+    "brush": check_brush_persist,
     "shortcuts": check_shortcuts_persist,
 }
 

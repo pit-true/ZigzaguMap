@@ -373,7 +373,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 - トレーナーを直す窓（#274）の部品: `trainerEdit.name`・`trainerEdit.class`（コンボ。番号の文字）・`trainerEdit.pic`・`trainerEdit.music`・`trainerEdit.female`・`trainerEdit.item.0`〜`.3`・`trainerEdit.double`・`trainerEdit.ai`・`trainerEdit.party`（「種族 レベル」をカンマで区切る）・`trainerEdit.partyNames`（種族名の表示）、ボタン `trainerEdit.ok`・`trainerEdit.cancel`・`trainerEdit.revert`（trainers.json にあるときだけ）。`dialog` の `press` は `ok` / `cancel` / `revert`。イベントタブの人の右クリックのメニューの項目は `editTrainer`。
 
 trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。同じ番号が無ければ足す）と `removeTrainer`（`{"id": 700}`）でもできます（元に戻せる）。
-- ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
+- ミキシングバッグ（#236）: `{"cmd":"bag.state"}`（袋の中身 `blocks` と、今の選択に袋を使うか `active`）、`{"cmd":"bag.set","blocks":[13,14,15],"seed":42}`（中身を置き換える。`seed` で乱数の種を決める）。重み（#515）: `bag.state` の `weights` は中身と同じ順の重み（1〜9）。`bag.set` に `"weights":[1,3,1]` を足すと重みも決める（無ければ全部 1）。`{"cmd":"bag.weight","block":14,"weight":5}` で 1 つ変える（袋の欄のホイール・数字キーと同じ。部品の ID はブロックごとに `map.bag.<10 進の番号>`）。ホイールは `{"cmd":"mouse","id":"map.bag.14","action":"wheel","px":[8,8],"delta":-1}`（`mouse` の `action: "wheel"`。`delta` が負なら奥へ回して重みを上げる）。Ctrl＋パレットの左クリックは `{"cmd":"mouse","target":"palette","action":"click","ctrl":true,"cell":[1,0]}`、袋を空にするのは `{"cmd":"mouse","id":"map.bag","action":"click","ctrl":true,"px":[4,4]}`。
 - 画像のコピー（#246）: `{"cmd":"image.composite","whole":true,"events":"none","png":true}` で接続している全マップ（`whole: false` なら今のマップ）の画像を作る。`events` は `none` / `persons` / `all`、`scale` で縮める割合（省くと辺が 16,384 画素を超えるときは収まるまで縮める。ダイアログは出さない）。返事は `width`・`height`・`scale`・`bounds`・`maps`（並べたマップと置き場所。最初のマップの左上が原点のマス）・`heapMb`（作っている間の JavaScript のヒープ）と、`png: true` なら PNG（Base64）。`clipboard: true` のときだけクリップボードへ渡す（既定は渡さない。テストでユーザーのクリップボードを汚さないため）。メニューは アクション `image.copyMap.<none|persons|all>`・`image.copyWhole.<none|persons|all>`。
 
 
@@ -447,13 +447,13 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`） |
-| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）。どちらも省略可 | 道具とスマートパスを変える（帯のボタンと N・B・S と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
+| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`）、鉛筆のブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今使うか `brushActive`（`map`・`movement`。#515） |
+| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）、`brushSize`（1〜9）、`brushShape`（`square` / `circle`）。どれも省略可 | 道具・スマートパス・ブラシを変える（帯のボタンと欄、N・B・S・`[` `]` と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
 | `tool.fill` | `cell`（`[x, y]`。主マップの左上が原点。隣の帯の上も指せる）、`magic`（true でマジック塗り）、`tab`（`map` / `movement`。省略で表示中のタブ） | 塗りつぶしを 1 回行う（道具の設定は変えない）。返事の `count` は塗ったマスの数と、`selection` と同じもの |
 | `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
 | `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズの窓の OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
 | `tool.resizeDialog` | | 対話式リサイズの窓「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |
-| `view.aids` | | 表示の補助（#391）。カーソルの枠 `cursorFrame` とプレイヤーの視界の枠 `playerView`（個人設定）、グリッドの表示 `grid` と形 `gridStyle`（`width`・`height`・`offsetX`・`offsetY`（マス）・`color`・`line`）、タブごとの枠 `layers`（`map`・`movement`・`event` の、マウスのマス `cell` と枠のマスの矩形 `cursor`・`sight`。出していなければ null）、移動許可の数値の欄の文字 `movementValue` |
+| `view.aids` | | 表示の補助（#391）。カーソルの枠 `cursorFrame` とプレイヤーの視界の枠 `playerView`（個人設定）、グリッドの表示 `grid` と形 `gridStyle`（`width`・`height`・`offsetX`・`offsetY`（マス）・`color`・`line`）、タブごとの枠 `layers`（`map`・`movement`・`event` の、マウスのマス `cell` と枠のマスの矩形 `cursor`・`sight`。出していなければ null。`cursorCells` はカーソルの枠の中で描くマスの数で、円のブラシのときは矩形より少ない）、移動許可の数値の欄の文字 `movementValue` |
 | `shortcuts.state` | | ショートカットの変更（#392）。今のキー `keys`（操作の ID → 表記。2 つなら「、」で区切る。無ければ空）と、個人設定に残す形 `overrides`（既定と違う操作だけ） |
 
 - 道具の帯（マップタブと移動エリアタブの右の欄の上）: ボタン `tools.map.pencil`・`tools.map.fill`・`tools.map.shift`（移動エリアタブは `tools.movement.*`）、スマートパスのチェック `tools.smartPath`（`setField` に true / false）。N・B・S は `{"cmd":"key","key":"b"}` のように送る（マップタブか移動エリアタブを見ているとき）。

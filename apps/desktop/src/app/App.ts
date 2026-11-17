@@ -295,7 +295,10 @@ export class App implements ActionTarget {
     });
     this.timeOfDay = new TimeOfDayView(state, this.actions, { rebuildNeighbors: () => this.extras.neighbors.schedule(false) });
     this.toolbar.insertAfterSort(this.timeOfDay.select);
-    this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions);
+    this.aids = new ViewAids(state, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, movementTab, this.actions, {
+      map: () => mapTab.painter.currentBrush(),
+      movement: () => movementTab.painter.currentBrush(),
+    });
     this.previewPlayer = new PreviewPlayer(state, this.aids, { map: mapTab.view, movement: movementTab.view, event: eventTab.view }, this.actions, this.files);
     this.playback = new PlaybackEntry(this);
     this.mapAnimations = new MapAnimations(state, this.gameClock, this.actions, () => this.previewPlayer.enabled);

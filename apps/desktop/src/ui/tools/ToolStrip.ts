@@ -1,5 +1,6 @@
 import type { EditorState } from "../../app/EditorState";
-import { PAINT_TOOLS, currentTool, setPaintTool, setSmartPath, type PaintTool } from "../../app/paintTool";
+import { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE, toBrushShape } from "@zigzagumap/core";
+import { PAINT_TOOLS, brushSetting, currentTool, setBrush, setPaintTool, setSmartPath, type PaintTool } from "../../app/paintTool";
 import { jaTools } from "../../i18n/ja.tools";
 import "../../styles/tools.css";
 
@@ -10,11 +11,14 @@ const HINTS: Readonly<Record<PaintTool, string>> = { pencil: jaTools.pencilHint,
  * 道具の帯（Phase5 #388。Q1 の推奨）。マップタブと移動エリアタブの右の欄の上に置く（AdvanceMap と比べるマップ表示の領域にはかけない）。
  * 鉛筆・塗り・シフトのボタン（N・B・S でも切り替え）と、マップタブだけスマートパスのチェック（#389）。
  * 部品の ID は `tools.<タブ>.<道具>`（例: `tools.map.fill`）と `tools.smartPath`。
+ * Phase7 #515: 鉛筆のブラシの大きさ（1〜9）と形の欄（`tools.<タブ>.brushSize`・`tools.<タブ>.brushShape`）。両方のタブで同じ値。
  */
 export class ToolStrip {
   readonly element: HTMLElement;
   private readonly buttons = new Map<PaintTool, HTMLButtonElement>();
   private readonly smart: HTMLInputElement | null = null;
+  private readonly brushSize: HTMLSelectElement;
+  private readonly brushShape: HTMLSelectElement;
 
   constructor(
     private readonly state: EditorState,
@@ -43,6 +47,32 @@ export class ToolStrip {
       row.append(b);
     }
     this.element.append(row);
+    // ブラシの大きさと形（#515）
+    const brush = document.createElement("div");
+    brush.className = "tool-strip-brush";
+    this.brushSize = document.createElement("select");
+    this.brushSize.title = jaTools.brushSizeHint;
+    this.brushSize.dataset["autoId"] = `tools.${tab}.brushSize`;
+    for (let n = MIN_BRUSH_SIZE; n <= MAX_BRUSH_SIZE; n++) this.brushSize.append(new Option(jaTools.brushSizeOption(n), String(n)));
+    this.brushShape = document.createElement("select");
+    this.brushShape.title = jaTools.brushShapeHint;
+    this.brushShape.dataset["autoId"] = `tools.${tab}.brushShape`;
+    for (const id of ["square", "circle"]) this.brushShape.append(new Option(jaTools.brushShapes[id] ?? id, id));
+    const changed = (): void => {
+      setBrush(state, { size: Number(this.brushSize.value), shape: toBrushShape(this.brushShape.value) });
+      const b = brushSetting(state);
+      state.setStatus(jaTools.brushChanged(b.size, b.shape));
+    };
+    this.brushSize.addEventListener("change", changed);
+    this.brushShape.addEventListener("change", changed);
+    if (tab === "map") {
+      const label = document.createElement("span");
+      label.textContent = jaTools.brushLabel;
+      label.title = jaTools.brushSizeHint;
+      brush.append(label);
+    }
+    brush.append(this.brushSize, this.brushShape);
+    this.element.append(brush);
     if (tab === "map") {
       const label = document.createElement("label");
       label.className = "tool-strip-smart";
@@ -69,6 +99,9 @@ export class ToolStrip {
       b.classList.toggle("active", on);
       b.setAttribute("aria-pressed", String(on));
     }
+    const b = brushSetting(this.state);
+    this.brushSize.value = String(b.size);
+    this.brushShape.value = b.shape;
     if (this.smart) {
       const s = this.state.selection;
       this.smart.checked = this.state.settings.data.smartPath;
