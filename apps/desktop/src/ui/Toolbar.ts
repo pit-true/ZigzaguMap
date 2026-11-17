@@ -50,6 +50,7 @@ export class Toolbar {
   constructor(private readonly host: ToolbarHost) {
     this.element = document.createElement("header");
     this.element.className = "toolbar";
+    this.element.dataset["autoId"] = "toolbar";
     this.sort = document.createElement("select");
     this.sort.className = "toolbar-sort";
     for (const label of ja.sortModes) this.sort.append(new Option(label));
@@ -65,6 +66,7 @@ export class Toolbar {
       } else {
         const el = document.createElement("div");
         el.className = "toolbar-button";
+        el.dataset["icon"] = entry.icon;
         el.title = entry.hint;
         el.innerHTML = ICONS[entry.icon] ?? "";
         el.addEventListener("click", () => {
@@ -90,6 +92,16 @@ export class Toolbar {
   /** 並べ替えのコンボの後ろに部品を足す（時間帯のコンボ。Phase6 #434）。 */
   insertAfterSort(element: HTMLElement): void {
     this.sort.after(element);
+  }
+
+  /**
+   * アイコンの絵を差し替える（`html` が null なら元の絵に戻す。#541 で ROM のタウンマップから切り出したワールドマップの絵に使う）。
+   * 押す・有効かどうかは変えない。
+   */
+  setIcon(icon: string, html: string | null): void {
+    for (const { def, el } of this.buttons) {
+      if (def.icon === icon) el.innerHTML = html ?? ICONS[icon] ?? "";
+    }
   }
 
   /** 表示・非表示。 */

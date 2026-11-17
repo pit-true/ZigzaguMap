@@ -50,27 +50,33 @@ export class RegionMapGraphics {
 
   /** 面（0〜3）の絵を描く（240×160）。色 0 はパレット 0 の色 0。 */
   render(page: number): RgbaImage {
+    return this.renderArea(page, 0, 0, REGION_IMAGE_WIDTH, REGION_IMAGE_HEIGHT);
+  }
+
+  /**
+   * 面（0〜3）の絵の一部（左上 `left`・`top` から `width`×`height` の画素）を描く。読み方は `render` と同じ。
+   * 絵の外の画素は透明のまま。
+   */
+  renderArea(page: number, left: number, top: number, width: number, height: number): RgbaImage {
     const { palette, tiles, screens } = this.data;
     const screen = screens[page];
     if (!screen) throw new RangeError(`タウンマップの面が範囲外です: ${page}`);
-    const image = createImage(REGION_IMAGE_WIDTH, REGION_IMAGE_HEIGHT);
-    for (let ty = 0; ty < REGION_SCREEN_TILES_Y; ty++) {
-      for (let tx = 0; tx < REGION_SCREEN_TILES_X; tx++) {
-        const entry = screen[ty * REGION_SCREEN_TILES_X + tx]!;
+    const image = createImage(width, height);
+    for (let y = 0; y < height; y++) {
+      const py = top + y;
+      if (py < 0 || py >= REGION_IMAGE_HEIGHT) continue;
+      for (let x = 0; x < width; x++) {
+        const px = left + x;
+        if (px < 0 || px >= REGION_IMAGE_WIDTH) continue;
+        const entry = screen[(py >> 3) * REGION_SCREEN_TILES_X + (px >> 3)]!;
         const tile = entry & 0x3ff;
-        const hflip = (entry & 0x400) !== 0;
-        const vflip = (entry & 0x800) !== 0;
+        const sy = entry & 0x800 ? 7 - (py & 7) : py & 7;
+        const sx = entry & 0x400 ? 7 - (px & 7) : px & 7;
         const pal = (entry >> 12) * 16;
-        for (let y = 0; y < 8; y++) {
-          const sy = vflip ? 7 - y : y;
-          for (let x = 0; x < 8; x++) {
-            const sx = hflip ? 7 - x : x;
-            const byte = tiles[tile * 32 + sy * 4 + (sx >> 1)] ?? 0;
-            const index = sx & 1 ? byte >> 4 : byte & 15;
-            const color = index === 0 ? palette[0]! : palette[(pal + index) % REGION_PALETTE_COLORS]!;
-            writeBgr555(image.data, (ty * 8 + y) * REGION_IMAGE_WIDTH + tx * 8 + x, color);
-          }
-        }
+        const byte = tiles[tile * 32 + sy * 4 + (sx >> 1)] ?? 0;
+        const index = sx & 1 ? byte >> 4 : byte & 15;
+        const color = index === 0 ? palette[0]! : palette[(pal + index) % REGION_PALETTE_COLORS]!;
+        writeBgr555(image.data, y * width + x, color);
       }
     }
     return image;

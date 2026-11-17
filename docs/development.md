@@ -108,6 +108,14 @@ scripts\build.cmd test     # cargo test（Rust の単体テスト）
 
 自動操作の入口（テスト用の HTTP の命令）は [docs/automation.md](automation.md)、AdvanceMap との比較テストの回し方は [docs/compare-test.md](compare-test.md) にあります。
 
+### ツールバーのアイコン
+
+ツールバーのアイコンは 32×32 です。AdvanceMap と同じ意味の絵を `apps/desktop/src/ui/icons.ts` に SVG で書いています。ドット絵のものは次の作り方で、どれも 1 ドットを 2×2 の画素にし、右下へ 1 画素ずらしてぼかした影（黒、濃さ 110/255）を付けます。
+
+- オブジェクトの表示: 主人公の 16×16 の絵（`apps/desktop/src/assets/hero-source.png`）から `python scripts/make-hero-icon.py` で PNG を作ります。
+- 新規マップの作成・新規マップの挿入・ワールドマップエディタ（#541）: `apps/desktop/src/ui/toolbarPixelArt.ts` に 15×15 のドットを 1 文字 1 色の文字列で書き、`ui/pixelIcon.ts` が SVG の矩形にします（PNG は作りません）。色は同じファイルの表の色だけを使い、1 つの絵は 16 色まで、輪郭は `K` にそろえます。描き直すときは文字列を書き換え、`pnpm test`（`apps/desktop/test/pixelIcon.test.ts`）で大きさと色を確かめます。
+- ワールドマップエディタは、ROM を開いたあとに、その ROM のタウンマップのカントーの面から 13×13 の画素を切り出し、輪郭を付けた絵に差し替えます（`ui/WorldMapToolbarIcon.ts`。読むのは手の空いたとき）。読み方はワールドマップエディタ・タウンマップの小さなウィンドウと同じで（core の `readRegionMapIcon`）、位置の表の最初の地名（マサラタウン）のマス (x, y) の左上 (32 + x×8, 32 + y×8) から左へ 7 画素・下へ 1 画素ずらした所を切り出します（町の印の左に西の海岸と海、下に南の海が入ります）。ゲームの絵はリポジトリに入れず、切り出した絵はメモリに持つだけでファイルには書きません。ROM を開く前と、タウンマップに対応していないゲーム・読めない ROM では、`toolbarPixelArt.ts` の自作の絵を出します。
+
 ## 性能
 
 | 項目 | 目標 | 測り方 |

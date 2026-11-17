@@ -29,6 +29,7 @@ import { WildTab } from "../ui/wild/WildTab";
 import { installMakeButtons } from "../ui/newmap/MakeButtons";
 import { NewMapController } from "../ui/newmap/NewMapController";
 import { Toolbar } from "../ui/Toolbar";
+import { WorldMapToolbarIcon } from "../ui/WorldMapToolbarIcon";
 import { Actions, type ActionTarget } from "./Actions";
 import { EditorState } from "./EditorState";
 import { FileDialogs } from "./FileDialogs";
@@ -91,6 +92,8 @@ export class App implements ActionTarget {
   readonly prompts: SettingPrompts;
   private readonly menu: MenuBar;
   private readonly toolbar: Toolbar;
+  /** ツールバーのワールドマップエディタのアイコン（ROM のタウンマップから切り出す。#541）。 */
+  readonly worldMapIcon: WorldMapToolbarIcon;
   /** 左のマップ一覧（自動操作の `tree.list` も読む）。 */
   readonly tree: MapTree;
   /** マップ一覧の絞り込みの欄（#237）。 */
@@ -224,6 +227,7 @@ export class App implements ActionTarget {
       setSort: (mode) => this.setSort(mode),
       sortMode: () => state.settings.data.sortMode,
     });
+    this.worldMapIcon = new WorldMapToolbarIcon(state, this.toolbar);
     this.tree = new MapTree({
       openMap: (id) => void this.openMap(id),
       isDirty: (id) => state.isDirty(id),

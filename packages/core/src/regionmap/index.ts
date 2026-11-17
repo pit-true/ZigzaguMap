@@ -16,6 +16,7 @@ export {
   type RegionSection,
 } from "./RegionMapDocument.js";
 export { RegionMapGraphics, type RegionMapGraphicsData, type RegionMapGraphicsSource } from "./RegionMapGraphics.js";
+export { REGION_ICON_SIZE, readRegionMapIcon, regionIconArea } from "./RegionMapIcon.js";
 export { RegionMapReader, formatRomOffset, type RegionMapRomData, type RegionMapTableAddresses } from "./RegionMapReader.js";
 export { REGION_MAP_FORMAT, RegionMapJson } from "./RegionMapJson.js";
 export { RegionMapProject } from "./RegionMapProject.js";
