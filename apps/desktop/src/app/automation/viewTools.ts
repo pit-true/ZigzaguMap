@@ -365,17 +365,19 @@ async function userScriptsReload(app: App): Promise<unknown> {
 }
 
 /** `mapExport.state`: マップの画像の書き出しの窓（Phase5 #403）。開いているか `open`、選択 `choice`、プレビューの大きさ `last`（プレビューを作り終えるまで待つ）。 */
-async function mapExportState(): Promise<unknown> {
+async function mapExportState(app: App): Promise<unknown> {
   const { openMapExport } = await import("../../ui/export/MapExportDialog");
   const d = openMapExport();
   if (!d) return { open: false };
   await d.settle();
-  return { open: true, choice: d.choice, last: d.last };
+  return { open: true, choice: d.choice, last: d.last, folder: app.views.folderNotice().path };
 }
 
 /**
- * `mapExport.run {action}`: 窓のボタンを押して終わるまで待つ（`save` / `copy` / `timelapse`）。保存先は先に `queuePath` で渡す。
- * 返事は `save` が保存したパス、`copy` が大きさ、`timelapse` がパス・コマの数・大きさ（取りやめたら null）。
+ * `mapExport.run {action}`: 窓のボタンを押して終わるまで待つ（`save` / `copy` / `timelapse` / `gif-anim`）。保存先は先に `queuePath` で渡す。
+ * 返事は `save` が保存したパス、`copy` が大きさ、`timelapse` がパス・コマの数・大きさ、`gif-anim`（タイルアニメの GIF。#514）が
+ * パス・コマの数 `frames`・大きさ・長さ `durationCs`・周期がそろったか `complete`・ファイルのバイト数 `bytes`・1 コマの画像のバイト数
+ * `frameBytes`・書く間のヒープの増え方 `heapGrowthMb`（取りやめた・動くタイルが無ければ null）。
  */
 async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown> {
   const { openMapExport } = await import("../../ui/export/MapExportDialog");
@@ -386,6 +388,7 @@ async function mapExportRun(_app: App, req: AutomationRequest): Promise<unknown>
   if (action === "save") return d.save();
   if (action === "copy") return d.copy();
   if (action === "timelapse") return d.saveTimelapse();
+  if (action === "gif-anim") return d.saveAnimation();
   throw new Error(`action が不正です: ${String(action)}`);
 }
 

@@ -20,6 +20,13 @@ export const jaMapExport = {
   format: "形式",
   png: "PNG",
   bmp: "BMP（24 ビット）",
+  /** タイルアニメの GIF（Phase7 #514）。 */
+  gifAnim: "アニメ（GIF）",
+  gifAnimNote: "タイルアニメ（海・花など）を実機と同じ速さで動かします。長さは全部のアニメの周期がそろうまで（12 秒まで）",
+  gifAnimNone: "動くタイルがありません",
+  gifAnimSaved: (frames: number, seconds: number, path: string) => `アニメの GIF（${frames} コマ、${seconds.toFixed(2)} 秒）を書き出しました: ${path}`,
+  gifAnimCut: "（12 秒で切りました）",
+  openFolder: "フォルダを開く",
   preview: "プレビュー",
   size: (w: number, h: number, maps: number, scale: number) => `${w}×${h} 画素、マップ ${maps} 枚${scale > 1 ? `（1/${scale} に縮小）` : ""}`,
   save: "ファイルに保存…",

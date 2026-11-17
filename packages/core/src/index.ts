@@ -372,6 +372,7 @@ export { ALL_LAYERS, BLOCK_PIXELS, BlockRenderer, LAYER_BOTTOM, LAYER_THIRD, LAY
 export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
 export { THUMBNAIL_SIZE, blockAverageColors, renderThumbnail } from "./render/MapThumbnail.js";
 export { downscaleImage, downscaleSize } from "./render/ImageDownscale.js";
+export { GIF_MIN_DELAY_CS, addUsedTiles, visibleTileAnimation, tileAnimationKeyFrames, tileAnimationLoop, tileAnimationPeriod, tileAnimationSignature, type TileAnimationKeyFrame, type TileAnimationLoop } from "./render/TileAnimationLoop.js";
 
 // 操作コマンド
 export type { Command, CommandRecord, EditorContext, JsonObject, JsonValue } from "./command/Command.js";

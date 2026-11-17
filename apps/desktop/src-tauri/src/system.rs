@@ -111,6 +111,30 @@ pub fn open_url(url: String, args: State<'_, StartupArgs>) -> Result<(), String>
         .map_err(|e| e.to_string())
 }
 
+/// 書き出したファイルを選んだ状態で、エクスプローラーでフォルダを開く（画像の書き出しのあとの「フォルダを開く」。Phase7 #514）。
+/// 自動操作で起動したときは開かない（画面にウィンドウを出さないため。ファイルがあるかだけ確かめる）。
+#[tauri::command]
+pub fn reveal_file(path: String, args: State<'_, StartupArgs>) -> Result<(), String> {
+    if path.is_empty() || path.chars().any(|c| c.is_control() || c == '"') {
+        return Err(format!("開けないパスです: {path}"));
+    }
+    if !std::path::Path::new(&path).is_file() {
+        return Err(format!("ファイルがありません: {path}"));
+    }
+    if args.automation_requested {
+        return Ok(());
+    }
+    let mut cmd = std::process::Command::new("explorer");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.raw_arg(format!("/select,\"{path}\""));
+    }
+    #[cfg(not(windows))]
+    cmd.arg(&path);
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 /// exe のパス。
 #[tauri::command]
 pub fn exe_path() -> Result<String, String> {

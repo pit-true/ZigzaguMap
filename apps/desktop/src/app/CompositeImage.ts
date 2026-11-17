@@ -72,6 +72,11 @@ export interface CompositeOptions {
   readonly neighbors?: boolean;
   /** グリッドを重ねる（形は 表示 > グリッドの設定 と同じ。マップごとにマップの左上にそろえる。#403）。 */
   readonly grid?: GridStyle | null;
+  /**
+   * マップを描く前に、タイルセットの組を差し替える（タイルアニメの GIF で、そのフレームのタイルの組にする。Phase7 #514）。
+   * `grid` はその組で描く配置（使うブロックを調べる用）。省けば今の組のまま。
+   */
+  readonly tileView?: (tiles: TilesetView, grid: { readonly cells: Uint16Array }) => TilesetView;
 }
 
 /** マップのイベントを、イベントタブと同じ印の並びにする（`persons` なら人だけ。クローンの見た目は `graphics` で引く。#298）。 */
@@ -139,7 +144,8 @@ export class CompositeImage {
     canvas.height = Math.ceil((b.height * BLOCK_PIXELS) / scale);
     const out = canvas.getContext("2d")!;
     out.imageSmoothingEnabled = scale > 1;
-    if (options.border) await this.fillBorder(out, main.doc, main.tiles, b, scale, tint);
+    const tileView = options.tileView ?? ((tiles: TilesetView) => tiles);
+    if (options.border) await this.fillBorder(out, main.doc, tileView(main.tiles, main.doc.border), b, scale, tint);
     const kinds = options.eventKinds ?? eventKindsOf(options.events);
     const opacity = this.state.settings.data.movementOpacity;
     const objects = this.state.settings.data.showObjects;
@@ -155,9 +161,9 @@ export class CompositeImage {
       if (!rectsOverlap(b, m)) continue;
       // 隣の帯だけのとき（全マップでない）は、今のマップを最後に描く（帯が今のマップにかからないように）
       if (!options.whole && i === 0 && layout.maps.length > 1) continue;
-      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint);
+      await this.drawMap(out, read, m, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint, tileView);
     }
-    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint);
+    if (!options.whole && layout.maps.length > 1) await this.drawMap(out, read, layout.maps[0]!, b, scale, tilesets, kinds, opacity, options.movement === true, graphics, objects, options.grid ?? null, tint, tileView);
     tilesets.clear();
     return { canvas, layout, scale, drawn };
   }
@@ -177,6 +183,7 @@ export class CompositeImage {
     objects: boolean,
     grid: GridStyle | null,
     tint: ActiveTint | null,
+    tileView: (tiles: TilesetView, grid: { readonly cells: Uint16Array }) => TilesetView,
   ): Promise<void> {
     const session = this.state.session!;
     const main = this.state.map!;
@@ -190,7 +197,7 @@ export class CompositeImage {
         tiles = new TilesetView(tilesKey, ts.primary, ts.secondary);
         tilesets.set(tilesKey, tiles);
       }
-      const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tiles, doc.header.mapType, tint);
+      const bitmap = await renderBand(doc.grid, { x: 0, y: 0, width: doc.width, height: doc.height }, tileView(tiles, doc.grid), doc.header.mapType, tint);
       const one = document.createElement("canvas");
       one.width = bitmap.width;
       one.height = bitmap.height;
