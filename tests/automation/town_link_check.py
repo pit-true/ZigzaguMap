@@ -239,7 +239,7 @@ def check_links(z: Zigzagu, shots: pathlib.Path | None, place: str, tag: str) ->
         if m:
             st = town(z)
             check(st["source"] is None and st["frame"] is None and "紐づけがありません" in (st["label"] or "")
-                  and "小窓を右クリックして「ここに紐づける」を選んでください" in st["label"], f"[{tag}] {m} は案内を出す: {st['label']!r}")
+                  and "ウィンドウを右クリックして「ここに紐づける」を選んでください" in st["label"], f"[{tag}] {m} は案内を出す: {st['label']!r}")
             for theme in ("light", "dark"):
                 set_theme(z, theme)
                 shot(z, shots, f"fb4_town_none_{theme}.png")

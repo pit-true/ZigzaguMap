@@ -5,7 +5,7 @@ export const jaTransplant = {
   menu: "別の ROM からタイルセットを取り込む",
   title: "別の ROM からタイルセットを取り込む",
   pickRom: "ROM を選ぶ…",
-  noRom: "取り込む元の ROM を選んでください（FR・LG・エメラルドの日本語版と英語版。読むだけで、書き込みません）。",
+  noRom: "取り込む元の ROM を選んでください（FR・LG・エメラルドの日本語バージョンと英語バージョン。読むだけで、書き込みません）。",
   romInfo: (code: string, count: number, path: string) => `${code}（マップ ${count} 枚）　${path}`,
   maps: "マップの一覧",
   preview: "取り込んだ後の絵",

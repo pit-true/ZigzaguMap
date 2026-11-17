@@ -26,7 +26,7 @@ Phase1 を触ったユーザーの要望（issue #169〜#181）で、AdvanceMap 
 | 並べ替えの左のアイコン（#170） | 主人公の絵 | ユーザーが用意したドット絵を透過・2 倍にして影を付けたもの |
 | ショートカットの一覧（#171） | 無い | ヘルプ > ショートカット一覧 |
 | 表示メニュー（#172） | 見た目の項目も「設定」にある | 「表示」を足して見た目の項目を移した（ファイル・表示・設定・ツール・ヘルプ） |
-| 移動エリアの透明度（#173） | 0.0〜1.0 を入力ダイアログで入れる | スライダーの小窓（すぐ反映。入力エラーは無い） |
+| 移動エリアの透明度（#173） | 0.0〜1.0 を入力ダイアログで入れる | スライダーの小さなウィンドウ（すぐ反映。入力エラーは無い） |
 | マップの外のイベント（#174） | ステータスバーのノートだけ | ノートの帯と「マップの内側に戻す」ボタン（1 回で全部内側へ） |
 | 場所の設定タブ（#175） | 1 つの画面（高度なヘッダーの切り替えだけ） | 初めは「かんたん（CFRU）」。ラジオボタンで従来の画面（「くわしく（従来）」）に切り替える |
 | 言語（#177） | 設定 > 言語 | 無い |
@@ -42,7 +42,7 @@ Phase2 を触ったユーザーの要望（issue #218〜#221）で変えたも�
 | 項目 | 前の動き | 今の動き |
 |---|---|---|
 | スクリプトエディタのテーマ（#218） | 本文の色だけが変わり、タブの帯・下の帯・検索の欄・ビルドの欄・ダイアログなどは明るい標準色のまま | ウィンドウ全体を同じテーマの色にする（「[スクリプトエディタの機能](script-editor.md#スクリプトエディタの機能)」の色付けとテーマ） |
-| ヘルプの窓（#219） | 上に「戻る」ボタンと、読んでいる文書のパスを出す | どちらも出さない。リンクで別の文書へ移ったときだけ、本文の先頭に「← Read meに戻る」のリンクを出す |
+| ヘルプのウィンドウ（#219） | 上に「戻る」ボタンと、読んでいる文書のパスを出す | どちらも出さない。リンクで別の文書へ移ったときだけ、本文の先頭に「← Read meに戻る」のリンクを出す |
 | イベントの削除（#220） | 「イベントの削除」ボタンでオブジェクトだけを消す | 右クリックの「イベントを削除」と Delete キーも足し、確認のダイアログを出してから、スクリプトの記述（`.s`・`.string`）か ROM の埋める範囲（`maps\rom_erase.json`）も一緒に消す（「[イベントの削除](guide.md#イベントの削除)」） |
 | 長い文の改行（#221） | `.string` の本文は 1 行で書く（改行すると別の文字列になる） | `\n`・`\p`・`\l`・`\m` のあとで改行して複数行で書ける。「本文を編集」も複数行で、Enter で改行（前が制御記号でなければ `\n` を補う）、Ctrl+Enter で反映 |
 
@@ -119,14 +119,14 @@ Phase3 を触ったユーザーの要望（issue #296〜#298）で変えたも�
 
 | ファイル | いつ書くか | 形式 |
 |---|---|---|
-| `maps\BB\MM.json`（バンク・マップは 2 桁） | ベース ROM と内容が違い、既存のファイルとも違うマップ。ベース ROM と同じに戻ったら消す。マップ名を変えたときは、同じ地名番号の全マップ | ND の `scripts/map_project.py` と BochiBochiEditor 改造版（`SaveCfruProject`）と同じ形式。下の表 |
+| `maps\BB\MM.json`（バンク・マップは 2 桁） | ベース ROM と内容が違い、既存のファイルとも違うマップ。ベース ROM と同じに戻ったら消す。マップ名を変えたときは、同じ地名番号の全マップ | ND の `scripts/map_project.py` と BochiBochiEditor 改造バージョン（`SaveCfruProject`）と同じ形式。下の表 |
 | `maps\project.json` | 何か書くときに無ければ作る | `{"Format":1,"BaseBankCounts":[…]}`（ベース ROM のバンクごとのマップ数。字下げなし） |
 | `maps\tilesets\<primary\|secondary>_<ヘッダーの位置 6 桁>\tileset.json` と `tiles.png` | ブロックエディタなどで変えたタイルセット。ベース ROM と同じに戻ったら消す | Bochi と同じ。`tileset.json` は `Format`・`HeaderAddress`・`Secondary`・`New`・`Header`・`TileCount`・`BlockCount`・`BlockBytes`・`BehaviorBytes`・`Compressed`・`ImageSha256`・`Palettes`・`Blocks`・`Behaviors`、`tiles.png` はタイルのインデックス PNG。トリプルレイヤーのブロックは `Behaviors` の 4 バイト目が 0x30。別の ROM から取り込んだタイルセットは ROM の外の位置の名前（`primary_1F00000` など）で `"New": true`（「[別の ROM からタイルセットを取り込む](tilesets.md#別の-rom-からタイルセットを取り込むツール--別の-rom-からタイルセットを取り込む)」） |
 | `assembly\overworld_scripts\HiddenItem.s` | 落とし物（人の ItemBalls）が変わったとき | `@ BBE-BEGIN <識別子>`〜`@ BBE-END <識別子>` の生成範囲だけを作り直す（手書き部分は残す。Bochi と同じ）。ラベルは `HiddenItem_BB_MM_<識別子>` |
 | `maps\scripts.json` | ツール > スクリプトファイルの対応表で表を変えたとき（変えていなければ触らない） | 「[eventscripts と maps\scripts.json](script-editor.md#eventscripts-と-mapsscriptsjson)」 |
 | `assembly\overworld_scripts\<名前>.s` と `strings\<名前>.string` | 対応表の「新しい .s を作る」で足した行があるとき。既にあるファイルは書き換えない | `.s` は決まった先頭（「[scripts.json の編集画面](script-editor.md#scriptsjson-の編集画面)」）、`.string` は空 |
 | `maps\regionmap.json` | タウンマップ・フライトポジションを変えたとき。全部ベース ROM と同じに戻ったら消す | 「[maps\regionmap.json](guide.md#mapsregionmapjson)」 |
-| `maps\stamps\<名前>.json` | スタンプを保存・名前の変更・上書き・削除したとき、すぐ（出力を待たない。元に戻すの対象外）。書くときに `maps\project.json` が無ければ作る（Bochi 改造版は maps\ に JSON があって project.json が無いと開けない） | `format`・`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`（ポインタの 16 進の文字列）・`secondaryUsed`・`withMovements`（移動許可に意味があるか。ブロックパレットから作ったものは false、省略時は true）・`cells`（左上から行ごとの `[ブロック番号, 移動許可]`、`null` は貼らないマス）・`created`。名前は UTF-8 のまま、ファイル名に使えない字は `_`。読み書きは `packages/core/src/project/StampJson.ts`。Bochi と `map_project.py` は数字のフォルダだけを読むので無視される |
+| `maps\stamps\<名前>.json` | スタンプを保存・名前の変更・上書き・削除したとき、すぐ（出力を待たない。元に戻すの対象外）。書くときに `maps\project.json` が無ければ作る（Bochi 改造バージョンは maps\ に JSON があって project.json が無いと開けない） | `format`・`name`・`width`・`height`・`primaryTileset`・`secondaryTileset`（ポインタの 16 進の文字列）・`secondaryUsed`・`withMovements`（移動許可に意味があるか。ブロックパレットから作ったものは false、省略時は true）・`cells`（左上から行ごとの `[ブロック番号, 移動許可]`、`null` は貼らないマス）・`created`。名前は UTF-8 のまま、ファイル名に使えない字は `_`。読み書きは `packages/core/src/project/StampJson.ts`。Bochi と `map_project.py` は数字のフォルダだけを読むので無視される |
 | `maps\autopen\primary_<位置>.json`・`secondary_<位置>.json` | オートペンのパーツを保存したとき、すぐ（出力を待たない。元に戻すの対象外。スタンプと同じ） | `format`・`tileset`（`kind`・`game`・`headerAddress`・`fingerprint`・`blockCount`・`name`）・`parts`（`name`・`kind`・`role`・`order`・`slots`（枠の名前 → `width`・`height`・`cells`。マスは `[ブロック番号, 移動許可か null]`、空きは null）・主と副の両方を使うものは `primary`）。読み書きは `packages/core/src/project/AutoPenJson.ts`。ビルドは読まない |
 
 JSON はどれも Bochi（.NET の System.Text.Json）と同じ整形です。2 空白の字下げ、改行は CRLF、末尾に改行 1 つ、バイト列は base64、文字列は ASCII の表示文字以外と `"` `&` `'` `+` `<` `>` と逆引用符を `\uXXXX` にします（`\` は `\\`）。同じタイルセットを使うマップはどれも、次に開いたときから `maps\tilesets` の内容で読みます。
