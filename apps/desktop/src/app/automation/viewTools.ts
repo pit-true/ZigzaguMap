@@ -411,7 +411,23 @@ async function allSettingsSave(): Promise<unknown> {
   return { ok, ...((await allSettingsState()) as object) };
 }
 
+/**
+ * `toolbar.icons {wait?}`: ツールバーのアイコン（#541）。ワールドマップエディタの絵がどれか `worldMap`（`rom` = ROM のタウンマップから
+ * 切り出した絵、`fallback` = 自作の絵）と、ボタンごとの絵（HTML）の要約 `keys`（アイコンの名前ごと。絵が違えば違う値になる短い文字列）。`wait: true` なら差し替えを待つ。
+ */
+async function toolbarIcons(app: App, req: AutomationRequest): Promise<unknown> {
+  if (req["wait"] === true) await app.worldMapIcon.settle();
+  const keys: Record<string, string> = {};
+  for (const el of document.querySelectorAll<HTMLElement>(".toolbar-button[data-icon]")) {
+    let h = 5381;
+    for (const ch of el.innerHTML) h = (Math.imul(h, 33) + ch.charCodeAt(0)) >>> 0;
+    keys[el.dataset["icon"]!] = `${el.innerHTML.length.toString(16)}-${h.toString(16)}`;
+  }
+  return { worldMap: app.worldMapIcon.source, keys };
+}
+
 export const viewToolCommands: CommandTable = {
+  "toolbar.icons": toolbarIcons,
   "allSettings.state": allSettingsState,
   "allSettings.save": allSettingsSave,
   "projectWatch.check": projectWatchCheck,
