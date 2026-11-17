@@ -7,18 +7,28 @@ describe("道具の切り替え（#388）", () => {
   it("個人設定の値を道具にする（知らない値は鉛筆）", () => {
     expect(toPaintTool("fill")).toBe("fill");
     expect(toPaintTool("shift")).toBe("shift");
+    expect(toPaintTool("select")).toBe("select");
     expect(toPaintTool("pencil")).toBe("pencil");
     expect(toPaintTool("eraser")).toBe("pencil");
     expect(toPaintTool(undefined)).toBe("pencil");
   });
 
-  it("既定のキーは N・B・S（キーの表は app/keymap.ts。#392）", () => {
-    expect(PAINT_TOOLS.map((t) => keyText(t.keyAction))).toEqual(["N", "B", "S"]);
+  it("既定のキーは N・B・S・M（キーの表は app/keymap.ts。#392・#516）", () => {
+    expect(PAINT_TOOLS.map((t) => keyText(t.keyAction))).toEqual(["N", "B", "S", "M"]);
   });
 });
 
 describe("押したときの振り分け（pressKind。#406 で 2 つのタブから 1 か所にまとめた）", () => {
   const g = (button: number, ctrl = false, alt = false) => ({ button, ctrl, alt });
+
+  it("選択（#516）: 修飾キーなしで選ぶ・動かす。Ctrl は矩形塗り、Alt は入れ替え（シフトと同じ）", () => {
+    expect(pressKind("select", g(0), true)).toBe("select");
+    expect(pressKind("select", g(0, true), true)).toBe("rect");
+    expect(pressKind("select", g(0, false, true), true)).toBe("swap");
+    expect(pressKind("select", g(0, false, true), false)).toBe("select");
+    expect(pressKind("select", g(2), true)).toBe(null);
+    expect(pressKind("select", g(2, true), true)).toBe("pick");
+  });
 
   it("鉛筆: 修飾キーなしで描き、Ctrl で矩形塗り、Alt で入れ替え（マップタブだけ）", () => {
     expect(pressKind("pencil", g(0), true)).toBe("pencil");

@@ -17,6 +17,7 @@ import { tripleStatusSuffix } from "./tripleRules";
 import { brushFor, currentTool, pressKind, type Brush, type PressKind } from "../app/paintTool";
 import { BlockFillTool } from "./tools/FillTool";
 import { LineGuide } from "./tools/LineGuide";
+import { SelectMoveTool } from "./tools/SelectMoveTool";
 import { ShiftTool } from "./tools/ShiftTool";
 import { SmartPathTool } from "./tools/SmartPathTool";
 
@@ -50,6 +51,7 @@ import { SmartPathTool } from "./tools/SmartPathTool";
  * Phase7 #515: 鉛筆のブラシの大きさ（2〜9）と形（正方形・円）。1 ブロックを選んでいて、オートペンが受けないときだけ、
  * カーソルのマスを真ん中にした形のマスへ描く（Shift の直線もその幅）。袋を使う選択なら、マスごとに袋から重みで選ぶ。
  * 1 回のドラッグの中で描いたマスは描き直さない（袋の絵がドラッグの間に変わらないように）。大きさ 1 は今までと同じ。
+ * Phase7 #516: 道具が選択なら、左ドラッグで範囲を選び、範囲の中のドラッグで動かす（tools/SelectMoveTool）。
  */
 export class BlockPainter {
   /** 最後にマウスが乗っていたマス（Ctrl+V で貼る位置）。 */
@@ -72,6 +74,8 @@ export class BlockPainter {
   readonly shift: ShiftTool;
   /** スマートパス（Phase5 #389）。 */
   readonly smartPath: SmartPathTool;
+  /** 範囲を選んで動かす（Phase7 #516）。 */
+  readonly select: SelectMoveTool;
   /** 直線（Phase5 #389）。 */
   private readonly line = new LineGuide();
   /** 押したときに決めた操作（離すまで変えない）。 */
@@ -91,6 +95,7 @@ export class BlockPainter {
     this.drags = new BlockDragTools(state, this.writer, preview, (rect) => this.fillRect(rect), onPicked);
     this.shift = new ShiftTool(view, state, preview);
     this.smartPath = new SmartPathTool(state, this.writer);
+    this.select = new SelectMoveTool(view, state, this.writer, preview, "map");
     this.fill = new BlockFillTool(state, {
       cells: this.cells,
       writeFill: (list) => this.writeTiled(list),
@@ -106,6 +111,7 @@ export class BlockPainter {
           this.cells.pressStart();
           this.fill.fill(cell, g.ctrl);
         } else if (kind === "shift") this.shift.begin(cell, g.shift);
+        else if (kind === "select") this.select.begin(cell);
         else if (kind === "rect" || kind === "swap" || kind === "pick") startDrag(kind, cell);
         else if (kind === "pencil") {
           // ダブルクリックで隣のマップを開くとき、この押下で描いた分を取り消せるよう覚える
@@ -118,6 +124,7 @@ export class BlockPainter {
       },
       move: (cell, g, live) => {
         if (this.shift.active) return this.shift.move(cell, live.shift);
+        if (this.select.active) return this.select.move(cell);
         const dragging = this.drags.tool !== null;
         if (dragging) return this.drags.move(cell);
         // 塗りつぶしは押したときに 1 回だけ
@@ -135,6 +142,7 @@ export class BlockPainter {
         this.line.end();
         this.press = null;
         if (this.shift.end()) return;
+        if (this.select.end(cell)) return;
         if (this.drags.end(cell)) return;
         if (g.button === 2 && cell) this.pick(cell);
       },

@@ -1,4 +1,5 @@
 import {
+  ALL_LAYERS,
   BLOCK_PIXELS,
   BLOCK_DEFINITION_SIZE,
   BlockRenderer,
@@ -10,6 +11,7 @@ import {
   type Tileset,
 } from "@zigzagumap/core";
 import { activeTint, type ActiveTint } from "./timeOfDay/activeTint";
+import { activeLayers } from "./layerVisibility";
 
 /**
  * 主・副タイルセットの組。ブロックの描画（キャッシュつき）と、ブロックパレットの画像を持つ。
@@ -23,6 +25,8 @@ export class TilesetView {
   secondaryCount: number;
   /** 時間帯の色で描く描き手（昼以外にしたときだけ作る。Phase6 #434）。 */
   private tinted: { readonly generation: number; readonly renderer: BlockRenderer } | null = null;
+  /** 一部のレイヤーだけを描く描き手（表示 > レイヤーの表示 で外したときだけ作る。Phase7 #513）。 */
+  private layered: { readonly key: string; readonly renderer: BlockRenderer } | null = null;
 
   constructor(
     readonly key: string,
@@ -45,13 +49,16 @@ export class TilesetView {
     this.triple = new TripleLayerIndex(primary, secondary);
     this.secondaryCount = blockCount(secondary, TOTAL_BLOCK_COUNT - PRIMARY_BLOCK_COUNT);
     this.tinted = null;
+    this.layered = null;
   }
 
   /**
    * マップの表示に使う描き手（Phase6 #434）。時間帯が昼のとき、`mapType` を省いたとき、色の変わらない種類のマップ（屋内など）では
    * `renderer`（元の色）を返す。ブロックパレットとブロックエディタはいつも `renderer` を使う（元の色で見せる）。
    */
-  mapRenderer(mapType?: number, tint: ActiveTint | null = activeTint()): BlockRenderer {
+  mapRenderer(mapType?: number, tint: ActiveTint | null = activeTint(), layers = activeLayers()): BlockRenderer {
+    if (layers !== ALL_LAYERS) return this.layeredRenderer(mapType, tint, layers);
+    this.layered = null;
     if (!tint || mapType === undefined || !tint.tintsMapType(mapType)) return this.renderer;
     if (this.tinted?.generation !== tint.generation) {
       const [primaryPointer, secondaryPointer] = this.key.split(":").map(Number) as [number, number];
@@ -63,6 +70,18 @@ export class TilesetView {
     return this.tinted.renderer;
   }
 
+  /** 一部のレイヤーだけを描く描き手（時間帯の色も合わせる。#513）。 */
+  private layeredRenderer(mapType: number | undefined, tint: ActiveTint | null, layers: number): BlockRenderer {
+    const tinted = tint && mapType !== undefined && tint.tintsMapType(mapType) ? tint : null;
+    const key = `${layers}:${tinted?.generation ?? 0}`;
+    if (this.layered?.key !== key) {
+      const [primaryPointer, secondaryPointer] = this.key.split(":").map(Number) as [number, number];
+      const palettes = tinted ? tinted.palettes(primaryPointer, secondaryPointer, this.primary, this.secondary) : undefined;
+      this.layered = { key, renderer: new BlockRenderer(this.primary, this.secondary, palettes, layers) };
+    }
+    return this.layered.renderer;
+  }
+
   /**
    * 描いたブロックを捨てる（表示中のマップの組でなくなったとき）。
    * タイルセットはそのまま持つので、隣の帯などで使えば、そのとき要るブロックだけ描き直す。
@@ -70,6 +89,7 @@ export class TilesetView {
   trim(): void {
     if (this.renderer.cachedCount > 0) this.renderer = new BlockRenderer(this.primary, this.secondary);
     this.tinted = null;
+    this.layered = null;
   }
 
   /** パレットに並べるブロックの総数（主の 640 個 + 副）。 */
