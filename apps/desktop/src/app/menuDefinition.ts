@@ -29,10 +29,12 @@ import { WEATHER_PICK_IDS } from "./weather/WeatherEntry";
 import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
+import { jaMinimap } from "../i18n/ja.minimap";
 import { jaSettingsWindow } from "../i18n/ja.settingsWindow";
 import { jaProjectWatch } from "../i18n/ja.projectWatch";
 import { jaMapExport } from "../i18n/ja.mapExport";
 import { jaWildTools } from "../i18n/ja.wildTools";
+import { jaMcp } from "../i18n/ja.mcp";
 
 /** メニューに出すショートカットキー（`app/keymap.ts` の表の今のキーから作る。#392）。 */
 export interface Shortcut {
@@ -160,6 +162,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "view.townMap", label: jaTownMini.menu, enable: "rom" },
         // 履歴の窓（Phase5 #402。ZigzaguMap 独自）
         { id: "view.history", label: jaCommands.menu, enable: "rom" },
+        // ミニマップの小窓（Phase7 #511。ZigzaguMap 独自。既定オフ）
+        { id: "view.minimap", label: jaMinimap.menu, enable: "rom" },
         {
           label: ja.mapSize,
           accel: "M",
@@ -207,6 +211,17 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
         { id: "opt.watchProject", label: jaProjectWatch.menu },
         // 利用者の JavaScript のスクリプト（Phase5 #405。ZigzaguMap 独自）
         { id: "scripts.manage", label: jaUserScript.menu, enable: "rom" },
+        // MCP の窓口（Phase7 #521。ZigzaguMap 独自。既定はどれもオフ）
+        {
+          label: jaMcp.menu,
+          children: [
+            { id: "mcp.bridge", label: jaMcp.bridge },
+            sep,
+            { id: "mcp.allowWrite", label: jaMcp.allowWrite },
+            { id: "mcp.allowExport", label: jaMcp.allowExport },
+            { id: "mcp.allowScripts", label: jaMcp.allowScripts },
+          ],
+        },
         {
           label: ja.recentSettings,
           accel: "Z",

@@ -1,5 +1,5 @@
 import type { App } from "../App";
-import { PAINT_TOOLS, currentTool, setPaintTool, setSmartPath, toPaintTool } from "../paintTool";
+import { PAINT_TOOLS, brushSetting, currentTool, setBrush, setPaintTool, setSmartPath, toPaintTool } from "../paintTool";
 import { int, optStr, settle, waitAtMost, type AutomationRequest, type CommandTable } from "./registry";
 import { listDialogs } from "./dialogs";
 import { describeSelection } from "./status";
@@ -8,7 +8,9 @@ import { describeSelection } from "./status";
  * 描く道具（Phase5 列 1）。
  * - `tool.state`: 今の道具 `tool`（`pencil` / `fill` / `shift`）、スマートパス `smartPath`（設定）と、今の選択で使えるか `smartPathReady`、
  *   帯のボタンの状態 `buttons`（`tools.map.<道具>` の押されているもの）。
- * - `tool.set {tool?, smartPath?}`: 道具とスマートパスを変える（帯のボタン・N・B・S と同じ。個人設定に覚える）。
+ *   ブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今のタブで使うか `brushActive`（`map` / `movement`。Phase7 #515）。
+ * - `tool.set {tool?, smartPath?, brushSize?, brushShape?}`: 道具・スマートパス・ブラシを変える（帯のボタン・欄・N・B・S・`[` `]` と同じ。
+ *   個人設定に覚える。大きさは 1〜9 に収める）。
  * - `tool.fill {cell: [x, y], magic?, tab?}`: 今のタブ（`tab` で `map` / `movement` を選べる）で塗りつぶし（`magic: true` でマジック塗り）を
  *   1 回行う。座標は画面のマス（主マップの左上が原点。隣の帯の上も指せる）。道具の設定は変えない。返事の `count` は塗ったマスの数。
  * - `tool.shift {dx, dy}`: 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド）。
@@ -27,6 +29,9 @@ function state(app: App): unknown {
     tool: currentTool(app.state),
     smartPath: app.state.settings.data.smartPath,
     smartPathReady: app.tools.mapTab.painter.smartPath.current() !== null,
+    brushSize: brushSetting(app.state).size,
+    brushShape: brushSetting(app.state).shape,
+    brushActive: { map: app.tools.mapTab.painter.currentBrush() !== null, movement: app.tools.movementTab.painter.currentBrush() !== null },
     buttons: PAINT_TOOLS.map((p) => p.id).filter((id) => document.querySelector(`[data-auto-id="tools.map.${id}"]`)?.classList.contains("active")),
     strips: { map: t.mapStrip.element.isConnected, movement: t.movementStrip.element.isConnected },
   };
@@ -39,6 +44,11 @@ async function set(app: App, req: AutomationRequest): Promise<unknown> {
     setPaintTool(app.state, toPaintTool(tool));
   }
   if (typeof req["smartPath"] === "boolean") setSmartPath(app.state, req["smartPath"]);
+  const size = req["brushSize"];
+  const shape = optStr(req, "brushShape");
+  if (shape !== null && shape !== "square" && shape !== "circle") throw new Error(`brushShape は square / circle です: ${shape}`);
+  if (size !== undefined && typeof size !== "number") throw new Error("brushSize は 1〜9 の数です");
+  setBrush(app.state, { ...(typeof size === "number" ? { size } : {}), ...(shape ? { shape } : {}) });
   await settle();
   return state(app);
 }
