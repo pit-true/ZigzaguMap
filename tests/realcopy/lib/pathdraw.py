@@ -46,7 +46,11 @@ def pathdraw_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log_d
         z.open_fixture(fx)
         z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
         z.call({"cmd": "tab", "name": "event"})
-        z.call({"cmd": "script.setLabel", "target": "person", "index": 0, "label": "ZzPathMain"})
+        # 新しいラベルを足す .s はイベントのラベルから決まる。ラベルが無いマップ（ND の 3.0）だけ人 0 に付ける
+        # （Chronos は 3.0 の人のスクリプトをビルドで確かめるので、付け替えない）
+        labels = z.call({"cmd": "script.labels", "bank": BANK, "map": MAP})
+        if not labels["person"] and not labels["sign"] and not labels["tile"]:
+            z.call({"cmd": "script.setLabel", "target": "person", "index": 0, "label": "ZzPathMain"})
 
         # 1. applymovement の行から: 置き換える
         line = SOURCE.splitlines().index("\tapplymovement 0xFF ZzPath_Walk")
