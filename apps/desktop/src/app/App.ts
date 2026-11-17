@@ -268,6 +268,13 @@ export class App implements ActionTarget {
       placeTemplate: (x, y) => void events.placeTemplate(x, y),
       canPlaceTemplate: () => this.state.session?.projectDir != null,
       placePlayer: (x, y) => this.playback.placePlayer(x, y),
+      notGlobal: async (labels) => {
+        const session = this.state.session;
+        if (!session?.projectDir) return [];
+        const { ScriptLocator } = await import("../ui/script/ScriptLocator");
+        const index = await new ScriptLocator(this, session.files).scriptIndex();
+        return labels.filter((label) => { const found = index.findLabel(label); return found !== undefined && !found.global; });
+      },
       drawPath: (index) => void this.playback.drawPathFrom(index).catch(error => state.setStatus(errorText(error), undefined, true)),
       placeItemBall: (x, y) => void events.placeItemBall(x, y),
       summaries: () => events.eventSummaries(),
@@ -601,6 +608,14 @@ export class App implements ActionTarget {
   }
 
   /** イベントタブで選んでいるイベントを複製する（Ctrl+D。#399）。 */
+  /** イベントタブのコピー・切り取り・貼り付け（#519。Ctrl+C・X・V）。 */
+  eventClipboard(action: "copy" | "cut" | "paste"): void {
+    const clipboard = this.eventTab.clipboard;
+    if (action === "copy") clipboard.copy();
+    else if (action === "cut") clipboard.cut();
+    else clipboard.startPaste();
+  }
+
   duplicateSelectedEvents(): void {
     this.eventTab.duplicateSelected();
   }

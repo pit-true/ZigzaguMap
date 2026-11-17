@@ -71,11 +71,11 @@ def main() -> int:
         z.call({"cmd": "mouse", "target": "event", "cell": [p["x"], p["y"]], "action": "rightClick"})
         menu = z.call({"cmd": "contextMenu.state"})
         ids = [i["id"] for i in menu["items"]] if menu else []
-        # 先頭が「イベントを削除」「スクリプトを開く」（Phase5 #399）「スクリプトを再生」（#454）「ここから道をなぞる…」（#518）「複製」。
+        # 先頭が「イベントを削除」「スクリプトを開く」（Phase5 #399）「スクリプトを再生」（#454）「ここから道をなぞる…」（#518）「複製」「コピー」「切り取り」（#519）。
         # そのあとは「ここに○○を追加」（#304）と「ここに仮の主人公を置く」（#457）だけで、プロジェクトフォルダが要る項目
         # （トレーナーを編集・ここにひな形を置く・落とし物）は出ない
-        check(ids[:5] == ["delete", "openScript", "playScript", "drawPath", "duplicate"] and ids[5:] == ["add.person", "add.sign", "add.trap", "add.warp", "placePlayer"],
-              f"人の箱の右クリックで「イベントを削除」「スクリプトを開く」「スクリプトを再生」「ここから道をなぞる…」「複製」と「ここに○○を追加」「ここに仮の主人公を置く」が出る（{ids}）")
+        check(ids[:7] == ["delete", "openScript", "playScript", "drawPath", "duplicate", "copy", "cut"] and ids[7:] == ["add.person", "add.sign", "add.trap", "add.warp", "placePlayer"],
+              f"人の箱の右クリックで「イベントを削除」「スクリプトを開く」「スクリプトを再生」「ここから道をなぞる…」「複製」「コピー」「切り取り」と「ここに○○を追加」「ここに仮の主人公を置く」が出る（{ids}）")
         check(z.call({"cmd": "event.state"})["kind"] == "person" and z.call({"cmd": "event.state"})["index"] == 0, "右クリックした人が選ばれる")
         shot(z, shots, "delete-1-context-menu.png")
         r = z.call({"cmd": "contextMenu.press", "id": "delete"})

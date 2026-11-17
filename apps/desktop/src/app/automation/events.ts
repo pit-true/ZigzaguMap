@@ -123,6 +123,26 @@ export const eventCommands: CommandTable = {
     const ok = tab.duplicateSelected();
     return { ok, status: app.state.status.left, selected: tab.selectedEvents(), counts: tab.counts() };
   },
+  // コピー・切り取り・貼り付け（Phase7 #519。Ctrl+C・X・V と同じ）。切り取りは削除の確認のダイアログを出したまま返す
+  "event.copy": (app) => {
+    const tab = eventTab(app);
+    return { count: tab.clipboard.copy(), clipboard: tab.clipboard.describe(), status: app.state.status.left };
+  },
+  "event.cut": async (app) => {
+    const tab = eventTab(app);
+    const count = tab.clipboard.cut();
+    for (let i = 0; i < 200 && count > 0 && !openDialogs.length; i++) await settle(25);
+    return { count, clipboard: tab.clipboard.describe(), dialogs: openDialogs.map((d) => ({ title: d.title, text: d.text, buttons: d.buttons })) };
+  },
+  // `x`・`y` があればそのマスを左上にして貼る（右クリックの「ここに貼り付け」と同じ）。無ければ影をマウスに付けて待つ（Ctrl+V と同じ）
+  "event.paste": async (app, req) => {
+    const tab = eventTab(app);
+    let ok: boolean | null = null;
+    if (typeof req["x"] === "number" && typeof req["y"] === "number") ok = tab.clipboard.pasteAt(int(req, "x"), int(req, "y"));
+    else tab.clipboard.startPaste();
+    await settle(50);
+    return { ok, status: app.state.status.left, statusError: app.state.status.error ?? false, selected: tab.selectedEvents(), counts: tab.counts(), clipboard: tab.clipboard.describe() };
+  },
   // 選んでいるものを削除する（#399。Delete キーと同じ）。`confirm: false` なら確かめずに消し、そうでなければダイアログを出したまま返す
   "event.deleteSelected": async (app, req) => {
     const tab = eventTab(app);

@@ -96,6 +96,10 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   ].map(([id, chord, label]) => ({ id, defaults: [chord], areas: ["playback"], label, where: jaPlayback.shortcutWhere }) as KeyAction),
   { id: "event.delete", defaults: [k("DELETE")], areas: ["event"], label: jaEventDelete.shortcut, where: jaEventDelete.shortcutWhere },
   { id: "event.duplicate", defaults: [c("D")], areas: ["event"], label: jaEventMulti.shortcutDuplicate, where: jaEventMulti.shortcutWhere },
+  // イベントのコピー・切り取り・貼り付け（Phase7 #519）
+  { id: "event.copy", defaults: [c("C")], areas: ["event"], label: jaEventMulti.shortcutCopy, where: jaEventMulti.shortcutWhere },
+  { id: "event.cut", defaults: [c("X")], areas: ["event"], label: jaEventMulti.shortcutCut, where: jaEventMulti.shortcutWhere },
+  { id: "event.paste", defaults: [c("V")], areas: ["event"], label: jaEventMulti.shortcutPaste, where: jaEventMulti.shortcutWhere },
   { id: "stamp.copy", defaults: [c("C")], areas: ["map"], label: jaPaint.shortcutCopy, where: jaPaint.shortcutWhere },
   { id: "stamp.paste", defaults: [c("V")], areas: ["map"], label: jaPaint.shortcutPaste, where: jaPaint.shortcutWhere },
   { id: "drag.cancel", defaults: [k("ESCAPE")], areas: ["map", "movement"], label: jaShortcutEdit.dragCancel, where: jaTools.shortcutToolWhere },
