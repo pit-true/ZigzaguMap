@@ -37,6 +37,7 @@ import { playbackCommands } from "./playback";
 import { animationCommands } from "./animation";
 import { weatherCommands } from "./weather";
 import { npcCommands } from "./npc";
+import { pathDrawCommands } from "./pathDraw";
 import { errorText } from "../../util/errors";
 
 /** Rust から届く要求。 */
@@ -82,6 +83,7 @@ const registry: CommandRegistry = new CommandRegistry([
   animationCommands,
   weatherCommands,
   npcCommands,
+  pathDrawCommands,
   { commands: () => registry.names() },
 ]);
 
