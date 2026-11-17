@@ -37,6 +37,13 @@
 #                   人物の移動範囲と視界をオンにし、仮の主人公と連れ歩きを置き、夜にして、人 0 のスクリプトを 4 倍で最後まで
 #                   再生した後（再生中）と、再生を止めて全部を戻した後。CPU（exe と WebView2 の合計、論理コア 1 つ = 100%）も
 #                   「どれもオフ」「人物を動かすだけ」「仮の主人公も」「全部オフに戻した後」で -CpuSeconds 秒ずつ測る（-Project が要る）
+#   Phase7 の仕上げ（#534）で足したもの（all には入らない。phase7 で 6 つ全部）:
+#     minimap  … 表示 > ミニマップ を開き、タウンマップも出した状態と、両方を戻して閉じた後
+#     brush    … 鉛筆のブラシを 9・円にして 3.0 に描き、戻してブラシも 1・正方形に戻した後（メモリの上だけ）
+#     pathdraw … 道をなぞる窓を主人公で開き、10 歩なぞった状態と、窓を閉じた後（-Project が要る）
+#     search   … スクリプトエディタの全ファイル検索で「msgbox」を探した状態と、エディタを閉じた後（-Project が要る）
+#     mcp      … 設定 > MCP の窓口 > MCP の窓口を開く をオンにした状態と、オフに戻した後
+#     gifanim  … 3.0 のタイルアニメの GIF を一時フォルダに書き出し、窓を閉じた後
 # - -BlockStats を付けると、ブロックエディタを開いた後に 表示 > 使用回数・未使用のブロック・未使用のタイル（#395）をオンにして数えた後も測る。
 # - -WildSearch を付けると、ブロックエディタを開く前に ツール > 野生ポケモンの検索…（#398）でポッポを探した後と、窓を閉じた後も測る。
 # - -Baseline を付けると、-Exe に渡した「WebView2 の空のウィンドウだけを開く Tauri アプリ」（tools/webview-baseline）の値を測る
@@ -199,6 +206,9 @@ try {
         $extra = @("zoom8", "assist", "transplant", "pointers", "triple", "autopen", "tools", "export")
         if ($Project) { $extra += "userscripts" }
         $extra += $rest
+      }
+      if ($extra -contains "phase7") {
+        $extra = @($extra | Where-Object { $_ -ne "phase7" }) + @("minimap", "brush", "pathdraw", "search", "mcp", "gifanim")
       }
       foreach ($st in $extra) {
         switch ($st) {
@@ -413,6 +423,67 @@ try {
               if (-not $hadDir) { Remove-Item -Recurse -Force $sdir -ErrorAction SilentlyContinue }
               if ($null -ne $configBefore) { [IO.File]::WriteAllBytes($config, $configBefore) } elseif (Test-Path $config) { Remove-Item -Force $config }
             }
+          }
+          "minimap" {
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            Call @{ cmd = "action"; id = "view.minimap" } | Out-Null
+            Call @{ cmd = "minimap.state"; rebuild = $true } | Out-Null
+            Call @{ cmd = "minimap.town"; on = $true } | Out-Null
+            $results += Get-Snapshot "ミニマップ（タウンマップも）を開いた状態" $proc.Id
+            Call @{ cmd = "minimap.town"; on = $false } | Out-Null
+            Call @{ cmd = "action"; id = "view.minimap" } | Out-Null
+            $results += Get-Snapshot "ミニマップを閉じた後" $proc.Id
+          }
+          "brush" {
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            $h0 = (Call @{ cmd = "editHistory.state" }).position
+            Call @{ cmd = "tool.set"; tool = "pencil"; brushSize = 9; brushShape = "circle" } | Out-Null
+            Call @{ cmd = "selectBlock"; block = 0x0D } | Out-Null
+            Call @{ cmd = "mouse"; target = "map"; action = "drag"; cell = @(4, 4); to = @(16, 14); steps = 8 } | Out-Null
+            Call @{ cmd = "editHistory.goTo"; position = $h0 } | Out-Null
+            Call @{ cmd = "tool.set"; brushSize = 1; brushShape = "square" } | Out-Null
+            $results += Get-Snapshot "大きいブラシで描いて戻した後" $proc.Id
+          }
+          "pathdraw" {
+            if (-not $Project) { throw "pathdraw には -Project が要ります" }
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            Call @{ cmd = "tab"; name = "event" } | Out-Null
+            Call @{ cmd = "pathDraw.open"; start = @{ x = 10; y = 10; facing = "down" } } | Out-Null
+            foreach ($d in @("down", "down", "right", "right", "right", "up", "up", "left", "left", "down")) { Call @{ cmd = "pathDraw.step"; direction = $d } | Out-Null }
+            $results += Get-Snapshot "道をなぞる窓で 10 歩なぞった状態" $proc.Id
+            Call @{ cmd = "pathDraw.close" } | Out-Null
+            Call @{ cmd = "tab"; name = "map" } | Out-Null
+            $results += Get-Snapshot "道をなぞる窓を閉じた後" $proc.Id
+          }
+          "search" {
+            if (-not $Project) { throw "search には -Project が要ります" }
+            $first = Get-ChildItem -Path (Join-Path $Project "assembly\overworld_scripts") -Filter *.s | Sort-Object Name | Select-Object -First 1
+            Call @{ cmd = "script.open"; path = ("assembly/overworld_scripts/" + $first.Name) } | Out-Null
+            Wait-Window "script-editor"
+            $found = Call @{ cmd = "search.project"; window = "script-editor"; text = "msgbox" }
+            Write-Host ("全ファイル検索: {0} 件、{1} ファイルを {2} ms" -f $found.count, $found.scanned, [math]::Round($found.ms))
+            $results += Get-Snapshot "全ファイル検索をした状態（スクリプトエディタを開いたまま）" $proc.Id
+            Call @{ cmd = "close"; window = "script-editor" } | Out-Null
+            Wait-Window "script-editor" $false
+            $results += Get-Snapshot "全ファイル検索をしてスクリプトエディタを閉じた後" $proc.Id
+          }
+          "mcp" {
+            Call @{ cmd = "action"; id = "mcp.bridge" } | Out-Null
+            $results += Get-Snapshot "MCP の窓口をオンにした状態" $proc.Id
+            Call @{ cmd = "action"; id = "mcp.bridge" } | Out-Null
+            $results += Get-Snapshot "MCP の窓口をオフに戻した後" $proc.Id
+          }
+          "gifanim" {
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            $dir = Join-Path $profile "export"
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Call @{ cmd = "action"; id = "image.export" } | Out-Null
+            Call @{ cmd = "mapExport.state" } | Out-Null
+            Call @{ cmd = "queuePath"; path = (Join-Path $dir "anim.gif") } | Out-Null
+            $gif = Call @{ cmd = "mapExport.run"; action = "gif-anim" }
+            if ($gif) { Write-Host ("タイルアニメの GIF: {0} コマ、{1} バイト" -f $gif.frames, $gif.bytes) }
+            Call @{ cmd = "dialog"; press = "close" } | Out-Null
+            $results += Get-Snapshot "タイルアニメの GIF を書き出した後" $proc.Id
           }
           default { throw "知らない場面です: $st" }
         }
