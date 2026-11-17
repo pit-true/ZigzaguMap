@@ -29,6 +29,7 @@ import type { Actions } from "./Actions";
 import type { EditorState } from "./EditorState";
 import type { MapExtras } from "./mapExtras";
 import { SeamWarnings } from "./neighbors/SeamWarnings";
+import { LayerToggles } from "./LayerToggles";
 
 /** ViewFeatures が使う画面の部品（App が渡す）。 */
 export interface ViewFeatureParts {
@@ -81,6 +82,8 @@ export class ViewFeatures {
   private minimapCreated: MinimapPanel | null = null;
   /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
   readonly userScripts: UserScriptHost;
+  /** レイヤーごとの表示（Phase7 #513。表示 > レイヤーの表示）。 */
+  readonly layers: LayerToggles;
   /** 自動操作のときにクリップボードの代わりに書いた文字（最後の 1 つ）。 */
   lastCopied: string | null = null;
 
@@ -89,6 +92,10 @@ export class ViewFeatures {
     this.seams = new SeamWarnings(state);
     this.seamNotice = new SeamNotice(state, this.seams, extras.neighborLayers.map);
     statusBar.addSlot(this.seamNotice.element);
+    this.layers = new LayerToggles(state, actions, {
+      rebuildNeighbors: () => extras.neighbors.schedule(false),
+      addStatusSlot: (element) => statusBar.addSlot(element),
+    });
     actions.registerCheck("view.townMap", () => state.settings.data.showTownMap);
     actions.register("view.townMap", () => this.setTownMap(!state.settings.data.showTownMap));
     actions.register("tools.pointers", async () => (await this.pointers()).open());
