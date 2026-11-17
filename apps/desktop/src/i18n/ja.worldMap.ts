@@ -55,7 +55,9 @@ export const jaWorldMap = {
   /** フライト値が無い位置で「このマップを開く」（AdvanceMap の F09-11）。 */
   readAtZero: "AdvanceMapError(1): Try to read at pos 0! Please contakt luhopoke@gmail.com",
   /** ZigzaguMap 独自: ルーチンの変更は ROM を書き換えないので何もしない。 */
-  routineNotNeeded: "ZigzaguMap は ROM を書き換えずに人IDとトップレイヤーの位置を読み書きします。ルーチンの変更はビルドのときに regionmap.json の値から行います。",
+  routineNotNeeded: "ZigzaguMap は ROM を書き換えずに人IDとトップレイヤーの位置を読み書きします。人IDは、対応しているプロジェクトのビルドが regionmap.json の値から書きます。",
+  /** ZigzaguMap 独自: 開いているプロジェクトのビルドが人ID（訪問フラグ）を ROM へ書かない（#499）。 */
+  flagNotInGame: "人ID: このプロジェクトでは、ゲームに反映されません",
   /** ZigzaguMap 独自: マップが無い。 */
   mapNotFound: (bank: number, map: number) => `マップ ${bank}.${map} はありません`,
   /** ZigzaguMap 独自: 読み込めない。 */

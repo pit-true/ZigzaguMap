@@ -13,6 +13,7 @@ ZigzaguMap が書くファイルを CFRU-JP のビルドで使うための、ビ
 | `patches/map_project-trainers-chronos.patch` | Chronos の `cfru/scripts/map_project.py` | 同じ（改行は CRLF のまま） |
 | `patches/map_project-pillow-nd.patch`、`patches/map_project-pillow-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py` | `maps/tilesets/*/tiles.png` を読むときに、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow の読み込みが失敗するのを避ける（#314・#317。改行は CRLF のまま） |
 | `patches/map_project-regionmap-nd.patch`、`patches/map_project-regionmap-chronos.patch` | ND の `scripts/map_project.py`、Chronos の `cfru/scripts/map_project.py`（trainers のパッチのあと） | `maps/regionmap.json` のタウンマップの表を ROM の表へ上書きする（#119。Chronos の版は改行が CRLF のまま） |
+| `patches/map_project-visitflags-chronos.patch` | Chronos の `cfru`（`hooks`・`repoints`・`src/town_map_flags.c`・`scripts/map_project.py`。regionmap のパッチのあと） | タウンマップの訪問フラグ（人ID）を表引きにするフックと、`maps/regionmap.json` の `MapVisitFlags`・`DungeonVisitFlags` の取り込み（#499。Chronos だけ。改行は CRLF のまま） |
 | `tests/check_cfru_tree.py` | | パッチを当てたフォルダを確かめる（読むだけ。一時フォルダで動かす） |
 
 Chronos の幅検査（`tools/check_text_width.py`）にも同じ複数行の規則を入れています。これは Chronos だけの道具なので、Chronos のリポジトリに直接入れました（パッチは置いていません）。
@@ -95,7 +96,7 @@ ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の
 | `Sizes` | `0xC4F1C`（0x3B8D00） | 110 件を u16 の幅・高さで書く |
 | `FlyDestinations` | `0xC648C`（FlyDestination。0x3B9A68） | 地名 0x58〜0xC3 の 108 件を、バンク・マップ・飛び先の番号の 3 バイトで書く |
 | `HealLocations` | `0xC0E74`・`0xC0E94`（GetWarpPosByMapID・GetWarpPosByNo。値は表の 8 バイト手前）と `0xC0E44`（表の先頭）。0x3B5944 | 20 件を、バンク・マップ（u8）、X・Y（s16）、`Unknown`（u16）で書く。`Unknown` の無い古いファイルは、末尾の 2 バイトを ROM のまま残す |
-| `MapVisitFlags`・`DungeonVisitFlags` | 書かない | 訪問フラグ（人ID）は表ではなく、GetMapState・GetCaveState の switch 文なので、取り込みは #499 で判断待ち。キーがあれば「注意: maps/regionmap.json の MapVisitFlags は未対応のキーです。訪問フラグ（人ID）は ROM へ取り込みません（ZigzaguMap #499）」をログに出し、ほかの表は書いてビルドを続ける |
+| `MapVisitFlags`・`DungeonVisitFlags` | ND: 書かない。Chronos: `0xC47C8`・`0xC4A64`（フックの直後に置いた表へのポインタ） | 訪問フラグ（人ID）は、素の ROM では表ではなく GetMapState・GetCaveState の switch 文。Chronos は表引きに置き換えたので、110 件の u16（null は 0xFFFF）で書く（下の「訪問フラグ（Chronos だけ。#499）」）。ND はキーがあれば「注意: maps/regionmap.json の MapVisitFlags は未対応のキーです。訪問フラグ（人ID）は ROM へ取り込みません（ZigzaguMap #499）」をログに出し、ほかの表は書いてビルドを続ける |
 
 次のときはビルドを止めます（`ValueError`。どのキーの何番目のどの値が悪いかを日本語で出す）。
 
@@ -107,6 +108,18 @@ ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の
 - 書く範囲が、このフォルダのパッチの一覧（`bytereplacement` など。`rom_erase.json` と同じ調べ方）が書く位置と重なる。`rom_erase.json` で埋めた範囲に書いたときも、今までどおり止まる。
 
 地名の名前は `regionmap.json` には無く、今までどおりマップの JSON のマップ名で書かれます。
+
+### 訪問フラグ（Chronos だけ。#499）
+
+ユーザーの返事（2026-11-17）で、Chronos だけ対応し、ND は対応しないことになりました。
+
+- 素の ROM の GetMapState（0x080C47C0）・GetCaveState（0x080C4A5C）は、地名番号ごとの switch 文です。フラグを見る case は GetMapState が 20、GetCaveState が 31。戻す値は 0 = SPACE（0xC5）、1 = ROAD（フラグの無い場所）、2 = ARRIVE（フラグが立っている）、3 = NOARRIVE（立っていない）。フラグのほかの条件を見ているのは、GetMapState の 0x63（4ばんどうろのポケモンセンター。空を飛ぶが使えない間は SPACE）だけです。
+- Chronos は `cfru/src/town_map_flags.c` で 2 つの関数を置き換えます（`hooks` で関数の先頭、r1）。表は u16 × 110（地名 0x58〜0xC5、フラグ無しは 0xFFFF）が 2 つで、初めの中身は素の ROM の switch 文と同じフラグです。`repoints` でフックの直後（0x080C47C8・0x080C4A64）に表へのポインタを置き、関数・`map_project.py`・ZigzaguMap は、このポインタから表を読み書きします。
+- 0x63 の条件は C の側に残しました。0x63 のフラグを変えても条件はそのままで、フラグだけが替わります。null にすると ROAD です。
+- `map_project.py` は、キーがあれば表を書きます。件数・`Id` の違い、`Flag` が `"0x0890"` の形でも null でもない、0x0001〜0x08FF の外、0xC5 にフラグがある、フックが無い（`0x080C47C0` が `ldr r1, [pc, #0]; bx r1` でない）ときは、ビルドを止めます。
+- Chronos の `tools/check_town_map_flags.py` は、ビルドした ROM の 2 つの関数を小さな Thumb の実行器で、地名番号 0x00〜0xFF のすべてについて、フラグと GetRegionMapPermission の結果の 4 通りで動かし、素の ROM（`--json` があれば人ID を JSON の値に替えたもの）と、戻す値・聞いたフラグが同じかを比べます。
+- ZigzaguMap は、関数の先頭がフックなら直後のポインタから表を読み、そうでなければ今までどおり switch 文から読みます。ワールドマップエディターは、開いているプロジェクトの `hooks` にこの 2 つのフックが無ければ、人ID の欄の下に「人ID: このプロジェクトでは、ゲームに反映されません」と出します（ROM だけを開いたときは欄の説明だけ）。
+- ゲームの中（エミュレータ）では確かめていません。確かめる手順は Chronos の docs/MAP_PROJECT.md の「タウンマップの訪問フラグ」にあります。
 
 ## 当て方
 
@@ -142,6 +155,12 @@ git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-
 git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-regionmap-chronos.patch   # Chronos の cfru
 ```
 
+訪問フラグ（#499）のパッチは Chronos だけで、regionmap のパッチのあとに `cfru` で当てます（`src/town_map_flags.c` を足し、`hooks`・`repoints`・`scripts/map_project.py` を直す）。
+
+```sh
+git -c core.autocrlf=false apply <ZigzaguMap>/build-support/patches/map_project-visitflags-chronos.patch   # Chronos の cfru
+```
+
 ND の差分ビルドは、`.string` より新しい `.o` を作り直しません。パッチを当てたあと、すでに複数行で書いた `.string` があるなら、その `.string` を保存し直すか `build` を消してからビルドしてください（Chronos のビルドは `scripts/string.py` の中身もキャッシュの鍵に入れているので、自動で作り直します）。
 
 当てたあとは次で確かめます（フォルダは読むだけです）。
@@ -165,7 +184,7 @@ ND と Chronos のフォルダの写しで行いました。
 
 - `regionmap.json` が無いとき、変更の前と後でビルドした ROM がバイト単位で同じ（Chronos は `build/Chronos.gba` をビルドし直して、ND は CFRU の全体のビルドと `scripts/insert.py` だけの作り直しの両方で比べた）。
 - ワールドマップエディターでマサラタウンの座標・幅/高さ・空を飛ぶの行き先・飛び先、人ID、カントーの基本レイヤーと 1〜3のしまのトップレイヤーのマスを変えて出力し（`python tests/realcopy/run.py --regionmap`）、ビルドすると、ROM の表が JSON のとおりになり、ファイルが無いときの ROM との違いは表の中の 8 バイトだけ。ポインタと人ID の switch 文は変わらない。できた ROM だけを開き直すと、ワールドマップエディターに同じ値が出る（人ID は元のまま）。ND は DPE まで通し、DPE の `test.gba` でも表が同じ。
-- 人ID があると、ビルドのログに「未対応のキー」の注意が出て、ビルドは続く。
+- 人ID があると、ND はビルドのログに「未対応のキー」の注意が出て、ビルドは続く。
 - 壊れた JSON、範囲外の値、16 進でない `Rows`、知らないキーで、`scripts/insert.py` が止まる（ND の写し）。ポインタの不一致、表を移した ROM、`bytereplacement` との重なりは `tests/check_cfru_tree.py` で確かめている。
 
 ## maps/tilesets の tiles.png と Pillow（map_project-pillow）

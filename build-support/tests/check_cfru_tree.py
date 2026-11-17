@@ -13,8 +13,10 @@
    and repoints the words before it that point into its first entry; a bad id, a duplicate or a long name stops the build.
 4. scripts/map_project.py: maps/regionmap.json writes the town map tables it has (Layouts, Positions, Sizes,
    FlyDestinations, HealLocations) where the pointers in the code point, and changes nothing else; HealLocations
-   without Unknown keep the last 2 bytes; MapVisitFlags / DungeonVisitFlags are not written (a warning); a broken
-   file, a value out of range, heal location pointers that disagree, or a table a patch list writes stops the build.
+   without Unknown keep the last 2 bytes; a broken file, a value out of range, heal location pointers that disagree,
+   or a table a patch list writes stops the build. MapVisitFlags / DungeonVisitFlags: without the visit flags patch
+   (ND) they are not written (a warning); with it (Chronos, #499) they are written into the tables the pointers after
+   the hooks of GetMapState / GetCaveState point to, and a bad flag, a flag on 0xC5 or a missing hook stops the build.
 Exit code 1 when a check fails.
 """
 import argparse
@@ -255,6 +257,8 @@ def check_regionmap(cfru, work, problems):
     flags = [{'Id': ids[i], 'Flag': None} for i in range(110)]
     source = {'Layouts': [{'Page': 'sevii45', 'Layer': 'dungeon', 'Rows': rows}], 'Positions': positions, 'Sizes': sizes,
               'FlyDestinations': fly, 'HealLocations': heal, 'MapVisitFlags': flags}
+    if getattr(module, 'REGION_FLAG_TABLES', None) is not None:   # Chronos: checked with a hooked ROM below
+        del source['MapVisitFlags']
     expect = bytearray(rom)
     expect[0x3B9540 + 330:0x3B9540 + 660] = bytes((x + y) & 0xFF for y in range(15) for x in range(22))
     for i in range(110):
@@ -273,7 +277,8 @@ def check_regionmap(cfru, work, problems):
     if out != bytes(expect):
         changed = [hex(i) for i in range(len(rom)) if out[i] != expect[i]]
         problems.append(f'maps/regionmap.json: the tables are written wrong or other bytes changed: {changed[:5]}')
-    if 'MapVisitFlags' not in log:
+    flag_tables = getattr(module, 'REGION_FLAG_TABLES', None)   # the visit flags patch (Chronos, #499)
+    if flag_tables is None and 'MapVisitFlags' not in log:
         problems.append('maps/regionmap.json: no warning for MapVisitFlags (not imported)')
     write_regionmap({'HealLocations': [dict(h, Unknown=0x1234) for h in heal]})
     out, _ = run()
@@ -313,8 +318,40 @@ def check_regionmap(cfru, work, problems):
     other[0xC0E74:0xC0E78] = (0x09000000).to_bytes(4, 'little')
     must_fail({'HealLocations': heal}, 'HealLocations', data=bytes(other))
     must_fail({'FlyDestinations': fly}, 'bytereplacement:1', files={'bytereplacement': '083B9A70 01\n'})
+    if flag_tables is not None:
+        check_visit_flags(run, must_fail, rom, ids, problems)
     os.remove('maps/regionmap.json')
     print('map_project.py (regionmap): checked')
+
+
+def check_visit_flags(run, must_fail, rom, ids, problems):
+    """Chronos (#499): MapVisitFlags / DungeonVisitFlags go to the tables after the hooks (ldr r1, [pc, #0]; bx r1)."""
+    hooked = bytearray(rom)
+    for hook, table in ((0xC47C0, 0x1100000), (0xC4A5C, 0x1100100)):
+        hooked[hook:hook + 4] = bytes((0x00, 0x49, 0x08, 0x47))
+        hooked[hook + 4:hook + 8] = (0x09000001).to_bytes(4, 'little')
+        hooked[hook + 8:hook + 12] = (0x08000000 + table).to_bytes(4, 'little')
+    hooked = bytes(hooked)
+    flags = [{'Id': ids[i], 'Flag': None if i % 3 else f'0x{0x800 + i:04X}'} for i in range(109)] + [{'Id': ids[109], 'Flag': None}]
+    caves = [{'Id': ids[i], 'Flag': '0x08FF' if i == 5 else None} for i in range(110)]
+    write_regionmap({'MapVisitFlags': flags, 'DungeonVisitFlags': caves})
+    out, log = run(hooked)
+    want = b''.join((0xFFFF if e['Flag'] is None else int(e['Flag'], 16)).to_bytes(2, 'little') for e in flags)
+    want_cave = b''.join((0xFFFF if e['Flag'] is None else int(e['Flag'], 16)).to_bytes(2, 'little') for e in caves)
+    if out[0x1100000:0x1100000 + 220] != want or out[0x1100100:0x1100100 + 220] != want_cave:
+        problems.append('maps/regionmap.json: the visit flag tables are written wrong')
+    changed = [hex(i) for i in range(len(rom)) if out[i] != hooked[i] and not (0x1100000 <= i < 0x1100000 + 220)
+               and not (0x1100100 <= i < 0x1100100 + 220)]
+    if changed:
+        problems.append(f'maps/regionmap.json: the visit flags changed other bytes: {changed[:5]}')
+    if 'MapVisitFlags' in log and '未対応' in log:
+        problems.append('maps/regionmap.json: a warning for MapVisitFlags although they are written')
+    must_fail({'MapVisitFlags': flags}, 'フック')   # no hook in the ROM
+    for bad, text in ((dict(flags[3], Flag='0x0900'), 'MapVisitFlags[3]'), (dict(flags[3], Flag='0x0000'), 'MapVisitFlags[3]'),
+                      (dict(flags[3], Flag=2192), 'MapVisitFlags[3]'), (dict(flags[3], Flag='0xZZ'), 'MapVisitFlags[3]')):
+        must_fail({'MapVisitFlags': flags[:3] + [bad] + flags[4:]}, text, data=hooked)
+    must_fail({'MapVisitFlags': flags[:109] + [dict(flags[109], Flag='0x0890')]}, 'MapVisitFlags[109]', data=hooked)
+    must_fail({'DungeonVisitFlags': caves[:10]}, '110', data=hooked)
 
 
 def main():

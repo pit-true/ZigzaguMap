@@ -6,6 +6,10 @@ import type { RegionMapDocument } from "./RegionMapDocument.js";
 import type { RegionMapGraphics } from "./RegionMapGraphics.js";
 import { RegionMapJson } from "./RegionMapJson.js";
 import { RegionMapReader, type RegionMapTableAddresses } from "./RegionMapReader.js";
+import { VisitFlagHook } from "./VisitFlagHook.js";
+
+/** 訪問フラグのフックを探すプロジェクトのファイル（CFRU の hooks）。 */
+const HOOKS_PATH = "hooks";
 
 /**
  * プロジェクトのタウンマップ（ベース ROM + maps\regionmap.json）。
@@ -22,6 +26,8 @@ export class RegionMapProject {
     readonly document: RegionMapDocument,
     readonly graphics: RegionMapGraphics,
     readonly addresses: RegionMapTableAddresses,
+    /** プロジェクトのビルドが人ID（訪問フラグ）を ROM へ書くか（`hooks` に Chronos のフックがある。#499）。ROM だけなら null。 */
+    readonly visitFlagsInGame: boolean | null,
   ) {
     this.savedJson = RegionMapJson.stringify(document, base);
   }
@@ -31,7 +37,8 @@ export class RegionMapProject {
     const data = RegionMapReader.read(rom, gameCode);
     let doc = data.document.clone();
     if (fs && (await fs.exists(REGION_MAP_PATH))) doc = RegionMapJson.parse(await fs.readText(REGION_MAP_PATH), data.document, REGION_MAP_PATH);
-    const project = new RegionMapProject(data.document, doc, data.graphics, data.addresses);
+    const hooks = fs && (await fs.exists(HOOKS_PATH)) ? await fs.readText(HOOKS_PATH) : null;
+    const project = new RegionMapProject(data.document, doc, data.graphics, data.addresses, fs ? VisitFlagHook.supportedBy(hooks) : null);
     // 飛び先の表は、イベントタブのフライトポジションの表（同じ ROM の表）とつなぐ。値はそちらを使い、
     // ファイルの内容と違えば（つなぐ前に控えた内容と比べて）未出力の変更になる。
     if (flyPositions) doc.linkHealLocations(flyPositions);

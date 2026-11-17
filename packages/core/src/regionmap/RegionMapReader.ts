@@ -14,6 +14,7 @@ import {
   REGION_MAP_PAGES,
 } from "./constants.js";
 import { FlagSwitchReader } from "./FlagSwitchReader.js";
+import { VisitFlagHook } from "./VisitFlagHook.js";
 import { RegionMapDocument, type RegionMapSnapshot } from "./RegionMapDocument.js";
 import { RegionMapGraphics, type RegionMapGraphicsSource } from "./RegionMapGraphics.js";
 
@@ -86,8 +87,9 @@ export class RegionMapReader {
     }
 
     const switches = new FlagSwitchReader(rom, a.eventFlagCheck);
-    const mapFlagMap = switches.read(a.mapFlagFunction);
-    const dungeonFlagMap = switches.read(a.dungeonFlagFunction);
+    // 表引きに置き換えた ROM（Chronos。#499）は表から、素の ROM は switch 文から読む。
+    const mapFlagMap = VisitFlagHook.read(rom, a.mapFlagFunction) ?? switches.read(a.mapFlagFunction);
+    const dungeonFlagMap = VisitFlagHook.read(rom, a.dungeonFlagFunction) ?? switches.read(a.dungeonFlagFunction);
     const flags = (m: Map<number, number>) => Array.from({ length: MAPSEC_COUNT }, (_, i) => m.get(MAPSEC_FIRST + i) ?? NO_FLAG);
 
     const namesAt = rom.pointer(a.nameTablePointer);

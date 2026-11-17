@@ -53,6 +53,15 @@
   font-weight: bold;
 }
 
+/* 人ID がゲームに反映されないときの注意（#499）。 */
+.wm-note {
+  color: var(--warn-text);
+}
+
+.wm-note[hidden] {
+  display: none;
+}
+
 .wm-link {
   color: var(--link-text);
   text-decoration: underline;

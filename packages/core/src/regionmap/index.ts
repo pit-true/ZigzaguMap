@@ -6,6 +6,7 @@ import { SetRegionSectionCommand } from "./commands/SetRegionSectionCommand.js";
 export { BPRJ_REGION_MAP, REGION_MAP_ADDRESSES, type RegionMapAddresses } from "./addresses.js";
 export * from "./constants.js";
 export { FlagSwitchReader } from "./FlagSwitchReader.js";
+export { VisitFlagHook } from "./VisitFlagHook.js";
 export {
   RegionMapDocument,
   layoutIndex,
