@@ -84,7 +84,15 @@ export class HelpViewer {
     buttons.append(close);
     frame.body.append(label, content, buttons);
     handleDialogKeys(frame, () => this.close());
-    frame.register({ title: ja.readMe, text: "", buttons: [ja.helpViewer.close], press: () => this.close() });
+    // 題は開いている文書のもの（ショートカット一覧なら「ショートカット一覧」）
+    frame.register({
+      get title() {
+        return frame.titleBar.querySelector("span")?.textContent ?? ja.readMe;
+      },
+      text: "",
+      buttons: [ja.helpViewer.close],
+      press: () => this.close(),
+    });
     this.frame = frame;
     this.content = content;
     this.label = label;

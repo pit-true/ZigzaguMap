@@ -100,7 +100,8 @@ export function createDialog(options: DialogOptions): DialogFrame {
       }
     },
     register(h) {
-      handle = { ...h, element: box, close: options.onClose };
+      // 題などを getter で渡したとき（中身が変わる窓）も、そのまま読めるよう写し方を保つ
+      handle = Object.defineProperties({ element: box, close: options.onClose }, Object.getOwnPropertyDescriptors(h)) as unknown as DialogHandle;
       openDialogs.push(handle);
     },
   };
