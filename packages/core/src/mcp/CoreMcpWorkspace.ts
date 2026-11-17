@@ -16,6 +16,8 @@ export interface CoreMcpWorkspaceOptions {
   readonly save?: () => Promise<{ readonly written: readonly string[]; readonly removed: readonly string[] }>;
   /** 出力が .s などスクリプトのファイルも書くか（省略すると書かない）。 */
   readonly exportTouchesScripts?: () => boolean;
+  /** 道具を動かす前に呼ぶ（使用中の印を読み直す）。 */
+  readonly beforeCall?: () => Promise<void>;
 }
 
 /**
@@ -101,6 +103,10 @@ export class CoreMcpWorkspace implements McpWorkspace {
 
   permissions(): McpPermissions {
     return this.options.permissions;
+  }
+
+  async refresh(): Promise<void> {
+    await this.options.beforeCall?.();
   }
 
   writeBlocked(): string | null {

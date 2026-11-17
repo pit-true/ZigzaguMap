@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { inflateSync } from "node:zlib";
 import type { ProjectFs } from "../project/ProjectFs.js";
 
@@ -54,7 +54,10 @@ export class NodeProjectFs implements ProjectFs {
     }
   }
 
+  /** プロジェクトフォルダの中のパスにする。絶対パスと `..` は断る（フォルダの外を読み書きしない。#522）。 */
   private resolve(path: string): string {
-    return join(this.root, ...path.split("/"));
+    const parts = path.split(/[\\/]/);
+    if (isAbsolute(path) || /^[A-Za-z]:/.test(path) || parts.includes("..")) throw new Error(`プロジェクトフォルダの外は指せません: ${path}`);
+    return join(this.root, ...parts);
   }
 }

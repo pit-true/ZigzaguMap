@@ -284,7 +284,7 @@ export const MCP_TOOLS: readonly McpToolDefinition[] = [
   // ---- 出力
   {
     name: "project_export",
-    description: "未出力の変更をプロジェクトフォルダの maps\\ へ出力する（ZigzaguMap のファイル > マップを出力 と同じ）。.s などスクリプトのファイルも書き換える出力は、別の許可が要る。",
+    description: "未出力の変更をプロジェクトフォルダの maps\\ へ出力する（ZigzaguMap のファイル > マップを出力 と同じ）。.s などスクリプトのファイルも書き換える出力は、別の許可が要る。画面なしの形（--rom・--project で起動）では、出力していない変更はサーバーを止めると消える。",
     kind: "export",
     inputSchema: schema(),
     scriptMethod: null,
