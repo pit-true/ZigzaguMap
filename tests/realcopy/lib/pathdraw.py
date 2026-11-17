@@ -1,6 +1,6 @@
 r"""道をなぞって .s に書く（--pathdraw。#518）。
 
-写しに確かめ用の .s を足し、3.0 の人 0 のスクリプトにする。
+写しに確かめ用の .s を足し、開いたマップ（ND は 3.0、Chronos は 3.1）のイベントにラベルが無ければ人 0 のスクリプトにする。
 - エディタの applymovement の行から道をなぞる窓を開き、移動データを 3 歩の道に置き換える
 - 人 0 の右クリックから道をなぞる窓を開き、新しいラベルの移動データを足す
 出力して写しでビルドし、できた ROM の移動データのバイト列が、なぞった道と同じことを確かめる。
@@ -15,7 +15,9 @@ from .builder import build_fixture
 from .fixtures import Fixture
 from .link import TextSnapshot, read_symbols
 
-BANK, MAP = 3, 0
+# Chronos のビルドは 3.0 の人 1 のスクリプト（時間の案内の女の子）を確かめるので、Chronos は 3.1、ND は 3.0（3.1 に人が居ない）
+def _map(fx: Fixture) -> tuple[int, int]:
+    return (3, 1) if fx.name == "chronos" else (3, 0)
 SCRIPT = "assembly/overworld_scripts/zz_pathdraw_test.s"
 SOURCE = """.text
 .thumb
@@ -44,10 +46,10 @@ def pathdraw_one(fx: Fixture, z: Zigzagu, check, log, timeout: int | None, log_d
     try:
         (fx.project_path / SCRIPT).write_bytes(SOURCE.encode("utf-8"))
         z.open_fixture(fx)
+        BANK, MAP = _map(fx)
         z.call({"cmd": "selectMap", "bank": BANK, "map": MAP})
         z.call({"cmd": "tab", "name": "event"})
-        # 新しいラベルを足す .s はイベントのラベルから決まる。ラベルが無いマップ（ND の 3.0）だけ人 0 に付ける
-        # （Chronos は 3.0 の人のスクリプトをビルドで確かめるので、付け替えない）
+        # 新しいラベルを足す .s はイベントのラベルから決まる。ラベルが無いときだけ人 0 に付ける
         labels = z.call({"cmd": "script.labels", "bank": BANK, "map": MAP})
         if not labels["person"] and not labels["sign"] and not labels["tile"]:
             z.call({"cmd": "script.setLabel", "target": "person", "index": 0, "label": "ZzPathMain"})
