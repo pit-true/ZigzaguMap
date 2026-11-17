@@ -96,9 +96,13 @@ export class BuildPanel {
     this.element.append(bar, body);
   }
 
+  /** 見せたとき（下の欄のタブを合わせる。#520）。 */
+  onShow: (() => void) | null = null;
+
   /** 欄を見せる。 */
   show(): void {
     this.element.hidden = false;
+    this.onShow?.();
   }
 
   /** 今の状態。 */

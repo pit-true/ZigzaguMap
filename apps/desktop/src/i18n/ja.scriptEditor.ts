@@ -46,3 +46,24 @@ export const jaScriptEditor = {
   noReply: "スクリプトエディタが応答しません",
   mainDirty: (count: number) => `スクリプトエディタに保存していないファイルが ${count} 件あります。保存しますか？`,
 };
+
+/** 全ファイル検索（Phase7 #520）の文言。 */
+export const jaProjectSearch = {
+  tabBuild: "ビルド",
+  tabSearch: "全ファイル検索",
+  placeholder: "全部の .s と .string から探す（Enter）",
+  run: "検索",
+  close: "閉じる",
+  caseSensitive: "大文字と小文字を区別",
+  regexp: "正規表現",
+  wholeWord: "単語単位",
+  scopeAll: ".s と .string",
+  scopeAsm: ".s だけ",
+  scopeString: ".string だけ",
+  searching: "探しています…",
+  result: (count: number, files: number, ms: number) => `${count} 行（${files} ファイル、${ms} ms）`,
+  truncated: (limit: number) => `。${limit} 件で止めました`,
+  none: "見つかりません",
+  badRegexp: (message: string) => `正規表現が正しくありません: ${message}`,
+  noProject: "プロジェクトフォルダを開いていないので探せません",
+} as const;

@@ -7,6 +7,8 @@ import { indexAsmFile, planStringBodyEdit, readApplyMovementLine } from "@zigzag
 import { showContextMenu } from "../../ui/ContextMenu";
 import { jaPlayback } from "../../i18n/ja.playback";
 import { jaPathDraw } from "../../i18n/ja.pathDraw";
+import { jaProjectSearch } from "../../i18n/ja.scriptEditor";
+import type { ProjectSearchPanel } from "./ProjectSearch";
 import { ja } from "../../i18n/ja";
 import { jaScriptEditor as t } from "../../i18n/ja.scriptEditor";
 import { jaScriptEditorAssist as ta } from "../../i18n/ja.scriptEditorAssist";
@@ -65,6 +67,9 @@ export class ScriptEditorWindow {
   readonly build: BuildPanel;
   /** プロジェクトフォルダ（絶対パス。hello で受け取る）。 */
   private projectDir: string | null = null;
+  /** 全ファイル検索の欄（#520。初めて開いたときに作る）。 */
+  private search: ProjectSearchPanel | null = null;
+  private readonly bottomTabs = document.createElement("div");
   /** 素の ROM のスクリプトのタブ（#206・#207）。 */
   private readonly roms: RomTabs;
   /** プロジェクトの知識（命令表・索引）。補助の機能が使う。 */
@@ -161,7 +166,18 @@ export class ScriptEditorWindow {
       projectDir: () => this.projectDir,
       openFile: (path, line) => void this.open(path, line),
     });
-    root.append(this.tabBar.element, this.roms.bar, body, this.build.element, bar);
+    // 下の欄のタブ（ビルドと全ファイル検索。#520）。全ファイル検索を初めて開くまでは出さない
+    this.bottomTabs.className = "se-bottom-tabs";
+    this.bottomTabs.hidden = true;
+    const tab = (id: string, text: string, run: () => void): HTMLButtonElement => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.dataset["autoId"] = id; b.addEventListener("click", run); return b;
+    };
+    this.bottomTabs.append(
+      tab("se.bottom.build", jaProjectSearch.tabBuild, () => this.build.show()),
+      tab("se.bottom.search", jaProjectSearch.tabSearch, () => void this.openProjectSearch(false)),
+    );
+    this.build.onShow = () => { if (this.search) this.search.element.hidden = true; this.markBottomTab("build"); };
+    root.append(this.tabBar.element, this.roms.bar, body, this.bottomTabs, this.build.element, bar);
     this.render();
   }
 
@@ -457,7 +473,8 @@ export class ScriptEditorWindow {
   private onKey(e: KeyboardEvent): void {
     if (e.defaultPrevented || !e.ctrlKey || e.altKey || openDialogs.length > 0) return;
     const key = e.key.toLowerCase();
-    if (key === "s" && !e.shiftKey) void this.save();
+    if (key === "f" && e.shiftKey) void this.openProjectSearch(true);
+    else if (key === "s" && !e.shiftKey) void this.save();
     else if (key === "b" && !e.shiftKey) void this.build.run();
     else if (key === "s" && e.shiftKey) void this.saveAllWithMessage();
     else if (key === "w" && !e.shiftKey) {
@@ -465,6 +482,41 @@ export class ScriptEditorWindow {
     } else if (key === "tab") this.cycle(e.shiftKey ? -1 : 1);
     else return;
     e.preventDefault();
+  }
+
+  /**
+   * 全ファイル検索の欄（#520。Ctrl+Shift+F）を出す。初めて開いたときに読み込む。withSelection なら選んでいる文字を入れる。
+   */
+  async openProjectSearch(withSelection: boolean): Promise<ProjectSearchPanel> {
+    if (!this.search) {
+      const { ProjectSearchPanel } = await import("./ProjectSearch");
+      this.search ??= new ProjectSearchPanel({
+        fs: this.project.fs,
+        hasProject: () => this.projectDir !== null,
+        openTexts: () => new Map(this.tabs.filter(tab => !tab.rom).map(tab => [tab.path, (tab === this.activeTab ? this.view.state : tab.state).doc.toString()] as const)),
+        open: async (path, line, range) => {
+          if (!(await this.open(path, line)) || !range) return;
+          const row = this.view.state.doc.line(Math.min(line, this.view.state.doc.lines));
+          this.view.dispatch({ selection: { anchor: row.from + range[0], head: Math.min(row.to, row.from + range[1]) }, scrollIntoView: true });
+        },
+      });
+      this.search.onHide = () => { this.bottomTabs.hidden = this.build.element.hidden; };
+      this.build.element.before(this.search.element);
+    }
+    const selection = this.view.state.selection.main;
+    const text = withSelection && !selection.empty ? this.view.state.sliceDoc(selection.from, selection.to).split(/\r?\n/)[0] : undefined;
+    this.build.element.hidden = true;
+    this.bottomTabs.hidden = false;
+    this.markBottomTab("search");
+    this.search.show(text);
+    return this.search;
+  }
+
+  /** 全ファイル検索の欄（開いていなければ null。自動操作）。 */
+  get projectSearch(): ProjectSearchPanel | null { return this.search; }
+
+  private markBottomTab(which: "build" | "search"): void {
+    for (const b of this.bottomTabs.querySelectorAll("button")) b.classList.toggle("active", b.dataset["autoId"] === `se.bottom.${which}`);
   }
 
   private cycle(step: number): void {

@@ -156,6 +156,7 @@ function scriptEditorKeys(): ShortcutRow[] {
     ["Alt+←", s.back],
     ["Ctrl+F", s.find],
     ["Ctrl+H", s.replace],
+    ["Ctrl+Shift+F", s.projectSearch],
     ["F3、Shift+F3", s.findNext],
     ["Ctrl+D", s.nextOccurrence],
     ["Ctrl+Shift+L", s.allOccurrences],
