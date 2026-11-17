@@ -38,7 +38,7 @@
 #                   再生した後（再生中）と、再生を止めて全部を戻した後。CPU（exe と WebView2 の合計、論理コア 1 つ = 100%）も
 #                   「どれもオフ」「人物を動かすだけ」「仮の主人公も」「全部オフに戻した後」で -CpuSeconds 秒ずつ測る（-Project が要る）
 #   Phase7 の仕上げ（#534）で足したもの（all には入らない。phase7 で 6 つ全部）:
-#     minimap  … 表示 > ミニマップ を開き、タウンマップも出した状態と、両方を戻して閉じた後
+#     minimap  … 表示 > ミニマップ（#542 から別ウィンドウ）を開いた状態、タウンマップも出した状態、両方を戻して閉じた後
 #     brush    … 鉛筆のブラシを 9・円にして 3.0 に描き、戻してブラシも 1・正方形に戻した後（メモリの上だけ）
 #     pathdraw … 道をなぞる窓を主人公で開き、10 歩なぞった状態と、窓を閉じた後（-Project が要る）
 #     search   … スクリプトエディタの全ファイル検索で「msgbox」を探した状態と、エディタを閉じた後（-Project が要る）
@@ -427,11 +427,16 @@ try {
           "minimap" {
             Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
             Call @{ cmd = "action"; id = "view.minimap" } | Out-Null
-            Call @{ cmd = "minimap.state"; rebuild = $true } | Out-Null
+            # #542 から別ウィンドウ（minimap.state に ready がある）。前の小窓の exe と同じ場面で測れるようにする
+            $mm = Call @{ cmd = "minimap.state"; rebuild = $true }
+            $separate = $null -ne $mm.PSObject.Properties["ready"]
+            if ($separate) { Wait-Window "minimap" }
+            $results += Get-Snapshot "ミニマップを開いた状態" $proc.Id
             Call @{ cmd = "minimap.town"; on = $true } | Out-Null
             $results += Get-Snapshot "ミニマップ（タウンマップも）を開いた状態" $proc.Id
             Call @{ cmd = "minimap.town"; on = $false } | Out-Null
             Call @{ cmd = "action"; id = "view.minimap" } | Out-Null
+            if ($separate) { Wait-Window "minimap" $false }
             $results += Get-Snapshot "ミニマップを閉じた後" $proc.Id
           }
           "brush" {

@@ -1,7 +1,7 @@
 import { SeamNotice } from "../ui/connection/SeamNotice";
 import type { TownMiniView } from "../ui/view/TownMiniView";
 import type { HistoryPanel } from "../ui/history/HistoryPanel";
-import type { MinimapPanel } from "../ui/minimap/MinimapPanel";
+import type { MinimapHost } from "../windows/minimap/MinimapHost";
 import type { MapView } from "../ui/map/MapView";
 import type { PointerDialog } from "../ui/pointer/PointerDialog";
 import type { EventTab } from "../ui/event/EventTab";
@@ -78,9 +78,9 @@ export class ViewFeatures {
   /** 履歴の窓（Phase5 #402。初めて出すときに作る）。 */
   private historyValue: Promise<HistoryPanel> | null = null;
   private historyCreated: HistoryPanel | null = null;
-  /** ミニマップの小窓（Phase7 #511。初めて出すときに読み込む）。 */
-  private minimapValue: Promise<MinimapPanel> | null = null;
-  private minimapCreated: MinimapPanel | null = null;
+  /** ミニマップの別ウィンドウの窓口（Phase7 #511、#542。初めて出すときに読み込む）。 */
+  private minimapValue: Promise<MinimapHost> | null = null;
+  private minimapCreated: MinimapHost | null = null;
   /** 利用者の JavaScript のスクリプト（Phase5 #405。有効なものがあるときだけ Worker を作る）。 */
   readonly userScripts: UserScriptHost;
   /** 書き出したあとの「フォルダを開く」（Phase7 #514。初めて書き出したときに作る）。 */
@@ -137,7 +137,7 @@ export class ViewFeatures {
       else panel.open();
       state.emit("view");
     });
-    // ミニマップの小窓（Phase7 #511。表示 > ミニマップ。既定オフ。前回出していたら ROM を開いたときに出す）
+    // ミニマップ（Phase7 #511。#542 から別ウィンドウ。表示 > ミニマップ。既定オフ。前回出していたら ROM を開いたときに出す）
     actions.registerCheck("view.minimap", () => this.minimapCreated?.isOpen ?? false);
     actions.register("view.minimap", () => this.setMinimap(!(this.minimapCreated?.isOpen ?? false)));
     state.on("session", () => {
@@ -225,37 +225,33 @@ export class ViewFeatures {
     return this.folderNoticeValue;
   }
 
-  /** ミニマップの小窓（作っていなければ作る。#511）。 */
-  minimap(): Promise<MinimapPanel> {
+  /** ミニマップの別ウィンドウの窓口（作っていなければ作る。#511、#542）。 */
+  minimap(): Promise<MinimapHost> {
     const { state, mapTab, movementTab, eventTab } = this.parts;
     const views: Partial<Record<string, MapView>> = { map: mapTab.view, movement: movementTab.view, event: eventTab.view };
-    return (this.minimapValue ??= import("../ui/minimap/MinimapPanel").then(
-      ({ MinimapPanel }) =>
-        (this.minimapCreated = new MinimapPanel(state, {
-          activeView: () => views[state.tab] ?? null,
-          views: () => [mapTab.view, movementTab.view, eventTab.view],
-          closed: () => {
-            state.settings.update({ minimap: { ...state.settings.data.minimap, show: false } });
-            state.emit("view");
-          },
-          moved: (left, top) => state.settings.update({ minimap: { ...state.settings.data.minimap, left, top } }),
-          townShown: () => state.settings.data.minimap.town === true,
-          setTownShown: (town) => state.settings.update({ minimap: { ...state.settings.data.minimap, town } }),
-          regionName: (region) => state.session?.catalog.regionNames.find(([id]) => id === region)?.[1] ?? null,
-          townLinks: () => this.townCreated?.store ?? null,
-        })),
+    return (this.minimapValue ??= import("../windows/minimap/MinimapHost").then(async ({ MinimapHost }) =>
+      (this.minimapCreated = await MinimapHost.create({
+        state,
+        activeView: () => views[state.tab] ?? null,
+        views: () => [mapTab.view, movementTab.view, eventTab.view],
+        closed: () => {
+          state.settings.update({ minimap: { ...state.settings.data.minimap, show: false } });
+          state.emit("view");
+        },
+        regionName: (region) => state.session?.catalog.regionNames.find(([id]) => id === region)?.[1] ?? null,
+        townLinks: () => this.townCreated?.store ?? null,
+      })),
     ));
   }
 
-  /** ミニマップの小窓を出す・隠す（個人設定に残す。#511）。 */
+  /** ミニマップの別ウィンドウを開く・閉じる（個人設定に残す。#511、#542）。 */
   async setMinimap(show: boolean): Promise<void> {
     const state = this.parts.state;
-    const saved = state.settings.data.minimap;
-    state.settings.update({ minimap: { ...saved, show } });
+    state.settings.update({ minimap: { ...state.settings.data.minimap, show } });
     if (show) {
-      if (state.session) (await this.minimap()).open(saved.left, saved.top);
+      if (state.session) await (await this.minimap()).open();
     } else if (this.minimapValue) {
-      (await this.minimapValue).close();
+      await (await this.minimapValue).close();
     }
     state.emit("view");
   }

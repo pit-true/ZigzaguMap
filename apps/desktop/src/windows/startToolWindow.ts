@@ -1,6 +1,7 @@
 import { SCRIPT_EDITOR_WINDOW } from "./script-editor/protocol";
 import { WORLD_MAP_WINDOW } from "./world-map/protocol";
 import { MAP_ASSIST_WINDOW } from "./map-assist/protocol";
+import { MINIMAP_WINDOW } from "./minimap/protocol";
 
 /** 別ウィンドウの中身を組み立てる関数（そのウィンドウのコードは、ここで初めて読み込む）。 */
 type ToolWindowStarter = (label: string, root: HTMLElement) => Promise<void>;
@@ -30,6 +31,11 @@ const TOOL_WINDOWS: Readonly<Record<string, ToolWindowStarter>> = {
   [MAP_ASSIST_WINDOW]: async (_label, root) => {
     const { MapAssistWindow } = await import("./map-assist/MapAssistWindow");
     await new MapAssistWindow(root).start();
+  },
+  // ミニマップ（Phase7 #511 を #542 で別ウィンドウにした）
+  [MINIMAP_WINDOW]: async (_label, root) => {
+    const { MinimapWindow } = await import("./minimap/MinimapWindow");
+    await new MinimapWindow(root).start();
   },
   // CodeMirror はここで初めて読み込む（メインの index.html の束には入れない）
   [SCRIPT_EDITOR_WINDOW]: async (_label, root) => {

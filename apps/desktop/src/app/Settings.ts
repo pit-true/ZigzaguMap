@@ -159,6 +159,7 @@ export interface SettingsData {
   /**
    * ミニマップの小窓（表示メニュー。既定オフ。Phase7 #511）。出すか `show`、窓の左上の位置（null なら右上）、
    * タウンマップの現在地のまわりの拡大も出すか `town`（小窓の中のチェック。既定オフ）。
+   * #542 で別ウィンドウにしてからは、位置と大きさは `toolWindows` の `minimap` に残し、`left`・`top` は使わない（前の個人設定を読めるように残す）。
    */
   minimap: { show: boolean; left: number | null; top: number | null; town?: boolean };
   /** MCP の窓口を開く（設定 > MCP の窓口。Phase7 #521。既定オフ）。オンの間だけ 127.0.0.1 で待ち受け、AppData に mcp.json を書く。 */
