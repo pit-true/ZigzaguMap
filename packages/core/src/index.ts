@@ -368,7 +368,7 @@ export { newTilesetCommand, newTilesetContent, newTilesetLimits, type NewTileset
 
 // 描画
 export { createImage, writeBgr555, type RgbaImage } from "./render/color.js";
-export { BLOCK_PIXELS, BlockRenderer, renderBlocks } from "./render/BlockRenderer.js";
+export { ALL_LAYERS, BLOCK_PIXELS, BlockRenderer, LAYER_BOTTOM, LAYER_THIRD, LAYER_TOP, renderBlocks } from "./render/BlockRenderer.js";
 export { MapRenderer, renderMap, type RenderableMap } from "./render/MapRenderer.js";
 export { THUMBNAIL_SIZE, blockAverageColors, renderThumbnail } from "./render/MapThumbnail.js";
 export { downscaleImage, downscaleSize } from "./render/ImageDownscale.js";

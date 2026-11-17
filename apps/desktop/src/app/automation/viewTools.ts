@@ -1,5 +1,6 @@
 import type { App } from "../App";
 import { int, num, type AutomationRequest, type CommandTable } from "./registry";
+import { LAYER_ITEMS } from "../LayerToggles";
 
 /**
  * Phase4 の表示・一覧・調査（列 3）の命令。
@@ -297,6 +298,25 @@ async function minimapTown(app: App, req: AutomationRequest): Promise<unknown> {
   return minimapState(app, {});
 }
 
+/**
+ * `view.layers {bottom?, top?, third?}`: レイヤーごとの表示（Phase7 #513）。渡した項目を true / false にして描き直す
+ * （表示 > レイヤーの表示 のチェックと同じ）。返事は今の `bottom`・`top`・`third` と、ステータスバーの文 `status`（全部出していれば null）。
+ */
+function viewLayers(app: App, req: AutomationRequest): unknown {
+  const toggles = app.views.layers;
+  let mask = toggles.mask;
+  for (const [name, bit] of LAYER_ITEMS) {
+    const v = req[name];
+    if (v === true) mask |= bit;
+    else if (v === false) mask &= ~bit;
+  }
+  toggles.set(mask);
+  const out: Record<string, unknown> = {};
+  for (const [name, bit] of LAYER_ITEMS) out[name] = (toggles.mask & bit) !== 0;
+  out["status"] = toggles.element.hidden ? null : toggles.element.textContent;
+  return out;
+}
+
 /** 最後に `projectWatch.check` で始めた調べ（自動操作用）。 */
 let watchRun: Promise<unknown> | null = null;
 let watchResult: unknown = null;
@@ -412,6 +432,7 @@ export const viewToolCommands: CommandTable = {
   },
   "mapExport.state": mapExportState,
   "mapExport.run": mapExportRun,
+  "view.layers": viewLayers,
   "minimap.state": minimapState,
   "minimap.click": minimapClick,
   "minimap.town": minimapTown,
