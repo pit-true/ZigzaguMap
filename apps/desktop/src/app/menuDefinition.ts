@@ -30,6 +30,8 @@ import { jaShortcutEdit } from "../i18n/ja.shortcutEdit";
 import { isKeyAction, keyText } from "./keymap";
 import { jaCommands } from "../i18n/ja.commands";
 import { jaMinimap } from "../i18n/ja.minimap";
+import { jaLayers } from "../i18n/ja.layers";
+import { LAYER_ITEMS, layerActionId } from "./LayerToggles";
 import { jaSettingsWindow } from "../i18n/ja.settingsWindow";
 import { jaProjectWatch } from "../i18n/ja.projectWatch";
 import { jaMapExport } from "../i18n/ja.mapExport";
@@ -144,6 +146,8 @@ export function buildMenu(recentItems: readonly MenuItem[], scriptItems: readonl
             { id: "neighbors.off", label: jaNeighbors.viewOff },
           ],
         },
+        // レイヤーごとの表示（Phase7 #513。ZigzaguMap 独自）: 外したレイヤーを描かない。起動したときはいつも全部オン
+        { label: jaLayers.menu, enable: "map", children: LAYER_ITEMS.map(([name]) => ({ id: layerActionId(name), label: jaLayers[name], enable: "map" as const })) },
         // 時間帯（Phase6 #434。ZigzaguMap 独自）: CFRU の昼夜の色で見せる。起動したときはいつも昼
         {
           label: jaTimeOfDay.menu,

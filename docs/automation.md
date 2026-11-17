@@ -136,6 +136,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `tree.rightClick` | `key`、`text`、または `bank` と `map` | マップの項目を右クリックしてメニューを出す（Phase5 #401）。項目は `contextMenu.state` で読み、`contextMenu.press` の `id`（`tree.open`・`tree.copyName`・`tree.copyId`・`tree.duplicate`）で押す。返事はその項目（`tree.list` と同じ形） |
 | `clipboard.last` | | 最後にコピーした文字（自動操作で起動したときはクリップボードへ書かず、ここに残す） |
 | `editHistory.state` | | 履歴の窓（Phase5 #402。窓を作っていなければ作るが、開きはしない）。`open`（出しているか）、`position`（今の位置。実行済みの操作の数）、`rows`（新しい順。`position`（押したときに移る位置）・`text`・`current`・`redo`（やり直せる分）。最後が「（最初の状態）」で `position` 0）。開く・閉じるは `action` の `view.history` |
+| `view.layers` | `bottom`・`top`・`third`（true / false。省略した項目は変えない） | レイヤーごとの表示（Phase7 #513）。渡した項目を変えて描き直す（表示 > レイヤーの表示 のチェックと同じ。メニューの ID は `view.layer.bottom`・`view.layer.top`・`view.layer.third`）。返事は今の `bottom`・`top`・`third` と、ステータスバーの文 `status`（全部出していれば null。部品は `status.layers`） |
 | `minimap.state` | `rebuild`（true で作り直しを待たずに作る）、`png`（true で縮小図の画像も返す） | ミニマップの小窓（Phase7 #511。窓を作っていなければ作るが、開きはしない）。`open`、縮小図の大きさ `width`・`height`、縮小の割合 `scale`（縮小図の画素 = マップの画素 × scale）、見えている範囲の枠 `frame`（縮小図の画素。マップを出すタブでなければ null）、作った回数 `builds`（開いてから）、作る時間 `buildMs`、イベントの点の数 `events`、個人設定 `setting`（`show`・`left`・`top`）、今のタブのスクロールの位置 `scroll`、`png`（data URL）。開く・閉じるは `action` の `view.minimap` |
 | `minimap.town` | `on`（true / false） | 小窓の「タウンマップも出す」の印を変える（個人設定に残す）。読み込んで描くまで待つ。返事は `minimap.state` と同じで、`town` は出していれば `loaded`・`frame`（今のマップの位置。`rect`（`page`・`x`・`y`・`width`・`height`）と出どころ `source`（`map`・`section`・`rom`））・`area`（出す範囲のマスと倍率 `scale`）・`text`（下の欄の文字）、出していなければ null |
 | `minimap.click` | `x`、`y`（縮小図の画素） | 縮小図を押す（その位置を表示の真ん中にスクロールする）。返事は `minimap.state` と同じ |
@@ -460,9 +461,11 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 | cmd | 引数 | 動作 |
 |---|---|---|
-| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`）、鉛筆のブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今使うか `brushActive`（`map`・`movement`。#515） |
-| `tool.set` | `tool`（`pencil` / `fill` / `shift`）、`smartPath`（true / false）、`brushSize`（1〜9）、`brushShape`（`square` / `circle`）。どれも省略可 | 道具・スマートパス・ブラシを変える（帯のボタンと欄、N・B・S・`[` `]` と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
+| `tool.state` | | 今の道具 `tool`（`pencil` / `fill` / `shift` / `select`。個人設定 `paintTool`）、スマートパスの設定 `smartPath`（個人設定 `smartPath`）と、今の選択で使えるか `smartPathReady`（3×3 のときだけ）、マップタブの帯で押されているボタン `buttons`、帯が画面にあるか `strips`（`map`・`movement`）、鉛筆のブラシ `brushSize`（1〜9）・`brushShape`（`square` / `circle`）と、今使うか `brushActive`（`map`・`movement`。#515） |
+| `tool.set` | `tool`（`pencil` / `fill` / `shift` / `select`）、`smartPath`（true / false）、`brushSize`（1〜9）、`brushShape`（`square` / `circle`）。どれも省略可 | 道具・スマートパス・ブラシを変える（帯のボタンと欄、N・B・S・M・`[` `]` と同じ。個人設定に覚える）。返事は `tool.state` と同じ |
 | `tool.fill` | `cell`（`[x, y]`。主マップの左上が原点。隣の帯の上も指せる）、`magic`（true でマジック塗り）、`tab`（`map` / `movement`。省略で表示中のタブ） | 塗りつぶしを 1 回行う（道具の設定は変えない）。返事の `count` は塗ったマスの数と、`selection` と同じもの |
+| `select.state` | `tab`（`map` / `movement`。省略で表示中のタブ） | 範囲の選択（#516）。今の選択 `rect`（`[x, y, 幅, 高さ]`。無ければ null） |
+| `select.move` | `rect`（`[x, y, 幅, 高さ]`）、`dx`、`dy`、`tab` | 矩形を選んで `dx`・`dy` だけ動かす（選択の道具でドラッグして離したのと同じ 1 回の操作。マップの端で止める）。道具の設定は変えない。返事は動かした量 `moved`（`[dx, dy]`。動かなければ null）、動かした後の選択 `rect` と、`selection` と同じもの |
 | `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
 | `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズの窓の OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
 | `tool.resizeDialog` | | 対話式リサイズの窓「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |

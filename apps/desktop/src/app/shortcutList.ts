@@ -92,6 +92,8 @@ function otherKeys(): ShortcutRow[] {
     tableRow("tool.pencil"),
     tableRow("tool.fill"),
     tableRow("tool.shift"),
+    tableRow("tool.select"),
+    { keys: keyText("drag.cancel"), action: jaTools.shortcutSelectCancel, where: jaTools.shortcutSelectWhere },
     tableRow("tool.brushSmaller"),
     tableRow("tool.brushLarger"),
     { keys: jaTools.shortcutMagicKeys, action: jaTools.shortcutMagic, where: jaTools.shortcutMagicWhere },

@@ -3,6 +3,7 @@ import type { EditorState } from "../app/EditorState";
 import { brushSetting, currentTool, pressKind, type Brush, type PressKind } from "../app/paintTool";
 import { ja } from "../i18n/ja";
 import type { Cell, MapView } from "../ui/map/MapView";
+import { BlockWriter } from "./BlockWriter";
 import { attachCellPointer } from "./CellPointer";
 import { MapCells } from "./MapCells";
 import type { CellRect } from "./paintPlans";
@@ -10,6 +11,7 @@ import { PreviewCanvas } from "./PreviewCanvas";
 import { fillArea, reportFill } from "./tools/FillTool";
 import { LineGuide } from "./tools/LineGuide";
 import { MovementRectTool } from "./tools/MovementRectTool";
+import { SelectMoveTool } from "./tools/SelectMoveTool";
 import { ShiftTool } from "./tools/ShiftTool";
 
 /** 移動許可の説明（[GehDaten]。無いものは ???）。 */
@@ -27,6 +29,7 @@ export function movementName(value: number): string {
  * シフトなら左ドラッグでマップシフト（ブロックと一緒に動く）。鉛筆で Shift を押しながら描くと直線（#389）。
  * ここはマウスの振り分けと鉛筆・拾う・座標の表示。矩形塗りは tools/MovementRectTool、押したときの振り分けは app/paintTool の pressKind。
  * Phase7 #515: 鉛筆のブラシの大きさ（2〜9）と形も使う（移動許可はいつも 1 つなので、大きさを変えればいつも効く）。
+ * Phase7 #516: 道具が選択なら、範囲を選んでブロックと移動許可を一緒に動かす（tools/SelectMoveTool。マップタブと同じ）。
  */
 export class MovementPainter {
   /** 画面のマスとマップのマスの対応（隣の帯は App が `cells.neighbors` を入れる）。 */
@@ -35,6 +38,8 @@ export class MovementPainter {
   private readonly rect: MovementRectTool;
   /** マップシフト（Phase5 #390）。 */
   readonly shift: ShiftTool;
+  /** 範囲を選んで動かす（Phase7 #516）。 */
+  readonly select: SelectMoveTool;
   /** 直線（Phase5 #389）。 */
   private readonly line = new LineGuide();
   /** 押したときに決めた操作（離すまで変えない）。 */
@@ -54,6 +59,8 @@ export class MovementPainter {
     const preview = new PreviewCanvas(view);
     this.shift = new ShiftTool(view, state, preview);
     this.rect = new MovementRectTool(state, preview, (r) => this.fill(r), redrawLayer);
+    // 範囲の移動はブロックも書くので、マップタブと同じ書き込み（3 層の次の番号を落とす所を含む）を使う
+    this.select = new SelectMoveTool(view, state, new BlockWriter(state, this.cells, preview, () => true), preview, "movement");
     attachCellPointer(
       view.stage,
       (e) => {
@@ -69,6 +76,7 @@ export class MovementPainter {
             this.cells.pressStart();
             this.fillAt(cell, g.ctrl);
           } else if (kind === "shift") this.shift.begin(cell, g.shift);
+          else if (kind === "select") this.select.begin(cell);
           else if (kind === "rect") this.rect.begin(cell);
           else if (kind === "pencil") {
             // ダブルクリックで隣のマップを開くとき、この押下で書いた分を取り消せるよう覚える
@@ -79,6 +87,7 @@ export class MovementPainter {
         },
         move: (cell, g, live) => {
           if (this.shift.active) return this.shift.move(cell, live.shift);
+          if (this.select.active) return this.select.move(cell);
           if (this.rect.active) return this.rect.move(cell);
           if (g.button === 0 && this.press === "pencil") for (const c of this.line.next(cell, live.shift)) this.paint(c, true);
         },
@@ -87,6 +96,10 @@ export class MovementPainter {
           this.line.end();
           this.press = null;
           if (this.shift.end()) {
+            this.redrawLayer();
+            return;
+          }
+          if (this.select.end(cell)) {
             this.redrawLayer();
             return;
           }

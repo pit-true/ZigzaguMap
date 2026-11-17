@@ -17,6 +17,7 @@ import type { NeighborView } from "../Settings";
 import { TilesetView } from "../TilesetView";
 import { timings } from "../timings";
 import { tintGeneration } from "../timeOfDay/activeTint";
+import { activeLayers } from "../layerVisibility";
 import { scheduleIdleGc } from "../../util/idleGc";
 import { tripleChildFlags } from "../../input/tripleRules";
 
@@ -193,7 +194,7 @@ export class NeighborService {
       const nd = docs.get(`${p.id.bank}.${p.id.map}`)!;
       const tilesKey = `${nd.primaryTileset >>> 0}:${nd.secondaryTileset >>> 0}`;
       const b = p.band;
-      const key = `${p.id.bank}.${p.id.map}|${tilesKey}|${this.tilesetGeneration}|t${tintGeneration()}|${b.x},${b.y},${b.width},${b.height}|${bandHash(nd.grid, b)}`;
+      const key = `${p.id.bank}.${p.id.map}|${tilesKey}|${this.tilesetGeneration}|t${tintGeneration()}|l${activeLayers()}|${b.x},${b.y},${b.width},${b.height}|${bandHash(nd.grid, b)}`;
       let bitmap = this.bands.get(key);
       if (bitmap) this.bands.delete(key);
       const same = main.tiles.key === tilesKey;
