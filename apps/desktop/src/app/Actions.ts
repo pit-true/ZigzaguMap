@@ -61,7 +61,6 @@ const TOGGLES: Readonly<Record<string, keyof SettingsData>> = {
   "view.clones": "showClones",
   "opt.rememberRomProject": "rememberRomProject",
   "opt.watchProject": "watchProject",
-  "view.paletteBoundary": "paletteBoundary",
   "view.treeThumbnails": "treeThumbnails",
 };
 
