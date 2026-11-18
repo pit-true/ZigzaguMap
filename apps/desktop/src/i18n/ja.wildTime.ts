@@ -8,8 +8,8 @@ export const jaWildTime = {
   /** 表の無い時間帯。 */
   missing: (name: string) => `${name}の表はありません。実機では、${name}も昼の表を使います（昼の表も無ければ野生は出ません）。`,
   createEmpty: "空の表を作る…",
-  copyDay: "昼の表を写して作る",
+  copyDay: "昼の表をコピーして作る",
   remove: "この時間帯の表を消す",
   removed: (name: string) => `${name}の表を消しました（実機では昼の表を使います）`,
-  copied: (name: string) => `昼の表を写して${name}の表を作りました`,
+  copied: (name: string) => `昼の表をコピーして${name}の表を作りました`,
 } as const;

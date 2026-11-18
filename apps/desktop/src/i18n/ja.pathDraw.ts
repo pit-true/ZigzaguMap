@@ -34,7 +34,7 @@ export const jaPathDraw = {
   badLabel: (label: string) => `ラベルに使えない名前です: ${label}`,
   labelTaken: (label: string) => `ラベル ${label} はもうあります。別の名前にしてください。`,
   noMapScript: (bank: number, map: number) => `マップ ${bank}.${map} の .s が分かりません（maps\\scripts.json の行も、イベントのラベルもありません）。scripts.json の編集で .s を決めてください。`,
-  wroteNew: (label: string) => `移動データ ${label} を足し、名前をクリップボードに写しました（Ctrl+Z で戻せます）。`,
+  wroteNew: (label: string) => `移動データ ${label} を足し、名前をクリップボードにコピーしました（Ctrl+Z で戻せます）。`,
   wroteReplace: (label: string) => `移動データ ${label} を書き換えました（Ctrl+Z で戻せます）。`,
   menuPlayback: "道をなぞる…",
   menuPerson: "ここから道をなぞる…",

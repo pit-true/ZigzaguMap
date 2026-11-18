@@ -4,7 +4,7 @@ AdvanceMap 1.92 日本語バージョンと ZigzaguMap に同じ操作をさせ�
 
 - AdvanceMap は見えない別のデスクトップで起動し、ウィンドウメッセージだけで操作します（`tools/am-harness`）。ZigzaguMap は `--automation` と `--profile` 付きで画面外・非アクティブに起動し、自動操作の入口（ポート 17930〜17939 の空き）から操作します。プロファイルは結果フォルダの `_zigzagu-profile`（シナリオごとに設定を初期値に戻し、実行の最後に消す）です。どちらもユーザーのマウス・キーボードは使いません。AdvanceMap の警告音・メッセージボックスの音は、ハーネスがそのプロセスの中の音を鳴らす関数を無効にして止めます（`tools/am-harness/README.md`）。
 - ROM はシナリオごとに、未編集の ROM から作業用のコピーを作って使います（AdvanceMap が保存しても元は変わりません）。
-- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` を写し直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。ZigzaguMap の場所の設定タブは、AdvanceMap と同じ「くわしく（従来）」の表示にしてから比べます（初期の「かんたん（CFRU）」はユーザーの要望で足した ZigzaguMap だけの表示なので、`tests/automation/feedback_check.py` で確かめる）。
+- 両アプリの設定はシナリオごとに初期状態から始めます。AdvanceMap は `amSourceDir` の `Ini\AdvanceMap.ini` をコピーし直し（高度なヘッダーの表示・並べ替えなど、押した時点で Ini に書かれるもの）、作成したマップの一覧 `Ini\MapDateien.ini` を空にします（配布物の見本 2 件を消す。ZigzaguMap の個人設定 `mapFiles` も空から始まるため）。ZigzaguMap の場所の設定タブは、AdvanceMap と同じ「くわしく（従来）」の表示にしてから比べます（初期の「かんたん（CFRU）」はユーザーの要望で足した ZigzaguMap だけの表示なので、`tests/automation/feedback_check.py` で確かめる）。
 
 ## 準備
 

@@ -139,7 +139,7 @@ def main() -> int:
                 mem1 = private_mb(z.proc.pid)
             tp(z, {"cmd": "setField", "id": "tp.copyLayout", "value": True})
             s = tp(z, {"cmd": "state"})
-            check(any("配置とボーダーも写します" in line for line in s["report"]), "「配置も写す」で一覧に配置の行が出る")
+            check(any("配置とボーダーもコピーします" in line for line in s["report"]), "「配置も写す」で一覧に配置の行が出る")
             save_shot(z, shots, f"tile_transplant_{s['game']}.png", TP)
             history = main_state(z)["history"]
             tp(z, {"cmd": "click", "id": "tp.import"})

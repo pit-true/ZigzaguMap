@@ -11,9 +11,9 @@ export const jaBuild = {
   okShort: (ms: number) => `成功（${(ms / 1000).toFixed(1)} 秒）`,
   ngShort: (errors: number) => `失敗（エラー ${errors} 件）`,
   stepStart: (step: number, total: number, text: string) => `手順 ${step}/${total}: ${text}`,
-  copied: (from: string, to: string, bytes: number) => `${from} を ${to} へ写しました（${bytes} バイト）`,
+  copied: (from: string, to: string, bytes: number) => `${from} を ${to} へコピーしました（${bytes} バイト）`,
   includedLog: (path: string) => `ログ ${path} を読みました（下に続けます）`,
-  copyArgs: "copy の手順には、写すファイルと写し先の 2 つを args に書いてください",
+  copyArgs: "copy の手順には、コピーするファイルとコピー先の 2 つを args に書いてください",
   succeeded: (ms: number, rom: string | null) => `ビルドが終わりました（${(ms / 1000).toFixed(1)} 秒）${rom ? `。出力: ${rom}` : ""}`,
   failed: (ms: number, step: number | null, code: number | null) =>
     `ビルドに失敗しました（${(ms / 1000).toFixed(1)} 秒${step !== null ? `、手順 ${step}` : ""}${code !== null ? `、終了コード ${code}` : ""}）`,

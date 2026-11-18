@@ -54,10 +54,10 @@ node scripts/automation-client.mjs 17891 '{"cmd":"screenshot"}' shot.png
 
 ```sh
 python tests/automation/profile_check.py --rom <素の BPRJ> --exe <zigzagumap.exe>    # 通常の設定と WebView2 のデータが 1 バイトも変わらないこと
-python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダの写し>]
+python tests/automation/offscreen_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダのコピー>]
     # どのウィンドウも画面内に出ず、前面にならないこと（--project でスクリプトエディタも開く）
 python tests/automation/script_editor_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
-    # スクリプトエディタ: 写しを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
+    # スクリプトエディタ: コピーを作って開く・入力・保存（改行と BOM）・外部の変更の読み直し・開けないパス・未保存の確認
 python tests/automation/process_check.py [--exe <zigzagumap.exe>]                  # 外部コマンドの出力・終了コード・停止と、ビルドの手順の copy
 python tests/automation/usage_template_check.py --rom <素の BPRJ> [--exe <zigzagumap.exe>]   # 使われている番号の索引・トレーナーの一覧と自動生成、プロジェクトフォルダが無いときのひな形と「未使用」ボタン（#227・#243〜#245）
 python tests/automation/script_theme_check.py --rom <素の BPRJ> --project <CFRU-JP のフォルダ（読むだけ）> --work <作業フォルダ> --exe <zigzagumap.exe> [--shots <フォルダ>]
@@ -66,9 +66,9 @@ python tests/automation/feedback_check.py --rom <素の BPRJ> --exe <zigzagumap.
     # Phase1 のフィードバックで入れた動き（表示メニュー、透明度のスライダー、マップの外のイベントの帯、場所の設定のかんたん表示、
     # ROM を開いたあとのフォルダ選択、ヘルプ）と、Phase3 のフィードバック（#296 読み込み時間を出さない・#297 左下の ROM 情報の欄が無い）を
     # ZigzaguMap だけで確かめる。--shots で新しい画面のスクリーンショットを書く
-python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...] [--chronos <Chronos の写し>]
+python tests/automation/phase3_view_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...] [--chronos <Chronos のコピー>]
     # Phase3 の表示・ホバー・スタンプ・クローン（配置の共有など）。名前はスクリプトの CHECKS の鍵。--chronos を付けると、
-    # Chronos の写し（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直すウィンドウ（trainerEdit）も確かめる
+    # Chronos のコピー（読むだけ。出力しない）で .s のラベルの要約（hoverAsm）とトレーナーを直すウィンドウ（trainerEdit）も確かめる
 python tests/automation/connection_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--only 222,223]
     # Phase3 の接続と描画（issue ごとに起動し直して確かめる。--only で番号を選ぶ）
 python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>]
@@ -76,22 +76,22 @@ python tests/automation/triple_layer_check.py --rom <素の BPRJ> --exe <zigzagu
     # 出力した tileset.json の Blocks と Behaviors・主の 639 番の拒否・値 5〜7 の注意。ブロックエディタでは `state` に
     # third（3枚目のレイヤーのレイヤーの 4 タイル）・triple・thirdVisible が出る。トリプルレイヤーの保存は `setTripleLayer` コマンド
 python tests/automation/transplant_check.py --rom <素の BPRJ> --source <取り込む元の ROM> [--source ...] --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <出力の作業フォルダ>] [--memory]
-    # 別の ROM からタイルセットを取り込むウィンドウ（#314）: 一覧・絵・情報・変わることの一覧・両方と配置も写す・1 回の取り消し・出力・主だけ・
+    # 別の ROM からタイルセットを取り込むウィンドウ（#314）: 一覧・絵・情報・変わることの一覧・両方と配置もコピーする・1 回の取り消し・出力・主だけ・
     # --memory でウィンドウを閉じた後のメモリ。ウィンドウ（"window": "transplant"）の `state` は rom・game・mapCount・selected・parts・copyLayout・
     # report（変わることの一覧の行）・conversion（主・副のタイル数とブロック数、変換の結果）・target。部品は tp.pickRom・tp.maps・
     # tp.parts（0 両方 / 1 主だけ / 2 副だけ）・tp.copyLayout・tp.import・tp.close・tp.preview・tp.primaryInfo・tp.secondaryInfo・tp.report。
     # 元の ROM は queuePath で積んでから tp.pickRom を押す
-python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダの写し>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
-    # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。写しには書き込まない（出力しない）。
+python tests/automation/phase4_view_check.py --rom <素の BPRJ> [--project <CFRU-JP のフォルダのコピー>] --exe <zigzagumap.exe> [--shots <フォルダ>] [--only <名前> ...]
+    # Phase4 の表示・一覧・調査（#304〜#308・#315・#316）。名前はスクリプトの CHECKS の鍵。コピーには書き込まない（出力しない）。
     # --project を付けると「ここに落とし物を追加」も確かめる
-python tests/automation/pen_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+python tests/automation/pen_check.py --rom <素の BPRJ のコピー> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
     # Phase4 の描く道具（#300・#301・#310〜#313・#335〜#338）。名前は triple・tripleTools・autopen・autopenBand・assist・assistReopen・
     # assistEdge・candidates。マップ作成補助のパーツは --work（既定は一時フォルダ）の maps\autopen\ に書く。ROM には書かない
-python tests/automation/automation_dialog_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダ（読むだけ）>] [--only <名前> ...]
+python tests/automation/automation_dialog_check.py --rom <素の BPRJ のコピー> --exe <zigzagumap.exe> [--project <CFRU-JP のフォルダ（読むだけ）>] [--only <名前> ...]
     # 自動操作の命令がダイアログの答えを待って止まらないこと（#380）。open（無いフォルダ・知らない種類の ROM・未出力の変更）、
     # scripts.table の open、warp.createMap、--project でスクリプトエディタの editor.rename・build.run・未保存のままの open。
     # 名前ごとに起動し直し、15 秒で返らない命令は失敗に数える
-python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
+python tests/automation/tool_check.py --rom <素の BPRJ のコピー> --exe <zigzagumap.exe> [--shots <フォルダ>] [--work <作業フォルダ>] [--only <名前> ...]
     # Phase5 の描く道具（#388〜#390）。名前は fill・line・smartPath・shift・resize。出力は --work（既定は一時フォルダ）に書く。ROM には書かない
 ```
 
@@ -159,7 +159,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `event.deletePlan` | `kind`（`person` / `sign` / `warp` / `trap`）、`index` | イベントの削除（#220）で消すものの計画（何も変えない）。`label`・`pointer`、`script`（`.s` の `scriptPath`・`removedLabels`・`keptLabels`（`label`・`reason`・`where`）・`removedStrings`・`keptStrings`）、`registry`（幅検査の登録から除く名前）、`rom`（`erase`・`keep`（`address`・`length`・`type`・`label`、`keep` は `reason`）・`problems`）、`romNote`（`outside` / `noProject` / `broken`）、書き換える `files`、確認のダイアログの行 `lines` |
 | `event.delete` | `kind`、`index`、`confirm`（省略で true） | イベントを選んで削除する（ボタン・右クリック・Delete キーと同じ）。true なら確認のダイアログ「イベントを削除」を出したまま返す（`dialog` で「削除」（`ok`）か「キャンセル」を押す）。false なら確かめずに消し、書き足しが済むまで待つ（返事は `ok`・`status`・`selection`・`counts`） |
 | `event.selectMany` | `items`（`[{"kind": "person", "index": 0}, ...]`） | イベントを複数選ぶ（Phase5 #399。Shift＋クリックで足したのと同じ。最後のものを欄に出す）。2 つ以上なら `event.state` の `selected` に全部が出る。返事は選択と `selected` |
-| `event.duplicate` | | 選んでいるイベントを複製する（Ctrl+D と同じ。#399）。返事は `ok`・`status`・写しの `selected`・`counts` |
+| `event.duplicate` | | 選んでいるイベントを複製する（Ctrl+D と同じ。#399）。返事は `ok`・`status`・コピーの `selected`・`counts` |
 | `event.copy` | | 選んでいるイベントをコピーする（Ctrl+C と同じ。#519）。返事は `count`・`clipboard`（`source`・`items`（`kind`・`x`・`y`・`label`）・`pasting`）・`status` |
 | `event.cut` | | コピーしてから消す（Ctrl+X と同じ）。削除の確認のダイアログを出したまま返す。返事は `count`・`clipboard`・`dialogs` |
 | `event.paste` | `x`・`y`（省略可） | `x`・`y` があれば、そのマスを左上にして貼る（右クリックの「ここに貼り付け」と同じ）。無ければ影をマウスに付けて待つ（Ctrl+V と同じ。左クリックで置き、Esc で取りやめ）。返事は `ok`（置けたか。待つときは null）・`status`・`selected`・`counts`・`clipboard`。影の Canvas は `event.pasteGhost` |
@@ -173,7 +173,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `settings.flush` | | 待っている個人設定の書き込みをすぐ済ませる（`exit` が先に呼ぶ。`setting` で変えただけの値は書かない） |
 | `process.run` | `command`、`args`（文字列の配列）、`cwd`（プロジェクトフォルダからの相対パスか絶対パス。省略時はプロジェクトフォルダ）、`timeout`（ms、既定 30000） | 外部コマンドを動かして終わるまで待つ。返事は `id`・`cwd`（作業フォルダの絶対パス）・`lines`（`stream` と `line`）・`done`・`code`（終了コード）・`killed`。時間を過ぎたら止めて `timedOut: true` を付ける |
 | `process.start` / `process.output` / `process.kill` | `process.start` は `process.run` と同じ引数、ほかは `id` | 待たずに起動して `id` を返す／それまでの出力と状態（返事は `process.run` と同じ形）／止める（子プロセスごと） |
-| `process.copy` | `from`、`to`、`cwd` | ファイルを写す（ビルドの手順の `copy` と同じ。`from`・`to` は `cwd` からの相対パス）。返事の `bytes` は写した大きさ |
+| `process.copy` | `from`、`to`、`cwd` | ファイルをコピーする（ビルドの手順の `copy` と同じ。`from`・`to` は `cwd` からの相対パス）。返事の `bytes` はコピーした大きさ |
 | `script.open` | `path`（と `line`、1 から）か、`bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index`（0 から） | スクリプトエディタでファイルかイベントのスクリプトを開く（イベントのダブルクリックと同じ）。返事は `opened`、イベントなら `location`（`path`・`line`・`label`・`from`）、ステータスバー。ウィンドウの準備は `windows` の `ready` で待つ |
 | `script.resolve` | `bank`・`map`・`kind`・`index` | イベントのスクリプトの場所（`path`・`line`・`label`・`from`: `label` か `scriptsJson`）。見つからなければ null。開かない |
 | `scripts.table` | `action`（省略で `get`）と、その引数（下の表） | maps\scripts.json の対応表（ツール > スクリプトファイルの対応表）。返事は `rows`（各行の `bank`・`map`（null はバンク全体）・`name`・`script`・`strings`（省いていれば null）・`resolvedStrings`（実際に使う `.string`）・`create`（出力で `.s` を作る行）・`unused`（前の行と同じバンク・マップで使われない行））、`pendingFiles`（出力で作る `.s` と `.string`）、`duplicates`、`modified`（未出力の変更）、`loadError`（scripts.json が読めなかった理由）、`open`（画面が開いているか）、`selected`（選んでいる行）、`dialogs` |
@@ -190,7 +190,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `splitter` | `width`（px） | 左の欄（マップ一覧）の幅を変える。分割バーをドラッグして離したときと同じ処理（120 以上、ウィンドウの幅 - 300 以下に丸め、個人設定に残す）。返事は決まった幅 |
 | `resize` | `width`、`height`（論理ピクセル） | メインウィンドウの大きさを変える。返事は中の大きさ |
 | `drop` | `paths`（パスの配列）か `path` | ファイル・フォルダのドラッグ＆ドロップと同じ処理で開く（先頭の 1 つ。フォルダならプロジェクト、`.gba` なら ROM、ほかはステータスバーに案内）。`.gba` は続けて組のフォルダを選ぶダイアログが出るので、ダイアログが出たところで返る（`queuePath` で答え、`null` でキャンセルすると ROM だけで開く）。返事は開いている ROM・プロジェクト、ステータスバー、開いているダイアログ |
-| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust` / `transplant`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットの写し）、`scroll` / `view.scroll`（`id` の部品の枠。ブロック一覧は `be.blocks`、引数はメインと同じ）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う）、移植のウィンドウだけ `transplant.select`（下の「Phase4 の部品と命令」）。マップ作成補助（`map-assist`）は仕組みがワールドマップエディタと同じで、命令は下の Phase4 の節 |
+| （ブロックエディタなど宛て） | `window`（`block-editor` / `palette-editor` / `block-adjust` / `transplant`）と各命令の引数 | `window` を付けると、そのウィンドウで命令を実行する（仕組みはワールドマップエディタと同じ。下の段落）。使える命令は `state`（欄の値）、`getField` / `setField` / `click`（`field:<AdvanceMap の部品名>` も可）、`ui.list` / `fields`、`action`（メニューの項目。ブロックエディタの `tiles.save1`・`blocks.amount`・`palette.commit` など）、`dialogs` / `dialog` / `queuePath`（メインと同じ）、`key`、`pointer`（`id` の部品の上。`x`・`y` は部品の左上から）、`canvasPng`（`id` の Canvas）、`snapshot`（メインから届いたタイルセットのコピー）、`scroll` / `view.scroll`（`id` の部品の枠。ブロック一覧は `be.blocks`、引数はメインと同じ）、`close`、`undo` / `redo`。`screenshot` も `window` で別ウィンドウを取れる。パレットエディタだけ `pickAt`（`source` のウィンドウの画像の `x`・`y` の色をスポイトで拾う）、移植のウィンドウだけ `transplant.select`（下の「Phase4 の部品と命令」）。マップ作成補助（`map-assist`）は仕組みがワールドマップエディタと同じで、命令は下の Phase4 の節 |
 
 AdvanceMap の部品名（`field:<名前>`）は、`apps/desktop/src/app/automation/amNames.ts` の対応表（アプリ独自の ID → AdvanceMap の部品名。作業フォルダの inventory の部品表とフォーム定義から作った）から、自動操作の入口が動いているときだけ部品に `data-am-name` として付けます（通常の起動では付けない）。同じ名前の部品が複数あるときは表示中のものを使います。ワールドマップエディタは AdvanceMap の部品名を `data-auto-id` に使っているので、そのまま通ります。全画面の対応表（AdvanceMap の部品名 → ID）は `python tests/compare/gen_am_names.py --rom <素の BPRJ> --exe <zigzagumap.exe>` で実際の画面から集めて `tests/compare/am-names.json` に書きます。
 
@@ -223,7 +223,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 
 対応表の画面の部品の ID: 表 `scriptsTable.list`・行 `scriptsTable.row.<番号>`（`click` で選ぶ）、下の欄 `scriptsTable.bank`・`scriptsTable.map`・`scriptsTable.name`・`scriptsTable.script`・`scriptsTable.strings`、ボタン `scriptsTable.newScript`・`scriptsTable.add`・`scriptsTable.save`・`scriptsTable.remove`・`scriptsTable.up`・`scriptsTable.down`・`scriptsTable.close`、警告 `scriptsTable.warning`、案内 `scriptsTable.note`。「.s を新しく作る」の入力は `scriptsTable.new.name`（ファイル名）・`scriptsTable.new.bank`・`scriptsTable.new.map`・`scriptsTable.new.mapName`・`scriptsTable.new.strings`・`scriptsTable.new.preview`（作るファイル）・`scriptsTable.new.intro`・`scriptsTable.new.create`・`scriptsTable.new.cancel` です。
 
-確かめるスクリプト `python tests/automation/scripts_table_check.py --nd <NeoDark-CFRU-main> --chronos <Chronos> --copy-root <写し先> [--exe <zigzagumap.exe>] [--shot <png>]` は、ND と Chronos のフォルダを写し先へ写して（実フォルダには書かない）、画面と `scripts.table` で表を編集し、出力・開き直し・写しでのビルドまでを確かめます。
+確かめるスクリプト `python tests/automation/scripts_table_check.py --nd <NeoDark-CFRU-main> --chronos <Chronos> --copy-root <コピー先> [--exe <zigzagumap.exe>] [--shot <png>]` は、ND と Chronos のフォルダをコピー先へコピーして（実フォルダには書かない）、画面と `scripts.table` で表を編集し、出力・開き直し・コピーでのビルドまでを確かめます。
 
 ## 別ウィンドウ（ワールドマップエディタ）
 
@@ -343,7 +343,7 @@ Phase1 のフィードバックで足した部品の ID: 透明度のスライ�
 | `warp.samples` | `index`（表示中のマップのワープ） | 「行き先のマップを作る」（#241）の見本の一覧（`source`・`sourceWarp`・`map`・`width`・`height`・`primaryTileset`・`secondaryTileset`・`entry`） |
 | `warp.createMap` | `index`、`sample`（見本の番号か null で見本なし）、`copyLayout`（既定 true）、`bank`（省略でバンクを聞くウィンドウを出す） | ウィンドウを出さずに行き先のマップを作り、ワープを向け合って新しいマップを開く。返事は `target`（作ったマップ）・`map`・`status`・`dialogs`。ワープが無い・バンクが範囲外か満杯・作れないときは、ダイアログを出さずにエラーで返す。`bank` を省くと、バンクを聞くウィンドウを出したまま返す（`target` は null。答えたあとのエラーは画面からと同じくダイアログで出す。#380） |
 
-- 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶウィンドウ（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのまま写す」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクのウィンドウ（題名「新しいマップのバンク」）が出る。
+- 右クリックのメニュー（イベントタブのワープ）の項目 `createWarpMap`（`contextMenu.press`）で、見本を選ぶウィンドウ（題名「行き先のマップを作る」。見本 `warpMap.sample:<番号>`、見本なし `warpMap.noSample`、「見本の配置をそのままコピーする」`warpMap.copyLayout`、`dialog` の `press` は `ok` / `cancel`）と、バンクのウィンドウ（題名「新しいマップのバンク」）が出る。
 
 - クローン（#242・#277）: 表示 > クローン（`action` の `view.clones`、個人設定 `showClones`。既定は false）が true の間だけ、イベントタブで人を動かす（`mouse` の `drag` を離したとき、`setField` の `event.person.x` などの欄、イベントマネージャーの数 `event.manager.persons` と `event.manager.apply`、`template.place`、`event.delete`）と、隣のマップのクローンを同じ 1 回の操作の中で合わせる。`neighbors.state` の `clones`（表示中のマップの外にあるクローンの位置 `x`・`y`（主マップの左上が原点で負もある）、人の番号 `index`、描く画像番号 `graphicsId`。#298）と `clonesShown`（帯の上にクローンを描いているか）。比較テストは `setting` で `showClones` を false にしてから比べる。
 
@@ -411,7 +411,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | （マップ作成補助宛て） | `window`（`map-assist`）と各命令の引数 | ツール > マップ作成補助（#312）のウィンドウで命令を実行する。`state`（`tab`・パーツの一覧 `parts`（`name`・`kind`・`role`・`slots`）・選んでいるパーツ `selected`・枠 `slot`・左で選んだ所 `picked`（`x`・`y`・`width`・`height`・選んだブロックの並び `blocks`。空きは null。#338）・メインの範囲 `range`・未保存 `dirty`・下の帯 `status`）、`fields` / `getField` / `setField`（一覧 `assist.parts` は番号）/ `click`（`assist.add.fill` などのボタン、`assist.slot.<枠名>`）/ `pointer`（`assist.source` の上。`x`・`y` は画素、ブロック一覧は 2 倍）/ `canvasPng`（`assist.source`）/ `close`。`screenshot` も `window` で取れる |
 | `transplant.select`（移植のウィンドウ宛て） | `window`（`transplant`）、`bank`・`map`（元の ROM のマップ） | 一覧の番号を探さずに、元の ROM のマップを選ぶ（一覧で選んだのと同じく、絵・情報・変わることの一覧を作り直す）。返事はウィンドウの `state` と同じ |
 
-- コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックをトリプルレイヤーにする・やめる。N の 8 タイルと属性、N+1 の下のレイヤー 4 タイルを書き、トリプルレイヤーにするときは N+1 の属性と上のレイヤーを 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置も写す」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
+- コマンド（`command` 命令。どれも元に戻せる）: `setTripleLayer`（ブロックをトリプルレイヤーにする・やめる。N の 8 タイルと属性、N+1 の下のレイヤー 4 タイルを書き、トリプルレイヤーにするときは N+1 の属性と上のレイヤーを 0 にする。表の最後のブロックは失敗。#302）、`addTileset`（新しいタイルセットを加える。移植。#314）、`setLayout`（配置・ボーダー・タイルセットをまとめて差し替える。移植の「配置もコピーする」）。移植の「取り込む」は `addTileset` と `setLayout` か `setTilesets` の `group` を 1 回実行する。
 - ブロックエディタ（`"window": "block-editor"`）のトリプルレイヤーの部品: 3枚目のレイヤーのレイヤーの 4 マス `be.third`（Canvas。`pointer` の `x`・`y` は部品の左上からの画素で、1 マス 16px。左で置く・右で拾う）、見出し `be.thirdLabel`、値 5〜7 の注意 `be.layerWarning`（`getField` の `visible`）。ウィンドウの `state` には `third`（3枚目のレイヤーのレイヤーの 4 タイル）・`triple`・`thirdVisible` が出る。トリプルレイヤーの保存は `setTripleLayer` を通る。
 - トリプルレイヤーの印: `action` の `view.tripleChildMarks`（個人設定 `tripleChildMarks`。既定 true）。
 - オートペンの欄（マップタブの右）: 「オートペン (P)」`autopen.enable`（`setField` に true / false）、筆 `autopen.size`（コンボ。`1`・`2`・`3`・`5`）、「移動許可も付ける」`autopen.movement`。P キーは `{"cmd":"key","key":"p"}`（マップタブを見ているとき）。パレットの色は `action` の `view.autoPenTint`（個人設定 `autoPenTint`）。
@@ -426,9 +426,9 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 - ブロックのコピー・貼り付けと入れ替え（#394）: `action` の `edit.copy`・`edit.cut`・`edit.paste`・`edit.swap`、または `key`（`{"cmd":"key","key":"c","ctrl":true}`、入れ替えは `{"cmd":"key","key":"x"}`）。入れ替えはオンにしてから `be.blocks` を 2 回押し、確かめのウィンドウ（`dialogs`）を `dialog` の `press`（`yes` 付け替える / `no` タイルセットの中だけ / `cancel`）で答える。ウィンドウの `state` に `edit`（`clipboard`（`tiles`・`attribute`・`third`）と `swap`（`active`・`first`））と、ウィンドウの下の 1 行の文 `status` が出る。コマンドは `swapBlocks`（`tileset`・`secondary`・`a`・`b`（タイルセットの中の番号）・`targets`（付け替えるマップ。読み込んでおく））。メインへの頼みは `tilesetUsers`（そのタイルセットを使うマップの一覧）と `swapBlocks`（マップを読み込んでから実行）。
 - 使用回数・未使用・ブロック一覧の画像（#395）: `action` の `view.usage`・`view.unusedBlocks`・`view.unusedTiles`（オン・オフ）と `tiles.exportBlocks`（書き出しのウィンドウ）。ウィンドウの `state` に `stats`（切り替え `flags`（`usage`・`unusedBlocks`・`unusedTiles`）、数え終えたか `counted`、一覧の並び（主の 640 個のあとに副）での使用回数 `counts`（表に無い番号は -1）、未使用のブロックの番号 `unusedBlocks`、未使用のタイルの通し番号 `unusedTiles`）が出る（数える前の値は null）。重ねた絵は `be.blocksOverlay`・`be.tilesOverlay`（Canvas）。書き出しのウィンドウの部品: `be.exp.tileset`（0 か 1）・`be.exp.from`・`be.exp.to`（16 進）・`be.exp.lower`・`be.exp.upper`・`be.exp.third`（チェック）・`be.exp.columns`・`be.exp.background`（0 そのまま・1 黒・2 パレット 0 の色 0）・`be.exp.info`（ブロック数と画素の大きさ）・`be.exp.preview`（Canvas）。`dialog` の `press` の `save` で、`queuePath` で積んだパスに書く。メインへの頼みは `blockStats`（`tiles`: 未使用のタイルも数えるか）。
 - パレットエディタ（`"window": "palette-editor"`）の Phase5 の部品（#396）: 16 進の RGB の欄 `pal.rgbHex`（`setField`）と `pal.rgbApply`（`click`）、16 色の見本 `pal.color.0`〜`pal.color.15`（`click` で選ぶ）。`action` の `view.unusedColors`（オン・オフ）と `tools.colorUsage`（色の使用箇所のウィンドウ。案内 `pal.usage.info`、行 `pal.usage.<ブロックの通し番号>` を `click` するとブロックエディタで選ぶ。`dialog` の `press` の `close` で閉じる）。ウィンドウの `state` に `rgb`（欄の文字）、`showUnused`、`unusedColors`（未使用の色の番号。オフなら null）が出る。メインへの頼みは `setUi` の `focusBlock`（ブロックエディタで選ぶブロック。閉じていれば開く）。パレットファイルの読み込み（ブロックエディタの `palette.open`）は、`queuePath` で積んだファイルを中身で見分けて読む。
-- 新しいタイルセット（#397）: ブロックエディタの `action` の `tiles.newTileset` でウィンドウを開く。部品は `be.nt.kind`（0 タイルセット1・1 タイルセット2）・`be.nt.tiles`・`be.nt.blocks`（10 進）・`be.nt.content`（0 空・1 今のタイルセットの写し）・`be.nt.limit`（上限の案内）。`dialog` の `press` の `create` で作る。メインへの頼みは `newTileset`（`secondary`・`tileCount`・`blockCount`・`copy`。core の `newTilesetCommand` で `addTileset` と `setTilesets` を 1 回の組で実行する）。
+- 新しいタイルセット（#397）: ブロックエディタの `action` の `tiles.newTileset` でウィンドウを開く。部品は `be.nt.kind`（0 タイルセット1・1 タイルセット2）・`be.nt.tiles`・`be.nt.blocks`（10 進）・`be.nt.content`（0 空・1 今のタイルセットのコピー）・`be.nt.limit`（上限の案内）。`dialog` の `press` の `create` で作る。メインへの頼みは `newTileset`（`secondary`・`tileCount`・`blockCount`・`copy`。core の `newTilesetCommand` で `addTileset` と `setTilesets` を 1 回の組で実行する）。
 - 野生（#398）: 野生ポケモンタブの枠の割合 `wild.slotRate.1`〜`wild.slotRate.12`（`getField` の `value`。「20%」、釣りは「70%（ボロ）」）、グラフのボタン `wild.chart`。グラフのウィンドウの部品は `wild.chart.rod`（釣りだけ）・`wild.chart.species`（0 が全部の種族）・`wild.chart.totals`・`wild.chart.levels`（Canvas。`mouse` の `hover` に `id` と `px`）・`wild.chart.hover`（乗せた棒の値）。`dialog` の `press` の `close` で閉じる。検索は `action` の `tools.wildSearch`。部品は `wild.search.species`（種族の欄。今までどおり番号で `setField` でき、名前・読み・番号の文字も入れられる。名前が 1 つに決まる文字なら決まる。`getField` の `value` は決まった種族の名前。#447）・`wild.search.species.list`（候補の一覧。`getField` の `visible`）・`wild.search.species.item.<n>`（出ている候補の上から n 番目。`value` は名前と番号。`click` で決める）・`wild.search.species.none`（当たる候補が無いときの文）・`wild.search.run`（`click`）・`wild.search.info`・`wild.search.col.0`〜`wild.search.col.4`（見出し。`click` で並べ替え）・`wild.search.row.<n>`（並べた順の行。`mouse` の `dblclick` でそのマップの野生タブを開く）。打って選ぶ操作は、`ui.type`（`"blur": false` で欄から離れずに候補を出したままにする）、欄を `click`（全部の候補を出す）、`key` に `"id": "wild.search.species"` を付けて `ArrowDown`・`ArrowUp`・`Enter`・`Escape` を送る（候補を閉じているときの `Enter` で検索する）。
-- 写しでの確認: `python tests/realcopy/run.py --swap --reuse --only nd`（ND の写しで副の 2 つを入れ替えて出力・ビルドし、できた ROM の中身と開き直した絵を確かめる）。
+- コピーでの確認: `python tests/realcopy/run.py --swap --reuse --only nd`（ND のコピーで副の 2 つを入れ替えて出力・ビルドし、できた ROM の中身と開き直した絵を確かめる）。
 
 ## Phase4 の表示・一覧・調査（列 3）
 
@@ -475,17 +475,17 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `select.state` | `tab`（`map` / `movement`。省略で表示中のタブ） | 範囲の選択（#516）。今の選択 `rect`（`[x, y, 幅, 高さ]`。無ければ null） |
 | `select.move` | `rect`（`[x, y, 幅, 高さ]`）、`dx`、`dy`、`tab` | 矩形を選んで `dx`・`dy` だけ動かす（選択の道具でドラッグして離したのと同じ 1 回の操作。マップの端で止める）。道具の設定は変えない。返事は動かした量 `moved`（`[dx, dy]`。動かなければ null）、動かした後の選択 `rect` と、`selection` と同じもの |
 | `tool.shift` | `dx`、`dy` | 表示中のマップをずらす（マップシフトのドラッグを離したときと同じ 1 回のコマンド `shiftMap`） |
-| `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端の写し）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズのウィンドウの OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
+| `tool.resize` | `left`・`right`・`up`・`down`（広げるマス数。負なら縮める）、`fill`（`edge`（既定。端のコピー）/ `border`（境界ブロック）/ `selection`（選んでいるブロック）） | 対話式リサイズのウィンドウの OK と同じ。返事は実行できたか `done`、変えたあとの大きさ `width`・`height`、開いているダイアログ `dialogs`（できなかったときはエラーのダイアログを出したまま、3 秒待たずに返す） |
 | `tool.resizeDialog` | | 対話式リサイズのウィンドウ「マップの大きさと位置」を開いてすぐ返す。返事は `dialogs` |
 | `view.aids` | | 表示の補助（#391）。カーソルの枠 `cursorFrame` とプレイヤーの視界の枠 `playerView`（個人設定）、グリッドの表示 `grid` と形 `gridStyle`（`width`・`height`・`offsetX`・`offsetY`（マス）・`color`・`line`）、タブごとの枠 `layers`（`map`・`movement`・`event` の、マウスのマス `cell` と枠のマスの矩形 `cursor`・`sight`。出していなければ null。`cursorCells` はカーソルの枠の中で描くマスの数で、円のブラシのときは矩形より少ない）、移動許可の数値の欄の文字 `movementValue` |
 | `shortcuts.state` | | ショートカットの変更（#392）。今のキー `keys`（操作の ID → 表記。2 つなら「、」で区切る。無ければ空）と、個人設定に残す形 `overrides`（既定と違う操作だけ） |
 
 - 道具の帯（マップタブと移動エリアタブの右の欄の上）: ボタン `tools.map.pencil`・`tools.map.fill`・`tools.map.shift`（移動エリアタブは `tools.movement.*`）、スマートパスのチェック `tools.smartPath`（`setField` に true / false）。N・B・S は `{"cmd":"key","key":"b"}` のように送る（マップタブか移動エリアタブを見ているとき）。
 - 道具を選んでから `mouse` で使う: 塗りつぶしは `click`（`ctrl: true` でマジック塗り）、マップシフトは `drag`（`shift: true` で横か縦だけ。途中で `{"cmd":"key","key":"Escape"}` を送るとやめる）、直線は鉛筆の `drag` に `shift: true`。
-- 対話式リサイズのウィンドウの部品: 幅 `resize.width`・高さ `resize.height`・左に足す `resize.left`・上に足す `resize.top`（どれも `setField` に数の文字）、埋め方 `resize.fill`（`setField` に 0 端の写し / 1 境界ブロック / 2 選んでいるブロック）、図 `resize.view`（`ui.shot`。マップをドラッグして位置を決める）、変わる量か入力の問題 `resize.info`（`getField`）。`dialog` の `press: "ok"` で実行、`"cancel"` で閉じる。入口は場所の設定タブのかんたん表示の `easy.resizeDialog` と、辺のつまみの右クリックのメニューの `resize`（`contextMenu.press`）。
+- 対話式リサイズのウィンドウの部品: 幅 `resize.width`・高さ `resize.height`・左に足す `resize.left`・上に足す `resize.top`（どれも `setField` に数の文字）、埋め方 `resize.fill`（`setField` に 0 端のコピー / 1 境界ブロック / 2 選んでいるブロック）、図 `resize.view`（`ui.shot`。マップをドラッグして位置を決める）、変わる量か入力の問題 `resize.info`（`getField`）。`dialog` の `press: "ok"` で実行、`"cancel"` で閉じる。入口は場所の設定タブのかんたん表示の `easy.resizeDialog` と、辺のつまみの右クリックのメニューの `resize`（`contextMenu.press`）。
 - 表示の補助（#391）: `action` か `menu.run` の `view.cursorFrame`（C）・`view.playerView`（V）・`view.gridSettings`（ウィンドウ「グリッドの設定」を開いてすぐ返す）。ウィンドウの部品は `grid.width`・`grid.height`・`grid.offsetX`・`grid.offsetY`（`setField` に数の文字）・`grid.color`（`#rrggbb`）・`grid.line`（`setField` に 0 実線 / 1 破線 / 2 点）・`grid.reset`（既定に戻す）。`dialog` の `press: "ok"` でグリッドを出して覚え、`"cancel"` で元に戻す。枠は `mouse` の `hover` で動く（`view.aids` の `layers`）。移動許可の数値の欄は `movement.value`（`setField` に 16 進 2 桁。00〜3F の外は選択を変えない）。
 - ショートカットの変更（#392）: `action` の `opt.shortcuts` でウィンドウ「ショートカットの変更」を開く。キーの欄は `shortcuts.<操作の ID>.0`・`shortcuts.<操作の ID>.1`（`click` してから、`key` 命令に `id` でその欄を渡して押す）、外す `shortcuts.<操作の ID>.<n>.clear`、既定に戻す `shortcuts.reset`（`click`）。重なるとウィンドウ「キーの重なり」が出るので、`dialog` の `press: "new"`（新しく決めた方に残す）か `"old"`（前からの方に残す）で答える。`dialog` の `press: "ok"` で決め、`"cancel"` で閉じる。操作の ID は `apps/desktop/src/app/keymap.ts` の表。
-- コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端の写しでなくこの柄で埋める）。
+- コマンド（`command` 命令。どれも元に戻せる）: `shiftMap`（`bank`・`map`・`dx`・`dy`。配置全体のブロックと移動許可をずらし、はみ出た分は反対側へ回す）、`resizeMapEdge` の `fill`（`width`・`height`・`cells`（u16）・`ox`・`oy`。広げた所を端のコピーでなくこの柄で埋める）。
 
 ## Phase6 の部品と命令（画像からタイルとブロックを作る。#440〜#446）
 
@@ -505,7 +505,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 | `mergeSame` | true | 同じ 16×16 は 1 つのブロックにする |
 | `mode` | `picture` | 1 枚の画像の重ね方。`picture`（絵だけ。下のレイヤー）/ `under`（下地の上に重ね、プレイヤーの下に描く。属性のレイヤーの種類 1）/ `over`（下地の上に重ね、プレイヤーより手前） |
 | `upperBehind` | false | 2 枚の画像で、上のレイヤーもプレイヤーの下に描く（レイヤーの種類 1） |
-| `baseBlock` | null | 下地ブロックの通し番号（`under`・`over`。下のレイヤーと属性を写す） |
+| `baseBlock` | null | 下地ブロックの通し番号（`under`・`over`。下のレイヤーと属性をコピーする） |
 | `reduce` | false | 本（パレット）が足りなければ減色する |
 | `excludedPalettes` | [] | 使わない本の番号 |
 | `reserveDoorTiles` | true | 副へ入れるとき、ドアのアニメが使う通し番号 1016〜1023 のタイルを空ける |
@@ -514,7 +514,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 `problems` の `code`: `palettesShort`（本が足りない。`needed`・`free`・`short`、`atLeast` が 1 なら `needed` は下限）・`overColorTiles`（1 枚で 15 色を超えるタイル）・`tilesShort`・`blocksShort`（`needed`・`free`・`short`）・`noBlocks`・`baseSecondary`（主へ入れるのに副のタイルかパレットを使う下地）・`baseMissing`・`placementInvalid`（`block`・`local`・`problem`: `zero` / `tripleChild` / `outside` / `used` / `notEmpty` / `taken` / `noNext`）は書き込めない誤り（`level: "error"`）。`padded`（16 の倍数に埋めた）・`doorTiles`・`baseUpper`（下地の上のレイヤーは使わない）・`reduced`（`changed`・`before`・`after`）・`replaced` は知らせ（`level: "note"`）。
 
-写しでの確認: `python tests/realcopy/run.py --tileimport --reuse`（見本の PNG を 3.0 の副と 3.1 の新しい副へ取り込んで塗り、出力してビルドし、できた ROM の絵が出力の前と同じことを確かめる）。
+コピーでの確認: `python tests/realcopy/run.py --tileimport --reuse`（見本の PNG を 3.0 の副と 3.1 の新しい副へ取り込んで塗り、出力してビルドし、できた ROM の絵が出力の前と同じことを確かめる）。
 
 
 取り込みウィザードの下地選択は `ti.mode`（1 下地の上・主人公の下、2 下地の上・主人公より手前）と `ti.pickBase` で開きます。`ti.picker` に `pointer` を送り、ダイアログの `ok` で決定します。`ti.base` の16進番号による入力も使えます。
@@ -560,7 +560,7 @@ trainers.json の編集は `command` の `setTrainer`（`{"trainer": {...}}`。�
 
 どれもマップ・ROM・履歴を変えません。フレームの数え方は、MapBGanimeMain を呼んだ回数（マップに入った直後が0）です。ドアの命令も同じ数え方で、同じフレームでは命令がタスクより先に動きます。マップやROMを切り替えると止まり、命令も消えます。
 
-- `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用の写しのバイト数。
+- `tileAnim.info`: 表示中のマップの主・副のアニメ。`reason` は読めたら null、関数が0なら `none`、知らない関数なら `unknown`、コードが素のBPRJと違えば `code`、絵の表が壊れていれば `data`。`tracks` は名前・転送先のタイル・枚数・周期・余り・コマ数。`bytes` は読んだ絵と表示用のコピーのバイト数。
 - `tileAnim.frame {frame: number | null}`: フレームを渡します。null で止めて元の絵へ戻します。返事の `shown` は各アニメの表示中のコマ（まだ差し替えていなければ null）。
 - `tileAnim.clock {on?, tick?}`: 表示 > タイルアニメを動かす のオン・オフ（`on`）と、時計の代わりに進める（`tick` フレーム）。返事は `on`・`frame`・購読の有無（`subscribed`）・止めている相手（`holders`。画面が無い間は `hidden`、再生中は `playback`）・時計の `clock`（`running` など）。
 - `tileAnim.scene {frame?, x?, y?, width?, height?, actors?}`: そのフレームの合成画像（既定は(0,0)から240×160）を `png` で返します。`frame` を渡すとそのフレームに合わせます。

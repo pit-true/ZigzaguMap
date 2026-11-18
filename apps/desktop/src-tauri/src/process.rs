@@ -198,11 +198,11 @@ pub fn process_copy(root: State<'_, ProjectRoot>, from: String, to: String, cwd:
     let src = dir.join(&from);
     let dest = dir.join(&to);
     if !src.is_file() {
-        return Err(format!("写すファイルがありません: {}", display_path(&src)));
+        return Err(format!("コピーするファイルがありません: {}", display_path(&src)));
     }
-    let parent = dest.parent().ok_or("写し先が不正です")?;
+    let parent = dest.parent().ok_or("コピー先が不正です")?;
     if !parent.is_dir() {
-        return Err(format!("写し先のフォルダがありません: {}", display_path(parent)));
+        return Err(format!("コピー先のフォルダがありません: {}", display_path(parent)));
     }
     std::fs::copy(&src, &dest).map_err(|e| format!("{} → {}: {e}", display_path(&src), display_path(&dest)))
 }
