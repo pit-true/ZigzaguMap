@@ -103,7 +103,9 @@ def run_scenario(cfg, scn: dict, run_dir: pathlib.Path, only_zz: bool, log) -> d
     cmp = compare(scn, am, zz, sdir, run_dir, cfg.lang())
     result = {"name": scn["name"], "title": scn.get("title", ""), "source": scn.get("source", ""),
               "issues": scn.get("issues", []), "hash": h, "verdict": cmp["verdict"], "counts": cmp["counts"],
-              "rows": cmp["rows"], "seconds": round(time.time() - t0, 1), "amFromCache": only_zz}
+              "rows": cmp["rows"], "seconds": round(time.time() - t0, 1), "amFromCache": only_zz,
+              # 手順では比べない仕様上の違い（ツールバーの動きなど。#556）。判定には使わず、まとめに理由を出す
+              "specNotes": scn.get("specNotes", {})}
     (sdir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     return result
 
