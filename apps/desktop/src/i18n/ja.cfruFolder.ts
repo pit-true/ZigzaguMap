@@ -2,6 +2,8 @@
 export const jaCfruFolder = {
   /** ファイル > CFRU-JP のフォルダを開く…（一番上。Ctrl+O）。 */
   menu: "CFRU-JP のフォルダを開く…",
+  /** ツールバーのいちばん左のボタンのヒント（#556。メニューの項目と同じ動き）。 */
+  toolbarHint: "CFRU-JP のフォルダを開く…（Ctrl+O）",
   /** フォルダを選ぶダイアログの題。 */
   folderTitle: "CFRU-JP のフォルダを選んでください（中のベース ROM も読み込みます）",
   /** ベース ROM の候補が複数あるとき。 */

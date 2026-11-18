@@ -6,6 +6,7 @@
 - pending: 同じ形。要判断の結論待ちの違いを「保留」にする（issue 番号を書く）。
 - only: "zigzagu" / "advancemap"。片方のアプリだけで行う手順（理由は expectedDifference）。
   ZigzaguMap だけの compareFields は `expected`（AdvanceMap の調査記録の値）と比べる。
+- specNotes（シナリオの最上位）: {項目: 理由}。手順では比べない仕様上の違い（ツールバーの動きなど。#556）。判定には使わず、まとめの「仕様上の違い」の表に出す。
 """
 from __future__ import annotations
 

@@ -1,5 +1,6 @@
 import type { EnableWhen } from "../app/menuDefinition";
 import { ja } from "../i18n/ja";
+import { jaCfruFolder } from "../i18n/ja.cfruFolder";
 import { ICONS } from "./icons";
 
 /** ツールバーのボタン。`id` はメニューと同じアクションの ID。 */
@@ -21,8 +22,9 @@ export interface ToolbarHost {
 }
 
 /** AdvanceMap と同じ並び（区切りは null、並べ替えのコンボは "sort"）。 */
-const LAYOUT: readonly (ToolButton | null | "sort")[] = [
-  { icon: "open", id: "file.open", hint: ja.toolbar.open, enable: "always" },
+export const TOOLBAR_LAYOUT: readonly (ToolButton | null | "sort")[] = [
+  // いちばん左は CFRU-JP のフォルダを開く（#556。ROM だけを開くのはメニューの ROMを開く… に残す）
+  { icon: "open", id: "file.openProject", hint: jaCfruFolder.toolbarHint, enable: "always" },
   { icon: "save", id: "file.export", hint: ja.toolbar.save, enable: "map" },
   null,
   { icon: "newMap", id: "map.new", hint: ja.toolbar.newMap, enable: "rom" },
@@ -56,7 +58,7 @@ export class Toolbar {
     for (const label of ja.sortModes) this.sort.append(new Option(label));
     this.sort.addEventListener("change", () => host.setSort(this.sort.selectedIndex));
 
-    for (const entry of LAYOUT) {
+    for (const entry of TOOLBAR_LAYOUT) {
       if (entry === null) {
         const sep = document.createElement("div");
         sep.className = "toolbar-separator";
@@ -67,6 +69,7 @@ export class Toolbar {
         const el = document.createElement("div");
         el.className = "toolbar-button";
         el.dataset["icon"] = entry.icon;
+        el.dataset["autoId"] = `toolbar.${entry.icon}`;
         el.title = entry.hint;
         el.innerHTML = ICONS[entry.icon] ?? "";
         el.addEventListener("click", () => {

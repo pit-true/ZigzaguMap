@@ -8,7 +8,7 @@
 - 見ること
   - ファイルメニューの一番上が「CFRU-JP のフォルダを開く…」（Ctrl+O）。「ROMを開く」は残り、Ctrl+Shift+O。
   - `openFolder` で ND・Chronos のルート・Chronos の cfru を開くと、プロジェクトのフォルダとベース ROM が決まり、マップが開ける。
-  - メニューから（フォルダのダイアログに答えるだけで）開ける。
+  - メニューと、ツールバーのいちばん左のボタン（#556）から（フォルダのダイアログに答えるだけで）開ける。メニューの ROMを開く で ROM だけも開ける。
   - ベース ROM の候補が複数なら一覧のダイアログ、無ければ ROM を選ぶダイアログ。`openFolder` はエラーで理由を返す。
   - 時間帯（#543）: ND、Chronos（`openFolder` と、`open` で Chronos のルートをプロジェクトにした形）で夜に変わる。ROM だけなら
     コンボが使えず、理由を返す。ソースが見つからないフォルダでは、探した場所をエラーに書く。
@@ -173,6 +173,32 @@ def main() -> int:
                     break
                 time.sleep(0.5)
             check(same(st["project"], nd) and same(st["rom"], nd / "BPRJ0.gba"), "Ctrl+O でフォルダを選ぶだけで ND が開く")
+
+            # ツールバーのいちばん左のボタン（#556）: 同じくフォルダを選ぶだけで開く。ヒントもメニューとそろう
+            icons = z.call({"cmd": "toolbar.icons"})
+            check(icons["actions"].get("open") == "file.openProject" and icons["hints"].get("open") == "CFRU-JP のフォルダを開く…（Ctrl+O）",
+                  f"ツールバーのいちばん左は CFRU-JP のフォルダを開く: {icons['actions'].get('open')} / {icons['hints'].get('open')}")
+            z.call({"cmd": "open", "rom": args.rom}, timeout=180)
+            z.call({"cmd": "click", "id": "toolbar.open"})
+            dialogs = z.call({"cmd": "dialogs"})["dialogs"]
+            check(any(d.get("kind") == "native" and d.get("type") == "folder" for d in dialogs), f"ボタンでフォルダを選ぶダイアログが出る: {dialogs}")
+            z.call({"cmd": "queuePath", "path": str(ch)})
+            for _ in range(60):
+                st = z.call({"cmd": "state"})
+                if same(st["project"], ch / "cfru"):
+                    break
+                time.sleep(0.5)
+            check(same(st["project"], ch / "cfru") and same(st["rom"], ch / "base" / "BPRJ0.gba"), "ボタンで Chronos のフォルダを選ぶだけで、プロジェクトと ROM が開く")
+            # ROM だけを開くのはメニューの ROMを開く（ROM を選んだあとの組のフォルダはキャンセル）
+            z.call({"cmd": "queuePath", "path": args.rom})
+            z.call({"cmd": "queuePath", "path": None})
+            z.call({"cmd": "menu.run", "id": "file.open", "wait": 1500})
+            for _ in range(60):
+                st = z.call({"cmd": "state"})
+                if same(st["rom"], args.rom):
+                    break
+                time.sleep(0.5)
+            check(same(st["rom"], args.rom) and st["project"] is None, f"メニューの ROMを開く で ROM だけを開ける: {st['rom']} / {st['project']}")
     print(f"\n失敗 {len(failures)} 件" if failures else "\nすべて OK")
     return 1 if failures else 0
 
