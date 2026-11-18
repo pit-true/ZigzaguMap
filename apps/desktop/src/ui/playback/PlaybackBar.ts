@@ -11,6 +11,8 @@ export interface PlaybackBarActions {
   startState(gender: PlayerGender, facing: MovementDirection, absent: readonly number[]): void;
   /** 「道をなぞる…」（#518）。 */
   pathDraw(): void;
+  /** 「画面を追う」（#564）。 */
+  follow(on: boolean): void;
 }
 
 /** マップの下に置く再生の操作。時計とスクリプトの計算は持たない。 */
@@ -25,6 +27,7 @@ export class PlaybackBar {
   private readonly people = document.createElement("details");
   private readonly absent = new Map<number, HTMLInputElement>();
   private readonly condition = document.createElement("output");
+  private readonly follow = document.createElement("input");
 
   constructor(private readonly actions: PlaybackBarActions) {
     this.element.className = "playback-bar"; this.element.dataset["autoId"] = "playback.bar";
@@ -48,7 +51,11 @@ export class PlaybackBar {
     this.facing.title = t.facing; this.facing.dataset["autoId"] = "playback.facing";
     this.gender.addEventListener("change", () => this.changedStart()); this.facing.addEventListener("change", () => this.changedStart());
     this.condition.dataset["autoId"] = "playback.condition"; this.condition.className = "playback-condition"; this.condition.hidden = true;
-    row.append(speed, this.gender, this.facing, this.people, this.status, this.condition);
+    const follow = document.createElement("label"); follow.title = t.followTitle;
+    this.follow.type = "checkbox"; this.follow.checked = true; this.follow.dataset["autoId"] = "playback.follow";
+    this.follow.addEventListener("change", () => actions.follow(this.follow.checked));
+    follow.append(this.follow, t.follow);
+    row.append(speed, this.gender, this.facing, follow, this.people, this.status, this.condition);
     this.status.dataset["autoId"] = "playback.position";
     this.slider.type = "range"; this.slider.min = "0"; this.slider.step = "1"; this.slider.dataset["autoId"] = "playback.seek";
     this.slider.addEventListener("input", () => actions.seek(Number(this.slider.value)));
@@ -67,6 +74,8 @@ export class PlaybackBar {
       label.append(input, name(id)); this.people.append(label); this.absent.set(id, input);
     }
   }
+
+  setFollow(on: boolean): void { this.follow.checked = on; }
 
   update(frame: number, last: number, playing: boolean, message = false): void {
     this.slider.value = String(frame); this.status.textContent = t.status(frame, last);
