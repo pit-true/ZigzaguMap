@@ -18,3 +18,10 @@ export {
   listScriptSourcePaths,
   reloadScriptIndexFile,
 } from "./buildScriptIndex.js";
+export {
+  isScriptLabelReachable,
+  scriptLabelCandidates,
+  scriptLabelPlace,
+  type ScriptLabelCandidate,
+  type ScriptLabelPlace,
+} from "./scriptLabelPlace.js";

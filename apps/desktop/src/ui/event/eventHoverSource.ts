@@ -38,6 +38,7 @@ export function summaryLines(result: SummaryResult): string[] {
     case "summary": {
       const lines: string[] = [];
       if (result.label) lines.push(t.label(result.label));
+      if (result.label && result.notGlobal) lines.push(t.notGlobal(result.label, result.notGlobal));
       if (result.missingLabel) lines.push(t.missingLabel(result.missingLabel), t.romFallback);
       const s = result.summary;
       lines.push(...s.entries.map((e) => t.entry(e)));

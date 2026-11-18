@@ -647,7 +647,7 @@ def check_hover_asm(z: Zigzagu, shots: pathlib.Path | None, ctx: dict) -> None:
     hover_text(z, "person", 0)
     check(time.time() - t0 < 0.5, f"2 回目は覚えた答え（{time.time() - t0:.3f} 秒）")
     text = hover_text(z, "sign", 1)
-    check("EventScript_Nope が .s に見つかりません" in text and "ROM のスクリプトを出します" in text, "ラベルが .s に無ければ知らせて ROM のスクリプトを出す")
+    check("EventScript_Nope がどの .s にも見つかりません" in text and "ROM のスクリプトを出します" in text, "ラベルが .s に無ければ知らせて ROM のスクリプトを出す")
     shot(z, shots, "p3_event_hover_asm.png")
     z.call({"cmd": "undo"})
     z.call({"cmd": "undo"})

@@ -25,6 +25,8 @@ export type SummaryResult =
       readonly from: "asm" | "rom";
       /** ラベルは付いているが .s に見つからず、ROM のスクリプトを出したとき、そのラベル。 */
       readonly missingLabel?: string;
+      /** ラベルは別の `.s`（このパス）にだけあり、`.global` でない（#554。ビルドで見つからない）。 */
+      readonly notGlobal?: string;
     }
   | { readonly kind: "none" }
   | { readonly kind: "missingLabel"; readonly label: string };
@@ -141,7 +143,8 @@ export class ScriptSummaries {
           },
           names,
         );
-        return { kind: "summary", summary, label: name, from: "asm" };
+        const place = await this.app.scripts.files.labelPlace(target.map.bank, target.map.map, name).catch(() => null);
+        return { kind: "summary", summary, label: name, from: "asm", ...(place?.kind === "notGlobal" ? { notGlobal: place.path } : {}) };
       }
       // ラベルは付いているが .s に見つからない（ROM のポインタがあればそちらを出す）
       if (name && !(pointer && session.project.rom.isPointer(pointer >>> 0))) return { kind: "missingLabel", label: name };

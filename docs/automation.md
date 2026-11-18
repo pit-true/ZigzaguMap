@@ -116,7 +116,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `event.mouse`（別名） | `action`（`click` / `drag` / `dblclick` / `hover`）、`x`、`y`、`toX`、`toY`（マス） | `mouse` の `target: "event"` と同じ（古い名前） |
 | `selectMovement` | `value` | 移動許可の選択を変える（移動エリアタブなら、パレットのそのマスを左クリックするのと同じ） |
 | `selection` | | 選択中のブロック（`block`）・移動許可（`movement`）・イベント（`event`: 種別・番号・数）とステータスバー |
-| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、コンボなら `index` と `options`（64 件を超えるときは件数）、入力欄なら `readOnly` と `focused`（フォーカスがあるか） |
+| `getField` | `id` | 部品の状態。`id` はアプリ独自の ID（`data-auto-id`）か AdvanceMap の部品名（`field:Txt_PosX`）。返事は `value`（入力欄の文字、コンボは選んでいる項目の文字、チェックは true / false、ラベルは文字）、`enabled`、`visible`、`autoId`、`amName`、`title`（ヒントの文字）、`classes`（CSS のクラス）、コンボなら `index` と `options`（64 件を超えるときは件数）、入力欄なら `readOnly` と `focused`（フォーカスがあるか） |
 | `setField` | `id`、`value` | 部品に値を入れ、人が入力したときと同じく `input` → `change` を送る。コンボは番号か項目の文字、チェックは true / false。返事は `getField` と同じものと、開いているダイアログ（`dialogs`） |
 | `click` | `id` | ボタンなどを押す（無効なら失敗）。返事は開いているダイアログ |
 | `ui.list` | `root`（省略可） | 部品の一覧（ID、AdvanceMap の部品名、値、有効か、表示されているか）。`root` に ID を渡すとその中だけ |
@@ -177,7 +177,7 @@ python tests/automation/tool_check.py --rom <素の BPRJ の写し> --exe <zigza
 | `script.open` | `path`（と `line`、1 から）か、`bank`・`map`・`kind`（`person` / `sign` / `trap` / `map`）・`index`（0 から） | スクリプトエディタでファイルかイベントのスクリプトを開く（イベントのダブルクリックと同じ）。返事は `opened`、イベントなら `location`（`path`・`line`・`label`・`from`）、ステータスバー。ウィンドウの準備は `windows` の `ready` で待つ |
 | `script.resolve` | `bank`・`map`・`kind`・`index` | イベントのスクリプトの場所（`path`・`line`・`label`・`from`: `label` か `scriptsJson`）。見つからなければ null。開かない |
 | `scripts.table` | `action`（省略で `get`）と、その引数（下の表） | maps\scripts.json の対応表（ツール > スクリプトファイルの対応表）。返事は `rows`（各行の `bank`・`map`（null はバンク全体）・`name`・`script`・`strings`（省いていれば null）・`resolvedStrings`（実際に使う `.string`）・`create`（出力で `.s` を作る行）・`unused`（前の行と同じバンク・マップで使われない行））、`pendingFiles`（出力で作る `.s` と `.string`）、`duplicates`、`modified`（未出力の変更）、`loadError`（scripts.json が読めなかった理由）、`open`（画面が開いているか）、`selected`（選んでいる行）、`dialogs` |
-| `script.labels` | `bank`・`map`（省略で表示中のマップ） | マップのイベントのラベル（#200・#204）。`person`・`sign`・`tile`（それぞれ `index`・`label`・`kind`・`inScript`（マップの `.s` にあるか））、`mapScripts`（eventscripts の `map` の行のラベル）、`table`（ZigzaguMap が `.s` に書くマップスクリプトの表）、`script`・`strings`（マップの `.s` と `.string`）、`candidates`（`.s` のラベルの一覧）、`hasFile`（scripts_MM.json があるか）、`conditional`（`#ifdef` の中の行）、`mismatches`（照合用の座標と合わないラベル）、`modified` |
+| `script.labels` | `bank`・`map`（省略で表示中のマップ） | マップのイベントのラベル（#200・#204）。`person`・`sign`・`tile`（それぞれ `index`・`label`・`kind`・`inScript`（ビルドで見つかるか。マップの `.s` か、ほかの `.s` の `.global` にある）・`place`（`map` / `global`（ほかの `.s` の `.global`）/ `notGlobal`（ほかの `.s` にだけあり `.global` でない）/ `missing`）・`file`（`global`・`notGlobal` のときのファイル））、`mapScripts`（eventscripts の `map` の行のラベル）、`table`（ZigzaguMap が `.s` に書くマップスクリプトの表）、`script`・`strings`（マップの `.s` と `.string`）、`candidates`（マップの `.s` のラベルの一覧）、`hasFile`（scripts_MM.json があるか）、`conditional`（`#ifdef` の中の行）、`mismatches`（照合用の座標と合わないラベル）、`modified` |
 | `script.setLabel` | `bank`・`map`（省略可）、`target`（`person` / `sign` / `tile` / `map`）、`index`、`label`（null で外す）、`kind`（人の `npc` / `trainer` / `item`） | ラベルを変える（`setEventLabel` を CommandBus で実行。元に戻せる）。返事は `script.labels` と同じ |
 | `script.realign` | `bank`・`map`（省略可） | 照合用の座標と合わないラベルを、書いた座標にあるイベントへ付け替える（「座標で付け直す」と同じ） |
 | `script.settle` | | ひな形・取り込みなどの書き足し（`.s` と `.string`）が済むまで待つ |

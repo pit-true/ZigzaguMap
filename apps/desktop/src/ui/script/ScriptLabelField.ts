@@ -1,4 +1,4 @@
-import { isScriptLabelName } from "@zigzagumap/core";
+import { isScriptLabelName, type ScriptLabelCandidate, type ScriptLabelPlace } from "@zigzagumap/core";
 import { jaScriptLabel as t } from "../../i18n/ja.scriptLabel";
 import "../../styles/scriptLabel.css";
 
@@ -8,8 +8,10 @@ export interface ScriptLabelSource {
   available(): boolean;
   /** 今のラベル（無ければ null）。 */
   current(): string | null;
-  /** 選べるラベル（マップの `.s` のラベル）。 */
-  candidates(): Promise<readonly string[]>;
+  /** 選べるラベル（マップの `.s` のラベルを先に、ほかの `.s` の `.global` のラベルを後ろに。#554）。 */
+  candidates(): Promise<readonly ScriptLabelCandidate[]>;
+  /** ラベルがどこにあるか（#554）。 */
+  place(label: string): Promise<ScriptLabelPlace>;
   /** ラベルを変える（null で外す）。コマンドにする。 */
   commit(label: string | null): void;
   /** 一覧の読み直しを知らせてもらう。戻り値でやめる。 */
@@ -23,18 +25,19 @@ const MAX_ITEMS = 200;
  * スクリプトのラベルの欄（イベントタブの人・看板・スクリプトタイル、マップスクリプトのパネル）。
  * CodeMirror は使わず、入力欄と一覧で作る。入力中は、マップの `.s` のラベルのうち入力を含むものを一覧に出す
  * （↑↓ で選び、Enter か一覧のクリックで決める。Esc で元に戻す）。▼ で全部を出す。フォーカスが外れたときにも決める。
- * 空にして決めるとラベルを外す。`.s` に無いラベルは赤い字にする（ビルドで Symbol missing になるため）。
+ * 空にして決めるとラベルを外す。ビルドで見つからないラベル（どこにも無い、別のファイルにだけあって `.global` でない）は
+ * 赤い字にする（Symbol missing になるため）。別のファイルの `.global` のラベルは赤くせず、ファイルの名前を添える（#554）。
  */
 export class ScriptLabelField {
   readonly element: HTMLElement;
   readonly input: HTMLInputElement;
   private readonly list: HTMLElement;
-  private items: string[] = [];
+  private items: ScriptLabelCandidate[] = [];
   private selected = -1;
   private shown: string | null = null;
   /** 利用者が打ちかけの文字があるか（入力してから、まだ決めていない）。 */
   private typing = false;
-  private all: readonly string[] = [];
+  private all: readonly ScriptLabelCandidate[] = [];
   private version = 0;
 
   constructor(
@@ -73,6 +76,8 @@ export class ScriptLabelField {
       void this.openList(this.input.value);
     });
     this.input.addEventListener("keydown", (e) => this.onKey(e));
+    // 一覧はほかの .s のラベルの索引も使うので、フォーカスが来たら先に作り始める（#554）
+    this.input.addEventListener("focus", () => void this.source.candidates().catch(() => undefined));
     this.input.addEventListener("blur", () => {
       // 一覧のクリックは mousedown で決めるので、ここでは入力をそのまま決める
       this.closeList();
@@ -111,7 +116,7 @@ export class ScriptLabelField {
 
   /** 一覧（自動操作の確かめ用）。 */
   get listItems(): readonly string[] {
-    return this.list.hidden ? [] : this.items;
+    return this.list.hidden ? [] : this.items.map((x) => x.name);
   }
 
   /** 決める（自動操作からも呼ぶ）。 */
@@ -137,18 +142,18 @@ export class ScriptLabelField {
   private async refreshMark(): Promise<void> {
     const v = ++this.version;
     const label = this.shown;
-    this.all = await this.source.candidates();
+    const place = label !== null && isScriptLabelName(label) ? await this.source.place(label) : null;
     if (v !== this.version) return;
-    const missing = label !== null && !this.all.includes(label);
+    const missing = place !== null && (place.kind === "missing" || place.kind === "notGlobal");
     this.input.classList.toggle("missing", missing);
     this.input.classList.remove("invalid");
-    this.input.title = missing ? t.missing(label) : (label ?? "");
+    this.input.title = label === null || place === null ? (label ?? "") : t.place(label, place);
   }
 
   private async openList(filter: string): Promise<void> {
     this.all = await this.source.candidates();
     const f = filter.trim().toLowerCase();
-    this.items = this.all.filter((n) => f === "" || n.toLowerCase().includes(f)).slice(0, MAX_ITEMS);
+    this.items = this.all.filter((n) => f === "" || n.name.toLowerCase().includes(f)).slice(0, MAX_ITEMS);
     this.selected = this.items.length > 0 && f !== "" ? 0 : -1;
     this.renderList();
   }
@@ -159,11 +164,18 @@ export class ScriptLabelField {
       return;
     }
     this.list.replaceChildren(
-      ...this.items.map((name, i) => {
+      ...this.items.map(({ name, path }, i) => {
         const el = document.createElement("div");
         el.className = "script-label-item";
         el.classList.toggle("selected", i === this.selected);
         el.textContent = name;
+        if (path !== null) {
+          const file = document.createElement("span");
+          file.className = "script-label-file";
+          file.textContent = fileName(path);
+          el.title = path;
+          el.append(file);
+        }
         el.dataset["autoId"] = `${this.id}.option:${name}`;
         el.addEventListener("mousedown", (e) => {
           e.preventDefault();
@@ -193,7 +205,7 @@ export class ScriptLabelField {
       }
       e.preventDefault();
     } else if (e.key === "Enter") {
-      const pick = !this.list.hidden && this.selected >= 0 ? this.items[this.selected]! : this.input.value;
+      const pick = !this.list.hidden && this.selected >= 0 ? this.items[this.selected]!.name : this.input.value;
       this.input.value = pick;
       this.closeList();
       this.commit(pick);
@@ -207,4 +219,9 @@ export class ScriptLabelField {
     } else return;
     e.stopPropagation();
   }
+}
+
+/** パスのファイルの名前（`assembly/x/y.s` → `y.s`）。 */
+export function fileName(path: string): string {
+  return path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf(String.fromCharCode(92))) + 1);
 }

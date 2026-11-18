@@ -71,6 +71,8 @@ export function getField(id: string): Record<string, unknown> {
     amName: el.dataset["amName"] ?? null,
     visible: isVisible(el),
     enabled: !(el as HTMLInputElement).disabled,
+    title: el.title,
+    classes: [...el.classList],
   };
   if (el instanceof HTMLSelectElement) {
     out["value"] = el.selectedIndex >= 0 ? el.options[el.selectedIndex]!.text : "";

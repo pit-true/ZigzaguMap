@@ -1,6 +1,19 @@
-import { appendBlock, indexAsmFile, removeBlock } from "@zigzagumap/core";
+import {
+  appendBlock,
+  buildScriptIndex,
+  indexAsmFile,
+  isScriptSourcePath,
+  reloadScriptIndexFile,
+  removeBlock,
+  scriptLabelCandidates,
+  scriptLabelPlace,
+  type ScriptIndex,
+  type ScriptLabelCandidate,
+  type ScriptLabelPlace,
+} from "@zigzagumap/core";
 import type { App } from "../../app/App";
 import { jaScriptLink as t } from "../../i18n/ja.scriptLink";
+import { normalizeScriptPath } from "../../windows/script-editor/fileText";
 
 /** 本文の読み先（エディタで開いていればエディタの本文、無ければディスク）。 */
 interface Loaded {
@@ -26,6 +39,11 @@ export class ScriptFiles {
   private readonly listeners = new Set<() => void>();
   /** ファイルが変わったときに呼ぶもの（パスつき。使われている番号の索引 #227 が使う）。 */
   private readonly pathListeners = new Set<(path: string) => void>();
+  /**
+   * プロジェクトの `.s` のラベルの索引（#554。ほかのファイルの `.global` のラベルを探す）。初めて使うときに作り、
+   * 書き換えたファイルの分だけ読み直す。全部を捨てたとき（前面に戻った・プロジェクトを開き直した）は、次に使うときに作り直す。
+   */
+  private index: Promise<ScriptIndex> | null = null;
 
   constructor(private readonly app: App) {}
 
@@ -67,12 +85,61 @@ export class ScriptFiles {
     if (path === undefined) {
       this.labels.clear();
       this.done.clear();
+      this.index = null;
     } else {
       this.labels.delete(path);
       this.done.delete(path);
+      const index = this.index;
+      const fs = this.app.state.session?.files;
+      if (index && fs && isScriptSourcePath(normalizeScriptPath(path))) {
+        const next = index.then(async (i) => {
+          await reloadScriptIndexFile(i, fs, normalizeScriptPath(path)).catch(() => false);
+          return i;
+        });
+        this.index = next;
+        next.catch(() => {
+          if (this.index === next) this.index = null;
+        });
+      }
       for (const l of this.pathListeners) l(path);
     }
     for (const l of this.listeners) l();
+  }
+
+  /** プロジェクトの `.s` のラベルの索引（無ければ作る）。 */
+  scriptIndex(): Promise<ScriptIndex> {
+    const fs = this.app.state.session?.files;
+    if (!fs?.root) return Promise.reject(new Error(t.noProjectFolder));
+    const building = (this.index ??= buildScriptIndex(fs));
+    building.catch(() => {
+      if (this.index === building) this.index = null;
+    });
+    return building;
+  }
+
+  /** そのマップの `.s`（決まらなければ null）。 */
+  mapScript(bank: number, map: number): string | null {
+    return this.app.state.session?.scriptsTable.document.resolve(bank, map)?.script ?? null;
+  }
+
+  /**
+   * ラベルがどこにあるか（#554。そのマップの `.s` か、ほかの `.s` の `.global` か）。マップの `.s` にあれば索引は使わない。
+   * プロジェクトフォルダが無ければ `missing`。
+   */
+  async labelPlace(bank: number, map: number, label: string): Promise<ScriptLabelPlace> {
+    const script = this.mapScript(bank, map);
+    const own = script ? await this.labelsOf(script) : [];
+    if (own.includes(label)) return { kind: "map" };
+    const index = await this.scriptIndex().catch(() => null);
+    return index ? scriptLabelPlace(label, script, own, index) : { kind: "missing" };
+  }
+
+  /** ラベルの欄の候補（マップの `.s` のラベルを先に、ほかの `.s` の `.global` のラベルを後ろに）。 */
+  async labelCandidates(bank: number, map: number): Promise<ScriptLabelCandidate[]> {
+    const script = this.mapScript(bank, map);
+    const own = script ? await this.labelsOf(script) : [];
+    const index = await this.scriptIndex().catch(() => null);
+    return index ? scriptLabelCandidates(script, own, index) : own.map((name) => ({ name, path: null }));
   }
 
   /** 本文を読む（無ければ null）。`editor` が false ならエディタの本文を見ずにディスクを読む。 */

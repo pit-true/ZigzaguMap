@@ -61,3 +61,15 @@
   background: var(--select);
   color: var(--select-text);
 }
+
+/* ほかの .s の .global のラベルの、ファイルの名前（#554） */
+.script-label-file {
+  margin-left: 8px;
+  color: var(--gray-text);
+  font-size: 11px;
+}
+
+.script-label-item.selected .script-label-file,
+.script-label-item:hover .script-label-file {
+  color: inherit;
+}
