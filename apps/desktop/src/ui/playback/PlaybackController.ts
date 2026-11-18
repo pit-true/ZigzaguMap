@@ -20,6 +20,12 @@ import { PlaybackTime } from "./PlaybackTime";
 import { matchesKey } from "../../app/keymap";
 import "../../styles/playback.css";
 import { scheduleIdleGc } from "../../util/idleGc";
+import type { SettingsData } from "../../app/Settings";
+
+type ZoomKeys = "mapZoom" | "zoomMap" | "zoomMovement" | "zoomEvent";
+function zoomOf(s: SettingsData): Pick<SettingsData, ZoomKeys> {
+  return { mapZoom: { ...s.mapZoom }, zoomMap: s.zoomMap, zoomMovement: s.zoomMovement, zoomEvent: s.zoomEvent };
+}
 
 export interface PlaybackRequest {
   readonly label?: string;
@@ -59,6 +65,8 @@ export class PlaybackController {
   private time: PlaybackTime | null = null;
   private cleanup: Promise<void> = Promise.resolve();
   private scrolls: { view: MapView; left: number; top: number; hidden: HTMLElement["hidden"] }[] = [];
+  /** 始める前の拡大（終えたら戻す。#564）。 */
+  private zoom: Pick<SettingsData, ZoomKeys> | null = null;
   private readonly bar: PlaybackBar;
   private readonly timelineView: TimelineView;
   private readonly resize: ResizeObserver;
@@ -76,6 +84,7 @@ export class PlaybackController {
         this.calculate();
       },
       pathDraw: () => { void this.openPathDraw().catch(error => this.app.state.setStatus(errorText(error), undefined, true)); },
+      follow: on => this.app.previewPlayer.setFollow(on),
     });
     this.timelineView = new TimelineView(frame => this.seek(frame), source => { void this.app.scriptHost().then(host => host.openFile(source.path, source.line + 1)).catch(error => this.app.state.setStatus(errorText(error), undefined, true)); });
     this.bar.element.append(this.timelineView.element);
@@ -163,6 +172,8 @@ export class PlaybackController {
     this.npcRelease ??= this.app.npcMotion.hold("playback");
     this.time = new PlaybackTime(this.app.timeOfDay, () => session === this.app.state.session);
     this.scrolls = this.views().map(view => ({ view, left: view.element.scrollLeft, top: view.element.scrollTop, hidden: view.layer.hidden }));
+    this.zoom = zoomOf(this.app.state.settings.data);
+    this.app.previewPlayer.bottomInset = () => this.bar.element.isConnected ? this.bar.element.offsetHeight : 0;
     try {
       if (!this.hadPreview) this.app.previewPlayer.start();
       this.calculate();
@@ -189,11 +200,17 @@ export class PlaybackController {
       this.app.previewPlayer.setPlayback(null);
       if (this.hadPreview) this.app.previewPlayer.setPlayer({ gender: this.gender });
       if (!this.hadPreview) this.app.previewPlayer.stop(true);
+      this.app.previewPlayer.bottomInset = () => 0;
+      // 再生の間に拡大を変えていたら、始める前の拡大に戻してからスクロールを戻す（#564）
+      const zoom = this.zoom;
+      if (zoom && sameMap && JSON.stringify(zoomOf(this.app.state.settings.data)) !== JSON.stringify(zoom)) {
+        this.app.state.settings.update(zoom); this.app.state.emit("view");
+      }
       for (const saved of this.scrolls) {
         saved.view.layer.hidden = saved.hidden;
         if (sameMap) { saved.view.element.scrollLeft = saved.left; saved.view.element.scrollTop = saved.top; }
       }
-      this.scrolls = [];
+      this.scrolls = []; this.zoom = null;
     }
     this.sourceMap = null;
     this.messages?.dispose(); this.messages = null;
@@ -293,6 +310,7 @@ export class PlaybackController {
     const numbers = new Map(events.persons.map((person, index) => [person.localId, index + 1] as const));
     const personName = (localId: number): string => t.personName(numbers.get(localId) ?? null, localId);
     this.timelineView.personName = personName;
+    this.bar.setFollow(this.app.previewPlayer.following);
     this.bar.configure(this.timeline.lastFrame, this.gender, start.player.facing, events.persons.map(person => person.localId), this.absent, personName);
     const timeline = this.timeline;
     this.timelineView.setTimeline(timeline, sprites, marker => this.answerText(marker), {
@@ -328,12 +346,8 @@ export class PlaybackController {
     this.timelineView.update(this.clock.frame);
     this.details();
     this.highlight();
-    const view = this.currentView(), frame = this.app.previewPlayer.frame;
-    if (frame) {
-      const scale = view.screenCellSize / 16, origin = view.originPx, zoom = view.screenCellSize / view.cellSize;
-      view.element.scrollLeft = origin.x * zoom + (frame.x + 120) * scale - view.element.clientWidth / 2;
-      view.element.scrollTop = origin.y * zoom + (frame.y + 80) * scale - Math.max(160, view.element.clientHeight - this.bar.element.offsetHeight) / 2;
-    }
+    // 240×160 の範囲をマップの表示の真ん中へ（帯の高さが変わったときも。範囲が同じなら手でスクロールした位置を保つ。#564）
+    this.app.previewPlayer.follow();
   }
   private details(): void {
     const element = this.bar.details;

@@ -28,6 +28,8 @@ def main():
     p.add_argument("--choice-label", help="customchoice か yesno のあるラベル。答えを替えて計算し直す")
     p.add_argument("--start-state", action="store_true", help="男女・向き・居ない人物、マップとセッションの切り替え、タイムラインの位置・拡大・ドラッグ")
     p.add_argument("--unsaved", action="store_true", help="エディタの未保存の本文を再生に使い、保存しない（--editor と一緒に）")
+    p.add_argument("--map", default="3.0", help="再生するマップ（バンク.マップ。既定 3.0）")
+    p.add_argument("--centering", action="store_true", help="再生の間、240×160 の範囲がマップの表示の真ん中にあり、カメラを追い、終えたらスクロールと拡大が戻る（#564）")
     args = p.parse_args()
     if args.rom_only:
         check_rom_only(args.exe, args.rom, args.shots, args.project)
@@ -44,8 +46,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="zzm-playback-", ignore_cleanup_errors=True) as work:
         with Zigzagu(args.exe, profile=pathlib.Path(work) / "profile", extra=["--mute-audio"]) as z:
             z.call(dict(cmd="open", rom=args.rom, project=args.project))
-            z.call(dict(cmd="selectMap", bank=3, map=0))
+            bank, number = (int(v) for v in args.map.split("."))
+            z.call(dict(cmd="selectMap", bank=bank, map=number))
             z.call(dict(cmd="tab", name="event"))
+            if args.centering:
+                check_centering(z, args.label, args.shots, args.camera)
             before = z.call(dict(cmd="canvasPng", target="event"))["png"]
             settings = z.call(dict(cmd="view.aids"))
             started = z.call(dict(cmd="playback.start", label=args.label))
@@ -202,6 +207,71 @@ def main():
                 print("OK 通常の印5種と追加の感情アイコン16種、夜の描画")
     assert digest() == before_files
     print("OK ROMとプロジェクトのJSONが操作前後で同じ")
+
+
+def answer_camera(z):
+    """ND の --camera のシナリオで、カメラが 1 マス動いて戻る分岐を選ぶ（main と同じ選び方）。"""
+    timeline = z.call(dict(cmd="playback.timeline"))
+    first = [m["branch"] for m in timeline["markers"] if m["kind"] == "branch" and not m["branch"]["known"] and m["branch"]["key"].endswith("#1")]
+    z.call(dict(cmd="playback.answer", key=first[2]["key"], taken=True))
+    timeline = z.call(dict(cmd="playback.timeline"))
+    second = [m["branch"] for m in timeline["markers"] if m["kind"] == "branch" and not m["branch"]["known"] and m["branch"]["key"].endswith("#2")]
+    z.call(dict(cmd="playback.answer", key=second[0]["key"], taken=True))
+
+
+def check_centering(z, label, shots, camera=False):
+    """再生の間、範囲の真ん中と表示の真ん中の差が 1 マス以内。カメラが動いても追い、手のスクロールは次に動くまで保ち、終えたら戻る（#564）。"""
+    def near(where):
+        c = z.call(dict(cmd="playback.centering"))
+        assert c and abs(c["cellsX"]) <= 1 and abs(c["cellsY"]) <= 1, (where, c)
+        return c
+    z.call(dict(cmd="scroll", target="event", x=0, y=0))
+    scroll0 = z.call(dict(cmd="view.scroll", target="event"))
+    zoom0 = z.call(dict(cmd="zoom.state", tab="event"))["zoom"]
+    z.call(dict(cmd="playback.start", label=label))
+    if camera:
+        answer_camera(z)
+    timeline = z.call(dict(cmd="playback.timeline"))
+    last = timeline["lastFrame"]
+    near("始め")
+    camera_moves, positions = 0, set()
+    for frame in range(0, last + 1, 2):
+        state = z.call(dict(cmd="playback.seek", frame=frame))
+        c = near(f"フレーム {frame}")
+        positions.add((round(c["scrollLeft"]), round(c["scrollTop"])))
+    camera_moves = len(positions)
+    for frame in reversed(range(0, last + 1, 7)):
+        z.call(dict(cmd="playback.seek", frame=frame)); near(f"戻して {frame}")
+    # 拡大を変えても真ん中（倍率 3）。範囲が同じでも、倍率が変われば合わせ直す
+    z.call(dict(cmd="zoom.wheel", tab="event", cell=[0, 0], delta=-2))
+    z.call(dict(cmd="playback.seek", frame=last // 2)); near("拡大")
+    # 手でスクロールしたら、同じ範囲の間は追わない
+    z.call(dict(cmd="playback.seek", frame=0))
+    z.call(dict(cmd="scroll", target="event", dx=-200, dy=-120))
+    moved = z.call(dict(cmd="playback.centering"))
+    z.call(dict(cmd="playback.step", direction="next", singleFrame=True))
+    kept = z.call(dict(cmd="playback.centering"))
+    same_camera = kept["scrollLeft"] == moved["scrollLeft"] and kept["scrollTop"] == moved["scrollTop"]
+    # 「画面を追う」を外すと追わない。入れ直すと真ん中に戻る
+    z.call(dict(cmd="setField", id="playback.follow", value=False))
+    z.call(dict(cmd="scroll", target="event", dx=-50, dy=0))
+    off = z.call(dict(cmd="playback.seek", frame=last))
+    c = z.call(dict(cmd="playback.centering"))
+    assert not c["following"], c
+    z.call(dict(cmd="setField", id="playback.follow", value=True))
+    near("入れ直し")
+    if shots:
+        folder = pathlib.Path(shots); folder.mkdir(parents=True, exist_ok=True)
+        for frame in sorted({0, last // 3, (2 * last) // 3}):
+            z.call(dict(cmd="playback.seek", frame=frame)); near(f"写真 {frame}")
+            time.sleep(0.3)
+            (folder / f"centering_{frame:04d}.png").write_bytes(base64.b64decode(z.call(dict(cmd="screenshot"))["png"]))
+    z.call(dict(cmd="playback.stop"))
+    after = z.call(dict(cmd="view.scroll", target="event"))
+    assert z.call(dict(cmd="zoom.state", tab="event"))["zoom"] == zoom0
+    assert (after["scrollLeft"], after["scrollTop"]) == (scroll0["scrollLeft"], scroll0["scrollTop"]), (scroll0, after)
+    print(f"OK 再生の間 {last} フレームで範囲が表示の真ん中（1 マス以内。スクロールの位置 {camera_moves} 通り）、拡大・巻き戻しでも真ん中、"
+          f"手のスクロールは{'同じカメラの間保つ' if same_camera else 'カメラが動いたので合わせ直した'}、「画面を追う」の切り替え、終えたらスクロールと拡大が戻る")
 
 
 def play_to_end(z, timeout=30, on_message=None):

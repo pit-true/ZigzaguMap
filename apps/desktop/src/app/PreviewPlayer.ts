@@ -10,6 +10,7 @@ import { writeFile, type FileDialogs } from "./FileDialogs";
 import { errorText } from "../util/errors";
 import { sceneNeighborBlocks } from "./SceneNeighbors";
 import { scheduleIdleGc } from "../util/idleGc";
+import { jaPlayback } from "../i18n/ja.playback";
 
 export interface PlayerPlacement {
   readonly x: number;
@@ -48,6 +49,13 @@ export class PreviewPlayer {
   /** 歩いている途中。`manual` は自動操作で 1 フレームずつ進めるときのフレーム（時計を使わない）。 */
   private walking: { from: PlayerPlacement; start: number; raf: number; done: () => void; manual: number | null } | null = null;
   onTalk: ((placement: PlayerPlacement) => void) | null = null;
+  /** 表示の下で隠れる高さ（画素。再生の帯がマップの表示の下に重なる分）。真ん中に合わせるときに除く（#564）。 */
+  bottomInset: () => number = () => 0;
+  /** 最後に真ん中に合わせたときの範囲と表示（同じなら合わせ直さない。手でスクロールしたら次にカメラが動くまで追わない）。 */
+  private centered = "";
+  /** 次の描画で真ん中に合わせる（始めたとき、再生を始めたとき、「画面を追う」を入れたとき）。 */
+  private followPending = false;
+  private readonly followCheck = document.createElement("input");
 
   constructor(private readonly state: EditorState, private readonly aids: ViewAids, views: Readonly<Record<AidTab, MapView>>, actions: Actions, private readonly files: FileDialogs) {
     this.controls.className = "actor-preview-controls";
@@ -63,7 +71,11 @@ export class PreviewPlayer {
     const save = document.createElement("button");
     save.textContent = t.save; save.dataset["autoId"] = "preview.save";
     save.addEventListener("click", () => { void this.save().catch(error => this.state.setStatus(errorText(error), undefined, true)); });
-    this.controls.append(this.gender, this.facing, save, close);
+    const follow = document.createElement("label");
+    this.followCheck.type = "checkbox"; this.followCheck.dataset["autoId"] = "preview.follow";
+    this.followCheck.addEventListener("change", () => this.setFollow(this.followCheck.checked));
+    follow.title = jaPlayback.followTitle; follow.append(this.followCheck, jaPlayback.follow);
+    this.controls.append(this.gender, this.facing, follow, save, close);
     this.layers = { map: this.makeLayer(views.map, "map"), movement: this.makeLayer(views.movement, "movement"), event: this.makeLayer(views.event, "event") };
     actions.register("view.previewPlayer", () => this.enabled ? this.stop() : this.start());
     actions.registerCheck("view.previewPlayer", () => this.enabled);
@@ -93,7 +105,7 @@ export class PreviewPlayer {
     // 男女は再生の帯と同じ個人設定（#457）。
     const gender = this.state.settings.data.playbackGender === "female" ? "female" : "male";
     this.placement = { x: Math.floor(map.doc.width / 2), y: Math.floor(map.doc.height / 2), facing: "down", gender };
-    this.active = true;
+    this.active = true; this.followPending = true;
     this.state.settings.update({ playerView: true });
     for (const layer of Object.values(this.aids.layers)) layer.setExternalSight(true);
     this.state.setStatus(t.active); this.draw(); this.state.emit("view");
@@ -231,7 +243,11 @@ export class PreviewPlayer {
   onPlayback: ((state: PlaybackState | null) => void) | null = null;
 
   /** 再生画面から呼ぶ。nullで、再生前の仮の主人公の配置へ戻る。 */
-  setPlayback(state: PlaybackState | null): void { this.playback = state; this.onPlayback?.(state); this.draw(); }
+  setPlayback(state: PlaybackState | null): void {
+    // 再生を始めたときは、前に合わせた位置と同じでも真ん中に合わせ直す（#564）
+    if (state && !this.playback) { this.centered = ""; this.followPending = true; }
+    this.playback = state; this.onPlayback?.(state); this.draw();
+  }
 
   async ready(): Promise<void> {
     let pending: Promise<void>;
@@ -310,7 +326,7 @@ export class PreviewPlayer {
     const active = this.state.tab in this.layers ? this.layers[this.state.tab as AidTab] : null;
     for (const layer of Object.values(this.layers)) {
       const on = layer === active;
-      layer.view.setPreviewMargins(on ? PAD : NO_PAD);
+      layer.view.setPreviewMargins(on ? this.padFor(layer.view) : NO_PAD);
       layer.canvas.hidden = !on; layer.handle.hidden = !on || !!this.playback;
       layer.shade.hidden = !on || !this.state.settings.data.playerView;
       if (!on) { layer.canvas.width = 0; layer.canvas.height = 0; }
@@ -319,7 +335,7 @@ export class PreviewPlayer {
     if (this.controls.parentElement !== active.view.element) active.view.element.prepend(this.controls);
     this.controls.hidden = !!this.playback;
     const p = this.placement;
-    this.gender.value = p.gender; this.facing.value = p.facing;
+    this.gender.value = p.gender; this.facing.value = p.facing; this.followCheck.checked = this.following;
     const actor = (id: number, graphicsId: number, x: number, y: number, facing: MovementDirection, elevation: number): PlaybackActorState => ({
       id, graphicsId, tileX: x, tileY: y, pixelX: x * 16, pixelY: y * 16, height: 0, facing,
       sprite: "stand", actionFrame: 0, movementId: null, present: true, visible: true, shadow: false, mark: null, elevation, fixedPriority: false, animHold: false,
@@ -352,5 +368,57 @@ export class PreviewPlayer {
     const position = actorImagePosition(player, info?.width ?? 16, info?.height ?? 32);
     active.handle.style.left = `${origin.x + position.x * scale}px`; active.handle.style.top = `${origin.y + position.y * scale}px`;
     active.handle.style.width = `${(info?.width ?? 16) * scale}px`; active.handle.style.height = `${(info?.height ?? 32) * scale}px`;
+    // 再生の間と矢印キーで歩いている間は、範囲を真ん中に追う。ドラッグや置き直しの間は追わない（マウスの下が動かないように）
+    if (this.playback || this.walking || this.followPending) this.follow();
+  }
+
+  /** 「画面を追う」（個人設定 playbackFollow。再生の帯と仮の主人公の欄で同じ。#564）。 */
+  get following(): boolean { return this.state.settings.data.playbackFollow !== false; }
+  setFollow(on: boolean): void {
+    this.state.settings.update({ playbackFollow: on });
+    this.followCheck.checked = on;
+    if (on) { this.centered = ""; this.followPending = true; this.draw(); }
+  }
+
+  /**
+   * 240×160 の範囲の真ん中を、マップの表示（下の隠れる高さを除く）の真ん中に合わせてスクロールする（#564）。
+   * 範囲と表示が前に合わせたときと同じなら何もしない（手でスクロールした位置を保つ）。
+   */
+  follow(): void {
+    if (!this.active || !this.following) return;
+    const active = this.state.tab in this.layers ? this.layers[this.state.tab as AidTab] : null;
+    const frame = this.frame;
+    if (!active || !frame) return;
+    this.followPending = false;
+    const view = active.view, element = view.element;
+    const scale = view.screenCellSize / 16, zoom = view.screenCellSize / view.cellSize, origin = view.originPx;
+    const visible = Math.max(0, element.clientHeight - this.bottomInset());
+    const key = [this.state.tab, frame.x, frame.y, view.screenCellSize, element.clientWidth, visible, origin.x, origin.y].join(",");
+    if (key === this.centered) return;
+    this.centered = key;
+    element.scrollLeft = origin.x * zoom + (frame.x + 120) * scale - element.clientWidth / 2;
+    element.scrollTop = origin.y * zoom + (frame.y + 80) * scale - visible / 2;
+  }
+
+  /**
+   * 240×160 の範囲の真ん中と、マップの表示（下の隠れる高さを除く）の真ん中の差（画面の画素とマス。自動操作の `playback.centering`。#564）。
+   * 出していなければ null。
+   */
+  centering(): { following: boolean; dx: number; dy: number; cellsX: number; cellsY: number; cellSize: number; scrollLeft: number; scrollTop: number } | null {
+    const active = this.state.tab in this.layers ? this.layers[this.state.tab as AidTab] : null;
+    if (!this.active || !active || active.canvas.hidden) return null;
+    const c = active.canvas.getBoundingClientRect(), v = active.view.element.getBoundingClientRect();
+    const element = active.view.element, size = active.view.screenCellSize;
+    const visible = Math.max(0, element.clientHeight - this.bottomInset());
+    const dx = (c.left + c.width / 2) - (v.left + element.clientWidth / 2), dy = (c.top + c.height / 2) - (v.top + visible / 2);
+    return { following: this.following, dx, dy, cellsX: dx / size, cellsY: dy / size, cellSize: size, scrollLeft: element.scrollLeft, scrollTop: element.scrollTop };
+  }
+
+  /** 範囲がマップの端にあっても真ん中に合わせられる余白（マス）。追わないときは今までの余白。 */
+  private padFor(view: MapView): typeof PAD {
+    if (!this.following) return PAD;
+    const size = view.screenCellSize;
+    const x = Math.ceil(view.element.clientWidth / size) + PAD.left, y = Math.ceil(view.element.clientHeight / size) + PAD.top;
+    return { left: x, top: y, right: x, bottom: y };
   }
 }
