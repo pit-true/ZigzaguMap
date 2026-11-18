@@ -147,6 +147,8 @@ export interface SettingsData {
   /** プレイヤーの視界の枠（表示メニュー。V。Phase5 #391。既定オフ）。 */
   playerView: boolean;
   playbackGender: "male" | "female";
+  /** 再生と仮の主人公の歩きの間、240×160 の範囲をマップの表示の真ん中に合わせて追う（再生の帯の「画面を追う」。#564。既定オン）。 */
+  playbackFollow: boolean;
   /** グリッドの形（表示 > グリッドの設定…。Phase5 #391。既定は今までの見た目。読むときは normalizeGridStyle で確かめる）。 */
   gridStyle: { width: number; height: number; offsetX: number; offsetY: number; color: string; line: string };
   /**
@@ -230,6 +232,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   cursorFrame: false,
   playerView: false,
   playbackGender: "male",
+  playbackFollow: true,
   gridStyle: { width: 1, height: 1, offsetX: 0, offsetY: 0, color: "#000000", line: "solid" },
   shortcuts: {},
   minimap: { show: false, left: null, top: null, town: false },
