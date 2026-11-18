@@ -49,7 +49,7 @@ export const jaTools = {
   resizeTop: "上に足す",
   resizePlaceNote: "下の図のマップをドラッグして、新しい枠の中の位置を決めます（負の値はその分を削ります）",
   resizeFill: "広げた所",
-  resizeFillEdge: "端の写し（今と同じ）",
+  resizeFillEdge: "端のコピー（今と同じ）",
   resizeFillBorder: "境界ブロック",
   resizeFillSelection: "選んでいるブロック",
   resizeNow: (w: number, h: number) => `今の大きさ: ${w}×${h}`,

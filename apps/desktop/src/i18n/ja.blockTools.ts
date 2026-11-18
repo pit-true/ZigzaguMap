@@ -106,7 +106,7 @@ export const jaBlockTools = {
   newTilesetBlocks: "ブロック数",
   newTilesetContent: "初めの中身",
   newTilesetEmpty: "空",
-  newTilesetCopy: "今のタイルセットの写し",
+  newTilesetCopy: "今のタイルセットのコピー",
   newTilesetLimit: (tiles: number, blocks: number) => `上限はタイル ${tiles}（16 の倍数に切り上げ）、ブロック ${blocks} です。`,
   newTilesetNote: "作ると、表示中のマップの組をこのタイルセットに付け替えます（1 回の Ctrl+Z で戻ります）。出力すると maps\\tilesets に New のタイルセットとして書きます。",
   newTilesetCreate: "作る",

@@ -34,16 +34,16 @@
 | ひな形と取り込みの文字列 | ひらがなと漢字の 2 つ（同じ本文の `_k` も作る） | 1 つ |
 | `.global` | 付けない | 付ける |
 | `.string` の名前 | `overworld_strings_<.s の名前>.string` | 機能ごとの名前が多い（対応表で指定する） |
-| ビルド | CFRU の `python scripts/make.py` → `test.gba` を DPE の `BPRJ0.gba` へ写す → DPE の `python scripts/make.py` | 1 つ上の `Chronos` で `python build.py` |
+| ビルド | CFRU の `python scripts/make.py` → `test.gba` を DPE の `BPRJ0.gba` へコピーする → DPE の `python scripts/make.py` | 1 つ上の `Chronos` で `python build.py` |
 | できる ROM | `../NeoDark-DPE-main/test.gba` | `../build/Chronos.gba` |
 | 保存時の幅検査 | 無し | `python tools/check_text_width.py --source`（新しい `#org` は `strings/text_width_registry.json` に登録する） |
 
-### 写しのテスト（ND と Chronos）
+### コピーのテスト（ND と Chronos）
 
-ユーザーの実フォルダには書かず、写しで確かめます（ローカルだけ。設定は「[開発](development.md#開発)」の `tests/realcopy/local.config.json`）。
+ユーザーの実フォルダには書かず、コピーで確かめます（ローカルだけ。設定は「[開発](development.md#開発)」の `tests/realcopy/local.config.json`）。
 
 ```sh
-python tests/realcopy/run.py --smoke --reuse            # 開いて何もせずに出力し、写しでビルドする
+python tests/realcopy/run.py --smoke --reuse            # 開いて何もせずに出力し、コピーでビルドする
 python tests/realcopy/run.py --link --reuse             # Phase2 の通し（下の流れ）
 python tests/realcopy/run.py --delete --reuse          # イベントの削除と複数行の文字列（下の流れ）
 python tests/realcopy/run.py --connection --reuse --only nd  # 接続の編集（Phase3。角のつまみ・新しいマップ）を出力してビルドし、ROM の接続を確かめる
@@ -52,11 +52,11 @@ python tests/realcopy/run.py --all --reuse --only nd    # 全部。--only で ND
 python tests/automation/rom_only_script_check.py --rom <素の BPRJ>   # 素の ROM だけのときの表示
 ```
 
-`--link` は、写しで次を順に行います: 新しい `.s` の行を対応表に足す → マップ 3.0 に人・看板・スクリプトタイルを置く（ラベルとひな形）→ 元に戻す・やり直す → エディタで人のスクリプトを開いて 1 行足し、文字列をその場編集する（幅検査の波線が出て、直すと消える。Chronos は `check_text_width.py` が動く）→ F2 でラベル名を変え、イベントのラベルが変わる → 素の ROM のスクリプトを取り込む → マップスクリプトの表を作り、行き先を取り込む → 出力 → ビルドの欄でビルド → できた ROM を開き、イベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、足した行がスクリプトに入ったことを確かめる。写しのテキストファイルは最後に元へ戻し、実フォルダの更新日時が変わっていないことも確かめます。
+`--link` は、コピーで次を順に行います: 新しい `.s` の行を対応表に足す → マップ 3.0 に人・看板・スクリプトタイルを置く（ラベルとひな形）→ 元に戻す・やり直す → エディタで人のスクリプトを開いて 1 行足し、文字列をその場編集する（幅検査の波線が出て、直すと消える。Chronos は `check_text_width.py` が動く）→ F2 でラベル名を変え、イベントのラベルが変わる → 素の ROM のスクリプトを取り込む → マップスクリプトの表を作り、行き先を取り込む → 出力 → ビルドの欄でビルド → できた ROM を開き、イベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、足した行がスクリプトに入ったことを確かめる。コピーのテキストファイルは最後に元へ戻し、実フォルダの更新日時が変わっていないことも確かめます。
 
-`--template` は、写しで次を順に行います（#227・#243〜#245。trainers のパッチを当てた写しで動かす）: 索引を作り終え、未使用の最小のフラグ・変数・隠しアイテムの番号・トレーナーの番号が索引のどこにも無く、`.s` と C にも（数でも名前でも）出てこないことを確かめる → マップ 3.0 にひな形を 1 つずつ置く（人・看板・スクリプトタイル・落とし物の看板とボール・アイテムをくれる人・ショップ・既存のトレーナー・自動生成した新しいトレーナー）→ 最後のものを元に戻す・やり直す → 「未使用」ボタンで人のフラグとスクリプトタイルの変数を入れる → 右クリックの「ここにひな形を置く」のウィンドウを出す → 出力して `maps\trainers.json` を確かめる → ビルドする（ND は CFRU と DPE）→ できた ROM で、置いたイベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、アイテムをくれる人の `checkflag`・ショップの品物・`trainerbattle` の番号・隠しアイテムの看板の中身・トレーナーの表の新しい行（ほかの行は元の ROM と同じ）を確かめる。
+`--template` は、コピーで次を順に行います（#227・#243〜#245。trainers のパッチを当てたコピーで動かす）: 索引を作り終え、未使用の最小のフラグ・変数・隠しアイテムの番号・トレーナーの番号が索引のどこにも無く、`.s` と C にも（数でも名前でも）出てこないことを確かめる → マップ 3.0 にひな形を 1 つずつ置く（人・看板・スクリプトタイル・落とし物の看板とボール・アイテムをくれる人・ショップ・既存のトレーナー・自動生成した新しいトレーナー）→ 最後のものを元に戻す・やり直す → 「未使用」ボタンで人のフラグとスクリプトタイルの変数を入れる → 右クリックの「ここにひな形を置く」のウィンドウを出す → 出力して `maps\trainers.json` を確かめる → ビルドする（ND は CFRU と DPE）→ できた ROM で、置いたイベントのスクリプトの番地が `offsets.ini` のラベルの位置と同じこと、アイテムをくれる人の `checkflag`・ショップの品物・`trainerbattle` の番号・隠しアイテムの看板の中身・トレーナーの表の新しい行（ほかの行は元の ROM と同じ）を確かめる。
 
-`--delete` は、写しのビルド側を新しいバージョンにしてから（ND は build-support のパッチを当て、Chronos は実フォルダの string.py・map_project.py・check_text_width.py を写す）、次を順に行います: マップ 3.0 に人を置き、「本文を編集」で文字列を制御記号のあとで改行した複数行にして保存する（Chronos は幅検査が通る）→ 素の ROM のスクリプトの人を探して確認のダイアログから消す（`maps\rom_erase.json` に範囲が記録され、元に戻す・やり直すも）→ 出力してビルドし、記録した範囲がすべて 0xFF で、複数行の文字列のバイト列が 1 行で書いたときと同じことを確かめる → 置いた人を右クリックの「イベントを削除」で消し、`.s` と `.string`（ND は `_k` も、Chronos は幅検査の登録も）から消え、元に戻すと戻ることを確かめる。
+`--delete` は、コピーのビルド側を新しいバージョンにしてから（ND は build-support のパッチを当て、Chronos は実フォルダの string.py・map_project.py・check_text_width.py をコピーする）、次を順に行います: マップ 3.0 に人を置き、「本文を編集」で文字列を制御記号のあとで改行した複数行にして保存する（Chronos は幅検査が通る）→ 素の ROM のスクリプトの人を探して確認のダイアログから消す（`maps\rom_erase.json` に範囲が記録され、元に戻す・やり直すも）→ 出力してビルドし、記録した範囲がすべて 0xFF で、複数行の文字列のバイト列が 1 行で書いたときと同じことを確かめる → 置いた人を右クリックの「イベントを削除」で消し、`.s` と `.string`（ND は `_k` も、Chronos は幅検査の登録も）から消え、元に戻すと戻ることを確かめる。
 
 画面の部品からの確認は `tests/automation/` の `script_editor_check.py`（エディタの土台）、`script_editor_features_check.py`（補完・ホバー・定義へ移動・検索など）、`script_width_check.py`（幅検査）、`script_link_check.py`（イベントタブの欄・取り込み・F2・ビルドの欄）、`scripts_table_check.py`（対応表の画面）にあります。自動操作の命令は [docs/automation.md](automation.md) の「スクリプト連携」と「別ウィンドウ（スクリプトエディタ）」の表にあります。
 
@@ -69,7 +69,7 @@ python tests/automation/rom_only_script_check.py --rom <素の BPRJ>   # 素の 
 | 項目 | 内容 | ND の既定値 | Chronos の既定値 |
 |---|---|---|---|
 | `dialect` | 方言。`nd`・`chronos`・`auto` | `auto` | `auto` |
-| `build` | ビルドの手順の列。1 つの手順は `{ "command", "args", "cwd" }`。上から順に動かす。`command` が `copy` なら、`args` の 1 つ目のファイルを 2 つ目へ写す | CFRU の `python scripts/make.py`（`cwd` は `.`）→ `copy test.gba ../NeoDark-DPE-main/BPRJ0.gba` → DPE の `python scripts/make.py`（`cwd` は `../NeoDark-DPE-main`） | `python build.py`（`cwd` は `..`） |
+| `build` | ビルドの手順の列。1 つの手順は `{ "command", "args", "cwd" }`。上から順に動かす。`command` が `copy` なら、`args` の 1 つ目のファイルを 2 つ目へコピーする | CFRU の `python scripts/make.py`（`cwd` は `.`）→ `copy test.gba ../NeoDark-DPE-main/BPRJ0.gba` → DPE の `python scripts/make.py`（`cwd` は `../NeoDark-DPE-main`） | `python build.py`（`cwd` は `..`） |
 | `outputRom` | ビルドで出来る ROM | `../NeoDark-DPE-main/test.gba` | `../build/Chronos.gba` |
 | `widthCheck` | `.string` の幅検査のコマンド（形は `build` の 1 手順と同じ）。`null` なら無し | `null` | `python tools/check_text_width.py --source`（`cwd` は `..`） |
 | `labelTemplate` | ラベルの規則。`{map}`（`.s` の名前から作った名前）・`{kind}`（`Npc` / `Sign` / `Tile`）・`{index}`（番号）を置き換える | `{map}_{kind}{index}` | 同じ |
@@ -247,7 +247,7 @@ ROM のスクリプトのバイト列を、`xse_commands.s` の書き方の文�
 
 Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け・ホバー・補完を再現し、拡張に無い定義へ移動・波線・文字列の編集・テーマなどを足しています。命令表・ラベルと `.equ` の索引・文字列のラベルの索引は、エディタのウィンドウを開いたときに裏で読みます（ND で 1 秒前後。メインのウィンドウのメモリは使いません）。索引は、開いているタブの編集中の本文で置き換えるので、保存前に足したラベルも補完や定義へ移動に出ます（保存せずにタブを閉じるとディスクの内容に戻ります）。ウィンドウが前面に戻ったときに、外で書き換えたファイルを読み直します。処理は core の `script/assist/`（DOM なし）と、エディタの `windows/script-editor/extensions/` の 1 機能 1 ファイルにあります。
 
-- 読み込みとメモリ: CodeMirror と補助の機能はエディタの束（`ScriptEditorWindow-*.js`）だけに入り、メインの束は変わりません（エディタの束は 296KB から 465KB、gzip で 152KB）。ND の写しで、エディタを開いている間のエディタのウィンドウ（レンダラー）の専用ワーキングセットは約 38MB です（中身の無いプロジェクトで開いたときは約 23MB。命令表・索引などの知識は Node で測って約 12MB）。読み込みが済んだら、手の空いたときに V8 の GC を「空いた領域も OS へ返す」形（`util/idleGc.ts` の `scheduleIdleGc(true)`）で 1 回走らせます。これをしないと、読み込みの一時的なもの（ファイルの本文・行の解析・IPC の受け取り）を集めたあとの空き領域を V8 が 30 秒ほど持ったままにし、その間は約 80MB に見えていました。閉じるとメインだけの値に戻ります。メインのウィンドウの値は、機能を足す前と同じです。
+- 読み込みとメモリ: CodeMirror と補助の機能はエディタの束（`ScriptEditorWindow-*.js`）だけに入り、メインの束は変わりません（エディタの束は 296KB から 465KB、gzip で 152KB）。ND のコピーで、エディタを開いている間のエディタのウィンドウ（レンダラー）の専用ワーキングセットは約 38MB です（中身の無いプロジェクトで開いたときは約 23MB。命令表・索引などの知識は Node で測って約 12MB）。読み込みが済んだら、手の空いたときに V8 の GC を「空いた領域も OS へ返す」形（`util/idleGc.ts` の `scheduleIdleGc(true)`）で 1 回走らせます。これをしないと、読み込みの一時的なもの（ファイルの本文・行の解析・IPC の受け取り）を集めたあとの空き領域を V8 が 30 秒ほど持ったままにし、その間は約 80MB に見えていました。閉じるとメインだけの値に戻ります。メインのウィンドウの値は、機能を足す前と同じです。
 
 色付けとテーマ（#191）:
 
@@ -264,7 +264,7 @@ Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け�
 - 範囲は、エディタで開ける `assembly` の `.s` と `strings` の `.string` の全部です。欄で「.s だけ」「.string だけ」に絞れます。探すたびにディスクから読み、開いているタブは未保存の本文で探します。
 - 大文字と小文字の区別・正規表現・単語単位を選べます（単語単位は、前後が英数字と `_` でない所）。正しくない正規表現は結果なしにして、欄を赤くします。
 - 結果はファイルごとにまとめ、行番号と行の文を出し、一致した所に色を付けます。押すとそのファイルをタブで開き、その行の一致した所を選びます。上限は 500 行で、超えたら「500 件で止めました」と出します。置換はしません（ファイルをまたぐ置換は、間違えたときに戻しにくいため）。
-- 1 回の検索の時間（3 回の値。ファイルを 1 つ読むごとに画面へ返すので、探している間も画面は止まりません）: ND の写し（30 ファイル）で 50〜230 ms、Chronos の写し（61 ファイル）で 96〜432 ms。
+- 1 回の検索の時間（3 回の値。ファイルを 1 つ読むごとに画面へ返すので、探している間も画面は止まりません）: ND のコピー（30 ファイル）で 50〜230 ms、Chronos のコピー（61 ファイル）で 96〜432 ms。
 - 計算は core の `script/search/ProjectSearch.ts`、欄はエディタの `windows/script-editor/ProjectSearch.ts` です。
 
 ホバーと補完（#192）:
@@ -289,7 +289,7 @@ Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け�
 
 - `.s`: 知らない命令（命令表・ARM / Thumb の命令・同じファイルの `.macro` のどれでもない）、組めないマクロ（中から呼ぶマクロをたどった先に定義の無いものがある。例: `giveitem` → `copyvarifnotzero` → `setorcopyvar`。警告で、補完とホバーには出したまま）、必須の引数が足りない（マクロの `:req`）、引数が多すぎる、どこにも定義の無いラベル（命令の引数のうち、ラベル・移動データ・文字列を指すもの）。ラベルは、索引・文字列の索引・`.equ`・リンカのスクリプト（BPRJ.ld の `gStringVar4 = 0x…;` など）・同じ本文の定義を探します。`callasm` などの C の関数を指す引数、`.if 0` の中、マクロの本文は調べません。マクロで作るラベル（`EventScript_X\num:`）は、頭の名前で始まれば定義済みとみなします。
 - `.string`: 同じファイルに同じラベルが 2 つ以上（エラー）、別の `.string` に同じラベル（警告）、簡易の幅検査（下）。
-- 打つのを止めて 0.5 秒で調べ直します。行番号の横に印、F8 で次の波線、Ctrl+Shift+M で一覧。ND と Chronos の写しの overworld_scripts の `.s` をすべて開いて、誤った波線が出ないことを確かめています。
+- 打つのを止めて 0.5 秒で調べ直します。行番号の横に印、F8 で次の波線、Ctrl+Shift+M で一覧。ND と Chronos のコピーの overworld_scripts の `.s` をすべて開いて、誤った波線が出ないことを確かめています。
 - ビルドのエラーや保存時の幅検査の結果は、外から波線を足す入口（`extensions/lint.ts` の `setExternalDiagnostics`。ファイルと行で指定）で出します。
 
 文字列のホバーとその場編集（#196）:
@@ -382,7 +382,7 @@ Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け�
 
 - 先に、エディタの未保存のファイルを保存するか、メインの未出力の変更を出力するかを聞きます（いいえなら、そのままビルドする）。
 - 出力（標準出力と標準エラー）は 1 行ずつ欄に出します。手順が終了コード 0 以外で終わったら、そこで止めます。「止める」で子プロセスごと止めます。
-- `command` が `copy` の手順は、ZigzaguMap がファイルを写します（`args` の 1 つ目を 2 つ目へ。どちらも `cwd` からの相対パス）。ND の既定は、CFRU のビルド（`python scripts/make.py`）→ `test.gba` を `../NeoDark-DPE-main/BPRJ0.gba` へ写す → DPE のビルド（`../NeoDark-DPE-main` で `python scripts/make.py`）を 1 回で行います。
+- `command` が `copy` の手順は、ZigzaguMap がファイルをコピーします（`args` の 1 つ目を 2 つ目へ。どちらも `cwd` からの相対パス）。ND の既定は、CFRU のビルド（`python scripts/make.py`）→ `test.gba` を `../NeoDark-DPE-main/BPRJ0.gba` へコピーする → DPE のビルド（`../NeoDark-DPE-main` で `python scripts/make.py`）を 1 回で行います。
 - 終わったら、ログからエラーの行（GNU as の `ファイル:行: Error:`、`.string` の `Error parsing string on line N`、`Symbol missing: X`、Chronos の `TEXT WIDTH ERROR`、Python の `Traceback` など）を拾って欄の上に並べ、押すとその行を開きます（読み取りは core の `script/build/BuildLog.ts`）。拾ったエラーはエディタの文書に `build-problems` の出来事でも知らせます（波線 #195 の入口）。
 - エミュレータの起動は作っていません（#199 は閉じた）。土台にあった Rust の `process_launch` などの入口は、画面から使わないので消しました。
 
@@ -411,7 +411,7 @@ Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け�
 - コマンドは、設定（zigzagumap.json）に書いたものを、指定の作業フォルダで起動します。作業フォルダは開いているプロジェクトフォルダからの相対パス（`..` で上へ出てもよい。Chronos は 1 つ上の `Chronos` で動かす）か絶対パスです。黒いコンソールのウィンドウは出しません。
 - 標準出力と標準エラーは 1 行ずつ、呼んだウィンドウへイベント `process-output`（`{ id, stream, line }`）で届き、終わると `process-exit`（`{ id, code, killed }`）が届きます。Python の出力が文字化けしないよう、環境変数 `PYTHONUTF8=1` と `PYTHONIOENCODING=utf-8` を付けて起動します。UTF-8 として読めないバイトは置き換えます。
 - 途中で止めると、子プロセスごと止めます（Windows は `taskkill /T`）。ZigzaguMap を終了したときも、動いているコマンドを止めます。
-- ビルドの手順の `copy` は `process_copy` で写します（作業フォルダの決め方はコマンドと同じ）。エミュレータの起動の入口（`process_launch`）は、#199 を閉じたので消しました。
+- ビルドの手順の `copy` は `process_copy` でコピーします（作業フォルダの決め方はコマンドと同じ）。エミュレータの起動の入口（`process_launch`）は、#199 を閉じたので消しました。
 - ファイルの更新日時と大きさを返す `fs_stat` を足しました（無ければ null）。スクリプトエディタが外部の変更を見つけるのに使います。
 - 別ウィンドウは、大きさを変えられるもの（最小の大きさつき、最大化もできる）も開けます。位置と大きさはメインが個人設定に残し、次に開くときに当てます（自動操作のときは使わず、画面外に出します）。
 
@@ -424,13 +424,13 @@ ZigzaguMap が書くファイルのうち、CFRU-JP のビルドを直さない�
 | `string-multiline.patch` | `scripts/string.py`（ND と Chronos で同じ） | `.string` の本文を `\n`・`\p`・`\l`・`\m` の直後で改行して、1 つの文字列を複数の行で書けるようにする。1 行で書いたときと同じバイト列になる |
 | `map_project-rom-erase-nd.patch`、`map_project-rom-erase-chronos.patch` | `scripts/map_project.py` | `maps\rom_erase.json`（素の ROM の範囲の一覧）の範囲を、マップのデータを置く前に 0xFF で埋める。範囲がベース ROM の外にかかるときと、`bytereplacement`・`hooks`・`repoints` などが書く位置と重なるときはビルドを止める |
 | `map_project-pillow-nd.patch`、`map_project-pillow-chronos.patch`（#314・#317） | `scripts/map_project.py` | `maps\tilesets` の `tiles.png` を読むとき、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow が読めず止まるのを避ける。ブロックエディタで変えたタイルセットや取り込んだタイルセットを出力したときに要る |
-| `map_project-trainers-nd.patch`、`map_project-trainers-chronos.patch`（#245） | `scripts/map_project.py`（rom-erase のパッチのあと） | `maps\trainers.json` のトレーナーを ROM のトレーナーの表（`*(0x0800F5C0)`）へ書く。手持ちは空き領域に置く。743 以上の番号があれば表を空き領域へ写して広げ、表の前にある表の先頭の 1 件を指す語（コードの参照）を付け替える |
+| `map_project-trainers-nd.patch`、`map_project-trainers-chronos.patch`（#245） | `scripts/map_project.py`（rom-erase のパッチのあと） | `maps\trainers.json` のトレーナーを ROM のトレーナーの表（`*(0x0800F5C0)`）へ書く。手持ちは空き領域に置く。743 以上の番号があれば表を空き領域へコピーして広げ、表の前にある表の先頭の 1 件を指す語（コードの参照）を付け替える |
 | `map_project-regionmap-nd.patch`、`map_project-regionmap-chronos.patch`（#119） | `scripts/map_project.py`（trainers のパッチのあと） | `maps\regionmap.json` のタウンマップの表（地名の配置・位置・大きさ・空を飛ぶの行き先・飛び先）を、コードのポインタが指す ROM の表へその場で上書きする。ND は人ID（訪問フラグ）を取り込まず、ログに注意を出す。壊れた JSON や範囲外の値ではビルドを止める |
 | `map_project-visitflags-chronos.patch`（#499） | Chronos の `cfru`（regionmap のパッチのあと） | タウンマップの訪問フラグ（人ID）を、switch 文から表引きに置き換えるフック（`src/town_map_flags.c`・`hooks`・`repoints`）と、`maps
 egionmap.json` の `MapVisitFlags`・`DungeonVisitFlags` の取り込み。Chronos だけ（ND は対応しない） |
 
 - Chronos には入れてあります（幅検査の `tools/check_text_width.py` も同じ複数行の規則で読む）。ND には入れていません。当てるときは build-support/README.md の手順で `git -c core.autocrlf=false apply` します。
-- どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（写しで確かめた）。
+- どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（コピーで確かめた）。
 - `python build-support/tests/check_cfru_tree.py --cfru <CFRU-JP のフォルダ>` で、当てたフォルダの動きを確かめられます（フォルダは読むだけ）。
 - trainers のパッチ（#245）は、書き先を `maps\trainers.json` にする案でユーザーが確定しました（2026-11-14）。ND と Chronos の本体へは別の作業で当てます（ZigzaguMap のリポジトリからは書き込みません）。
 - regionmap のパッチ（#119）は、ユーザーの依頼で ND と Chronos の `map_project.py` に入れました（2026-11-17）。パッチは同じ変更の記録です。
@@ -602,7 +602,7 @@ Chronosの `settimeofday` は時間帯ビューアと同じ設定を使います
 - 書き戻しは移動データの値だけを変え、書き方（1 行に並べた形・1 行 1 命令の形）、コメント、名前か 16 進かを保ちます。足した値は、プロジェクトに名前があれば名前で書きます。
 - エディタで開いているファイルは、エディタの本文に入れます（エディタの Ctrl+Z の履歴にも入ります）。未保存の変更が無ければ保存し、あれば保存しません。開いていないファイルは、再生を計算したときの本文と同じときだけ書きます。外で変わっていたら書かずに知らせ、読み直して計算し直します。
 - 1 回の編集は 1 つの操作になり、メインの Ctrl+Z・Ctrl+Y で `.s` を戻せます。戻すとタイムラインも計算し直します。今のフレームは保ちます。
-- 同じ移動データを複数の `applymovement` が使っているときは、使っている数を出して聞きます。「はい」でそのまま書き換え（ほかの所も変わります）、「いいえ」で `<元の名前>_2` に写して、このスクリプトの `applymovement` だけ付け替えます。
+- 同じ移動データを複数の `applymovement` が使っているときは、使っている数を出して聞きます。「はい」でそのまま書き換え（ほかの所も変わります）、「いいえ」で `<元の名前>_2` にコピーして、このスクリプトの `applymovement` だけ付け替えます。
 - 書き戻せない移動データ（ROM のアドレスのまま、`.if` の中、`end_m` が無いなど）の箱は、斜体の薄い表示にし、ホバーと右クリックに理由を出します。ROM のものは「.s に取り込む」と編集できます。
 
 ### 道をなぞって移動データを作る（#517・#518）
@@ -622,8 +622,8 @@ Chronosの `settimeofday` は時間帯ビューアと同じ設定を使います
 - 通れないマス（マップの外、通れない移動許可、段差、ほかの人物）を通る歩きは、下見の線と一覧の行を赤くし、ウィンドウに知らせます。スクリプトの移動データは壁でも通り抜けて歩くので、作るのは止めません。
 - 下見は、道の線と向きの矢印、始めの位置の丸、終わりの位置の薄い人物（再生と同じ描き方）です。ウィンドウを閉じる・マップを切り替えると消します。マップのデータは変えません。
 - 「ここで使う」で `.s` に書きます。書き方は 2 つです。
-  - 置き換える: 開いたもとの移動データの値を、なぞった道に置き換えます。書き方（1 行に並べた形・1 行 1 命令の形）とコメントは保ちます。同じ移動データを複数の `applymovement` が使っているときは、タイムラインの編集と同じく、そのまま書き換えるか `<元の名前>_2` に写してこのスクリプトだけ付け替えるかを聞きます。
-  - 新しいラベルで足す: `Move_<マップ名>_<番号>`（ウィンドウで変えられる）の移動データを、`.s` の最後に空行をはさんで 1 行の形で足し、名前をクリップボードへ写します。足す `.s` は maps\scripts.json のこのマップの行、無ければこのマップのイベントのラベルがある `.s`（マップスクリプト、動かす人物、ほかのイベントの順）です。`useGlobal` が true なら `.global` も書きます。
+  - 置き換える: 開いたもとの移動データの値を、なぞった道に置き換えます。書き方（1 行に並べた形・1 行 1 命令の形）とコメントは保ちます。同じ移動データを複数の `applymovement` が使っているときは、タイムラインの編集と同じく、そのまま書き換えるか `<元の名前>_2` にコピーしてこのスクリプトだけ付け替えるかを聞きます。
+  - 新しいラベルで足す: `Move_<マップ名>_<番号>`（ウィンドウで変えられる）の移動データを、`.s` の最後に空行をはさんで 1 行の形で足し、名前をクリップボードへコピーします。足す `.s` は maps\scripts.json のこのマップの行、無ければこのマップのイベントのラベルがある `.s`（マップスクリプト、動かす人物、ほかのイベントの順）です。`useGlobal` が true なら `.global` も書きます。
 - 書き込みはタイムラインの編集と同じ部品です。エディタで開いているファイルはエディタの本文に入れ、未保存の変更があれば保存しません。1 回の書き込みは 1 つの操作になり、メインの Ctrl+Z で戻せます。再生中なら、書いた後に計算し直すので、そのまま再生してなぞった道を確かめられます。
 
 ### 実機と違う所（再生）

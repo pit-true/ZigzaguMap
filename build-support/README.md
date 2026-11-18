@@ -76,7 +76,7 @@ ZigzaguMap で足した・変えたトレーナーです。形は ZigzaguMap の
 - ファイルが無いか `Trainers` が空なら何もしません。このときの ROM は、パッチを当てる前とバイト単位で同じです。
 - 書く時点は `_place_day_wild` のあと（マップのデータを置いたあと、`rom_erase.json` の確かめの前）です。`maps/project.json` が無くても、`trainers.json` があれば書きます（そのときは `allocation_start` から空き領域を使い、使い終わりを返します）。
 - 表は `*(0x0800F5C0)`（CFRU の `gTrainers`）です。`Id` の行（`表 + Id × 0x20`）の 0x20 バイトを書きます: 手持ちの形式、クラス、BGM と性別、絵、名前（`charmap.tbl` で変える。5 バイト + 0xFF で埋める）、持ち物 4 つ、ダブルバトル、AI、手持ちの数、手持ちへのポインタ。手持ちは空き領域に置きます（1 匹 8 バイト、技ありの形式は 16 バイト）。
-- `Id` が 743 以上なら、表（743 件）と足りない分の行（0 番の行の写し）を空き領域へ写し、ROM の先頭から元の表の前までの 4 バイト境界の語のうち、元の表の先頭の 1 件（0x20 バイト）の中を指すものを、新しい表の同じ位置へ付け替えます（素の FR の JP バージョンで 24 か所。`0xF5C0` のポインタ、`gTrainers`・`gTrainers + 4`・`gTrainers + 0xA` のリテラル）。表より後ろの、たまたま同じ値に見えるデータは触りません。付け替えた数をビルドのログに出します。
+- `Id` が 743 以上なら、表（743 件）と足りない分の行（0 番の行のコピー）を空き領域へコピーし、ROM の先頭から元の表の前までの 4 バイト境界の語のうち、元の表の先頭の 1 件（0x20 バイト）の中を指すものを、新しい表の同じ位置へ付け替えます（素の FR の JP バージョンで 24 か所。`0xF5C0` のポインタ、`gTrainers`・`gTrainers + 4`・`gTrainers + 0xA` のリテラル）。表より後ろの、たまたま同じ値に見えるデータは触りません。付け替えた数をビルドのログに出します。
 - 次のときはビルドを止めます（`ValueError`）: 形が違う（`Format` が 1 でない、`Trainers` が配列でない）、`Id` が 1〜767 でないか重なる、`Party` が 1〜6 匹でない、名前が `charmap.tbl` で変えられないか 5 バイトを超える。
 - 768 から先の番号は使えません。戦ったかどうかのフラグ（`0x500 + 番号`）が、0x800 からのシステムのフラグと重なるためです。
 
@@ -171,7 +171,7 @@ python build-support/tests/check_cfru_tree.py --cfru <CFRU-JP のフォルダ>
 
 ## 確かめたこと（2026-11-14）
 
-ND と Chronos のフォルダの写しで行いました（実フォルダでは試していません）。
+ND と Chronos のフォルダのコピーで行いました（実フォルダでは試していません）。
 
 - パッチを当てる前と後で、今の内容からビルドした ROM がバイト単位で同じ（Chronos は `build/Chronos.gba`。ND は CFRU の `test.gba` で、ND の全体のビルドは画像の `.o` が毎回違うバイトになるため、ビルド済みのフォルダで `.string` だけを作り直して比べた）。Chronos の `python tools/check_text_width.py --source` の出力も同じ。
 - すべての `.string` の本文を `\n`・`\p`・`\l`・`\m` のあとで改行した形に書き換えてビルドすると（ND 16 ファイル 1899 行、Chronos 34 ファイル 2183 行）、ROM 全体が 1 行のときと同じ。Chronos の幅検査の出力も同じ。パッチ無しの string.py と幅検査では、同じ書き換えで ROM が変わる・検査が止まる。
@@ -180,12 +180,12 @@ ND と Chronos のフォルダの写しで行いました（実フォルダで�
 
 ## 確かめたこと（regionmap.json。2026-11-17）
 
-ND と Chronos のフォルダの写しで行いました。
+ND と Chronos のフォルダのコピーで行いました。
 
 - `regionmap.json` が無いとき、変更の前と後でビルドした ROM がバイト単位で同じ（Chronos は `build/Chronos.gba` をビルドし直して、ND は CFRU の全体のビルドと `scripts/insert.py` だけの作り直しの両方で比べた）。
 - ワールドマップエディターでマサラタウンの座標・幅/高さ・空を飛ぶの行き先・飛び先、人ID、カントーの基本レイヤーと 1〜3のしまのトップレイヤーのマスを変えて出力し（`python tests/realcopy/run.py --regionmap`）、ビルドすると、ROM の表が JSON のとおりになり、ファイルが無いときの ROM との違いは表の中の 8 バイトだけ。ポインタと人ID の switch 文は変わらない。できた ROM だけを開き直すと、ワールドマップエディターに同じ値が出る（人ID は元のまま）。ND は DPE まで通し、DPE の `test.gba` でも表が同じ。
 - 人ID があると、ND はビルドのログに「未対応のキー」の注意が出て、ビルドは続く。
-- 壊れた JSON、範囲外の値、16 進でない `Rows`、知らないキーで、`scripts/insert.py` が止まる（ND の写し）。ポインタの不一致、表を移した ROM、`bytereplacement` との重なりは `tests/check_cfru_tree.py` で確かめている。
+- 壊れた JSON、範囲外の値、16 進でない `Rows`、知らないキーで、`scripts/insert.py` が止まる（ND のコピー）。ポインタの不一致、表を移した ROM、`bytereplacement` との重なりは `tests/check_cfru_tree.py` で確かめている。
 
 ## maps/tilesets の tiles.png と Pillow（map_project-pillow）
 

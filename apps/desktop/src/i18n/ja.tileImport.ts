@@ -63,7 +63,7 @@ export const jaTileImport = {
   base: "下地ブロック",
   baseNone: "なし",
   pickBase: "選ぶ…",
-  baseHint: "16 進で打つか、選ぶ… で一覧から選びます。下地の下のレイヤーと属性を写します。",
+  baseHint: "16 進で打つか、選ぶ… で一覧から選びます。下地の下のレイヤーと属性をコピーします。",
   sample: "重ね方の見本（左から 下のレイヤー・上のレイヤー・プレイヤーと重ねたところ）",
 
   // 4. 置き場所
@@ -120,7 +120,7 @@ export const jaTileImport = {
     placementInvalid: (p: Record<string, number | string>) => `${Number(p["block"]) + 1} 個目のブロックを ${formatHex(Number(p["local"]), 3)} に置けません`,
     padded: (p: Record<string, number | string>) => `${p["width"]}×${p["height"]} は 16 の倍数でないので、${p["toWidth"]}×${p["toHeight"]} に透明で埋めます`,
     doorTiles: () => "タイルセット2の最後の 8 タイル（1016〜1023）は、ドアのアニメが一時的に使うので空けておきます",
-    baseUpper: () => "下地ブロックの上のレイヤーの絵は使いません（下のレイヤーだけを写します）",
+    baseUpper: () => "下地ブロックの上のレイヤーの絵は使いません（下のレイヤーだけをコピーします）",
     reduced: (p: Record<string, number | string>) => `減色しました（変わった画素 ${p["changed"]}）`,
     replaced: (p: Record<string, number | string>) => `使っているか中身のあるブロックを ${p["count"]} 個置き換えます`,
   } as Record<string, (p: Record<string, number | string>) => string>,
@@ -132,7 +132,7 @@ export const jaTileImport = {
   pickerTitle: "下地ブロックを選ぶ",
   pickerUpper: "上のレイヤーも重ねて表示する",
   pickerStatus: (selected: number | null, cursor: number | null) => `選択: ${selected === null ? "-" : formatHex(selected, 3)} / カーソル: ${cursor === null ? "-" : formatHex(cursor, 3)}`,
-  pickerMark: "右上の三角: 写さない上のレイヤーに絵があるブロック",
+  pickerMark: "右上の三角: コピーしない上のレイヤーに絵があるブロック",
   pickerSecondary: "タイルセット1へ入れるときは、タイルセット2のタイルかパレットを使うブロックは下地にできません",
   ok: ini.WildePokemon["24"],
   cancel: ini.WildePokemon["23"],
