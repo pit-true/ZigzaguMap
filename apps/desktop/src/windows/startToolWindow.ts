@@ -2,6 +2,7 @@ import { SCRIPT_EDITOR_WINDOW } from "./script-editor/protocol";
 import { WORLD_MAP_WINDOW } from "./world-map/protocol";
 import { MAP_ASSIST_WINDOW } from "./map-assist/protocol";
 import { MINIMAP_WINDOW } from "./minimap/protocol";
+import { CONNECTION_WINDOW } from "./connection/protocol";
 
 /** 別ウィンドウの中身を組み立てる関数（そのウィンドウのコードは、ここで初めて読み込む）。 */
 type ToolWindowStarter = (label: string, root: HTMLElement) => Promise<void>;
@@ -36,6 +37,11 @@ const TOOL_WINDOWS: Readonly<Record<string, ToolWindowStarter>> = {
   [MINIMAP_WINDOW]: async (_label, root) => {
     const { MinimapWindow } = await import("./minimap/MinimapWindow");
     await new MinimapWindow(root).start();
+  },
+  // コネクションマネージャー（#561 で別ウィンドウにした）
+  [CONNECTION_WINDOW]: async (_label, root) => {
+    const { ConnectionWindow } = await import("./connection/ConnectionWindow");
+    await new ConnectionWindow(root).start();
   },
   // CodeMirror はここで初めて読み込む（メインの index.html の束には入れない）
   [SCRIPT_EDITOR_WINDOW]: async (_label, root) => {

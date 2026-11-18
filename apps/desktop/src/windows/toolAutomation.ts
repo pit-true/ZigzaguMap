@@ -4,7 +4,19 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { installNativeDialogs, listDialogs, operateDialog, queuePath } from "../app/automation/dialogs";
 import { click, findField, getField, listFields, setField, useAmNames } from "../app/automation/ui";
 import type { FileDialogs } from "../app/FileDialogs";
-import type { ToolClient } from "./ToolClient";
+
+/** 自動操作が使う、メインとの接続（ToolClient。コネクションマネージャー #561 などは自分の接続を渡す）。 */
+export interface ToolAutomationClient {
+  /** ウィンドウのラベル（AdvanceMap の部品名の対応表のキー）。 */
+  readonly kind: string;
+  /** 送った要求の返事が全部届くまで待つ。 */
+  whenIdle(timeout?: number): Promise<void>;
+  /** メインから届いているコピー（`snapshot` の命令。無いウィンドウもある）。 */
+  readonly snapshot?: unknown;
+  readonly ui?: unknown;
+  /** 元に戻す・やり直す（`undo`・`redo` の命令。無いウィンドウもある）。 */
+  request?(body: { op: "undo" | "redo" }): Promise<unknown>;
+}
 import { errorText } from "../util/errors";
 import { num, settle, str } from "../app/automation/registry";
 import { describeScroll, scrollBy, scrollContainerOf } from "../app/automation/scroll";
@@ -13,8 +25,8 @@ import { describeScroll, scrollBy, scrollContainerOf } from "../app/automation/s
 export interface ToolAutomationTarget {
   /** `state` の返事（ウィンドウの欄の値など）。 */
   describe(): unknown;
-  /** ファイルのダイアログ（`queuePath` で次に選ぶパスを積む）。 */
-  readonly files: FileDialogs;
+  /** ファイルのダイアログ（`queuePath` で次に選ぶパスを積む。無いウィンドウもある）。 */
+  readonly files?: FileDialogs;
   /** メニューの項目（`action` の `id`）。 */
   readonly actions: Readonly<Record<string, () => unknown>>;
   /** ウィンドウだけの命令（知らない cmd なら undefined を返す）。 */
@@ -32,7 +44,7 @@ interface AutomationEvent {
  * `automation-request-window` でこのウィンドウへ送り、`automation_reply` で返事を返す（ワールドマップエディターと同じ仕組み）。
  * 部品は `data-auto-id` の ID で指す。命令はメインの入口と同じ名前・同じ引数（docs/automation.md の表）。
  */
-export async function installToolAutomation(client: ToolClient, target: ToolAutomationTarget): Promise<void> {
+export async function installToolAutomation(client: ToolAutomationClient, target: ToolAutomationTarget): Promise<void> {
   if ((await invoke<number | null>("automation_port")) === null) return;
   // AdvanceMap の部品名（field:<名前>）の対応表と、Windows のファイルのダイアログの代わり（メインと同じ）
   useAmNames(client.kind);
@@ -57,7 +69,7 @@ export async function installToolAutomation(client: ToolClient, target: ToolAuto
   await invoke("automation_ready");
 }
 
-async function handle(client: ToolClient, target: ToolAutomationTarget, req: Record<string, unknown>): Promise<unknown> {
+async function handle(client: ToolAutomationClient, target: ToolAutomationTarget, req: Record<string, unknown>): Promise<unknown> {
   switch (req["cmd"]) {
     case "state":
       return target.describe();
@@ -89,6 +101,7 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
     case "dialog":
       return operateDialog(req);
     case "queuePath":
+      if (!target.files) throw new Error("このウィンドウにはファイルのダイアログがありません");
       return queuePath(target.files, typeof req["path"] === "string" ? req["path"] : null);
     case "key": {
       const init = { key: str(req, "key"), ctrlKey: req["ctrl"] === true, altKey: req["alt"] === true, shiftKey: req["shift"] === true, bubbles: true, cancelable: true };
@@ -138,9 +151,9 @@ async function handle(client: ToolClient, target: ToolAutomationTarget, req: Rec
       setTimeout(() => void getCurrentWindow().close(), 300);
       return null;
     case "undo":
-      return client.request({ op: "undo" });
     case "redo":
-      return client.request({ op: "redo" });
+      if (!client.request) throw new Error(`知らない cmd です: ${String(req["cmd"])}`);
+      return client.request({ op: req["cmd"] });
     default: {
       const extra = target.extra?.(req);
       if (extra !== undefined) return extra;

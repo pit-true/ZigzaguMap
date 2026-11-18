@@ -11,7 +11,7 @@ SCREENS: dict[str, tuple[str | None, tuple[str, ...]]] = {
     "TPalettenForm": ("palette-editor", ("パレットエディタ",)),
     "TBlockdatenAnpassenForm": ("block-adjust", ("一括",)),
     "TWeltkarteForm": ("world-map", ("ワールドマップ",)),
-    "TAnbindungenForm": (None, ("コネクションマネージャー", "マップの移動")),
+    "TAnbindungenForm": ("connection", ("コネクションマネージャー", "マップの移動")),
     "TMapForm": (None, ("新しいマップ", "新規マップ")),
     "TMapEinfuegenForm": (None, ("マップの追加/挿入",)),
     "TMapBankHeaderForm": (None, ("マップバンクヘッダー",)),
