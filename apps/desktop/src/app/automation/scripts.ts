@@ -2,6 +2,7 @@ import type { App } from "../App";
 import { ensureScriptFile, openNewScriptDialog } from "../../ui/script/NewScriptDialog";
 import { ScriptsTableDialog, scriptsTableView } from "../../ui/script/ScriptsTableDialog";
 import { jaScriptsTable } from "../../i18n/ja.scriptsTable";
+import { linkMapScript, mapScriptLink, unlinkMapScript } from "../../ui/script/MapScriptFileLink";
 import { listDialogs } from "./dialogs";
 import { int, settle, type AutomationRequest, type CommandTable } from "./registry";
 
@@ -89,7 +90,26 @@ async function scriptsTable(app: App, req: AutomationRequest): Promise<unknown> 
   }
 }
 
+/**
+ * `scripts.mapLink`: マップと `.s` の紐づけ（#555。場所の設定タブの「このマップの .s」と同じ）。`bank`・`map`（省略で表示中のマップ）。
+ * `action`: `get`（省略時）、`set`（`path`。絶対パスかプロジェクトフォルダからの相対）、`clear`。返事は今の紐づけ。
+ */
+async function mapLink(app: App, req: AutomationRequest): Promise<unknown> {
+  const action = req["action"] === undefined ? "get" : String(req["action"]);
+  const current = app.state.map?.id;
+  const id = req["bank"] !== undefined ? { bank: int(req, "bank"), map: int(req, "map") } : current;
+  if (!id) throw new Error("マップを開いていません（bank と map を指定してください）");
+  if (action === "set") {
+    if (typeof req["path"] !== "string") throw new Error("path を指定してください");
+    await linkMapScript(app.state, id, req["path"]);
+  } else if (action === "clear") unlinkMapScript(app.state, id);
+  else if (action !== "get") throw new Error(`知らない action です: ${action}`);
+  const s = session(app);
+  return { bank: id.bank, map: id.map, ...(mapScriptLink(app.state, id) ?? { script: null, from: "none", row: -1 }), modified: s.scriptsTable.isModified() };
+}
+
 /** scripts.json の対応表の命令。 */
 export const scriptsCommands: CommandTable = {
   "scripts.table": scriptsTable,
+  "scripts.mapLink": mapLink,
 };

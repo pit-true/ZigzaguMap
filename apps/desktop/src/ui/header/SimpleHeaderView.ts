@@ -21,6 +21,8 @@ import { LayoutSharedNote } from "./LayoutSharedNote";
 import { MapScriptPanel } from "../script/MapScriptPanel";
 import type { ScriptLink } from "../script/ScriptLink";
 import { jaTools } from "../../i18n/ja.tools";
+import type { FileDialogs } from "../../app/FileDialogs";
+import { MapScriptFileRow } from "./MapScriptFileRow";
 
 /** かんたん表示が App に頼むこと。 */
 export interface SimpleHeaderHost {
@@ -32,6 +34,8 @@ export interface SimpleHeaderHost {
   readonly scripts: ScriptLink;
   /** 大きさと位置を変える窓を開く（Phase5 #390。無ければボタンを出さない）。 */
   openResize?(): void;
+  /** ファイルを選ぶ画面（「このマップの .s」を選ぶ。#555。無ければ欄を出さない）。 */
+  readonly files?: FileDialogs;
 }
 
 /**
@@ -59,6 +63,8 @@ export class SimpleHeaderView {
   private readonly borderHeight: HTMLInputElement;
   /** マップスクリプトの専用パネル（#208。オフセットの欄は出さない）。 */
   private readonly scripts: MapScriptPanel;
+  /** このマップの .s（#555）。 */
+  private readonly scriptFile: MapScriptFileRow | null;
   private readonly connections: HTMLElement;
   /** 配置を共有しているマップ（#228）。 */
   private readonly layoutShared: LayoutSharedNote;
@@ -69,6 +75,7 @@ export class SimpleHeaderView {
     this.element = document.createElement("div");
     this.element.className = "header-simple";
     this.scripts = new MapScriptPanel(host.scripts);
+    this.scriptFile = host.files ? new MapScriptFileRow(host.files) : null;
 
     // マップ名
     this.region = select("easy.region");
@@ -168,7 +175,7 @@ export class SimpleHeaderView {
     this.element.append(this.layoutShared.element);
 
     // マップスクリプト（専用のパネル。#208）
-    this.element.append(section(t.scriptSection, [this.scripts.element]));
+    this.element.append(section(t.scriptSection, [...(this.scriptFile ? [this.scriptFile.element] : []), this.scripts.element]));
 
     // マップコネクション
     this.connections = document.createElement("ul");
@@ -227,6 +234,7 @@ export class SimpleHeaderView {
     this.borderWidth.value = String(doc.border.width);
     this.borderHeight.value = String(doc.border.height);
 
+    this.scriptFile?.render(ctx);
     this.scripts.render(ctx);
 
     // マップコネクション（方向と相手のマップ）

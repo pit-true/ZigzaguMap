@@ -89,3 +89,13 @@
   margin: 2px 0 6px;
   padding-left: 18px;
 }
+
+/* このマップの .s（#555）。長いパスは省略して、ヒントで全部を出す。 */
+.header-simple-path {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}

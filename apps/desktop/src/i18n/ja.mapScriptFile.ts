@@ -1,0 +1,20 @@
+/** 場所の設定タブの「このマップの .s」の欄（#555）の文言（ZigzaguMap 独自）。 */
+export const jaMapScriptFile = {
+  caption: "このマップの .s",
+  none: "（決まっていません）",
+  fromMap: "このマップに紐づけた .s です（出力で maps\\scripts.json に書きます）",
+  fromBank: (bank: number) => `バンク ${bank} の全体の行（対応表）で決まった .s です。「選ぶ…」でこのマップだけの .s にできます`,
+  noneNote: "新しいスクリプトの書き先とラベルの確かめに使う .s を選べます",
+  choose: "選ぶ…",
+  chooseHint: "プロジェクトの assembly の中の .s を選び、このマップに紐づけます",
+  clear: "外す",
+  clearHint: "このマップの紐づけを外します（バンク全体の行があれば、その .s に戻ります）",
+  dialogTitle: "このマップに紐づける .s を選ぶ",
+  filter: "スクリプト（.s）",
+  noProject: "プロジェクトフォルダを開いていません",
+  outside: (path: string) => `${path} はプロジェクトの assembly の中の .s ではないので、紐づけられません（ビルドが組み立てるのは assembly の中の .s です）`,
+  extension: (path: string) => `${path} は .s ではないので、紐づけられません`,
+  missing: (path: string) => `${path} がありません`,
+  linked: (bank: number, map: number, path: string) => `マップ ${bank}.${map} に ${path} を紐づけました（出力で maps\\scripts.json に書きます）`,
+  cleared: (bank: number, map: number) => `マップ ${bank}.${map} の .s の紐づけを外しました`,
+} as const;

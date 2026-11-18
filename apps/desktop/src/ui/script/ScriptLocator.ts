@@ -4,10 +4,8 @@ import {
   isEventScriptEntryActive,
   isScriptSourcePath,
   loadEventScripts,
-  loadScriptsJson,
   parseEventScriptDefines,
   reloadScriptIndexFile,
-  resolveScriptsJson,
   type EventLabelStore,
   type EventScriptTarget,
   type ProjectFs,
@@ -33,7 +31,7 @@ const TARGET_OF: Readonly<Record<ScriptTarget["kind"], EventScriptTarget>> = { p
 
 /**
  * イベント（マップ・種別・番号）からスクリプトの `.s` と行を求める。eventscripts のラベル → ラベルの索引（ScriptIndex）で引き、
- * 見つからなければ maps\scripts.json のマップの `.s` の先頭。
+ * 見つからなければ maps\scripts.json（編集中の対応表）のマップの `.s` の先頭。
  *
  * ラベルの索引（名前・ファイル・行だけ）は初めて使うときに作り、保存したファイルの分だけ読み直す。
  * `reset` で捨てると、次に使うときに作り直す（メインウィンドウが前面に戻ったとき・別のプロジェクトを開いたとき）。
@@ -93,8 +91,8 @@ export class ScriptLocator {
       const found = (await this.scriptIndex()).findLabel(label);
       if (found && isEditableScriptPath(found.path)) return { path: found.path, line: found.line, label, from: "label" };
     }
-    const json = await loadScriptsJson(this.fs);
-    const resolved = json ? resolveScriptsJson(json, bank, map) : null;
+    // 対応表は編集中のもの（場所の設定タブで紐づけた .s も。#555）
+    const resolved = this.app.state.session?.scriptsTable.document.resolve(bank, map) ?? null;
     if (resolved && isEditableScriptPath(resolved.script)) return { path: normalizeScriptPath(resolved.script), line: 1, label, from: "scriptsJson" };
     return null;
   }
