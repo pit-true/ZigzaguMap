@@ -1,4 +1,13 @@
-import { EVENT_LABEL_TARGETS, RealignEventLabelsCommand, SetEventLabelCommand, readTable, type EventLabelTarget, type JsonValue } from "@zigzagumap/core";
+import {
+  EVENT_LABEL_TARGETS,
+  RealignEventLabelsCommand,
+  SetEventLabelCommand,
+  isScriptLabelReachable,
+  readTable,
+  type EventLabelTarget,
+  type JsonValue,
+  type ScriptLabelPlace,
+} from "@zigzagumap/core";
 import { MapScriptPanel } from "../../ui/script/MapScriptPanel";
 import type { App } from "../App";
 import type { ScriptTarget } from "../../ui/script/ScriptEntry";
@@ -29,9 +38,17 @@ export async function describeLabels(app: App, bank: number, map: number): Promi
   const store = s.labels.store;
   const m = store.get(bank, map);
   const resolved = s.scriptsTable.document.resolve(bank, map);
-  const candidates = resolved ? await app.scripts.files.labelsOf(resolved.script) : [];
+  const files = app.scripts.files;
+  const candidates = resolved ? await files.labelsOf(resolved.script) : [];
+  // ラベルの場所（#554）。inScript はビルドで見つかるか（マップの .s か、ほかの .s の .global）
+  const places = new Map<string, ScriptLabelPlace>();
+  for (const t of EVENT_LABEL_TARGETS) for (const l of m[t]) if (l && !places.has(l.label)) places.set(l.label, await files.labelPlace(bank, map, l.label));
   const list = (target: EventLabelTarget) =>
-    m[target].flatMap((l, index) => (l ? [{ index, label: l.label, kind: l.kind, inScript: candidates.includes(l.label) }] : []));
+    m[target].flatMap((l, index) => {
+      if (!l) return [];
+      const place = places.get(l.label)!;
+      return [{ index, label: l.label, kind: l.kind, inScript: isScriptLabelReachable(place), place: place.kind, file: "path" in place ? place.path : null }];
+    });
   const positions = s.eventPositions(bank, map);
   return {
     bank,

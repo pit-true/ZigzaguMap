@@ -92,8 +92,14 @@ def run(fx, z: Zigzagu, shots: pathlib.Path | None, build: bool) -> None:
 
     # 2. 入力と一覧、Enter
     z.call({"cmd": "ui.type", "id": "event.person.label", "text": f"Npc{n + 1}", "blur": False})
-    time.sleep(0.3)
-    items = [x["id"] for x in z.call({"cmd": "ui.list", "root": "event.person.label.list"}) if str(x.get("id", "")).startswith("event.person.label.option:")]
+    # 一覧はほかの .s の .global のラベルも出すので、初めての一覧は索引ができるまで待つ（#554）
+    t0 = time.time()
+    while True:
+        time.sleep(0.1)
+        items = [x["id"] for x in z.call({"cmd": "ui.list", "root": "event.person.label.list"}) if str(x.get("id", "")).startswith("event.person.label.option:")]
+        if items or time.time() - t0 > 5:
+            break
+    print(f"     一覧が出るまで {time.time() - t0:.2f} 秒")
     check(f"event.person.label.option:{npc2}" in items, f"入力を含む .s のラベルが一覧に出る（{len(items)} 件）")
     shot(z, shots, "p2l_02_label_list.png")
     z.call({"cmd": "key", "id": "event.person.label", "key": "Enter"})

@@ -190,10 +190,8 @@ export class MapScriptPanel {
       {
         available: () => true,
         current: () => current,
-        candidates: async () => {
-          const r = ctx.session.scriptsTable.document.resolve(ctx.map.id.bank, ctx.map.id.map);
-          return r ? this.link.files.labelsOf(r.script) : [];
-        },
+        candidates: () => this.link.files.labelCandidates(ctx.map.id.bank, ctx.map.id.map),
+        place: (label) => this.link.files.labelPlace(ctx.map.id.bank, ctx.map.id.map, label),
         commit: (label) => {
           // 行き先は空にできない（空にしたら元に戻す）
           if (label === null) return field.show();

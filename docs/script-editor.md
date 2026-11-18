@@ -311,9 +311,12 @@ Gen3 Script Assistant 改造バージョン（VS Code の拡張）の色付け�
 プロジェクトフォルダを開いているとき、人・看板・スクリプトタイルのパネルに「スクリプトのラベル」の欄を出します（#200）。
 
 - 欄にはイベントに付いたラベル名を出し、ラベルが付いていればオフセット（ROM のポインタ）の欄は隠します。ラベルが無い（素の ROM のスクリプトを指す）イベントは、オフセットの欄をそのまま出します。隠しアイテムの看板には欄を出しません。
-- 入力すると、マップの `.s`（maps\scripts.json で決まるもの）のラベルのうち、入力を含むものを一覧に出します（↑↓ で選び、Enter か一覧のクリックで決める。Esc で元に戻す。▼ で全部を出す）。フォーカスが外れたときにも決めます。空にして決めるとラベルを外します（出力で eventscripts の行を消す）。ラベルを変えるのはコマンド（`setEventLabel`）なので、Ctrl+Z で元に戻せます。
-- マップの `.s` に無いラベルは赤い字にします（ビルドで `Symbol missing` になるため）。使えない名前（半角の英字・数字・`_` `.` `$` 以外、数字で始まる）は決めません。
-- `.s` のラベルの一覧は、その `.s` を初めて出すときに読み、エディタで保存したとき・メインウィンドウが前面に戻ったとき・ひな形を書いたときに読み直します（起動とマップの表示には入りません）。
+- 入力すると、ラベルのうち入力を含むものを一覧に出します（↑↓ で選び、Enter か一覧のクリックで決める。Esc で元に戻す。▼ で全部を出す）。一覧は、マップの `.s`（maps\scripts.json で決まるもの）のラベルが先で、そのあとに `assembly` の中のほかの `.s` の `.global` のラベルを、ファイルの名前つきで並べます（#554）。フォーカスが外れたときにも決めます。空にして決めるとラベルを外します（出力で eventscripts の行を消す）。ラベルを変えるのはコマンド（`setEventLabel`）なので、Ctrl+Z で元に戻せます。
+- ラベルがあるかは、ビルドに合わせて決めます（#554）。CFRU のビルドは `assembly` の中の `.s` をすべて組み立てるので、マップの `.s` のラベル（`.global` でなくてもよい）と、ほかの `.s` の `.global` のラベルは見つかります。
+  - ほかの `.s` の `.global` のラベルは赤くせず、欄のヒントに「… は別のファイル（〇〇.s）にあります」と出します。maps\scripts.json が無いプロジェクト（Chronos など）でも同じです。
+  - `.global` でないラベルが別のファイルにだけあるときは赤い字にし、「.global でないので、ほかのファイルからは見えません」と出します。どこにも無いラベルも赤い字にします（どちらもビルドで `Symbol missing` になるため）。
+  - 使えない名前（半角の英字・数字・`_` `.` `$` 以外、数字で始まる）は決めません。
+- マップの `.s` のラベルの一覧は、その `.s` を初めて出すときに読み、エディタで保存したとき・メインウィンドウが前面に戻ったとき・ひな形を書いたときに読み直します。ほかの `.s` のラベルの索引は、マップの `.s` に無いラベルを初めて確かめるときに作り、書き換えたファイルの分だけ読み直します（メインウィンドウが前面に戻ったら、次に使うときに作り直す）。どちらも起動とマップの表示には入りません。
 - 「スクリプトを開く」ボタンとイベントのダブルクリックで、ラベルが付いていればエディタのその行を開き、付いていなければ素の ROM のスクリプトを読み取り専用で出します（下の「素の ROM のスクリプトの表示と取り込み」）。
 - 自動操作では、欄は `event.person.label`・`event.sign.label`・`event.trap.label` です（`event.<種別>.script` は従来どおりオフセットの欄。比較テストが使うため）。ラベルの一覧は `script.labels` で読みます。
 
@@ -423,7 +426,8 @@ ZigzaguMap が書くファイルのうち、CFRU-JP のビルドを直さない�
 | `map_project-pillow-nd.patch`、`map_project-pillow-chronos.patch`（#314・#317） | `scripts/map_project.py` | `maps\tilesets` の `tiles.png` を読むとき、`scripts/string.py` が標準の `string` の代わりに読み込まれて Pillow が読めず止まるのを避ける。ブロックエディタで変えたタイルセットや取り込んだタイルセットを出力したときに要る |
 | `map_project-trainers-nd.patch`、`map_project-trainers-chronos.patch`（#245） | `scripts/map_project.py`（rom-erase のパッチのあと） | `maps\trainers.json` のトレーナーを ROM のトレーナーの表（`*(0x0800F5C0)`）へ書く。手持ちは空き領域に置く。743 以上の番号があれば表を空き領域へ写して広げ、表の前にある表の先頭の 1 件を指す語（コードの参照）を付け替える |
 | `map_project-regionmap-nd.patch`、`map_project-regionmap-chronos.patch`（#119） | `scripts/map_project.py`（trainers のパッチのあと） | `maps\regionmap.json` のタウンマップの表（地名の配置・位置・大きさ・空を飛ぶの行き先・飛び先）を、コードのポインタが指す ROM の表へその場で上書きする。ND は人ID（訪問フラグ）を取り込まず、ログに注意を出す。壊れた JSON や範囲外の値ではビルドを止める |
-| `map_project-visitflags-chronos.patch`（#499） | Chronos の `cfru`（regionmap のパッチのあと） | タウンマップの訪問フラグ（人ID）を、switch 文から表引きに置き換えるフック（`src/town_map_flags.c`・`hooks`・`repoints`）と、`mapsegionmap.json` の `MapVisitFlags`・`DungeonVisitFlags` の取り込み。Chronos だけ（ND は対応しない） |
+| `map_project-visitflags-chronos.patch`（#499） | Chronos の `cfru`（regionmap のパッチのあと） | タウンマップの訪問フラグ（人ID）を、switch 文から表引きに置き換えるフック（`src/town_map_flags.c`・`hooks`・`repoints`）と、`maps
+egionmap.json` の `MapVisitFlags`・`DungeonVisitFlags` の取り込み。Chronos だけ（ND は対応しない） |
 
 - Chronos には入れてあります（幅検査の `tools/check_text_width.py` も同じ複数行の規則で読む）。ND には入れていません。当てるときは build-support/README.md の手順で `git -c core.autocrlf=false apply` します。
 - どちらも、ファイルを使わない間（複数行の文字列も `rom_erase.json` も無い間）は、パッチを当てる前とビルドの ROM がバイト単位で同じです（写しで確かめた）。

@@ -62,8 +62,11 @@ export class EventScriptLabels {
       },
       candidates: async () => {
         const id = this.state.map?.id;
-        const resolved = id ? this.state.session?.scriptsTable.document.resolve(id.bank, id.map) : null;
-        return resolved ? files.labelsOf(resolved.script) : [];
+        return id ? files.labelCandidates(id.bank, id.map) : [];
+      },
+      place: async (label) => {
+        const id = this.state.map?.id;
+        return id ? files.labelPlace(id.bank, id.map, label) : { kind: "missing" };
       },
       commit: (label) => {
         const id = this.state.map?.id;
