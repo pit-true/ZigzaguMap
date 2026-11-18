@@ -69,3 +69,10 @@ export {
   type SetScriptsTableEntryArgs,
 } from "./ScriptsTableCommands.js";
 export { NEW_SCRIPT_FILE_TEXT, NEW_STRINGS_FILE_TEXT, ScriptsTableProject } from "./ScriptsTableProject.js";
+export {
+  mapScriptLinkEntry,
+  mapScriptLinkPath,
+  mapScriptLinkState,
+  type MapScriptLinkProblem,
+  type MapScriptLinkState,
+} from "./mapScriptLink.js";
