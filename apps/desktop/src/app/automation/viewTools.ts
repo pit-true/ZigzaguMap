@@ -1,6 +1,7 @@
 import type { App } from "../App";
 import { int, num, type AutomationRequest, type CommandTable } from "./registry";
 import { LAYER_ITEMS } from "../LayerToggles";
+import { TOOLBAR_LAYOUT } from "../../ui/Toolbar";
 
 /**
  * Phase4 の表示・一覧・調査（列 3）の命令。
@@ -413,17 +414,20 @@ async function allSettingsSave(): Promise<unknown> {
 
 /**
  * `toolbar.icons {wait?}`: ツールバーのアイコン（#541）。ワールドマップエディタの絵がどれか `worldMap`（`rom` = ROM のタウンマップから
- * 切り出した絵、`fallback` = 自作の絵）と、ボタンごとの絵（HTML）の要約 `keys`（アイコンの名前ごと。絵が違えば違う値になる短い文字列）。`wait: true` なら差し替えを待つ。
+ * 切り出した絵、`fallback` = 自作の絵）と、ボタンごとの絵（HTML）の要約 `keys`（アイコンの名前ごと。絵が違えば違う値になる短い文字列）、
+ * ボタンごとのヒントの文 `hints` と押したときのアクション ID `actions`（#556）。`wait: true` なら差し替えを待つ。
  */
 async function toolbarIcons(app: App, req: AutomationRequest): Promise<unknown> {
   if (req["wait"] === true) await app.worldMapIcon.settle();
   const keys: Record<string, string> = {};
+  const hints: Record<string, string> = {};
   for (const el of document.querySelectorAll<HTMLElement>(".toolbar-button[data-icon]")) {
+    hints[el.dataset["icon"]!] = el.title;
     let h = 5381;
     for (const ch of el.innerHTML) h = (Math.imul(h, 33) + ch.charCodeAt(0)) >>> 0;
     keys[el.dataset["icon"]!] = `${el.innerHTML.length.toString(16)}-${h.toString(16)}`;
   }
-  return { worldMap: app.worldMapIcon.source, keys };
+  return { worldMap: app.worldMapIcon.source, keys, hints, actions: Object.fromEntries(TOOLBAR_LAYOUT.flatMap((e) => (e && e !== "sort" ? [[e.icon, e.id]] : []))) };
 }
 
 export const viewToolCommands: CommandTable = {

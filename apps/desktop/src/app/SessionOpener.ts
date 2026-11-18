@@ -39,7 +39,7 @@ export class SessionOpener {
   }
 
   /**
-   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ツールバー・ドラッグ＆ドロップ・
+   * ROM を開くとき、続けて組にする CFRU-JP のフォルダを選ばせる（ユーザーの要望。メニュー・ドラッグ＆ドロップ・
    * 組のフォルダが記録されていない最近開いたもの）。キャンセルなら ROM だけで開く。未出力の変更の確認は先に済ませる。
    */
   async openRomAskingFolder(rom: string): Promise<void> {

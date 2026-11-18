@@ -77,6 +77,8 @@ def write(run_dir: pathlib.Path, results: list[dict], meta: dict):
         tot[r["verdict"]] += 1
         (run_dir / r["name"] / "report.md").write_text(scenario_md(r), encoding="utf-8")
     specs, pend = _listed(results, SPEC), _listed(results, PENDING)
+    # 手順では比べない仕様上の違い（シナリオの specNotes。#556）
+    specs += [(r["name"], "-", k, v) for r in results for k, v in (r.get("specNotes") or {}).items()]
     summary = {"meta": meta, "totals": tot,
                "scenarios": [{k: r[k] for k in ("name", "title", "issues", "verdict", "counts", "seconds")} for r in results],
                "expectedDifferences": [dict(scenario=a, step=b, op=c, reason=d) for a, b, c, d in specs],
