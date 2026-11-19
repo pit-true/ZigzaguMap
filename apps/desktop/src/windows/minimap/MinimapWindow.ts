@@ -49,6 +49,10 @@ export class MinimapWindow {
   private readonly townBox = el("div", "minimap-town", "minimap.townView");
   private readonly townCanvas = el("canvas", "minimap-town-canvas", "minimap.townCanvas");
   private readonly townLabel = el("div", "minimap-note", "minimap.townLabel");
+  /** タウンマップの拡大を出す場所（この大きさをメインへ送り、入るだけの範囲を描いてもらう。#570）。 */
+  private readonly townStage = el("div", "minimap-town-stage");
+  private townSizeTimer: ReturnType<typeof setTimeout> | null = null;
+  private townSent = "";
   /** 縮小図の 1 画素を出す大きさ（CSS ピクセル）。 */
   private displayScale = 1;
   private dragging = false;
@@ -68,6 +72,8 @@ export class MinimapWindow {
     this.setTown(all.town);
     this.layout();
     new ResizeObserver(() => this.layout()).observe(this.stage);
+    new ResizeObserver(() => this.queueTownSize()).observe(this.townStage);
+    this.queueTownSize();
     await startToolWindowAutomation({
       describe: () => this.describe(),
       canvas: (id) => (id === "minimap.canvas" ? this.canvas : id === "minimap.townCanvas" ? this.townCanvas : null)?.toDataURL("image/png") ?? null,
@@ -137,7 +143,8 @@ export class MinimapWindow {
     });
     townRow.append(this.townCheck, t.town);
     this.townCanvas.width = this.townCanvas.height = 0;
-    this.townBox.append(this.townCanvas, this.townLabel);
+    this.townStage.append(this.townCanvas);
+    this.townBox.append(this.townStage, this.townLabel);
     this.townBox.hidden = true;
     this.root.append(this.stage, townRow, this.townBox);
   }
@@ -151,6 +158,21 @@ export class MinimapWindow {
       document.title = title;
       void getCurrentWebviewWindow().setTitle(title).catch(() => undefined);
     }
+  }
+
+  /** タウンマップの拡大を出す場所の大きさをメインへ送る（大きさを変えている間はまとめる。同じなら送らない）。 */
+  private queueTownSize(): void {
+    if (this.townSizeTimer) clearTimeout(this.townSizeTimer);
+    this.townSizeTimer = setTimeout(() => {
+      this.townSizeTimer = null;
+      if (this.townBox.hidden) return;
+      const width = this.townStage.clientWidth;
+      const height = this.townStage.clientHeight;
+      const key = `${width}x${height}`;
+      if (width <= 0 || height <= 0 || key === this.townSent) return;
+      this.townSent = key;
+      void this.request({ op: "townSize", width, height }).catch(() => undefined);
+    }, 80);
   }
 
   private setTown(town: MinimapTown | null): void {
@@ -252,7 +274,9 @@ export class MinimapWindow {
       displayScale: Math.round(this.displayScale * 1000) / 1000,
       frame: this.view.frame,
       note: this.note.hidden ? null : this.note.textContent,
-      town: this.townCheck.checked ? { text: this.townLabel.textContent, width: this.townCanvas.width, height: this.townCanvas.height } : null,
+      town: this.townCheck.checked
+        ? { text: this.townLabel.textContent, width: this.townCanvas.width, height: this.townCanvas.height, area: { width: this.townStage.clientWidth, height: this.townStage.clientHeight } }
+        : null,
       stage: { width: this.stage.clientWidth, height: this.stage.clientHeight },
     };
   }

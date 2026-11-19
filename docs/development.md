@@ -122,8 +122,10 @@ scripts\build.cmd test     # cargo test（Rust の単体テスト）
 |---|---|---|
 | 起動からマップ表示まで | 1 秒以内 | `scripts/measure-startup.mjs` |
 | マップの切り替え | 100ms 以内 | `scripts/measure-startup.mjs`（`scripts\measure-memory.ps1` も出す） |
-| 待機時メモリ（WebView2 込み） | 150MB 以下 | `scripts\measure-memory.ps1` の専用ワーキングセットの合計 |
+| 待機時メモリ（WebView2 込み） | 150MB 以下（努力目標） | `scripts\measure-memory.ps1` の専用ワーキングセットの合計 |
 | 配布物 | 10MB 以下 | `zigzagumap.exe` の大きさ |
+
+待機時メモリの 150MB は努力目標です（2026-11-19 のユーザーの返事）。別ウィンドウを開いている間など、使っている間に超えるのは許容します。変更のたびに測って記録し、くり返すと増え続けるものと、使い終わっても戻らないものだけを直します。ほかの目標は今までどおりです。
 
 Phase1 の終わり（2026-11-14、素の BPRJ）に測った値: 起動からマップ表示まで 中央値 750ms（5 回の最大 767ms）、マップの切り替え 中央値 27ms（50 回の最大 58ms）、メモリ（専用ワーキングセットの合計）は起動直後 75MB・ROM を開いた後 105MB・マップを 10 枚切り替えた後 114MB・ブロックエディタを開いた後 146MB・閉じた後 116MB、exe 3.6MB です。
 

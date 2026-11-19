@@ -68,6 +68,8 @@ export type MinimapRequest = { readonly id: number } & (
   | { readonly op: "hello" }
   | { readonly op: "press"; readonly x: number; readonly y: number }
   | { readonly op: "town"; readonly on: boolean }
+  /** タウンマップの拡大を出せる大きさ（画素。ウィンドウの大きさを変えたとき。#570）。 */
+  | { readonly op: "townSize"; readonly width: number; readonly height: number }
 );
 
 /** メイン → ウィンドウ。 */

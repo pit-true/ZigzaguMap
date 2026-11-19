@@ -1,11 +1,11 @@
 import {
   REGION_MAP_CELL_PIXELS,
-  REGION_MAP_HEIGHT,
   REGION_MAP_ORIGIN_X,
   REGION_MAP_ORIGIN_Y,
-  REGION_MAP_WIDTH,
   RegionMapProject,
+  regionZoomArea,
   townMapKey,
+  type RegionZoomArea,
   type RegionMapDocument,
   type RegionMapGraphics,
 } from "@zigzagumap/core";
@@ -19,47 +19,17 @@ import { findTownFrame, type TownFrame } from "../../ui/view/townFrame";
 import { rgbaOf } from "./rgba";
 import type { MinimapTown } from "./protocol";
 
-/** 現在地のまわりに出す範囲の最小（タウンマップのマス）。 */
-export const TOWN_ZOOM_CELLS = { width: 7, height: 5 } as const;
-/** 拡大の最大の倍率。 */
-export const TOWN_ZOOM_SCALE = 4;
-/** 拡大した絵の大きさの上限（画素。7×5 マスを 4 倍で 224×160）。 */
-const MAX_WIDTH = TOWN_ZOOM_CELLS.width * REGION_MAP_CELL_PIXELS * TOWN_ZOOM_SCALE;
-const MAX_HEIGHT = TOWN_ZOOM_CELLS.height * REGION_MAP_CELL_PIXELS * TOWN_ZOOM_SCALE;
 /** 枠の色（タウンマップのウィンドウと同じ。ROM のデータは赤、自分で紐づけたものは水色）。 */
 const ROM_COLOR = "#ff0000";
 const LINK_COLOR = "#00e0ff";
-
-/** 出す範囲（タウンマップのマス）と倍率。 */
-export interface TownZoomArea {
-  readonly page: number;
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-  readonly scale: number;
-}
-
-/**
- * 現在地の枠のまわりの範囲。枠より上下左右に 1 マス以上広く、最小 7×5 マス。枠を真ん中に置き、タウンマップの外へ出ないようにずらす。
- * 倍率は 224×160 画素に収まる範囲で最大 4 倍（最小 1 倍）。
- */
-export function townZoomArea(frame: TownFrame): TownZoomArea {
-  const r = frame.rect;
-  const width = Math.min(REGION_MAP_WIDTH, Math.max(TOWN_ZOOM_CELLS.width, r.width + 2));
-  const height = Math.min(REGION_MAP_HEIGHT, Math.max(TOWN_ZOOM_CELLS.height, r.height + 2));
-  const x = Math.min(REGION_MAP_WIDTH - width, Math.max(0, Math.round(r.x + r.width / 2 - width / 2)));
-  const y = Math.min(REGION_MAP_HEIGHT - height, Math.max(0, Math.round(r.y + r.height / 2 - height / 2)));
-  const cell = REGION_MAP_CELL_PIXELS;
-  const scale = Math.max(1, Math.min(TOWN_ZOOM_SCALE, Math.floor(MAX_WIDTH / (width * cell)), Math.floor(MAX_HEIGHT / (height * cell))));
-  return { page: r.page, x, y, width, height, scale };
-}
+/** ウィンドウから大きさが届くまでの、拡大を出せる大きさ（画素）。 */
+export const TOWN_DEFAULT_AREA = { width: 232, height: 170 } as const;
 
 /** 自動操作の `minimap.state` の `town`。 */
 export interface TownZoomState {
   readonly loaded: boolean;
   readonly frame: TownFrame | null;
-  readonly area: TownZoomArea | null;
+  readonly area: RegionZoomArea | null;
   readonly text: string;
 }
 
@@ -76,6 +46,8 @@ export class TownZoom {
   private pageImage: { page: number; canvas: HTMLCanvasElement } | null = null;
   private last: TownZoomState = { loaded: false, frame: null, area: null, text: "" };
   private error: string | null = null;
+  /** 拡大を出せる大きさ（画素。ウィンドウから届く）。 */
+  private avail: { width: number; height: number } = { ...TOWN_DEFAULT_AREA };
 
   constructor(
     private readonly state: EditorState,
@@ -143,24 +115,49 @@ export class TownZoom {
     await this.loading;
   }
 
+  /** 拡大を出せる大きさ（画素）を変える。変わったら true。 */
+  setAvailable(width: number, height: number): boolean {
+    const w = Math.max(16, Math.floor(width));
+    const h = Math.max(16, Math.floor(height));
+    if (w === this.avail.width && h === this.avail.height) return false;
+    this.avail = { width: w, height: h };
+    return true;
+  }
+
   /** 今のマップの位置のまわりを描く（絵は送るための RGBA。場所が無ければ null）。 */
   draw(): MinimapTown {
+    this.update();
+    return this.image();
+  }
+
+  /**
+   * 今の場所と出す範囲を求め直す（絵は描かない）。返す文字列は、場所・範囲・文字が同じなら同じ（変わったときだけ描いて送るため）。
+   * ワールドマップエディターで編集中の内容（`session.regionMap`）があればそれを使う。
+   */
+  update(): string {
     const map = this.state.map;
     const doc = this.document();
     const graphics = this.graphics();
     const region = map?.doc.header.regionMapSectionId ?? null;
     const frame = map && doc ? findTownFrame(this.store.links, townMapKey(map.id.bank, map.id.map), region, doc) : null;
     let text: string;
-    let area: TownZoomArea | null = null;
+    let area: RegionZoomArea | null = null;
     if (this.error !== null) text = jaTownMini.failed(this.error);
     else if (!doc || !graphics) text = jaTownMini.loading;
     else if (!map) text = jaTownMini.none;
     else if (!frame) text = t.townNone;
     else {
-      area = townZoomArea(frame);
+      area = regionZoomArea(frame.rect, this.avail.width, this.avail.height);
       text = t.townPlace(region, region !== null ? this.regionName(region) : null, frame.source !== "rom");
     }
     this.last = { loaded: doc !== null, frame, area, text };
+    return JSON.stringify([area, frame, text, graphics !== null]);
+  }
+
+  /** `update` で求めた範囲を描く。 */
+  image(): MinimapTown {
+    const { area, frame, text } = this.last;
+    const graphics = this.graphics();
     if (!area || !frame || !graphics) return { image: null, text };
     if (this.pageImage?.page !== area.page) {
       this.dropPage();

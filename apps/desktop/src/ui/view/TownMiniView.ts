@@ -1,3 +1,4 @@
+import { watchCommands } from "../form/commit";
 import {
   MAPSEC_NONE,
   REGION_IMAGE_HEIGHT,
@@ -98,6 +99,8 @@ export class TownMiniView {
   ) {
     this.store = new TownLinkStore(state);
     state.on("map", () => this.follow());
+    // ワールドマップエディターや場所の設定で地名の配置・番号を変えたら、出力の前でもすぐ描き直す（#570。元に戻すでも）
+    watchCommands(state, () => this.follow());
     state.on("session", () => {
       this.release();
       if (this.isOpen) void this.open();
