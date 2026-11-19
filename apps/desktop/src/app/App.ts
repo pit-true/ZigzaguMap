@@ -17,7 +17,7 @@ import { showMapTreeMenu } from "./MapTreeMenu";
 import { ProjectWatcher } from "./ProjectWatcher";
 import { EventLimitNotice } from "../ui/event/EventLimits";
 import { TabControl } from "../ui/TabControl";
-import type { ConnectionManager } from "../ui/connection/ConnectionManager";
+import type { ConnectionHost } from "../windows/connection/ConnectionHost";
 import type { OpacityPopup } from "../ui/view/OpacityPopup";
 import { HeaderTab } from "../ui/header/HeaderTab";
 import { GrosserBlockWindow } from "../ui/GrosserBlockWindow";
@@ -119,7 +119,8 @@ export class App implements ActionTarget {
     openMap: (id) => this.openMap(id),
     exportMaps: () => this.exportMaps(false),
   });
-  private connections: ConnectionManager | null = null;
+  /** コネクションマネージャーの別ウィンドウの受け手（#561。初めて開くときに読み込む）。 */
+  private connectionsValue: Promise<ConnectionHost> | null = null;
   /** スクリプトエディタの入口（窓口は初めてスクリプトを開くときに読み込む）。 */
   private readonly scriptEditor: ScriptEditorEntry;
   /** スクリプト連携（ひな形・取り込み・マップスクリプトの表の書き出し）。 */
@@ -518,13 +519,18 @@ export class App implements ActionTarget {
     }
   }
 
-  /** コネクションマネージャーを開く（初めて開くときに読み込む）。 */
+  /** コネクションマネージャーの別ウィンドウの受け手（作っていなければ作る。#561）。 */
+  connectionHost(): Promise<ConnectionHost> {
+    return (this.connectionsValue ??= import("../windows/connection/ConnectionHost").then(({ ConnectionHost }) =>
+      ConnectionHost.create(this.state, async (id) => {
+        await this.openMap(id);
+      }),
+    ));
+  }
+
+  /** コネクションマネージャーを開く（別ウィンドウ。初めて開くときに読み込む。#561）。 */
   async openConnections(): Promise<void> {
-    if (!this.connections) {
-      const { ConnectionManager } = await import("../ui/connection/ConnectionManager");
-      this.connections = new ConnectionManager(this.state, (id) => this.openMap(id));
-    }
-    this.connections.show();
+    await (await this.connectionHost()).open();
   }
 
   /** 表示 > 移動エリアの設定の透明度。スライダーの小窓を開く（初めて開くときに読み込む）。 */

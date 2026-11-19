@@ -290,6 +290,17 @@ async function minimapTown(app: App, req: AutomationRequest): Promise<unknown> {
 }
 
 /**
+ * `connection.state`: コネクションマネージャー（#561 から別ウィンドウ `connection`）のメイン側の状態。ウィンドウを開いているか `open`、
+ * 準備ができたか `ready`、接続先の絵を作った回数 `previews`（開いてから）、最後に作った絵 `preview`（範囲 `region`・接続先の帯の置き場所 `bandAt`・
+ * 1 マスの画素 `cell`・下の欄の文字 `text`・大きさ `width`・`height`・送った大きさ `sentBytes`）、ウィンドウの位置 `placement`。
+ * ウィンドウの中は `window: "connection"` の `state`・`getField`・`setField`・`click`・`canvasPng`（`conn.preview`）で見る・操作する。
+ */
+async function connectionState(app: App): Promise<unknown> {
+  const host = await app.connectionHost();
+  return { ...host.snapshot(), placement: app.state.settings.data.toolWindows["connection"] ?? null };
+}
+
+/**
  * `view.layers {bottom?, top?, third?}`: レイヤーごとの表示（Phase7 #513）。渡した項目を true / false にして描き直す
  * （表示 > レイヤーの表示 のチェックと同じ）。返事は今の `bottom`・`top`・`third` と、ステータスバーの文 `status`（全部出していれば null）。
  */
@@ -446,6 +457,7 @@ export const viewToolCommands: CommandTable = {
   "mapExport.state": mapExportState,
   "mapExport.run": mapExportRun,
   "view.layers": viewLayers,
+  "connection.state": connectionState,
   "minimap.state": minimapState,
   "minimap.click": minimapClick,
   "minimap.town": minimapTown,
