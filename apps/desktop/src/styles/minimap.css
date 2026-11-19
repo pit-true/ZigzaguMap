@@ -42,10 +42,27 @@
   font-size: 12px;
 }
 
+/* タウンマップの拡大（#570）。出しているときは縮小図と高さを分け合い、ウィンドウを大きくすると見える範囲も広がる */
+.minimap-window:has(.minimap-town:not([hidden])) .minimap-stage {
+  flex: 1 1 0;
+}
+
 .minimap-town {
-  flex: 0 0 auto;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
   padding-top: 4px;
   line-height: 0;
+}
+
+.minimap-town-stage {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .minimap-town[hidden] {

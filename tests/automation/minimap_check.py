@@ -7,7 +7,8 @@
 - 8 倍にしてウィンドウの縮小図を押すと、押した位置が表示の真ん中に来る（見えている範囲の枠の真ん中が押した位置）。
 - 描くと、少し後に縮小図が作り直されてウィンドウの画素が変わる。戻すと元の絵に戻る。
 - 野生のタブでは縮小図を出さない。表示 > ミニマップ をもう一度押すか、ウィンドウの × で閉じる（× でも個人設定に残る）。
-- ウィンドウの「タウンマップも出す」で、タウンマップの現在地のまわりの拡大を出す・隠す（個人設定に残す）。
+- ウィンドウの「タウンマップも出す」で、タウンマップの現在地のまわりの広い範囲を 2 倍で出す・隠す（個人設定に残す。#570）。
+  ワールドマップエディターで地名の位置を変えると、出力しなくても拡大の枠と絵がすぐ変わり、取り消すと戻る。
 - 次に起動して ROM を開くと、前回のとおりウィンドウが開き、タウンマップの拡大も出る。
 - 大きいマップを含む 10 枚を開き、切り替えの時間と縮小図を作る時間を出す（目安として表示するだけ）。
 """
@@ -110,15 +111,52 @@ def main() -> int:
             s = mm(z)
             tz = s["town"]
             check(tz is not None and tz["loaded"] and tz["area"] is not None, f"タウンマップの拡大を出す（{tz and tz['text']}）")
-            check(tz is not None and tz["area"]["scale"] == 4 and tz["area"]["width"] >= 7, f"現在地のまわり 7×5 マス以上を 4 倍（{tz and tz['area']}）")
+            ar0 = tz["area"] if tz else None
+            check(ar0 is not None and ar0["scale"] == 2 and ar0["width"] >= 11 and ar0["height"] >= 8, f"現在地のまわりの広い範囲（面の 3 分の 1 以上）を 2 倍（{ar0}）")
             check(s["setting"].get("town") is True, "チェックを個人設定に残す")
             ws = win(z)
-            check(ws["town"] is not None and ws["town"]["width"] == tz["area"]["width"] * 8 * 4 and ws["town"]["text"] == tz["text"], f"ウィンドウに拡大と地名が出る（{ws['town']}）")
+            check(ws["town"] is not None and ws["town"]["width"] == tz["area"]["width"] * 8 * 2 and ws["town"]["text"] == tz["text"], f"ウィンドウに拡大と地名が出る（{ws['town']}）")
+            ta = ws["town"]["area"] if ws["town"] else {"width": 0, "height": 0}
+            check(ar0 is not None and ar0["width"] == min(22, ta["width"] // 16) and ar0["height"] == min(15, ta["height"] // 16), f"ウィンドウの大きさ（{ta}）に入るだけのマスを出す")
             fr = tz["frame"]["rect"] if tz else None
             ar = tz["area"] if tz else None
             check(bool(fr and ar and ar["x"] <= fr["x"] and ar["y"] <= fr["y"] and fr["x"] + fr["width"] <= ar["x"] + ar["width"]), "地名の枠が拡大の範囲に入る")
             check(ws["stage"]["height"] >= 100, f"拡大を足してもウィンドウが伸び、縮小図の場所が残る（{ws['stage']}）")
             win_shot(z, shots, "minimap_window_town.png")
+
+            # ワールドマップエディターで地名の位置を変えると、出力しなくても拡大がすぐ変わる（#570）。取り消すと戻る
+            z.call({"cmd": "action", "id": "tools.worldMap"})
+            check(wait_window(z, "world-map"), "ワールドマップエディターを開く")
+            for _ in range(100):
+                try:
+                    if z.call({"cmd": "state", "window": "world-map"}).get("loaded"):
+                        break
+                except Exception:  # noqa: BLE001  準備の途中
+                    pass
+                time.sleep(0.2)
+            town_png0 = png(z, "minimap.townCanvas")
+            rect0 = mm(z)["town"]["frame"]["rect"]
+            hist0 = z.call({"cmd": "state"})["history"]
+            wm = {"window": "world-map"}
+            z.call({"cmd": "setField", **wm, "id": "Cbo_Anzahl", "value": 0})
+            z.call({"cmd": "setField", **wm, "id": "Cbo_Wert_NamenListe", "value": 0})
+            z.call({"cmd": "setField", **wm, "id": "Txt_PosX", "value": str(rect0["x"] + 2)})
+            z.call({"cmd": "setField", **wm, "id": "Txt_PosY", "value": str(rect0["y"] - 1)})
+            z.call({"cmd": "click", **wm, "id": "Cmd_NameSpeichern"})
+            time.sleep(0.6)
+            rect1 = mm(z)["town"]["frame"]["rect"]
+            check(rect1["x"] == rect0["x"] + 2 and rect1["y"] == rect0["y"] - 1, f"ワールドマップエディターで位置を変えると、出力しなくても枠が動く（{rect0} → {rect1}）")
+            check(png(z, "minimap.townCanvas") != town_png0, "ミニマップのタウンマップの絵の画素が変わる")
+            win_shot(z, shots, "minimap_window_town_moved.png")
+            if shots:
+                r = z.call({"cmd": "screenshot", "window": "world-map"})
+                (shots / "minimap_world_map.png").write_bytes(base64.b64decode(r if isinstance(r, str) else r["png"]))
+            z.call({"cmd": "key", "key": "z", "ctrl": True})
+            time.sleep(0.6)
+            check(z.call({"cmd": "state"})["history"] == hist0 and mm(z)["town"]["frame"]["rect"] == rect0, "取り消すと枠も戻る")
+            check(png(z, "minimap.townCanvas") == town_png0, "取り消すと絵も元に戻る")
+            z.call({"cmd": "close", "window": "world-map"})
+            wait_window(z, "world-map", present=False)
             texts = {}
             for bank, m in [(4, 1), (1, 0), (3, 19)]:
                 z.call({"cmd": "selectMap", "bank": bank, "map": m})

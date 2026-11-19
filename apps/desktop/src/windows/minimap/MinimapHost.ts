@@ -23,7 +23,7 @@ import {
   type MinimapView,
 } from "./protocol";
 import { rgbaOf } from "./rgba";
-import { TownZoom, type TownZoomState } from "./TownZoom";
+import { TOWN_DEFAULT_AREA, TownZoom, type TownZoomState } from "./TownZoom";
 
 /** 縮小図の長い辺の上限（画素）。 */
 export const MINIMAP_MAX_SIDE = 200;
@@ -106,6 +106,9 @@ export class MinimapHost {
   private sentBytes = 0;
   /** タウンマップの拡大（出している間だけ作る）。 */
   private town: TownZoom | null = null;
+  /** タウンマップの拡大を出せる大きさ（画素。ウィンドウから届く）。 */
+  private townArea: { width: number; height: number } = { ...TOWN_DEFAULT_AREA };
+  private unsubscribeBus: (() => void) | null = null;
   private townKey = "";
 
   private constructor(private readonly deps: MinimapDeps) {}
@@ -204,8 +207,8 @@ export class MinimapHost {
     }
     if (!this.opened) return;
     const town = this.ensureTown();
-    const drawn = await town.refresh();
-    if (this.town === town) await this.sendTown(drawn, true);
+    await town.refresh();
+    if (this.town === town) await this.sendTown(true);
   }
 
   // ---- 内部 ----
@@ -221,11 +224,12 @@ export class MinimapHost {
       }),
       state.on("session", () => {
         this.scheduleRebuild(0);
+        this.subscribeBus();
         const town = this.town;
         if (!town) return;
         town.reset();
-        void town.refresh().then(async (drawn) => {
-          if (this.town === town) await this.sendTown(drawn, false);
+        void town.refresh().then(async () => {
+          if (this.town === town) await this.sendTown(false);
         });
       }),
       state.on("cells", () => this.scheduleRebuild()),
@@ -241,9 +245,23 @@ export class MinimapHost {
       view.element.addEventListener("scroll", onScroll, { passive: true });
       this.offs.push(() => view.element.removeEventListener("scroll", onScroll));
     }
+    this.subscribeBus();
+    this.offs.push(() => {
+      this.unsubscribeBus?.();
+      this.unsubscribeBus = null;
+    });
     const onResize = (): void => this.queueView();
     window.addEventListener("resize", onResize);
     this.offs.push(() => window.removeEventListener("resize", onResize));
+  }
+
+  /**
+   * 操作（実行・元に戻す・やり直す）のたびに、タウンマップの拡大を求め直す（#570）。ワールドマップエディターで地名の配置を変えたとき、
+   * 場所の設定で地名の番号を変えたときも、出力の前にすぐ描き直す。場所・範囲・文字が変わらなければ描かない。
+   */
+  private subscribeBus(): void {
+    this.unsubscribeBus?.();
+    this.unsubscribeBus = this.deps.state.session?.bus.subscribe(() => this.redrawTown()) ?? null;
   }
 
   /** 見張りをやめ、持っているものを捨てる。 */
@@ -330,24 +348,29 @@ export class MinimapHost {
   }
 
   private redrawTown(): void {
-    if (this.town) void this.sendTown(this.town.draw(), false);
+    if (this.town) void this.sendTown(false);
   }
 
-  /** タウンマップの拡大を送る（`force` でなければ、場所と文字が前と同じなら送らない）。 */
-  private async sendTown(town: MinimapTown, force: boolean): Promise<void> {
-    const s = this.town?.snapshot();
-    const key = JSON.stringify([s?.area, s?.frame, town.text]);
+  /** タウンマップの拡大を送る（`force` でなければ、場所・範囲・文字が前と同じなら描かず送らない）。 */
+  private async sendTown(force: boolean): Promise<void> {
+    const town = this.town;
+    if (!town) return;
+    const key = town.update();
     if (!force && key === this.townKey) return;
     this.townKey = key;
-    await this.send({ type: "town", shown: true, town });
+    await this.send({ type: "town", shown: true, town: town.image() });
   }
 
   private ensureTown(): TownZoom {
-    return (this.town ??= new TownZoom(
-      this.deps.state,
-      (r) => this.deps.regionName(r),
-      () => this.deps.townLinks(),
-    ));
+    if (!this.town) {
+      this.town = new TownZoom(
+        this.deps.state,
+        (r) => this.deps.regionName(r),
+        () => this.deps.townLinks(),
+      );
+      this.town.setAvailable(this.townArea.width, this.townArea.height);
+    }
+    return this.town;
   }
 
   private async send(message: MinimapMessage): Promise<void> {
@@ -381,9 +404,9 @@ export class MinimapHost {
         let town: MinimapTown | null = null;
         if (townShown) {
           const zoom = this.ensureTown();
-          town = await zoom.refresh();
-          const s = zoom.snapshot();
-          this.townKey = JSON.stringify([s.area, s.frame, town.text]);
+          await zoom.refresh();
+          this.townKey = zoom.update();
+          town = zoom.image();
         }
         const all: MinimapAll = { thumb, view, townShown, town };
         return all;
@@ -393,6 +416,11 @@ export class MinimapHost {
         return this.frame;
       case "town":
         await this.setTown(req.on);
+        return null;
+      case "townSize":
+        // ウィンドウの大きさを変えたら、タウンマップの見える範囲も合わせる
+        this.townArea = { width: req.width, height: req.height };
+        if (this.town?.setAvailable(req.width, req.height)) await this.sendTown(false);
         return null;
     }
   }
