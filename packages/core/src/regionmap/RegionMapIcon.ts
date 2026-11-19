@@ -4,11 +4,11 @@ import { REGION_MAP_ADDRESSES } from "./addresses.js";
 import { REGION_IMAGE_HEIGHT, REGION_IMAGE_WIDTH, REGION_MAP_CELL_PIXELS, REGION_MAP_HEIGHT, REGION_MAP_ORIGIN_X, REGION_MAP_ORIGIN_Y, REGION_MAP_WIDTH } from "./constants.js";
 import { RegionMapGraphics } from "./RegionMapGraphics.js";
 
-/** ツールバーのアイコンに切り出す大きさ（タウンマップの画素。枠を付けて 15×15 のドット絵にする）。 */
-export const REGION_ICON_SIZE = 13;
-/** 切り出す左上を、マサラタウンのマスの左上からずらす量（町の印の左に西の海岸と海、下に南の海が入る位置。FR の地図で決めた）。 */
-const ICON_SHIFT_X = -7;
-const ICON_SHIFT_Y = 1;
+/** ツールバーのアイコンに切り出す大きさ（タウンマップの画素。1 倍のまま、丸い島の形にして出す。#565）。 */
+export const REGION_ICON_SIZE = 30;
+/** 切り出す左上を、マサラタウンのマスの左上からずらす量（町の印がほぼ真ん中に来て、島の西と東の海岸が入る位置。FR の地図で決めた）。 */
+const ICON_SHIFT_X = -11;
+const ICON_SHIFT_Y = -11;
 /** 位置の表が読めない・範囲外のときのマサラタウンのマス（FR の値）。 */
 const DEFAULT_CELL = { x: 4, y: 11 };
 
@@ -28,7 +28,7 @@ export function regionIconArea(cell: { x: number; y: number }): { left: number; 
 }
 
 /**
- * ROM のタウンマップ（カントーの面）から、マサラタウンのあたりの 13×13 の画素を切り出す（ツールバーのワールドマップエディタのアイコン用。#541）。
+ * ROM のタウンマップ（カントーの面）から、マサラタウンのあたりの 30×30 の画素を切り出す（ツールバーのワールドマップエディタのアイコン用。#541）。
  * 絵とマスの位置は、ワールドマップエディタ・タウンマップのウィンドウと同じ表（パレット・タイル・タイルマップ・位置の表）から読む。
  * 対応していないゲームか、読めなければ null。切り出した画素はメモリに持つだけで、ファイルには書かない。
  */

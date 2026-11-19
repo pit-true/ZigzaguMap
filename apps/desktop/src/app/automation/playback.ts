@@ -16,6 +16,7 @@ export const playbackCommands: CommandTable = {
   },
   "playback.stop": async app => { const controller = await app.playback.existing(); controller?.stop(); await controller?.ready(); return { active: false }; },
   "playback.state": async app => (await app.playback.existing())?.state() ?? { active: false },
+  "playback.centering": async app => app.previewPlayer.centering(),
   "playback.seek": async (app, req) => { const controller = await app.playback.get(); controller.seek(int(req, "frame")); await controller.ready(); return controller.state(); },
   "playback.step": async (app, req) => {
     const direction = str(req, "direction");

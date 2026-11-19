@@ -104,6 +104,7 @@ export const jaPlayback = {
   previous: "前の動き", next: "次の動き", male: "男の子", female: "女の子",
   down: "下", up: "上", left: "左", right: "右",
   speed: "再生速度", facing: "主人公の向き", absent: "居ない人物",
+  follow: "画面を追う", followTitle: "240×160 の範囲をマップの表示の真ん中に合わせて追う（手でスクロールしたら、次にカメラが動くまで追わない）",
   message: "メッセージ", continue: "続きを読む", branch: "分岐", taken: "進む", skipped: "進まない",
   unknown: "読み込めない内容",
   label: "再生するラベル",
