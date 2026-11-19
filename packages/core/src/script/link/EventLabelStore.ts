@@ -125,6 +125,37 @@ export class EventLabelStore {
     return out;
   }
 
+  /**
+   * そのマップが使うラベル名（イベント、eventscripts の `map` の行、マップスクリプトの表とその行き先。アドレスは除く）。
+   * 「このマップの .s」を自動で決める（#562）のに使う。
+   */
+  labelsOfMap(bank: number, map: number): string[] {
+    const m = this.get(bank, map);
+    const out = new Set<string>();
+    for (const t of EVENT_LABEL_TARGETS) for (const l of m[t]) if (l) out.add(l.label);
+    if (m.mapScripts) out.add(m.mapScripts);
+    if (m.table) {
+      out.add(m.table.label);
+      for (const i of m.table.items) {
+        out.add(i.script);
+        for (const c of i.conditions) out.add(c.script);
+      }
+    }
+    return [...out].filter((n) => !/^0x/i.test(n));
+  }
+
+  /** ほかのマップが使うラベル名（{@link labelsOfMap} の、そのマップ以外の分）。 */
+  labelsOfOtherMaps(bank: number, map: number): Set<string> {
+    const own = key(bank, map);
+    const out = new Set<string>();
+    for (const k of this.allKeys()) {
+      if (k === own) continue;
+      const { bank: b, map: m } = fromKey(k);
+      for (const n of this.labelsOfMap(b, m)) out.add(n);
+    }
+    return out;
+  }
+
   /** ZigzaguMap が書く表のあるマップ。 */
   tableMaps(): { bank: number; map: number }[] {
     return [...this.allKeys()].map(fromKey).filter(({ bank, map }) => this.get(bank, map).table !== null);

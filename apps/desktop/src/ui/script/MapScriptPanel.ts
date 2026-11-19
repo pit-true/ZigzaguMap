@@ -225,7 +225,7 @@ export class MapScriptPanel {
     const table = this.table;
     if (!ctx || !table) return false;
     const { bank, map } = ctx.map.id;
-    const resolved = ctx.session.scriptsTable.document.resolve(bank, map);
+    const resolved = await this.link.files.mapScriptOf(bank, map);
     const config = (await this.link.scriptConfig())?.config;
     if (!resolved || !config) {
       ctx.state.setStatus(t.noScriptFile(bank, map), undefined, true);
@@ -267,7 +267,7 @@ export class MapScriptPanel {
     const ctx = this.ctx;
     if (!ctx) return false;
     const { bank, map } = ctx.map.id;
-    const resolved = ctx.session.scriptsTable.document.resolve(bank, map);
+    const resolved = this.link.files.mapScriptNow(bank, map);
     if (!resolved) {
       ctx.state.setStatus(t.noScriptFile(bank, map), undefined, true);
       void import("./NewScriptDialog").then(({ ensureScriptFile }) => ensureScriptFile(ctx.state, bank, map));

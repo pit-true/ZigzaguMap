@@ -37,8 +37,8 @@ export async function describeLabels(app: App, bank: number, map: number): Promi
   const s = session(app);
   const store = s.labels.store;
   const m = store.get(bank, map);
-  const resolved = s.scriptsTable.document.resolve(bank, map);
   const files = app.scripts.files;
+  const resolved = await files.mapScriptOf(bank, map);
   const candidates = resolved ? await files.labelsOf(resolved.script) : [];
   // ラベルの場所（#554）。inScript はビルドで見つかるか（マップの .s か、ほかの .s の .global）
   const places = new Map<string, ScriptLabelPlace>();
@@ -55,6 +55,7 @@ export async function describeLabels(app: App, bank: number, map: number): Promi
     map,
     script: resolved?.script ?? null,
     strings: resolved?.strings ?? null,
+    scriptFrom: resolved?.from ?? null,
     person: list("person"),
     sign: list("sign"),
     tile: list("tile"),

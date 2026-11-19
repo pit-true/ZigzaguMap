@@ -25,3 +25,4 @@ export {
   type ScriptLabelCandidate,
   type ScriptLabelPlace,
 } from "./scriptLabelPlace.js";
+export { autoMapScript, autoMapScriptCandidates, type AutoMapScript, type AutoMapScriptCandidate } from "./autoMapScript.js";

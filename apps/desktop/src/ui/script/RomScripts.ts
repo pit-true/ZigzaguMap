@@ -95,7 +95,7 @@ export class RomScripts {
     const session = this.app.state.session;
     if (!session?.projectDir) throw new Error(t.noProject);
     const { bank, map } = target.map;
-    const resolved = session.scriptsTable.document.resolve(bank, map);
+    const resolved = await this.app.scripts.files.mapScriptOf(bank, map);
     if (!resolved) throw new Error(t.noScriptFile(bank, map));
     const config = (await this.app.scripts.scriptConfig())?.config;
     if (!config) throw new Error(t.noConfig);

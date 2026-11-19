@@ -99,3 +99,19 @@
   white-space: nowrap;
   vertical-align: middle;
 }
+
+/* 「このマップの .s」を自動で決めたときの印（#562） */
+.header-simple-auto {
+  padding: 0 4px;
+  border: 1px solid var(--frame-border);
+  color: var(--note-text);
+  font-size: 11px;
+}
+
+.header-simple-auto[hidden] {
+  display: none;
+}
+
+.header-simple-intro {
+  margin: 0 0 4px;
+}

@@ -1,6 +1,10 @@
 import {
   appendBlock,
+  autoMapScript,
+  autoMapScriptCandidates,
+  type AutoMapScriptCandidate,
   buildScriptIndex,
+  defaultScriptsJsonStringsPath,
   indexAsmFile,
   isScriptSourcePath,
   reloadScriptIndexFile,
@@ -14,6 +18,13 @@ import {
 import type { App } from "../../app/App";
 import { jaScriptLink as t } from "../../i18n/ja.scriptLink";
 import { normalizeScriptPath } from "../../windows/script-editor/fileText";
+
+/** マップの `.s` と `.string`、どこで決まったか（`map`: マップの行、`bank`: バンク全体の行、`auto`: ラベルから自動。#562）。 */
+export interface MapScriptChoice {
+  readonly script: string;
+  readonly strings: string;
+  readonly from: "map" | "bank" | "auto";
+}
 
 /** 本文の読み先（エディタで開いていればエディタの本文、無ければディスク）。 */
 interface Loaded {
@@ -44,8 +55,14 @@ export class ScriptFiles {
    * 書き換えたファイルの分だけ読み直す。全部を捨てたとき（前面に戻った・プロジェクトを開き直した）は、次に使うときに作り直す。
    */
   private index: Promise<ScriptIndex> | null = null;
+  /** 最後に作り終わった索引と、そのときのセッション（すぐに答えが要るとき用。前面に戻って捨てたあとも、作り直すまで使う）。 */
+  private last: { readonly session: unknown; readonly index: ScriptIndex } | null = null;
+  /** アプリに 1 つ（ensureScriptFile など、App を受け取らない所から使う）。 */
+  static current: ScriptFiles | null = null;
 
-  constructor(private readonly app: App) {}
+  constructor(private readonly app: App) {
+    ScriptFiles.current = this;
+  }
 
   /** ラベルの一覧が変わったときに呼ぶ。戻り値でやめる。 */
   onChange(listener: () => void): () => void {
@@ -110,16 +127,55 @@ export class ScriptFiles {
   scriptIndex(): Promise<ScriptIndex> {
     const fs = this.app.state.session?.files;
     if (!fs?.root) return Promise.reject(new Error(t.noProjectFolder));
+    const session = this.app.state.session;
     const building = (this.index ??= buildScriptIndex(fs));
-    building.catch(() => {
-      if (this.index === building) this.index = null;
-    });
+    building.then(
+      (index) => {
+        if (this.index === building && this.app.state.session === session) this.last = { session, index };
+      },
+      () => {
+        if (this.index === building) this.index = null;
+      },
+    );
     return building;
   }
 
-  /** そのマップの `.s`（決まらなければ null）。 */
-  mapScript(bank: number, map: number): string | null {
-    return this.app.state.session?.scriptsTable.document.resolve(bank, map)?.script ?? null;
+  /**
+   * そのマップの `.s` と `.string`（決まらなければ null）。maps\scripts.json の行（マップを指定した行、バンク全体の行）が
+   * あればそれ、無ければマップのラベルから自動で決めたもの（#562。保存はしない。`.string` は既定の名前）。
+   */
+  async mapScriptOf(bank: number, map: number): Promise<MapScriptChoice | null> {
+    const table = this.tableScript(bank, map);
+    if (table) return table;
+    const index = await this.scriptIndex().catch(() => null);
+    return index ? this.autoScript(bank, map, index) : null;
+  }
+
+  /** {@link mapScriptOf} のすぐ答える形（自動で決めるのは、索引を作り終わっているときだけ）。 */
+  mapScriptNow(bank: number, map: number): MapScriptChoice | null {
+    const table = this.tableScript(bank, map);
+    if (table) return table;
+    const last = this.last;
+    return last && last.session === this.app.state.session ? this.autoScript(bank, map, last.index) : null;
+  }
+
+  /** 自動で決めるときの候補（ファイルごとの数。自動操作で確かめる用）。 */
+  async autoCandidates(bank: number, map: number): Promise<AutoMapScriptCandidate[]> {
+    const store = this.app.state.session?.labels.store;
+    const index = await this.scriptIndex().catch(() => null);
+    return store && index ? autoMapScriptCandidates(store.labelsOfMap(bank, map), index, store.labelsOfOtherMaps(bank, map)) : [];
+  }
+
+  private tableScript(bank: number, map: number): MapScriptChoice | null {
+    const r = this.app.state.session?.scriptsTable.document.resolve(bank, map);
+    return r ? { script: r.script, strings: r.strings, from: r.entry.map === null ? "bank" : "map" } : null;
+  }
+
+  private autoScript(bank: number, map: number, index: ScriptIndex): MapScriptChoice | null {
+    const store = this.app.state.session?.labels.store;
+    if (!store || !this.app.state.session?.projectDir) return null;
+    const found = autoMapScript(store.labelsOfMap(bank, map), index, store.labelsOfOtherMaps(bank, map));
+    return found ? { script: found.path, strings: defaultScriptsJsonStringsPath(found.path), from: "auto" } : null;
   }
 
   /**
@@ -127,7 +183,7 @@ export class ScriptFiles {
    * プロジェクトフォルダが無ければ `missing`。
    */
   async labelPlace(bank: number, map: number, label: string): Promise<ScriptLabelPlace> {
-    const script = this.mapScript(bank, map);
+    const script = (await this.mapScriptOf(bank, map))?.script ?? null;
     const own = script ? await this.labelsOf(script) : [];
     if (own.includes(label)) return { kind: "map" };
     const index = await this.scriptIndex().catch(() => null);
@@ -136,7 +192,7 @@ export class ScriptFiles {
 
   /** ラベルの欄の候補（マップの `.s` のラベルを先に、ほかの `.s` の `.global` のラベルを後ろに）。 */
   async labelCandidates(bank: number, map: number): Promise<ScriptLabelCandidate[]> {
-    const script = this.mapScript(bank, map);
+    const script = (await this.mapScriptOf(bank, map))?.script ?? null;
     const own = script ? await this.labelsOf(script) : [];
     const index = await this.scriptIndex().catch(() => null);
     return index ? scriptLabelCandidates(script, own, index) : own.map((name) => ({ name, path: null }));

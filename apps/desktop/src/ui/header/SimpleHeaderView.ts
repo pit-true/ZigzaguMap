@@ -75,7 +75,7 @@ export class SimpleHeaderView {
     this.element = document.createElement("div");
     this.element.className = "header-simple";
     this.scripts = new MapScriptPanel(host.scripts);
-    this.scriptFile = host.files ? new MapScriptFileRow(host.files) : null;
+    this.scriptFile = host.files ? new MapScriptFileRow(host.files, host.scripts.files) : null;
 
     // マップ名
     this.region = select("easy.region");
@@ -175,7 +175,9 @@ export class SimpleHeaderView {
     this.element.append(this.layoutShared.element);
 
     // マップスクリプト（専用のパネル。#208）
-    this.element.append(section(t.scriptSection, [...(this.scriptFile ? [this.scriptFile.element] : []), this.scripts.element]));
+    // スクリプトのファイル（このマップの .s。#555・#562）は、マップスクリプトの表とは別のまとまりにする
+    if (this.scriptFile) this.element.append(this.scriptFile.element);
+    this.element.append(section(t.scriptSection, [this.scripts.element]));
 
     // マップコネクション
     this.connections = document.createElement("ul");
