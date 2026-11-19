@@ -3,3 +3,15 @@
 *.ico binary
 *.icns binary
 packages/core/test/fixtures/*.json -text
+
+# GitHub の言語の割合（Linguist）は、アプリ本体の TypeScript だけを数える。
+# テストの道具（Python）、Tauri の殻（Rust）、スタイル、補助のスクリプトは割合に入れない。
+*.py linguist-detectable=false
+*.rs linguist-detectable=false
+*.css linguist-detectable=false
+*.html linguist-detectable=false
+*.js linguist-detectable=false
+*.mjs linguist-detectable=false
+*.ps1 linguist-detectable=false
+*.cmd linguist-detectable=false
+*.cs linguist-detectable=false
