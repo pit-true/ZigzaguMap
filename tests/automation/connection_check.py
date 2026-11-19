@@ -31,6 +31,10 @@
 - 292: ダブルクリックでマップを開くときは何も描かない。マップタブ・移動エリアタブで隣の帯をダブルクリックしても、帯のマスは変わらず、
   隣のマップに未出力の印が付かず、履歴も増えない。Space でダイブ先を重ねたままのダブルクリックも、主マップに描かない。
   帯の上の 1 回のクリックは今までどおり描く。
+- 561: コネクションマネージャーの別ウィンドウ。ツール > マップの移動 で別ウィンドウが開き、今のマップの接続が出る。接続先の見た目の絵の、
+  接続先の部分はメインの表示の隣の帯と、今のマップの部分はマップの画像と画素が同じ。バンクとマップ番号を変えるとすぐ絵が変わり、
+  接続先の部分がそのマップの画像を暗くしたものと同じになる。ずれを変えると絵の中の接続先が動く。同じ値なら絵を作り直さない。
+  矢印やメインでマップを切り替えるとウィンドウも追従する。保存しないまま閉じると変わらない。保存と 1 回の取り消し。
 - ほかの番号は、その issue を足すときに関数を足す（`CHECKS` の表）。
 """
 from __future__ import annotations
@@ -45,7 +49,7 @@ import tempfile
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from zz import Zigzagu, shot  # noqa: E402
+from zz import Zigzagu, shot, wait_window  # noqa: E402
 
 try:
     from PIL import Image, ImageChops
@@ -55,6 +59,8 @@ except ImportError:  # 画素の比べ合わせだけ飛ばす
 failures: list[str] = []
 
 PALLET = {"bank": 3, "map": 0}
+# コネクションマネージャーの別ウィンドウ（#561）
+CW = "connection"
 ROUTE1 = {"bank": 3, "map": 19}
 
 
@@ -241,15 +247,17 @@ def check_229(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     # コネクションマネージャー（相手もそろえる。既定オン）
     z.call({"cmd": "selectMap", **PALLET})
     z.call({"cmd": "action", "id": "tools.connections"})
-    z.call({"cmd": "setField", "id": "conn.offset", "value": "5"})
-    z.call({"cmd": "click", "id": "conn.save"})
+    wait_window(z, CW)
+    z.call({"cmd": "setField", "window": CW, "id": "conn.offset", "value": "5"})
+    z.call({"cmd": "click", "window": CW, "id": "conn.save"})
     check(offset_to(z, 3, 0, 19) == 5 and offset_to(z, 3, 19, 0) == -5, "コネクションマネージャーでずれを 5 にすると相手が -5 になる")
     z.call({"cmd": "undo"})
     check(offset_to(z, 3, 0, 19) == 3 and offset_to(z, 3, 19, 0) == -3, "マネージャーの変更も 1 回の取り消しで両方戻る")
     z.call({"cmd": "action", "id": "opt.alignConnections"})
     z.call({"cmd": "selectMap", **PALLET})
-    z.call({"cmd": "setField", "id": "conn.offset", "value": "6"})
-    z.call({"cmd": "click", "id": "conn.save"})
+    time.sleep(0.3)
+    z.call({"cmd": "setField", "window": CW, "id": "conn.offset", "value": "6"})
+    z.call({"cmd": "click", "window": CW, "id": "conn.save"})
     check(offset_to(z, 3, 0, 19) == 6 and offset_to(z, 3, 19, 0) == -3, "設定でそろえないにすると、相手は変わらない")
     z.call({"cmd": "action", "id": "opt.alignConnections"})
 
@@ -821,7 +829,121 @@ def check_292(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> Non
     z.call({"cmd": "tab", "name": "map"})
 
 
-CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236, "246": check_246, "292": check_292}
+
+def win_state(z: Zigzagu) -> dict:
+    time.sleep(0.3)
+    return z.call({"cmd": "state", "window": CW})
+
+
+def preview_png(z: Zigzagu):
+    return png_of(z, {"cmd": "canvasPng", "window": CW, "id": "conn.preview"})
+
+
+def crop_cells(img, x: int, y: int, w: int, h: int):
+    return img.crop((x * 16, y * 16, (x + w) * 16, (y + h) * 16))
+
+
+def max_diff(a, b) -> int:
+    return max(hi for _lo, hi in ImageChops.difference(a, b).getextrema())
+
+
+def check_561(z: Zigzagu, work: pathlib.Path, shots: pathlib.Path | None) -> None:
+    z.call({"cmd": "selectMap", **PALLET})
+    st = z.call({"cmd": "connection.state"})
+    check(not st["open"] and st["previews"] == 0, "既定は閉じていて、絵も作らない")
+    z.call({"cmd": "action", "id": "tools.connections"})
+    check(wait_window(z, CW), "ツール > マップの移動 で別ウィンドウが開く")
+    ws = win_state(z)
+    want = conns(z, 3, 0)
+    check(ws["map"] == "3.0" and ws["count"] == len(want) and ws["count"] > 0, f"今のマップの接続が出る（{ws['count']} 件）")
+    p = ws["preview"]
+    first = want[0]
+    check(p is not None and p["width"] > 0 and f"{first['bank']}.{first['map']}" in p["text"], f"開くとすぐ 1 番目の接続先の絵が出る（{p and p['text']}）")
+    if Image is not None and p and p["width"] > 0:
+        m = z.call({"cmd": "neighbors.state", "wait": True})["margins"]
+        whole = png_of(z, {"cmd": "canvasPng", "target": "map", "neighbors": True})
+        img = preview_png(z)
+        r, a = p["region"], p["bandAt"]
+        got = crop_cells(img, a["x"] - r["x"], a["y"] - r["y"], a["width"], a["height"])
+        exp = crop_cells(whole, m["left"] + a["x"], m["top"] + a["y"], a["width"], a["height"])
+        check(max_diff(got, exp) <= 2, f"絵の接続先の部分が、メインの表示の隣の帯と同じ（差 {max_diff(got, exp)}）")
+        mainimg = png_of(z, {"cmd": "canvasPng", "target": "map"})
+        # 今のマップの部分（枠の 1 画素を除いて比べる）
+        x0, y0 = max(0, r["x"]) * 16 + 1, max(0, r["y"]) * 16 + 1
+        x1, y1 = min(mainimg.width, (r["x"] + r["width"]) * 16) - 1, min(mainimg.height, (r["y"] + r["height"]) * 16) - 1
+        ox, oy = -r["x"] * 16, -r["y"] * 16
+        got2 = img.crop((x0 + ox, y0 + oy, x1 + ox, y1 + oy))
+        exp2 = mainimg.crop((x0, y0, x1, y1))
+        check(max_diff(got2, exp2) <= 2, f"絵の今のマップの部分が、マップの画像と同じ（差 {max_diff(got2, exp2)}）")
+    if shots:
+        (shots / "conn561_window.png").write_bytes(base64.b64decode(z.call({"cmd": "screenshot", "window": CW})["png"]))
+    # バンクとマップ番号を入れる（保存しない）
+    n0 = z.call({"cmd": "connection.state"})["previews"]
+    target = {"bank": 3, "map": 39}
+    z.call({"cmd": "setField", "window": CW, "id": "conn.bank", "value": str(target["bank"])})
+    z.call({"cmd": "setField", "window": CW, "id": "conn.map", "value": str(target["map"])})
+    ws = win_state(z)
+    p2 = ws["preview"]
+    check(p2 is not None and "3.39" in p2["text"] and p2["width"] > 0, f"バンクとマップ番号を入れるとすぐ接続先の絵が変わる（{p2 and p2['text']}）")
+    check(z.call({"cmd": "connection.state"})["previews"] > n0, "番号を変えると絵を作り直す")
+    img2 = preview_png(z) if Image is not None else None
+    if shots:
+        (shots / "conn561_number.png").write_bytes(base64.b64decode(z.call({"cmd": "screenshot", "window": CW})["png"]))
+    # ずれを変えると接続先が動く
+    off0 = int(z.call({"cmd": "getField", "window": CW, "id": "conn.offset"})["value"])
+    z.call({"cmd": "setField", "window": CW, "id": "conn.offset", "value": str(off0 + 2)})
+    p3 = win_state(z)["preview"]
+    vertical = first["direction"] in (1, 2)
+    k = "x" if vertical else "y"
+    moved_at = p3["bandAt"][k] - p2["bandAt"][k]
+    moved_band = p2["band"][k] - p3["band"][k]
+    check(moved_at == 2 or moved_band == 2, f"ずれを 2 増やすと接続先が 2 マス動く（{p2['bandAt']} {p2['band']} → {p3['bandAt']} {p3['band']}）")
+    n1 = z.call({"cmd": "connection.state"})["previews"]
+    z.call({"cmd": "setField", "window": CW, "id": "conn.offset", "value": str(off0 + 2)})
+    time.sleep(0.3)
+    check(z.call({"cmd": "connection.state"})["previews"] == n1, "同じ値なら絵を作り直さない")
+    check(conns(z, 3, 0) == want, "保存しないうちは、メインの接続は変わらない")
+    z.call({"cmd": "close", "window": CW})
+    check(wait_window(z, CW, present=False), "ウィンドウの × で閉じる")
+    time.sleep(0.3)
+    s = z.call({"cmd": "connection.state"})
+    check(not s["open"] and s["previews"] == 0, "閉じると絵を捨てる")
+    check(conns(z, 3, 0) == want, "保存しないで閉じると接続は変わらない")
+    # 入れた番号の接続先の部分が、そのマップの画像を暗くしたものと同じ
+    if Image is not None and img2 is not None:
+        z.call({"cmd": "selectMap", **target})
+        other = png_of(z, {"cmd": "canvasPng", "target": "map"})
+        r, a, b = p2["region"], p2["bandAt"], p2["band"]
+        got = crop_cells(img2, a["x"] - r["x"], a["y"] - r["y"], a["width"], a["height"])
+        exp = crop_cells(other, b["x"], b["y"], b["width"], b["height"]).point(lambda v: round(v * (1 - SHADE)))
+        check(max_diff(got, exp) <= 2, f"入れた番号の接続先の部分が、3.39 の画像を暗くしたものと同じ（差 {max_diff(got, exp)}）")
+        z.call({"cmd": "selectMap", **PALLET})
+    z.call({"cmd": "action", "id": "tools.connections"})
+    check(wait_window(z, CW), "開き直す")
+    # 矢印で相手のマップを開くと、ウィンドウも追従する
+    arrow = {1: "conn.down1", 2: "conn.up1", 3: "conn.left1", 4: "conn.right1"}.get(first["direction"])
+    if arrow:
+        z.call({"cmd": "click", "window": CW, "id": arrow})
+        time.sleep(0.5)
+        mp = z.call({"cmd": "state"})["map"]
+        ws = win_state(z)
+        check(mp["bank"] == first["bank"] and mp["map"] == first["map"] and ws["map"] == f"{first['bank']}.{first['map']}", f"矢印でメインが相手のマップを開き、ウィンドウも追従する（{ws['map']}）")
+        z.call({"cmd": "selectMap", **PALLET})
+        check(win_state(z)["map"] == "3.0", "メインでマップを切り替えると、ウィンドウも追従する")
+    # 保存（ずれ）と 1 回の取り消し
+    z.call({"cmd": "setField", "window": CW, "id": "conn.offset", "value": str(first["offset"] + 1)})
+    z.call({"cmd": "click", "window": CW, "id": "conn.save"})
+    time.sleep(0.3)
+    check(conns(z, 3, 0)[0]["offset"] == first["offset"] + 1, "保存するとメインの接続のずれが変わる")
+    check(int(z.call({"cmd": "getField", "window": CW, "id": "conn.offset"})["value"]) == first["offset"] + 1, "ウィンドウの欄も保存した値")
+    z.call({"cmd": "undo"})
+    time.sleep(0.3)
+    back = int(z.call({"cmd": "getField", "window": CW, "id": "conn.offset"})["value"])
+    check(conns(z, 3, 0)[0]["offset"] == first["offset"] and back == first["offset"], "メインの取り消しで戻り、ウィンドウの欄も戻る")
+    z.call({"cmd": "close", "window": CW})
+    wait_window(z, CW, present=False)
+
+CHECKS = {"222": check_222, "223": check_223, "229": check_229, "230": check_230, "225": check_225, "233": check_233, "231": check_231, "234": check_234, "232": check_232, "236": check_236, "246": check_246, "292": check_292, "561": check_561}
 
 
 def main() -> int:

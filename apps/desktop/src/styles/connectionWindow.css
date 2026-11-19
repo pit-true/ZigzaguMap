@@ -1,0 +1,47 @@
+/* コネクションマネージャーのウィンドウ（#561）。上は AdvanceMap と同じ欄、下は接続先の見た目。 */
+.connection-window {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.connection-window .connection-manager {
+  flex: 0 0 auto;
+}
+
+.connection-preview {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 4px;
+  border-top: 1px solid var(--gray-text);
+}
+
+.connection-preview-heading,
+.connection-preview-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.connection-preview-label {
+  color: var(--gray-text);
+  padding-top: 2px;
+}
+
+.connection-preview-stage {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.connection-preview-canvas {
+  display: block;
+  image-rendering: pixelated;
+}

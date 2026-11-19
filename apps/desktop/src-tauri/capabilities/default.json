@@ -12,7 +12,8 @@
     "tile-import",
     "script-editor",
     "map-assist",
-    "minimap"
+    "minimap",
+    "connection"
   ],
   "permissions": [
     "core:default",

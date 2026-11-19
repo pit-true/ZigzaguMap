@@ -39,6 +39,7 @@
 #                   「どれもオフ」「人物を動かすだけ」「仮の主人公も」「全部オフに戻した後」で -CpuSeconds 秒ずつ測る（-Project が要る）
 #   Phase7 の仕上げ（#534）で足したもの（all には入らない。phase7 で 6 つ全部）:
 #     minimap  … 表示 > ミニマップ（#542 から別ウィンドウ）を開いた状態、タウンマップも出した状態、両方を戻して閉じた後
+#     connection … ツール > マップコネクション（#561 から別ウィンドウ）を開いた状態と、閉じた後（all・phase7 には入らない）
 #     brush    … 鉛筆のブラシを 9・円にして 3.0 に描き、戻してブラシも 1・正方形に戻した後（メモリの上だけ）
 #     pathdraw … 道をなぞる窓を主人公で開き、10 歩なぞった状態と、窓を閉じた後（-Project が要る）
 #     search   … スクリプトエディタの全ファイル検索で「msgbox」を探した状態と、エディタを閉じた後（-Project が要る）
@@ -438,6 +439,19 @@ try {
             Call @{ cmd = "action"; id = "view.minimap" } | Out-Null
             if ($separate) { Wait-Window "minimap" $false }
             $results += Get-Snapshot "ミニマップを閉じた後" $proc.Id
+          }
+          "connection" {
+            # コネクションマネージャー（#561 から別ウィンドウ。connection.state があれば別ウィンドウ）
+            Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
+            $separate = $true
+            try { Call @{ cmd = "connection.state" } | Out-Null } catch { $separate = $false }
+            Call @{ cmd = "action"; id = "tools.connections" } | Out-Null
+            if ($separate) { Wait-Window "connection" }
+            Start-Sleep -Seconds 1
+            $results += Get-Snapshot "コネクションマネージャーを開いた状態" $proc.Id
+            if ($separate) { Call @{ cmd = "close"; window = "connection" } | Out-Null; Wait-Window "connection" $false }
+            else { Call @{ cmd = "dialog"; press = "close" } | Out-Null }
+            $results += Get-Snapshot "コネクションマネージャーを閉じた後" $proc.Id
           }
           "brush" {
             Call @{ cmd = "selectMap"; bank = 3; map = 0 } | Out-Null
