@@ -34,11 +34,11 @@ describe("タウンマップのアイコンの切り出し（#541）", () => {
     expect(part.data[3]).toBe(255);
   });
 
-  it("切り出す範囲はマサラタウンのマスの左上から左へ 7 画素・下へ 1 画素。表の外のマスは FR の位置、絵の端では内側に寄せる", () => {
-    expect(regionIconArea({ x: 4, y: 11 })).toEqual({ left: 57, top: 121, size: 13 });
-    expect(regionIconArea({ x: -1, y: 99 })).toEqual({ left: 57, top: 121, size: 13 });
-    expect(regionIconArea({ x: 21, y: 14 })).toEqual({ left: 193, top: 145, size: 13 });
-    expect(regionIconArea({ x: 0, y: 0 })).toEqual({ left: 25, top: 33, size: 13 });
+  it("切り出す範囲はマサラタウンのマスの左上から左へ 11 画素・上へ 11 画素。表の外のマスは FR の位置、絵の端では内側に寄せる", () => {
+    expect(regionIconArea({ x: 4, y: 11 })).toEqual({ left: 53, top: 109, size: 30 });
+    expect(regionIconArea({ x: -1, y: 99 })).toEqual({ left: 53, top: 109, size: 30 });
+    expect(regionIconArea({ x: 21, y: 14 })).toEqual({ left: 189, top: 130, size: 30 });
+    expect(regionIconArea({ x: 0, y: 0 })).toEqual({ left: 21, top: 21, size: 30 });
   });
 
   it("対応していないゲームと読めない ROM は null", () => {
@@ -53,7 +53,7 @@ describe("タウンマップのアイコンの切り出し（#541）", () => {
     const all = RegionMapGraphics.read(rom, BPRJ_REGION_MAP).graphics.render(0);
     for (let y = 0; y < REGION_ICON_SIZE; y++) {
       for (let x = 0; x < REGION_ICON_SIZE; x++) {
-        const a = ((121 + y) * 240 + 57 + x) * 4;
+        const a = ((109 + y) * 240 + 53 + x) * 4;
         const b = (y * REGION_ICON_SIZE + x) * 4;
         expect([...icon.data.slice(b, b + 4)]).toEqual([...all.data.slice(a, a + 4)]);
       }
