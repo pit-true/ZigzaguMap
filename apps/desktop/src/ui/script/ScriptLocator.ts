@@ -92,7 +92,7 @@ export class ScriptLocator {
       if (found && isEditableScriptPath(found.path)) return { path: found.path, line: found.line, label, from: "label" };
     }
     // 対応表は編集中のもの（場所の設定タブで紐づけた .s も。#555）
-    const resolved = this.app.state.session?.scriptsTable.document.resolve(bank, map) ?? null;
+    const resolved = this.app.state.session?.scriptsTable.document.resolve(bank, map) ?? (await this.app.scripts.files.mapScriptOf(bank, map));
     if (resolved && isEditableScriptPath(resolved.script)) return { path: normalizeScriptPath(resolved.script), line: 1, label, from: "scriptsJson" };
     return null;
   }

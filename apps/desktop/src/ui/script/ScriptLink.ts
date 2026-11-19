@@ -155,7 +155,7 @@ export class ScriptLink {
     // スクリプトの無いひな形（隠しアイテムの看板・落とし物の人）はラベルもひな形も付けない
     if (writer && !writer.script) return;
     const again = this.assigned.get(command);
-    const resolved = session.scriptsTable.document.resolve(bank, map);
+    const resolved = this.files.mapScriptNow(bank, map);
     const config = this.loadedConfig?.config;
     if (!resolved || !config) {
       if (!again && !resolved) this.askScriptFile(session, events);
@@ -184,11 +184,12 @@ export class ScriptLink {
     this.write(command, resolved.script, resolved.strings, templates, again !== undefined);
   }
 
-  /** マップの `.s` が無いとき: ファイル名の入力を出し、作ったら置いたイベントにラベルとひな形を付ける。 */
+  /** マップの `.s` がすぐに決まらないとき: 自動で決まればそれ、決まらなければファイル名の入力を出し、作ったら置いたイベントにラベルとひな形を付ける。 */
   private askScriptFile(session: ProjectSession, events: AddedEvents): void {
     const { bank, map } = events.map;
-    this.app.state.setStatus(t.noScriptFile(bank, map));
     void (async () => {
+      // ラベルから自動で決まる .s（#562）があれば、入力は出さずにそこへ書く
+      if (!(await this.files.mapScriptOf(bank, map).catch(() => null))) this.app.state.setStatus(t.noScriptFile(bank, map));
       const { ensureScriptFile } = await import("./NewScriptDialog");
       const resolved = await ensureScriptFile(this.app.state, bank, map);
       const config = (await this.config)?.config;
@@ -244,7 +245,7 @@ export class ScriptLink {
     }
     // .s を作ったあとのひな形（assignEventLabels）
     const args = command.args as unknown as { bank: number; map: number; events: Assigned[] };
-    const resolved = session.scriptsTable.document.resolve(args.bank, args.map);
+    const resolved = this.files.mapScriptNow(args.bank, args.map);
     const config = this.loadedConfig?.config;
     if (!resolved || !config) return;
     const templates = args.events.map((a) => eventScriptTemplate(KIND_OF[a.target], a.label, { dialect: config.dialect, useGlobal: config.useGlobal }));
@@ -361,7 +362,7 @@ export class ScriptLink {
     if (!session) return { written, removed: [] };
     const config = (await this.config)?.config;
     for (const x of tables) {
-      const resolved = session.scriptsTable.document.resolve(x.bank, x.map);
+      const resolved = await this.files.mapScriptOf(x.bank, x.map);
       if (!resolved) throw new Error(t.tableNoScript(x.bank, x.map));
       await this.files.change(
         resolved.script,

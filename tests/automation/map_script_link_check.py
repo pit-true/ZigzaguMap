@@ -6,7 +6,8 @@
 - `--chronos` には書き込まない。要る分（base の BPRJ0.gba と cfru の src/config.h・assembly・strings・maps・eventscripts など）を
   `--work` の下に写し、写しを開く。
 - 見ること
-  - Chronos には maps\\scripts.json が無いので、トキワシティ（3.1）の「このマップの .s」は決まっていない。
+  - Chronos には maps\\scripts.json が無いが、トキワシティ（3.1）は見本のラベルから zigzagu_playback_demo_scripts.s が自動で出る（#562。
+    印つき、保存しない）。ラベルの無い 3.0 は決まらない。--nd を付けると、ND の 3.0 の人にラベルを付けて自動で決まる .s も見る。
   - 「選ぶ…」（ファイルを選ぶ画面に queuePath で答える）で assembly の外のファイルを選ぶと、理由を出して断る（紐づけない）。
   - zigzagu_playback_demo_scripts.s を選ぶと紐づき、見本のラベルはマップの .s のラベルになる（注意なし）。元に戻すと消え、やり直すと戻る。
   - 出力すると maps\\scripts.json にマップを指定した行が書かれる。ZigzaguMap を閉じて開き直しても、紐づけが残り、注意が出ない。
@@ -90,10 +91,35 @@ def choose(z: Zigzagu, path: str) -> list:
     return z.call({"cmd": "dialogs"})
 
 
+def nd_auto(z: Zigzagu, nd: pathlib.Path) -> None:
+    """ND（イベントにラベルが無い）の 3.0 の人にラベルを付けて、自動で決まる .s を見る（出力しない）。"""
+    z.call({"cmd": "openFolder", "folder": str(nd)}, timeout=300)
+    z.call({"cmd": "selectMap", "bank": 3, "map": 0})
+    st = z.call({"cmd": "scripts.mapLink", "bank": 3, "map": 0})
+    check(st["script"] is None and st["auto"] is None, f"ND のラベルの無いマップは決まらない（{st}）")
+    cases = [
+        ("EventScript_debug_surf", "assembly/overworld_scripts/01_moegi.s"),
+        ("SystemScript_EnableAutoRun", None),
+        ("EventScript_FollowerTalk", "assembly/overworld_scripts/follower_scripts.s"),
+    ]
+    for label, want in cases:
+        z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "person", "index": 0, "label": label})
+        st = z.call({"cmd": "scripts.mapLink", "bank": 3, "map": 0})
+        check(st["auto"] == want, f"ND の 3.0 の人に {label} → {want}（{st['auto']}）")
+    # 2 人のラベルが別のファイルに 1 つずつ: 決めない
+    z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "person", "index": 0, "label": "EventScript_debug_surf"})
+    z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "sign", "index": 0, "label": "EventScript_FollowerTalk"})
+    st = z.call({"cmd": "scripts.mapLink", "bank": 3, "map": 0})
+    check(st["auto"] is None, f"同じ数のファイルが 2 つなら決めない（{st['auto']}）")
+    for _ in range(5):
+        z.call({"cmd": "undo"})
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--chronos", required=True)
     ap.add_argument("--work", required=True)
+    ap.add_argument("--nd", help="NeoDark-CFRU-main のコピー（読むだけ。出力しない）")
     ap.add_argument("--exe")
     ap.add_argument("--shots")
     args = ap.parse_args()
@@ -109,9 +135,21 @@ def main() -> int:
             open_chronos(z, root)
             st = link(z)
             check(st["script"] is None and st["from"] == "none" and not table.exists(), f"初めは紐づけが無い（{st}）")
+            # 紐づけが無くても、見本のラベルのある .s を自動で出す（#562。保存しない）
+            check(st["auto"] == DEMO, f"ラベルから {DEMO} を自動で決める（{st['auto']}）")
+            time.sleep(0.5)
             f = z.call({"cmd": "getField", "id": "easy.mapScript.path"})
-            check(f["visible"] and "決まっていません" in f["value"], f"場所の設定タブに「このマップの .s」が出る（{f['value']}）")
-            shot(z, shots, "maplink-01-none")
+            mark = z.call({"cmd": "getField", "id": "easy.mapScript.auto"})
+            check(f["visible"] and f["value"] == DEMO and mark["visible"], f"場所の設定タブに自動の .s と印が出る（{f['value']}・{mark['visible']}）")
+            sec = z.call({"cmd": "getField", "id": "easy.mapScript"})
+            check("スクリプトのファイル（.s）" in sec["value"] and "マップスクリプト" in sec["value"] and "別の設定" in sec["value"],
+                  "マップスクリプトの表とは別のまとまりで、別の設定と書いてある")
+            places = demo_places(z)
+            check(len(places) == 3 and all(p == "map" for _, p, _ in places), f"自動の .s のラベルなので注意が出ない（{places}）")
+            check(z.call({"cmd": "script.labels", "bank": 3, "map": 1})["scriptFrom"] == "auto", "script.labels の scriptFrom が auto")
+            shot(z, shots, "maplink-01-auto")
+            other = z.call({"cmd": "scripts.mapLink", "bank": 3, "map": 0})
+            check(other["script"] is None and other["auto"] is None, f"ラベルの無いマップ（3.0）は決まらない（{other}）")
 
             # assembly の外は断る
             dialogs = choose(z, str(cfru / "xse_commands.s"))
@@ -157,7 +195,7 @@ def main() -> int:
             st = link(z)
             check(st["from"] == "none" and st["row"] == -1, f"「外す」で紐づけが消える（{st}）")
             places = demo_places(z)
-            check(all(p == "global" for _, p, _ in places), f"外すと、見本のラベルは別のファイルの .global に戻る（{places}）")
+            check(all(p == "map" for _, p, _ in places) and st["auto"] == DEMO, f"外すと、自動の .s に戻る（{places}・{st['auto']}）")
             # 自動操作の set / clear
             try:
                 z.call({"cmd": "scripts.mapLink", "bank": 3, "map": 1, "action": "set", "path": "strings/zigzagu_playback_demo.string"})
@@ -170,7 +208,10 @@ def main() -> int:
             check(st["from"] == "none", "自動操作の clear で外れる")
             z.call({"cmd": "export"}, timeout=300)
             saved = json.loads(table.read_text(encoding="utf-8")) if table.exists() else {"Entries": []}
-            check(not any(e.get("Bank") == 3 and e.get("Map") == 1 for e in saved.get("Entries", [])), "外して出力すると、ファイルの行も消える")
+            check(not any(e.get("Bank") == 3 and e.get("Map") == 1 for e in saved.get("Entries", [])), "外して出力すると、ファイルの行も消える（自動の .s は書かない）")
+        if args.nd:
+            with Zigzagu(exe, profile=profile) as z:
+                nd_auto(z, pathlib.Path(args.nd))
     print("結果: " + ("すべて OK" if not failures else f"失敗 {len(failures)} 件"))
     return 1 if failures else 0
 

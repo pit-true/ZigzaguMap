@@ -6,10 +6,10 @@ import {
   newScriptPath,
   normalizeScriptPath,
   scriptPathProblem,
-  type ScriptsJsonResolution,
   type ScriptsTableEntryArgs,
 } from "@zigzagumap/core";
 import type { EditorState } from "../../app/EditorState";
+import { ScriptFiles } from "./ScriptFiles";
 import { jaScriptsTable as t } from "../../i18n/ja.scriptsTable";
 import { createDialog, dialogButton, dialogButtonRow, handleDialogKeys, pressable } from "../Dialog";
 import { askYesNo, showError } from "../MessageBox";
@@ -120,13 +120,13 @@ export function openNewScriptDialog(state: EditorState, request: NewScriptReques
 }
 
 /**
- * マップのスクリプトを書く `.s` と `.string`。対応表に無ければファイル名の入力を出して行を足す（イベントを置いたときなどに使う）。
- * やめたら null。
+ * マップのスクリプトを書く `.s` と `.string`。対応表に無ければ、マップのラベルから自動で決めた `.s`（#562）。
+ * それも無ければファイル名の入力を出して行を足す（イベントを置いたときなどに使う）。やめたら null。
  */
-export async function ensureScriptFile(state: EditorState, bank: number, map: number): Promise<ScriptsJsonResolution | null> {
+export async function ensureScriptFile(state: EditorState, bank: number, map: number): Promise<{ readonly script: string; readonly strings: string } | null> {
   const table = state.session?.scriptsTable;
   if (!table) return null;
-  const found = table.document.resolve(bank, map);
+  const found = table.document.resolve(bank, map) ?? (await ScriptFiles.current?.mapScriptOf(bank, map)) ?? null;
   if (found) return found;
   const index = await openNewScriptDialog(state, { bank, map, needed: true });
   return index === null ? null : (state.session?.scriptsTable.document.resolve(bank, map) ?? null);

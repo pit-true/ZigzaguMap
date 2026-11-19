@@ -77,6 +77,9 @@ async function scriptsTable(app: App, req: AutomationRequest): Promise<unknown> 
         if (bank === null || map === null) throw new Error("ensure には bank と map が要ります");
         const found = s.scriptsTable.document.resolve(bank, map);
         if (found) return { resolved: found, ...describe(app) };
+        // ラベルから自動で決まる .s（#562）があれば、入力は出さずにそれを返す（索引を先に作っておき、入力が出るのを待てるようにする）
+        const auto = await app.scripts.files.mapScriptOf(bank, map);
+        if (auto) return { resolved: auto, ...describe(app) };
         void ensureScriptFile(app.state, bank, map);
       } else {
         const fileName = typeof req["fileName"] === "string" ? req["fileName"] : undefined;
@@ -105,7 +108,13 @@ async function mapLink(app: App, req: AutomationRequest): Promise<unknown> {
   } else if (action === "clear") unlinkMapScript(app.state, id);
   else if (action !== "get") throw new Error(`知らない action です: ${action}`);
   const s = session(app);
-  return { bank: id.bank, map: id.map, ...(mapScriptLink(app.state, id) ?? { script: null, from: "none", row: -1 }), modified: s.scriptsTable.isModified() };
+  const link = mapScriptLink(app.state, id) ?? { script: null, from: "none", row: -1 };
+  // 紐づけが無ければ、ラベルから自動で決めた .s（#562。保存しない）
+  const chosen = link.script === null ? await app.scripts.files.mapScriptOf(id.bank, id.map) : null;
+  const auto = chosen?.from === "auto" ? chosen.script : null;
+  const labels = s.labels.store.labelsOfMap(id.bank, id.map);
+  const candidates = await app.scripts.files.autoCandidates(id.bank, id.map);
+  return { bank: id.bank, map: id.map, ...link, auto, labels, candidates, modified: s.scriptsTable.isModified() };
 }
 
 /** scripts.json の対応表の命令。 */

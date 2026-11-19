@@ -4,12 +4,12 @@
       [--exe <zigzagumap.exe>] [--shots <フォルダ>]
 
 - コピーには書き込まない（出力しない。ラベルと対応表の変更は保存せずに閉じる）。
-- Chronos（maps\\scripts.json が無い）: トキワシティ（3.1）の人 9〜11 のラベル EventScript_ZzmPlaybackDemo は、別のファイル
-  （zigzagu_playback_demo_scripts.s）の `.global` なので、赤い字にせず「別のファイル（…）にあります」と出す。一覧にファイルの名前つきで出る。
-  人 10 からスクリプトの再生を始められる。
-- ND（maps\\scripts.json が無い）: 3.0 の人に、共用のスクリプトの `.global` のラベル（EventScript_FollowerTalk）・`.global` でない
-  ほかのファイルのラベル（EventScript_debug_surf）・無いラベルを付け、順に「別のファイル」・「.global でない」・「見つからない」が出る。
-  対応表で 3.0 に 01_moegi.s を紐づけると、EventScript_debug_surf はマップの .s のラベルになり、注意が消える。
+- Chronos（maps\\scripts.json が無い）: トキワシティ（3.1）は見本のラベルから「このマップの .s」が自動で決まり（#562）、
+  人 9〜11 のラベル EventScript_ZzmPlaybackDemo に注意は出ない。一覧に出る。人 10 からスクリプトの再生を始められる。
+- ND（maps\\scripts.json が無い）: 自動で決まらないよう 3.0 の .s を trainer_battle_scripts.s にしてから、3.0 の人に、共用のスクリプトの
+  `.global` のラベル（EventScript_FollowerTalk）・`.global` でないほかのファイルのラベル（EventScript_debug_surf）・無いラベルを付け、
+  順に「別のファイル（…）にあります」（赤い字にしない）・「.global でない」・「見つからない」が出る。
+  3.0 の .s を 01_moegi.s にすると、EventScript_debug_surf はマップの .s のラベルになり、注意が消える。
 """
 from __future__ import annotations
 
@@ -62,16 +62,15 @@ def chronos(z: Zigzagu, root: pathlib.Path, shots: pathlib.Path | None) -> None:
     labels = z.call({"cmd": "script.labels"})
     demo = [p for p in labels["person"] if p["label"] == "EventScript_ZzmPlaybackDemo"]
     check(len(demo) == 3, f"Chronos 3.1 に見本のラベルの人が 3 人いる（{[p['index'] for p in demo]}）")
-    check(labels["script"] is None, "Chronos には maps\\scripts.json が無い（マップの .s が決まらない）")
-    check(all(p["inScript"] and p["place"] == "global" and str(p["file"]).endswith("zigzagu_playback_demo_scripts.s") for p in demo),
-          f"見本のラベルは別のファイルの .global（{[(p['place'], p['file']) for p in demo]}）")
+    # maps\\scripts.json は無いが、見本のラベルから「このマップの .s」が自動で決まる（#562）
+    check(labels["scriptFrom"] == "auto" and str(labels["script"]).endswith("zigzagu_playback_demo_scripts.s"), f"マップの .s は自動で決まる（{labels['script']}）")
+    check(all(p["inScript"] and p["place"] == "map" for p in demo), f"見本のラベルはマップの .s のラベル（{[(p['place'], p['file']) for p in demo]}）")
     for p in demo:
         f = field(z, p["index"])
-        check("missing" not in f["classes"] and "別のファイル（zigzagu_playback_demo_scripts.s）にあります" in f["title"],
-              f"人 {p['index']} の欄は赤くなく、別のファイルにあると出る（{f['title']}）")
+        check("missing" not in f["classes"] and f["title"] == "EventScript_ZzmPlaybackDemo", f"人 {p['index']} の欄に注意が出ない（{f['title']}）")
     shot(z, shots, "chronos-field")
     items = list_items(z, "ZzmPlayback")
-    check("EventScript_ZzmPlaybackDemo" in items, f"一覧にほかのファイルの .global のラベルが出る（{items[:5]}）")
+    check("EventScript_ZzmPlaybackDemo" in items, f"一覧に見本のラベルが出る（{items[:5]}）")
     z.call({"cmd": "playback.start", "kind": "person", "index": demo[1]["index"]}, timeout=180)
     st = z.call({"cmd": "playback.state"})
     check(st.get("active") is True and st.get("entry") == "EventScript_ZzmPlaybackDemo", f"人 {demo[1]['index']} からスクリプトの再生を始められる（{st.get('entry')}）")
@@ -83,6 +82,8 @@ def nd(z: Zigzagu, root: pathlib.Path, shots: pathlib.Path | None) -> None:
     z.call({"cmd": "openFolder", "folder": str(root)}, timeout=300)
     z.call({"cmd": "selectMap", "bank": 3, "map": 0})
     z.call({"cmd": "tab", "name": "event"})
+    # ラベルから自動で決まらないように、3.0 の .s を trainer_battle_scripts.s に決めておく（保存しない）
+    z.call({"cmd": "scripts.table", "action": "add", "entry": {"bank": 3, "map": 0, "name": "ZzPlace", "script": "assembly/overworld_scripts/trainer_battle_scripts.s", "strings": None}})
     cases = [
         ("EventScript_FollowerTalk", "global", False, "別のファイル（follower_scripts.s）にあります"),
         ("EventScript_debug_surf", "notGlobal", True, ".global でないので"),
@@ -98,7 +99,7 @@ def nd(z: Zigzagu, root: pathlib.Path, shots: pathlib.Path | None) -> None:
     items = list_items(z, "SystemScript_Enable")
     check("SystemScript_EnableAutoRun" in items, f"ND の一覧に system_scripts.s の .global のラベルが出る（{items[:4]}）")
     # 対応表で 3.0 に 01_moegi.s を紐づける（保存しない）と、.global でなくてもマップの .s のラベル
-    z.call({"cmd": "scripts.table", "action": "add", "entry": {"bank": 3, "map": 0, "name": "ZzPlace", "script": "assembly/overworld_scripts/01_moegi.s", "strings": None}})
+    z.call({"cmd": "scripts.table", "action": "set", "index": 0, "entry": {"bank": 3, "map": 0, "name": "ZzPlace", "script": "assembly/overworld_scripts/01_moegi.s", "strings": None}})
     z.call({"cmd": "script.setLabel", "bank": 3, "map": 0, "target": "person", "index": 0, "label": "EventScript_debug_surf"})
     p = person(z, 0)
     f = field(z, 0)
@@ -108,7 +109,7 @@ def nd(z: Zigzagu, root: pathlib.Path, shots: pathlib.Path | None) -> None:
     moegi = [i for i, n in enumerate(items) if n == "EventScript_debug_surf"]
     shared = [i for i, n in enumerate(items) if n == "EventScript_FollowerTalk"]
     check(bool(moegi) and (not shared or moegi[0] < shared[0]), f"一覧はマップの .s のラベルが先（{items[:3]}）")
-    for _ in range(5):
+    for _ in range(6):
         z.call({"cmd": "undo"})
 
 

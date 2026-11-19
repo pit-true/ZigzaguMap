@@ -57,7 +57,7 @@ export async function suggestPathLabel(app: App, actor: number | null = null): P
 export async function mapScriptPath(app: App, actor: number | null): Promise<string | null> {
   const session = app.state.session, map = app.state.map;
   if (!session || !map) return null;
-  const listed = session.scriptsTable.document.resolve(map.id.bank, map.id.map)?.script;
+  const listed = (await app.scripts.files.mapScriptOf(map.id.bank, map.id.map))?.script;
   if (listed) return listed;
   const events = map.doc.events;
   const persons = events?.persons ?? [];
