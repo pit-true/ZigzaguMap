@@ -9,6 +9,7 @@
 | `playback.start` | `label`、または `kind: person/sign/trap/map` と `index` | 現在のマップで再生を準備。人物と現在のフレームを返す。イベントのスクリプトが ROM のアドレスのままなら、ROM から再生する（素の ROM だけでもよい。`entry` は `ROM_08XXXXXX`） |
 | `playback.stop` | なし | 再生を終了し、イベント表示とスクロールを戻す |
 | `playback.state` | なし | `active`、始めたラベル `entry`、始まり方 `trigger`、`playing`、`speed`、`frame`、`lastFrame`、人物・カメラ・画像の診断 |
+| `playback.centering` | なし | 240×160 の範囲の真ん中と、マップの表示（下に重なる再生の帯を除く）の真ん中の差（#564）。`following`（「画面を追う」）、画面の画素の差 `dx`・`dy`、マスの差 `cellsX`・`cellsY`、`cellSize`、`scrollLeft`・`scrollTop`。範囲を出していなければ null。「画面を追う」のチェックは `playback.follow`（再生の帯）と `preview.follow`（仮の主人公の欄）で、どちらも個人設定 `playbackFollow` |
 | `playback.timeline` | なし | 区間 `segments`、印 `markers`、送り先 `keyFrames` |
 | `playback.seek` | `frame` | 任意のフレームへ移動して一時停止 |
 | `playback.step` | `direction: previous/next`、`singleFrame`（任意） | 動きの前・中・後へ移動。`singleFrame: true` なら1フレーム |

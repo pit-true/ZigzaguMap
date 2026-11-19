@@ -1,14 +1,17 @@
 /**
  * ドット絵のアイコンを 32×32 の画素にする（#541）。DOM を使わない（画面に出すときは icons.ts が PNG にする）。
  *
- * 作りは「オブジェクトの表示」の主人公の PNG（scripts/make-hero-icon.py）と同じ:
- * 1 ドットを 2×2 の画素にして 32×32 に置き、右下へ 1 画素ずらしてぼかした影（黒、濃さ 110/255、ぼかし 0.8）を付ける。
+ * 1 ドットを `scale`×`scale` の画素にして 32×32 の真ん中に置く。`shadow` なら、「オブジェクトの表示」の主人公の PNG
+ * （scripts/make-hero-icon.py）と同じく、右下へ 1 画素ずらしてぼかした影（黒、濃さ 110/255、ぼかし 0.8）を付ける。
  */
 
 /** アイコンの大きさ（画素）。 */
 export const ICON_PIXELS = 32;
-/** 1 ドットの大きさ（画素）。 */
-export const DOT_SCALE = 2;
+/** 描き方。`scale` は 1 ドットの大きさ（画素。既定 1）、`shadow` は影を付けるか（既定 false）。 */
+export interface PixelIconOptions {
+  readonly scale?: number;
+  readonly shadow?: boolean;
+}
 /** 影の濃さ（主人公の PNG と同じ 110/255）。 */
 const SHADOW_ALPHA = 110;
 
@@ -61,16 +64,16 @@ const BLUR = ((): number[] => {
 /**
  * 影（32×32 の画素ごとの濃さ、0〜255）。絵のある画素を右下へ 1 画素ずらして濃さ 110 にし、縦横にぼかす。
  */
-function shadowAlpha(grid: PixelGrid, left: number, top: number): Uint8Array {
+function shadowAlpha(grid: PixelGrid, left: number, top: number, scale: number): Uint8Array {
   const n = ICON_PIXELS;
   const mask = new Float32Array(n * n);
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       if (grid.at(x, y) === null) continue;
-      for (let dy = 0; dy < DOT_SCALE; dy++) {
-        for (let dx = 0; dx < DOT_SCALE; dx++) {
-          const px = left + 1 + x * DOT_SCALE + dx;
-          const py = top + 1 + y * DOT_SCALE + dy;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const px = left + 1 + x * scale + dx;
+          const py = top + 1 + y * scale + dy;
           if (px < n && py < n) mask[py * n + px] = SHADOW_ALPHA;
         }
       }
@@ -102,24 +105,31 @@ export interface IconPixels {
 }
 
 /**
- * ドットの並びを 32×32 の RGBA の画素にする（DOM を使わない）。絵は影の分（1 画素）を残して真ん中に置く。
- * 影（黒、ぼかした濃さ）の上に、絵のドットを 2×2 の画素で不透明に描く。
+ * ドットの並びを 32×32 の RGBA の画素にする（DOM を使わない）。影を付けるときは影の分（1 画素）を残して真ん中に置く。
+ * 影（黒、ぼかした濃さ）の上に、絵のドットを不透明に描く。
  */
-export function pixelIconPixels(grid: PixelGrid): IconPixels {
+export function pixelIconPixels(grid: PixelGrid, options: PixelIconOptions = {}): IconPixels {
   const n = ICON_PIXELS;
-  const left = Math.floor((n - grid.width * DOT_SCALE - 1) / 2);
-  const top = Math.floor((n - grid.height * DOT_SCALE - 1) / 2);
+  const scale = options.scale ?? 1;
+  const room = options.shadow ? 1 : 0;
+  const left = Math.max(0, Math.floor((n - grid.width * scale - room) / 2));
+  const top = Math.max(0, Math.floor((n - grid.height * scale - room) / 2));
   const data = new Uint8ClampedArray(n * n * 4);
-  const alpha = shadowAlpha(grid, left, top);
-  for (let i = 0; i < n * n; i++) data[i * 4 + 3] = alpha[i]!;
+  if (options.shadow) {
+    const alpha = shadowAlpha(grid, left, top, scale);
+    for (let i = 0; i < n * n; i++) data[i * 4 + 3] = alpha[i]!;
+  }
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       const c = grid.at(x, y);
       if (c === null) continue;
       const v = parseInt(c.slice(1), 16);
-      for (let dy = 0; dy < DOT_SCALE; dy++) {
-        for (let dx = 0; dx < DOT_SCALE; dx++) {
-          const o = ((top + y * DOT_SCALE + dy) * n + left + x * DOT_SCALE + dx) * 4;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const px = left + x * scale + dx;
+          const py = top + y * scale + dy;
+          if (px >= n || py >= n) continue;
+          const o = (py * n + px) * 4;
           data[o] = v >> 16;
           data[o + 1] = (v >> 8) & 255;
           data[o + 2] = v & 255;
